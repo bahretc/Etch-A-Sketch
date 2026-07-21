@@ -1,0 +1,29 @@
+# Example "initial study" / assignment. Transcribe once from the assignment
+# and assumptions email. This file is the auditable record of study scope.
+project_id: "US421-Holbrooke"
+description: "Widening for paved shoulders on US 421 (before/after safety evaluation)"
+county: "New Hanover"
+route: "CAROLINA BEACH"          # must match the 'On Road' name on the fiche
+section_begin_mp: 0.0
+section_end_mp: 0.1
+intersection_study: false
+
+countermeasure: "Widening for Paved Shoulders"
+target_crash_types:
+  - "Lane Departure (Type 2)"
+  - "Wet"
+  - "Night"
+
+study_start: "2016-10-01"
+study_end: "2026-04-30"
+construction_start: "2021-04-01"
+construction_end: "2021-10-31"
+
+aadt_before: 8200
+aadt_after: 7500
+
+assumptions:
+  - "Target crashes confirmed per assumptions email (lane departure Type 2)."
+  - "Construction period 7 months per provided start/end dates."
+  - "2020 excluded as a representative AADT year (COVID)."
+notes: "Example only - values illustrative."

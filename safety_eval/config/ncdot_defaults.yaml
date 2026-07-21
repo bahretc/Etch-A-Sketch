@@ -1,0 +1,106 @@
+# =============================================================================
+# NCDOT Safety-Evaluation domain configuration
+# =============================================================================
+# Everything the automation "knows" about NCDOT crash coding and methodology
+# lives here so it can be corrected WITHOUT touching code.
+#
+# Confidence legend:
+#   [CONFIRMED] verified against the example fiches / Section Eval Workbook
+#   [VERIFY]    best-guess inferred from examples -- please confirm the values
+# =============================================================================
+
+# --- Which fiche column plays which semantic role -----------------------------
+# The TEAAS fiche coded columns are printed as: T  C  F  L  S
+# We map each letter to a role so the analysis logic never hard-codes a letter.
+column_roles:
+  crash_type: T      # [CONFIRMED] NCDOT crash-type code (drives target classification)
+  units: C           # [VERIFY]    number of vehicles / units involved
+  road_surface: F    # [VERIFY]    road-surface condition code (wet = 2-6 per workbook)
+  light: L           # [CONFIRMED] light condition (night = 4-6 per workbook)
+  severity: S        # [CONFIRMED] KABCO severity letter
+
+# --- Severity (KABCO) ---------------------------------------------------------
+# [CONFIRMED] Section Eval Workbook groups crashes by these letters.
+severity:
+  order: [K, A, B, C, O]         # most-to-least severe; O = property damage only
+  labels:
+    K: Fatal
+    A: Suspected Serious Injury
+    B: Suspected Minor Injury
+    C: Possible Injury
+    O: Property Damage Only
+  # weights used for EPDO / severity-weighted totals (edit to match district)
+  epdo_weights: {K: 542, A: 542, B: 11, C: 11, O: 1}   # [VERIFY]
+  injury_letters: [K, A, B, C]   # anything not O and not blank counts as injury
+
+# --- Road-surface condition ("Road Codes") ------------------------------------
+# [VERIFY] Workbook: "Wet Crashes (Road Codes 2-6)". Dry = 1, everything else wet.
+road_surface:
+  dry: [1]
+  wet: [2, 3, 4, 5, 6]
+
+# --- Light condition ("Light Codes") ------------------------------------------
+# [CONFIRMED via workbook] "Night Crashes (Light Codes 4-6)".
+light:
+  day: [1, 2, 3]
+  night: [4, 5, 6]
+
+# --- Crash-type code groupings ------------------------------------------------
+# [VERIFY] NCDOT TEAAS crash-type codes. These groupings feed the target crash
+# type classifier. Confirm the code numbers against the NCDOT crash-type list.
+crash_type_groups:
+  rear_end: [30, 31, 32]
+  angle: [21]
+  left_turn_same_roadway: [23]
+  left_turn_different_roadway: [24]
+  ran_off_road: [1, 2, 3]
+  rollover: [4]
+  fixed_object: [25, 26, 27, 28, 29]
+  head_on: [17]
+  sideswipe_same_direction: [19]
+  sideswipe_opposite_direction: [18]
+  frontal_impact: [17, 21, 23, 24]
+  pedestrian: [5, 6, 7, 8, 9]
+  bicycle: [10]
+  # "Lane Departure" per the workbook's own definition:
+  #   Type 1 (two-lane): ROR L/R/straight, overturn, fixed object, head-on,
+  #                      sideswipe opposite.
+  #   Type 2 (multilane): Type 1 + sideswipe same direction.
+  lane_departure_type1: [1, 2, 3, 4, 17, 18, 25, 26, 27, 28, 29]
+  lane_departure_type2: [1, 2, 3, 4, 17, 18, 19, 25, 26, 27, 28, 29]
+
+# --- Truck involvement --------------------------------------------------------
+truck:
+  codes: [10, 11, 12, 13, 14, 15, 16]   # [VERIFY] "typical Truck codes are 10-16"
+  heavy_codes: [12, 13, 14, 15, 16]     # [VERIFY] "'Heavy' truck codes are 12-16"
+
+# --- Target crash type definitions -------------------------------------------
+# Named targets referenced by the assignment. Each is a predicate combining
+# the groups above with optional road/light constraints. The assignment's
+# `target_crash_types:` list selects which of these to report on.
+target_crash_types:
+  Lane Departure (Type 1): {type_group: lane_departure_type1}
+  Lane Departure (Type 2): {type_group: lane_departure_type2}
+  Rear End: {type_group: rear_end}
+  Frontal Impact: {type_group: frontal_impact}
+  Left Turn Same Roadway: {type_group: left_turn_same_roadway}
+  Angle: {type_group: angle}
+  Wet: {road_surface: wet}
+  Night: {light: night}
+  Wet Lane Departure (Type 2): {type_group: lane_departure_type2, road_surface: wet}
+  Night Lane Departure (Type 2): {type_group: lane_departure_type2, light: night}
+  Truck: {truck: true}
+
+# --- Study / methodology constants -------------------------------------------
+methodology:
+  # Default construction period when none is provided (workbook guidance: 3 mo).
+  default_construction_months: 3        # [CONFIRMED via workbook]
+  # Do not use these years as AADT representative years (COVID).
+  excluded_representative_years: [2020] # [CONFIRMED via workbook]
+  # Milepost sentinel used for intersection/unknown-location crashes.
+  mp_sentinel: 999.999
+  # Naive before/after expected-crash adjustment. Expected after-period crashes
+  #   = before_count * (after_years / before_years) * (aadt_after / aadt_before)
+  # Percent reduction = (expected - observed) / expected * 100
+  adjust_for_traffic: true
+  adjust_for_time: true

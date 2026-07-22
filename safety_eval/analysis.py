@@ -5,6 +5,21 @@ from .config import Config
 from .models import Assignment, Crash, EvaluationResult, Period, PeriodStats
 
 
+def epdo(counts: dict, cfg: Config) -> float:
+    """EPDO = sum(weight_letter * count_letter).
+
+    docs/04: EPDO = 76.8*(K+A) + 8.4*(B+C) + 1.0*PDO (active NCDOT weights).
+    ``counts`` maps severity letters to counts, e.g. {'K':1,'A':3,'B':2,...}.
+    """
+    return sum(cfg.epdo_weight(letter) * n for letter, n in counts.items())
+
+
+def severity_index(counts: dict, cfg: Config) -> float | None:
+    """Severity Index = EPDO / total crashes (docs/04)."""
+    total = sum(counts.values())
+    return epdo(counts, cfg) / total if total else None
+
+
 def _period_stats(
     name: str,
     period: Period,

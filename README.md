@@ -15,10 +15,14 @@ to the study section and period, classifies target crash types, computes the
 before/after effectiveness, and writes a completed evaluation **workbook** and a
 **Markdown report**.
 
-> **Status:** working core engine (v0.1). The domain-specific rules were
-> reverse-engineered from example fiches and Section Evaluation Workbooks and
-> are all marked `[VERIFY]` in the config — confirm them before using results
-> in a deliverable (see *Assumptions to verify* below).
+> **Status:** working core engine (Phase 1 partial). Domain rules now come from
+> the HSIP context pack in [`CLAUDE.md`](CLAUDE.md) + [`docs/`](docs/) (the
+> ground truth exported from prior evaluation sessions): NCDOT T-code table
+> (docs/09), EPDO 76.8/8.4/1.0 (docs/04), frontal-impact/lane-departure target
+> sets (docs/03, docs/08), no-em-dash report style (docs/05). Items still marked
+> `[VERIFY]` in the config are the ones the pack does not define (see below).
+> `docs/07` lays out the full multi-phase app; see *Relationship to the full
+> spec*.
 
 ## Install
 
@@ -81,15 +85,18 @@ reduction_%      = (expected_after − observed_after) / expected_after × 100
 
 ## Assumptions to verify
 
-All domain knowledge lives in [`safety_eval/config/ncdot_defaults.yaml`](safety_eval/config/ncdot_defaults.yaml)
-so it can be corrected without touching code. Confirm the `[VERIFY]` items:
+Domain rules live in [`safety_eval/config/ncdot_defaults.yaml`](safety_eval/config/ncdot_defaults.yaml)
+so they can be corrected without touching code. Confirmed from the context pack:
+T-code table (docs/09), EPDO weights 76.8/8.4/1.0 (docs/04), frontal-impact and
+lane-departure sets (docs/03, docs/08). Still `[VERIFY]` (the pack does not
+define these):
 
-- **Column roles** — which fiche letter (`T C F L S`) is crash-type / units /
-  road-surface / light / severity. Confirmed: `T`=crash type, `L`=light,
-  `S`=severity. To confirm: which of `C`/`F` is the road-surface code.
-- **Crash-type code groups** — the NCDOT crash-type code numbers for rear-end,
-  lane-departure, angle, etc.
-- **EPDO weights** and **truck code ranges**.
+- **Fiche columns `C` / `F` / `L`.** docs/09 confirms `T` = crash type and
+  `S` = severity but leaves `C`, `F`, `L` undefined. The road-surface (wet =
+  codes 2-6) and light (night = codes 4-6) roles are a best guess used only for
+  secondary "Additional Information" cuts, never for the primary crash-type
+  targets. Confirm which letters they are (or that they live only in the 43-col
+  detailed export).
 
 Override example:
 
@@ -98,10 +105,25 @@ safety-eval run --fiche f.csv --assignment a.yaml --config my_overrides.yaml
 ```
 
 ```yaml
-# my_overrides.yaml — only the keys you want to change
+# my_overrides.yaml - only the keys you want to change
 column_roles: {road_surface: C}
-crash_type_groups: {rear_end: [30, 31, 32, 33]}
 ```
+
+## Relationship to the full spec
+
+`docs/07-app-spec.md` describes the complete tool: a Streamlit UI over pandas /
+pydantic / SQLite, template-preserving Excel writes (XML-level patching +
+LibreOffice recalc + integrity verification per `docs/06`), 2021 HSIP warrant
+screening, DMV-349 OCR page-indexing, fiche review workflow, field-investigation
+files, PPTX decks, and an engineer-in-the-loop LLM draft layer.
+
+This `safety_eval/` package is a correct-but-partial slice of **Phase 1** (fiche
+parsing, EPDO/SI, crash rates, before/after) as a testable CLI engine. It does
+**not yet** implement: the Streamlit UI, SQLite store, pydantic `CrashRecord`,
+template-preserving XML workbook writes (it builds a *new* summary workbook, it
+does not populate the real NCDOT template), warrant screening, or the review /
+field-investigation / PPTX / LLM phases. Next step is to align to the `src/`
+layout and methodology in `docs/07`.
 
 ## Develop
 

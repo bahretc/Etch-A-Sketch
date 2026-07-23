@@ -69,6 +69,9 @@ safety-eval aadt --where "COUNTY='JOHNSTON'" --point -78.35,35.65 --radius 500
 # redact PII from an uploaded crash report before review (ZIPs and crash IDs kept)
 safety-eval redact --input dmv349_binder.pdf --output dmv349_redacted.pdf
 
+# the app: upload -> redact -> review -> build, in a browser
+pip install -e '.[ui]' && streamlit run safety_eval/app.py
+
 safety-eval parse  --fiche path/to/fiche.pdf     # preview parsed crashes
 safety-eval doctor                               # which OCR/PDF backends are available
 ```
@@ -220,9 +223,18 @@ pytest -q
 - [x] Crash-report PII redaction on upload (`safety-eval redact`).
 - [x] Binned Crashes sheet (every fiche crash under exactly one period
       banner; whole-month period math mirroring the Date Range Calculator).
-- [ ] Filtered Fiche review sheet; fiche review workflow (GPS pre-screen,
-      status queue, DMV-349 page retrieval).
-- [ ] Streamlit review UI (docs/07) tying upload -> redact -> review -> fill.
+- [x] Filtered Fiche generation (`--filtered`): pre-screened review sheet with
+      IN STUDY / REVIEW CANDIDATES / NOT IN STUDY groups; statuses prefilled
+      only for already-determined ID-list crashes (RE derived when the import
+      milepost corrects the coded one, section analyses only); all other
+      determinations left blank for the engineer.
+- [x] Streamlit app shell (`streamlit run safety_eval/app.py`): Build
+      Evaluation, Redact Crash Reports (PII removed on upload), Review
+      Filtered Fiche tabs.
+- [ ] Fiche review queue with redacted DMV-349 page retrieval (GPS
+      pre-screen, one-keystroke statuses per docs/07 Phase 3).
+- [ ] Assumptions email generator (docs/05); EB before/after; warrant
+      screening.
 - [ ] Parse the assignment/assumptions email (`.msg`/`.eml`) directly.
 - [ ] Empirical-Bayes (EB) before/after in addition to the naive method.
 - [ ] 2021 HSIP warrant screening; Streamlit shell per docs/07.

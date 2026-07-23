@@ -170,6 +170,43 @@ def _cmd_fill_template(args) -> int:
             raise RuntimeError(f"Integrity failed after binning: {rep.problems}")
         counts = {k: len(v) for k, v in bins.items()}
         print(f"Binned Crashes populated: {counts}")
+
+    # Filtered Fiche review sheet (pre-screened; determinations stay blank)
+    if args.filtered:
+        if not args.fiche:
+            raise SystemExit("--filtered requires --fiche")
+        import shutil as _sh
+
+        from .binned_sheet import analysis_type_of
+        from .fiche_parser import parse_fiche
+        from .filtered_sheet import (build_filtered_rows_xml, prescreen)
+        from .xlsx_patch import replace_sheet_rows, verify_integrity
+        fiche_all = parse_fiche(args.fiche)
+        mp_by_id = {}
+        from .teaas import parse_import_list
+        for mp_path in (args.before_mp, args.after_mp):
+            if mp_path:
+                mp_by_id.update(parse_import_list(mp_path))
+        routes = ({r.strip() for r in args.bin_routes.split(",")}
+                  if args.bin_routes else None)
+        mp_range = None
+        if args.bin_mp_range:
+            lo, hi = (float(x) for x in args.bin_mp_range.split(":"))
+            mp_range = (lo, hi)
+        groups = prescreen(fiche_all, {c.crash_id for c in before},
+                           {c.crash_id for c in after}, mp_by_id,
+                           routes, mp_range,
+                           analysis_type=analysis_type_of(args.template))
+        rows_xml = build_filtered_rows_xml(args.template, groups)
+        tmp = args.output + ".filtered.tmp"
+        replace_sheet_rows(args.output, tmp, "Filtered Fiche", rows_xml,
+                           from_row=1)
+        _sh.move(tmp, args.output)
+        rep = verify_integrity(args.template, args.output)
+        if not rep.ok:
+            raise RuntimeError(f"Integrity failed after filtered: {rep.problems}")
+        print("Filtered Fiche populated: "
+              + str({k: len(v) for k, v in groups.items()}))
     print(f"Integrity: OK ({report.checked_members} drawings/media members "
           "byte-identical)")
     if args.recalc:
@@ -294,6 +331,10 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Workbook whose Filtered Fiche sheet carries the "
                          "engineer's IS/NIS/ADD determinations; these are "
                          "authoritative for binning.")
+    ft.add_argument("--filtered", action="store_true",
+                    help="Also generate the pre-screened Filtered Fiche "
+                         "review sheet (statuses left blank for the engineer "
+                         "except already-determined ID-list crashes).")
     ft.add_argument("--config", help="Optional config override YAML.")
     ft.add_argument("--recalc", action="store_true",
                     help="Run the single LibreOffice headless recalc pass.")

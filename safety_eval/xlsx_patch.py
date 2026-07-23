@@ -252,6 +252,9 @@ def replace_sheet_rows(path_in: str, path_out: str, sheet: str,
                 data = zin.read(info.filename)
                 if info.filename == target:
                     xml = data.decode("utf-8")
+                    # expand a self-closing (empty) sheetData first
+                    xml = re.sub(r"<sheetData\s*/>",
+                                 "<sheetData></sheetData>", xml, 1)
                     sd_start = xml.index("<sheetData")
                     sd_open_end = xml.index(">", sd_start) + 1
                     sd_close = xml.index("</sheetData>")

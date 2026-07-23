@@ -17,6 +17,7 @@ dependencies = [
 # PDF / OCR front-end (any one of these enables the PDF input path)
 pdf = ["pdfplumber>=0.11", "pypdf>=4.0"]
 ocr = ["pytesseract>=0.3", "pdf2image>=1.17"]
+ui = ["streamlit>=1.30", "Pillow>=10"]
 dev = ["pytest>=7"]
 
 [project.scripts]

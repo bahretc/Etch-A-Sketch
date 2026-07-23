@@ -270,17 +270,20 @@ def _coord_rows(header, rows) -> dict[str, tuple[float, float]]:
 
 def parse_coordinates(source: str,
                       sheet: str | None = None) -> dict[str, tuple[float, float]]:
-    """crash_id -> (lat, lon) from a DetailedFiche coordinate ledger.
+    """crash_id -> (lat, lon) from the DetailedFiche.
 
-    The DetailedFiche (observed in the 260412109EA fiche workbook) is the
-    per-crash coordinate ledger built during report review: the fiche
-    columns plus Latitude / Longitude / Source, one row per crash whose
-    DMV-349 was consulted (Source records DMV349 vs DMV349CLEANED).  The
-    review sheet joins it by a live VLOOKUP on Crash ID into Lat / Long
-    columns.  This accepts that workbook (.xlsx; ``sheet`` defaults to the
-    first sheet whose header carries Crash ID and Latitude, preferring one
-    named DetailedFiche) or a delimited text file (pipe, comma, or tab).
-    Rows with blank or zero coordinates are skipped.
+    The DetailedFiche arrives WITH the Original Fiche and Initial Study
+    (observed in the 260412109EA fiche workbook): the fiche columns plus
+    per-crash Latitude / Longitude (and a Source column), keyed by Crash
+    ID; the review sheet joins it by a live VLOOKUP into Lat / Long
+    columns.  Because these coordinates help decide WHICH crash reports
+    get reviewed, the pre-screen must use the DetailedFiche only - never
+    coordinates read off a DMV-349, which would make the screen circular
+    (the report coords should agree, but they are the thing being
+    checked).  Accepts the fiche workbook (.xlsx; ``sheet`` defaults to
+    the first sheet whose header carries Crash ID and Latitude, preferring
+    one named DetailedFiche) or a delimited text file (pipe, comma, or
+    tab).  Rows with blank or zero coordinates are skipped.
     """
     if source.lower().endswith((".xlsx", ".xlsm")):
         import openpyxl

@@ -84,9 +84,9 @@ def test_parse_coordinates_pipe_delimited():
 
 
 def test_parse_coordinates_detailedfiche_xlsx(tmp_path):
-    """The DetailedFiche ledger layout observed on 260412109EA_Fiche.xlsx:
-    fiche columns A-I, J Crash ID, K Date, L-P T/C/F/L/S, Q Latitude,
-    R Longitude, S Source (DMV349 / DMV349CLEANED)."""
+    """The DetailedFiche (provided with the Original Fiche and Initial
+    Study) as observed on 260412109EA_Fiche.xlsx: fiche columns A-I,
+    J Crash ID, K Date, L-P T/C/F/L/S, Q Latitude, R Longitude, S Source."""
     import openpyxl
 
     wb = openpyxl.Workbook()

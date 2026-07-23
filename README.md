@@ -122,7 +122,7 @@ assumptions email — it is the auditable record of study scope. See
 | AADT lookup | `aadt_arcgis.py` | Queries the feature services behind the NCDOT AADT web map (stations + segments); schema-drift tolerant; CSV export |
 | PII redaction | `redact.py` | Blacks out names, addresses, DOB, phone, DL numbers, VINs and plates on uploaded crash reports; keeps ZIPs and crash IDs; image-only output so no text layer can leak |
 | Binder index | `binder.py` | OCR page index of scanned DMV-349 binders (crash-ID header box, tesseract psm 6, top-right crop); continuation pages group under the preceding report; per-crash retrieval is redacted before anyone sees it |
-| Review queue | `review_queue.py` | Fiche review workflow (docs/07 Phase 3): header-detected Filtered Fiche read-back, GPS/milepost pre-screen ordering, docs/03 status + comment validation (RE rejected for intersections, RE requires New MP), animal-crash skip, JSONL audit trail, per-cell template-preserving write-back |
+| Review queue | `review_queue.py` | Fiche review workflow (docs/07 Phase 3): header-detected Filtered Fiche read-back, pre-screen ordering by DetailedFiche coordinates (supplied with the Original Fiche; never taken from the reports, which is what the review checks) or milepost distance, docs/03 status + comment validation (RE rejected for intersections, RE requires New MP), animal-crash skip, JSONL audit trail, per-cell template-preserving write-back |
 
 ### Crash-report PII redaction
 

@@ -171,10 +171,12 @@ def _review_queue_tab(st) -> None:
             help="OCR page index of the scanned DMV-349 binder. Leave blank "
                  "to review without report retrieval.")
         coords_path = st.text_input(
-            "DetailedFiche coordinate ledger (optional)",
-            help="The per-crash Latitude/Longitude ledger built during "
-                 "review (DetailedFiche sheet of a fiche workbook, or a "
-                 "delimited export); enables the GPS distance pre-screen.")
+            "DetailedFiche (optional)",
+            help="Provided alongside the Original Fiche and Initial Study; "
+                 "carries per-crash Latitude/Longitude used to decide which "
+                 "reports to review (fiche workbook or delimited file). "
+                 "The pre-screen never takes coordinates from the reports "
+                 "themselves.")
         study_pt = st.text_input("Study point lat,lon (optional)",
                                  help="Used with coordinates to sort the "
                                       "queue by distance.")

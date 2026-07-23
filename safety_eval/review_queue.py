@@ -6,7 +6,7 @@ The queue drives the engineer's crash-by-crash review of a Filtered Fiche:
   header row, so both the generated layout and completed workbooks like
   SS-6002M with extra Crash Type / Section / ledger columns work);
 * rows still needing a determination are queued first, ordered by a
-  GPS-distance pre-screen when detailed-export coordinates are available and
+  GPS-distance pre-screen when DetailedFiche coordinates are available and
   by milepost distance to the study section otherwise;
 * animal crashes are flagged to skip (docs/03: no report review needed);
 * every determination is validated against the status vocabulary for the
@@ -232,51 +232,91 @@ def haversine_ft(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * r_ft * math.asin(math.sqrt(a))
 
 
-def parse_coordinates(source: str) -> dict[str, tuple[float, float]]:
-    """crash_id -> (lat, lon) from a TEAAS Detailed Crash ID List export.
-
-    The detailed export is pipe-delimited with a header row; the parser keys
-    on header names containing CRASH ID / LATITUDE / LONGITUDE so column
-    drift in the 43-column layout does not break it. Comma-separated files
-    are accepted too.
-    """
-    text = source
-    if "\n" not in source and len(source) < 400:
-        with open(source, encoding="utf-8", errors="replace") as fh:
-            text = fh.read()
-    out: dict[str, tuple[float, float]] = {}
-    delim = None
+def _coord_rows(header, rows) -> dict[str, tuple[float, float]]:
+    """Extract {crash_id: (lat, lon)} given a header row and data rows."""
     cols: dict[str, int] = {}
-    for line in text.splitlines():
-        if not line.strip():
-            continue
-        if not cols:
-            for cand in ("|", ",", "\t"):
-                parts = [p.strip().upper() for p in line.split(cand)]
-                if any("CRASH" in p and "ID" in p for p in parts) and \
-                   any("LATITUDE" in p for p in parts):
-                    delim = cand
-                    for i, p in enumerate(parts):
-                        if "CRASH" in p and "ID" in p:
-                            cols["id"] = i
-                        elif "LATITUDE" in p:
-                            cols["lat"] = i
-                        elif "LONGITUDE" in p:
-                            cols["lon"] = i
-                    break
-            continue
-        parts = [p.strip() for p in line.split(delim)]
+    for i, cell in enumerate(header):
+        p = str(cell or "").strip().upper()
+        if "CRASH" in p and "ID" in p:
+            cols.setdefault("id", i)
+        elif "LATITUDE" in p or p == "LAT":
+            cols.setdefault("lat", i)
+        elif "LONGITUDE" in p or p == "LONG":
+            cols.setdefault("lon", i)
+    out: dict[str, tuple[float, float]] = {}
+    if len(cols) < 3:
+        return out
+    for row in rows:
         try:
-            cid = parts[cols["id"]]
+            cid = str(row[cols["id"]]).strip()
             if not cid.isdigit():
                 continue
-            lat = float(parts[cols["lat"]])
-            lon = float(parts[cols["lon"]])
-        except (KeyError, IndexError, ValueError):
+            lat = float(row[cols["lat"]])
+            lon = float(row[cols["lon"]])
+        except (TypeError, IndexError, ValueError):
             continue
         if lat or lon:
             out[cid] = (lat, lon)
     return out
+
+
+def parse_coordinates(source: str,
+                      sheet: str | None = None) -> dict[str, tuple[float, float]]:
+    """crash_id -> (lat, lon) from a DetailedFiche coordinate ledger.
+
+    The DetailedFiche (observed in the 260412109EA fiche workbook) is the
+    per-crash coordinate ledger built during report review: the fiche
+    columns plus Latitude / Longitude / Source, one row per crash whose
+    DMV-349 was consulted (Source records DMV349 vs DMV349CLEANED).  The
+    review sheet joins it by a live VLOOKUP on Crash ID into Lat / Long
+    columns.  This accepts that workbook (.xlsx; ``sheet`` defaults to the
+    first sheet whose header carries Crash ID and Latitude, preferring one
+    named DetailedFiche) or a delimited text file (pipe, comma, or tab).
+    Rows with blank or zero coordinates are skipped.
+    """
+    if source.lower().endswith((".xlsx", ".xlsm")):
+        import openpyxl
+
+        wb = openpyxl.load_workbook(source, read_only=True, data_only=True)
+        try:
+            names = wb.sheetnames
+            if sheet is None:
+                pref = [n for n in names
+                        if n.strip().lower() == "detailedfiche"]
+                names = pref + [n for n in names if n not in pref]
+            else:
+                names = [sheet]
+            for name in names:
+                ws = wb[name]
+                it = ws.iter_rows(values_only=True)
+                for header in it:
+                    if header and any("LATITUDE" in str(v or "").upper()
+                                      for v in header):
+                        found = _coord_rows(header, it)
+                        if found:
+                            return found
+                        break
+            return {}
+        finally:
+            wb.close()
+
+    text = source
+    if "\n" not in source and len(source) < 400:
+        with open(source, encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
+    lines = [ln for ln in text.splitlines() if ln.strip()]
+    for i, line in enumerate(lines):
+        up = line.upper()
+        if "LATITUDE" not in up or "CRASH" not in up:
+            continue
+        for delim in ("|", "\t", ","):
+            if delim in line:
+                header = line.split(delim)
+                rows = (ln.split(delim) for ln in lines[i + 1:])
+                found = _coord_rows(header, rows)
+                if found:
+                    return found
+    return {}
 
 
 # --------------------------------------------------------------------------- #

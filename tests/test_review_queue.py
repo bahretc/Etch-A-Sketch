@@ -83,6 +83,38 @@ def test_parse_coordinates_pipe_delimited():
     assert coords == {"105904161": (35.65, -78.35)}
 
 
+def test_parse_coordinates_detailedfiche_xlsx(tmp_path):
+    """The DetailedFiche ledger layout observed on 260412109EA_Fiche.xlsx:
+    fiche columns A-I, J Crash ID, K Date, L-P T/C/F/L/S, Q Latitude,
+    R Longitude, S Source (DMV349 / DMV349CLEANED)."""
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    wb.active.title = "SomeFiche"
+    ws = wb.create_sheet("DetailedFiche")
+    ws.append(["Municipality", "On Road", "Miles", "Dir From", "From Road",
+               "Toward Road", "Milepost Road", "MP", "MA", "Crash ID",
+               "Date", "T", "C", "F", "L", "S",
+               "Latitude", "Longitude", "Source"])
+    ws.append(["RURAL", "SR 2453", 0.23, "SE", "SR 2444", "SR 2602",
+               "SR 2453", 4.049, "Y", "108481213", "2026-04-12", 19, 1, 0, 1,
+               "K", 35.445443, -80.61504, "DMV349"])
+    ws.append(["RURAL", "SR 2444", 0, "", "SR 2453", "SR 2416", "SR 2444",
+               2.645, "Y", 107723843, "2024-05-13", 28, 1, 0, 5,
+               "O", 35.47265, -80.37112, "DMV349CLEANED"])
+    ws.append(["RURAL", "NC 49", 0, "", "SR 2453", "SR 2444", "NC 49",
+               20.423, "", 108372733, "2026-01-13", 30, 1, 7, 5,
+               "C", None, None, None])          # no coords yet: skipped
+    path = str(tmp_path / "fiche.xlsx")
+    wb.save(path)
+
+    coords = rq.parse_coordinates(path)
+    assert coords == {"108481213": (35.445443, -80.61504),
+                      "107723843": (35.47265, -80.37112)}
+    # explicit sheet selection works too
+    assert rq.parse_coordinates(path, sheet="DetailedFiche") == coords
+
+
 def test_haversine_reasonable():
     # one degree of latitude is about 364,000 ft
     d = rq.haversine_ft(35.0, -78.0, 36.0, -78.0)

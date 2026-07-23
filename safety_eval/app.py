@@ -171,9 +171,10 @@ def _review_queue_tab(st) -> None:
             help="OCR page index of the scanned DMV-349 binder. Leave blank "
                  "to review without report retrieval.")
         coords_path = st.text_input(
-            "Detailed export with coordinates (optional)",
-            help="TEAAS Detailed Crash ID List; enables the GPS distance "
-                 "pre-screen.")
+            "DetailedFiche coordinate ledger (optional)",
+            help="The per-crash Latitude/Longitude ledger built during "
+                 "review (DetailedFiche sheet of a fiche workbook, or a "
+                 "delimited export); enables the GPS distance pre-screen.")
         study_pt = st.text_input("Study point lat,lon (optional)",
                                  help="Used with coordinates to sort the "
                                       "queue by distance.")
@@ -250,6 +251,9 @@ def _review_queue_tab(st) -> None:
             if item.dist_ft is not None:
                 meta.append(f"{item.dist_ft:,.0f} ft from study point")
             st.caption(" · ".join(meta))
+            if coords and row.crash_id in coords:
+                lat, lon = coords[row.crash_id]
+                st.code(f"{lat}, {lon}", language=None)  # paste into a map
             if item.skip_reason:
                 st.info(f"Skip suggested: {item.skip_reason}")
             show = {k: v for k, v in row.fields.items() if v not in (None, "")}

@@ -148,9 +148,16 @@ def _cmd_fill_template(args) -> int:
         if args.bin_mp_range:
             lo, hi = (float(x) for x in args.bin_mp_range.split(":"))
             mp_range = (lo, hi)
+        statuses = None
+        if args.statuses_from:
+            from .binned_sheet import read_filtered_fiche
+            statuses = read_filtered_fiche(args.statuses_from)
+            print(f"Using {len(statuses)} Filtered Fiche determinations from "
+                  f"{args.statuses_from}")
         bins = assign_bins(fiche_all, {c.crash_id for c in before},
                            {c.crash_id for c in after}, periods,
-                           study_routes=routes, mp_range=mp_range)
+                           study_routes=routes, mp_range=mp_range,
+                           statuses=statuses)
         rows_xml = build_binned_rows_xml(args.template, bins, periods, mp_by_id)
         tmp = args.output + ".binned.tmp"
         replace_sheet_rows(args.output, tmp, "Binned Crashes", rows_xml,
@@ -279,7 +286,12 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Study route names for prior-period binning, "
                          "comma-separated (e.g. 'SR 1003').")
     ft.add_argument("--bin-mp-range", dest="bin_mp_range",
-                    help="Study milepost range lo:hi (e.g. 17.691:17.811).")
+                    help="Study milepost range lo:hi (e.g. 17.691:17.811). "
+                         "Pre-screen only; superseded by --statuses-from.")
+    ft.add_argument("--statuses-from", dest="statuses_from",
+                    help="Workbook whose Filtered Fiche sheet carries the "
+                         "engineer's IS/NIS/ADD determinations; these are "
+                         "authoritative for binning.")
     ft.add_argument("--config", help="Optional config override YAML.")
     ft.add_argument("--recalc", action="store_true",
                     help="Run the single LibreOffice headless recalc pass.")

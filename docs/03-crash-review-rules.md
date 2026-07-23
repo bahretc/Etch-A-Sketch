@@ -4,7 +4,15 @@ This is the domain logic. Encode it exactly; do not improvise.
 
 ## Status vocabularies
 
-Standalone fiche workbooks use IS / NIS / ADD / ?. Evaluation Filtered Fiche sheets group rows under banner sections with IS / NIS / REV, where REV means "report review required, queued for the next report pull." The review standard below applies to both.
+Standalone fiche workbooks use IS / NIS / ADD / ?.
+
+Evaluation Filtered Fiche sheets (corrected 2026-07, per the engineer; this supersedes an earlier note that described a REV status):
+
+- **Intersection analyses**: IS / ADD / DEL / NIS, with NIS split into Reviewed and Not Reviewed sections.
+- **Section analyses**: IS / RE / ADD / DEL / NIS (Reviewed and Not Reviewed). **RE = re-milepost**: the crash is in the study with a corrected milepost recorded in the New MP column (observed on 04-15-39049: every RE row carries a New MP).
+- **DEL**: removed from the evaluation.
+
+In-study statuses for binning purposes are IS, ADD, and RE. All determinations about which reports to review are made in the Filtered Fiche; the Binned Crashes sheet only sorts the evaluation's crashes into period bins using those determinations. The review standard below applies to all vocabularies.
 
 ## IS / NIS / ADD / ? determination (intersection studies)
 

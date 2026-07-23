@@ -59,6 +59,36 @@ def test_assign_bins_counts(working_set):
 
 
 @needs_fixtures
+def test_statuses_from_filtered_fiche_drive_bins(working_set):
+    """The Filtered Fiche determinations are the binning authority: driving
+    bins from the completed workbook's own review must reproduce its bin
+    membership for the evaluated section."""
+    from safety_eval.binned_sheet import read_filtered_fiche
+
+    fiche, before, after, mps, periods = working_set
+    completed = os.path.join(EX, "Section Evaluation Workbook - 04-15-39049.xlsx")
+    statuses = read_filtered_fiche(completed)
+    assert len(statuses) > 2000
+    counts = {}
+    for det in statuses.values():
+        counts[det["status"]] = counts.get(det["status"], 0) + 1
+    assert counts.get("IS", 0) >= 200 and counts.get("ADD", 0) >= 20
+
+    bins = assign_bins(fiche, set(), set(), periods, statuses=statuses)
+    binned_before_ids = {c.crash_id for c in bins["before"]}
+    binned_after_ids = {c.crash_id for c in bins["after"]}
+    # every evaluated crash (the ID lists) must land in its period bin
+    assert before <= binned_before_ids
+    assert after <= binned_after_ids
+    # nothing in-study leaks into NIS
+    for crash in bins["nis"]:
+        det = statuses.get(crash.crash_id)
+        assert not det or det["status"] not in ("IS", "ADD", "RE")
+    # exactly one bin per crash
+    assert sum(len(v) for v in bins.values()) == len(fiche)
+
+
+@needs_fixtures
 def test_populate_binned_sheet(tmp_path, working_set):
     import openpyxl
 

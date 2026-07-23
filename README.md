@@ -60,6 +60,7 @@ safety-eval fill-template \
   --fiche examples/04-15-39049/OriginalFiche.csv \
   --setup examples/04-15-39049/setup.yaml \
   --results examples/04-15-39049/results.yaml \
+  --binned --bin-routes "SR 1003" --bin-mp-range 17.691:17.811 \
   --output out.xlsx --recalc
 
 # pull yearly station AADTs from the NCDOT AADT map's feature service
@@ -107,6 +108,7 @@ assumptions email — it is the auditable record of study scope. See
 | Workbook populate | `eval_workbook.py` | Fills Before/After columns A-M of the real template; formulas untouched |
 | Set-up sheet | `setup_sheet.py` | Date Range Calculator + AADT tables (label-detected cells, both variants), representative years, sample-data clearing |
 | Results sheet | `results_sheet.py` | 1-page results manual cells: identity block, countermeasure/criteria/target text, Additional Information rows (n/a fill), Items for Discussion; enforces the docs/05 no-em-dash rule |
+| Binned Crashes | `binned_sheet.py` | Bins every fiche crash under exactly one period banner (prior/before/construction/after/NIS) with bulk row writing; header created to match the completed-workbook layout |
 | AADT lookup | `aadt_arcgis.py` | Queries the feature services behind the NCDOT AADT web map (stations + segments); schema-drift tolerant; CSV export |
 | PII redaction | `redact.py` | Blacks out names, addresses, DOB, phone, DL numbers on uploaded crash reports; keeps ZIPs and crash IDs; image-only output so no text layer can leak |
 
@@ -216,7 +218,10 @@ pytest -q
       target text, Additional Information, Items for Discussion) with the
       docs/05 style gate.
 - [x] Crash-report PII redaction on upload (`safety-eval redact`).
-- [ ] Filtered Fiche / Binned Crashes review sheets; fiche review workflow.
+- [x] Binned Crashes sheet (every fiche crash under exactly one period
+      banner; whole-month period math mirroring the Date Range Calculator).
+- [ ] Filtered Fiche review sheet; fiche review workflow (GPS pre-screen,
+      status queue, DMV-349 page retrieval).
 - [ ] Streamlit review UI (docs/07) tying upload -> redact -> review -> fill.
 - [ ] Parse the assignment/assumptions email (`.msg`/`.eml`) directly.
 - [ ] Empirical-Bayes (EB) before/after in addition to the naive method.

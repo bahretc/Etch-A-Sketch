@@ -117,6 +117,50 @@ def _cmd_fill_template(args) -> int:
         if not rep.ok:
             raise RuntimeError(f"Integrity failed after results: {rep.problems}")
         print(f"Results sheet populated ({rsheet}).")
+
+    # Binned Crashes sheet: every fiche crash under exactly one period banner
+    if args.binned:
+        if not (args.setup and args.fiche):
+            raise SystemExit("--binned requires --setup (period dates) and --fiche")
+        import shutil as _sh
+
+        from .binned_sheet import assign_bins, build_binned_rows_xml
+        from .periods import compute_whole_month_periods
+        from .setup_sheet import load_setup_yaml
+        from .xlsx_patch import replace_sheet_rows, verify_integrity
+        sdata = load_setup_yaml(args.setup)
+        if not (sdata.teaas_date and sdata.construction_months
+                and sdata.construction_end):
+            raise SystemExit("--binned needs teaas_date, construction_months, "
+                             "and construction_end in the setup YAML")
+        periods = compute_whole_month_periods(
+            sdata.teaas_date, sdata.construction_months, sdata.construction_end)
+        from .fiche_parser import parse_fiche
+        fiche_all = parse_fiche(args.fiche)
+        mp_by_id = {}
+        for mp_path in (args.before_mp, args.after_mp):
+            if mp_path:
+                from .teaas import parse_import_list
+                mp_by_id.update(parse_import_list(mp_path))
+        routes = ({r.strip() for r in args.bin_routes.split(",")}
+                  if args.bin_routes else None)
+        mp_range = None
+        if args.bin_mp_range:
+            lo, hi = (float(x) for x in args.bin_mp_range.split(":"))
+            mp_range = (lo, hi)
+        bins = assign_bins(fiche_all, {c.crash_id for c in before},
+                           {c.crash_id for c in after}, periods,
+                           study_routes=routes, mp_range=mp_range)
+        rows_xml = build_binned_rows_xml(args.template, bins, periods, mp_by_id)
+        tmp = args.output + ".binned.tmp"
+        replace_sheet_rows(args.output, tmp, "Binned Crashes", rows_xml,
+                           from_row=1)
+        _sh.move(tmp, args.output)
+        rep = verify_integrity(args.template, args.output)
+        if not rep.ok:
+            raise RuntimeError(f"Integrity failed after binning: {rep.problems}")
+        counts = {k: len(v) for k, v in bins.items()}
+        print(f"Binned Crashes populated: {counts}")
     print(f"Integrity: OK ({report.checked_members} drawings/media members "
           "byte-identical)")
     if args.recalc:
@@ -228,6 +272,14 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Results-sheet YAML (project identity block, "
                          "countermeasure text, Additional Information rows, "
                          "Items for Discussion).")
+    ft.add_argument("--binned", action="store_true",
+                    help="Also populate the Binned Crashes sheet (requires "
+                         "--setup and --fiche).")
+    ft.add_argument("--bin-routes", dest="bin_routes",
+                    help="Study route names for prior-period binning, "
+                         "comma-separated (e.g. 'SR 1003').")
+    ft.add_argument("--bin-mp-range", dest="bin_mp_range",
+                    help="Study milepost range lo:hi (e.g. 17.691:17.811).")
     ft.add_argument("--config", help="Optional config override YAML.")
     ft.add_argument("--recalc", action="store_true",
                     help="Run the single LibreOffice headless recalc pass.")

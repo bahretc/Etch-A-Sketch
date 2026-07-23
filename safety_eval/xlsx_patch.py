@@ -231,6 +231,80 @@ xmlns:xs="http://www.w3.org/2001/XMLSchema">
 """
 
 
+def replace_sheet_rows(path_in: str, path_out: str, sheet: str,
+                       rows_xml: str, from_row: int = 2,
+                       full_calc_on_load: bool = True) -> None:
+    """Replace a sheet's rows from ``from_row`` down with pre-rendered row XML.
+
+    For bulk data sheets (thousands of rows) where per-cell patching would be
+    quadratic. Rows below ``from_row`` are dropped and ``rows_xml`` is
+    appended; rows above are preserved. Every other zip member is copied
+    byte-for-byte, so the docs/06 integrity gate still applies.
+    """
+    name_to_file = sheet_files(path_in)
+    if sheet not in name_to_file:
+        raise KeyError(f"Sheet not in template: {sheet!r}")
+    target = name_to_file[sheet]
+    with zipfile.ZipFile(path_in) as zin:
+        members = zin.infolist()
+        with zipfile.ZipFile(path_out, "w", zipfile.ZIP_DEFLATED) as zout:
+            for info in members:
+                data = zin.read(info.filename)
+                if info.filename == target:
+                    xml = data.decode("utf-8")
+                    sd_start = xml.index("<sheetData")
+                    sd_open_end = xml.index(">", sd_start) + 1
+                    sd_close = xml.index("</sheetData>")
+                    body = xml[sd_open_end:sd_close]
+                    kept = []
+                    for rm in re.finditer(r'<row r="(\d+)"[^>]*(?:/>|>.*?</row>)',
+                                          body, re.S):
+                        if int(rm.group(1)) < from_row:
+                            kept.append(rm.group(0))
+                    xml = (xml[:sd_open_end] + "".join(kept) + rows_xml
+                           + xml[sd_close:])
+                    # drop stale dimension (it may understate the new extent)
+                    xml = re.sub(r'<dimension ref="[^"]*"/>', "", xml, 1)
+                    data = xml.encode("utf-8")
+                elif info.filename == "xl/workbook.xml" and full_calc_on_load:
+                    text = data.decode("utf-8")
+                    if "fullCalcOnLoad" not in text and "<calcPr" in text:
+                        text = re.sub(r"<calcPr ",
+                                      '<calcPr fullCalcOnLoad="1" ', text, 1)
+                    data = text.encode("utf-8")
+                zout.writestr(info, data)
+
+
+def render_row(row: int, cells: dict[str, object],
+               styles: dict[str, str] | None = None) -> str:
+    """Render one ``<row>`` element; ``cells`` maps column letter -> value."""
+    parts = []
+    for col in sorted(cells, key=_col_index):
+        value = cells[col]
+        if value is None:
+            continue
+        style = (styles or {}).get(col)
+        parts.append(_cell_xml(f"{col}{row}", value, style))
+    return f'<row r="{row}">' + "".join(parts) + "</row>"
+
+
+def sheet_row_styles(template: str, sheet: str, row: int) -> dict[str, str]:
+    """Column letter -> style index for an existing template row (to inherit
+    formatting when bulk-writing rows)."""
+    name_to_file = sheet_files(template)
+    with zipfile.ZipFile(template) as z:
+        xml = z.read(name_to_file[sheet]).decode("utf-8")
+    m = re.search(rf'<row r="{row}"[^>]*>(.*?)</row>', xml, re.S)
+    if not m:
+        return {}
+    out: dict[str, str] = {}
+    for cm in re.finditer(r'<c r="([A-Z]+)\d+"([^>]*)>', m.group(1)):
+        sm = re.search(r'\bs="(\d+)"', cm.group(2))
+        if sm:
+            out[cm.group(1)] = sm.group(1)
+    return out
+
+
 def _lo_convert(path: str, timeout: int = 180) -> str | None:
     """Round-trip ``path`` through LibreOffice headless with recalc-on-load
     forced; returns the temp output path (caller owns the containing temp dir)

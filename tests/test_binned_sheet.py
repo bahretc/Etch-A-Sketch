@@ -88,6 +88,28 @@ def test_statuses_from_filtered_fiche_drive_bins(working_set):
     assert sum(len(v) for v in bins.values()) == len(fiche)
 
 
+def test_re_rejected_in_intersection_analysis():
+    from safety_eval.binned_sheet import validate_statuses
+
+    statuses = {"105904161": {"status": "RE", "new_mp": 17.7, "comments": None},
+                "105904162": {"status": "IS", "new_mp": None, "comments": None}}
+    with pytest.raises(ValueError, match="RE"):
+        validate_statuses(statuses, "intersection")
+    validate_statuses(statuses, "section")          # fine for sections
+    with pytest.raises(ValueError):
+        validate_statuses(statuses, "corridor")     # unknown type
+
+
+@needs_fixtures
+def test_analysis_type_detection():
+    from safety_eval.binned_sheet import analysis_type_of
+
+    assert analysis_type_of(TEMPLATE) == "section"
+    inter = os.path.join(HERE, "..", "templates",
+                         "Intersection Evaluation Workbook - 2023-12-04.xlsx")
+    assert analysis_type_of(inter) == "intersection"
+
+
 @needs_fixtures
 def test_populate_binned_sheet(tmp_path, working_set):
     import openpyxl

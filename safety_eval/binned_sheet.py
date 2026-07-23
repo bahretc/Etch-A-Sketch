@@ -104,6 +104,39 @@ def read_filtered_fiche(workbook_path: str,
     return out
 
 
+def validate_statuses(statuses: dict[str, dict], analysis_type: str) -> None:
+    """Reject statuses that are invalid for the analysis type.
+
+    RE (re-milepost) exists only in section analyses; encountering one in an
+    intersection analysis means the review data is wrong and must be fixed,
+    not silently binned (per the engineer, 2026-07).
+    """
+    allowed = {"intersection": {"IS", "ADD", "DEL", "NIS"},
+               "section": {"IS", "RE", "ADD", "DEL", "NIS"}}.get(analysis_type)
+    if allowed is None:
+        raise ValueError(f"Unknown analysis type: {analysis_type!r}")
+    bad: dict[str, list[str]] = {}
+    for cid, det in statuses.items():
+        status = det.get("status")
+        if status and status not in allowed:
+            bad.setdefault(status, []).append(cid)
+    if bad:
+        detail = "; ".join(
+            f"{status!r} on {len(ids)} crash(es), e.g. {ids[:3]}"
+            for status, ids in sorted(bad.items()))
+        raise ValueError(
+            f"Invalid Filtered Fiche status(es) for an {analysis_type} "
+            f"analysis: {detail}. Allowed: {sorted(allowed)}.")
+
+
+def analysis_type_of(template: str) -> str:
+    """'section' when the Before sheet has a Final MP column, else 'intersection'."""
+    from .eval_workbook import sheet_layout
+
+    layout = sheet_layout(template, "Before")
+    return "section" if "final_mp" in layout else "intersection"
+
+
 def assign_bins(
     fiche: list[Crash],
     before_ids: set[str],

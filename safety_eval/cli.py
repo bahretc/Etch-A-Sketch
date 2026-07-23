@@ -150,8 +150,10 @@ def _cmd_fill_template(args) -> int:
             mp_range = (lo, hi)
         statuses = None
         if args.statuses_from:
-            from .binned_sheet import read_filtered_fiche
+            from .binned_sheet import (analysis_type_of, read_filtered_fiche,
+                                       validate_statuses)
             statuses = read_filtered_fiche(args.statuses_from)
+            validate_statuses(statuses, analysis_type_of(args.template))
             print(f"Using {len(statuses)} Filtered Fiche determinations from "
                   f"{args.statuses_from}")
         bins = assign_bins(fiche_all, {c.crash_id for c in before},

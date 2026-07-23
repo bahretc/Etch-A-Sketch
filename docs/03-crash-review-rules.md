@@ -9,7 +9,7 @@ Standalone fiche workbooks use IS / NIS / ADD / ?.
 Evaluation Filtered Fiche sheets (corrected 2026-07, per the engineer; this supersedes an earlier note that described a REV status):
 
 - **Intersection analyses**: IS / ADD / DEL / NIS, with NIS split into Reviewed and Not Reviewed sections.
-- **Section analyses**: IS / RE / ADD / DEL / NIS (Reviewed and Not Reviewed). **RE = re-milepost**: the crash is in the study with a corrected milepost recorded in the New MP column (observed on 04-15-39049: every RE row carries a New MP).
+- **Section analyses**: IS / RE / ADD / DEL / NIS (Reviewed and Not Reviewed). **RE = re-milepost**: the crash is in the study with a corrected milepost recorded in the New MP column (observed on 04-15-39049: every RE row carries a New MP). RE must never appear in an intersection analysis; tooling rejects it there as a data error.
 - **DEL**: removed from the evaluation.
 
 In-study statuses for binning purposes are IS, ADD, and RE. All determinations about which reports to review are made in the Filtered Fiche; the Binned Crashes sheet only sorts the evaluation's crashes into period bins using those determinations. The review standard below applies to all vocabularies.

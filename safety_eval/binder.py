@@ -1,0 +1,250 @@
+"""DMV-349 binder page indexing and per-crash page retrieval (docs/07).
+
+Scanned crash-report binders arrive as one or more PDF/TIFF files with no
+text layer.  Each report's FRONT page carries the 9-digit crash ID in the
+"Do not write in these spaces" header box at the TOP RIGHT of the DMV-349;
+continuation pages (the back page's roadway/work-zone grid, narrative and
+diagram supplements) do not.  The index is therefore built exactly as the
+spec describes: rasterize at 150-200 DPI, crop the top-right of each page,
+OCR with tesseract psm 6, and assign ID-less pages to the preceding ID.
+
+Validated on the 600501348 sample binder (15 parts, ~1,600 pages): front
+pages OCR to their crash ID; back pages attach as continuations, so
+multi-sheet reports (supplementals) group under one crash.
+
+Retrieval is engineer-facing and therefore PII-safe by construction:
+``render_crash_pages`` runs the docs/07 redaction pass (``redact.py``) on
+every page image before returning it.  Raw, un-redacted pages are never
+handed to the review UI.
+
+The index is a plain JSON document so it can be built once (it OCRs every
+page) and reused across review sessions.
+"""
+from __future__ import annotations
+
+import json
+import os
+import re
+import subprocess
+import tempfile
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
+
+from .redact import _require, ocr_words, plan_redactions
+
+# Crash IDs on the fiche and TEAAS exports are 9-digit numbers.  The header
+# crop also contains dates (slashes), the patrol-area code (letters) and DMV
+# text, so a standalone 9-digit token is the ID.
+_CRASH_ID_RE = re.compile(r"\b(\d{9})\b")
+
+# Top-right fraction of the page holding the "Do not write in these spaces"
+# box (fractions of width/height: left, top, right, bottom).
+HEADER_CROP = (0.55, 0.0, 1.0, 0.20)
+INDEX_VERSION = 1
+
+
+@dataclass
+class PageRef:
+    """One physical page inside one binder file."""
+    file: str          # binder file path as given at index time
+    page: int          # 1-based page number within that file
+
+    def key(self) -> tuple[str, int]:
+        return (self.file, self.page)
+
+
+@dataclass
+class BinderIndex:
+    """crash_id -> ordered pages, in binder order."""
+    pages_by_crash: dict[str, list[PageRef]] = field(default_factory=dict)
+    unassigned: list[PageRef] = field(default_factory=list)   # pages before the first ID
+    files: list[str] = field(default_factory=list)
+    dpi: int = 150
+    warnings: list[str] = field(default_factory=list)
+
+    def crash_ids(self) -> list[str]:
+        return list(self.pages_by_crash)
+
+    def pages_for(self, crash_id: str) -> list[PageRef]:
+        return self.pages_by_crash.get(str(crash_id), [])
+
+    def to_json(self) -> str:
+        return json.dumps({
+            "version": INDEX_VERSION,
+            "dpi": self.dpi,
+            "files": self.files,
+            "unassigned": [[p.file, p.page] for p in self.unassigned],
+            "warnings": self.warnings,
+            "crashes": {cid: [[p.file, p.page] for p in refs]
+                        for cid, refs in self.pages_by_crash.items()},
+        }, indent=1)
+
+    @classmethod
+    def from_json(cls, text: str) -> "BinderIndex":
+        d = json.loads(text)
+        return cls(
+            pages_by_crash={cid: [PageRef(f, p) for f, p in refs]
+                            for cid, refs in d.get("crashes", {}).items()},
+            unassigned=[PageRef(f, p) for f, p in d.get("unassigned", [])],
+            files=d.get("files", []),
+            dpi=d.get("dpi", 150),
+            warnings=d.get("warnings", []),
+        )
+
+    def save(self, path: str) -> None:
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(self.to_json())
+
+    @classmethod
+    def load(cls, path: str) -> "BinderIndex":
+        with open(path, encoding="utf-8") as fh:
+            return cls.from_json(fh.read())
+
+
+# --------------------------------------------------------------------------- #
+# building the index
+# --------------------------------------------------------------------------- #
+def _page_count(pdf_path: str) -> int:
+    from pypdf import PdfReader
+    return len(PdfReader(pdf_path).pages)
+
+
+def _render_page(pdf_path: str, page: int, dpi: int, workdir: str) -> str:
+    """Rasterize a single 1-based page to PNG; returns the image path."""
+    pdftoppm = _require("pdftoppm")
+    prefix = os.path.join(workdir, f"pg-{os.getpid()}-{page}")
+    subprocess.run(
+        [pdftoppm, "-png", "-r", str(dpi), "-f", str(page), "-l", str(page),
+         pdf_path, prefix],
+        check=True, capture_output=True, timeout=120)
+    outs = [f for f in os.listdir(workdir)
+            if f.startswith(os.path.basename(prefix)) and f.endswith(".png")]
+    if not outs:
+        raise RuntimeError(f"pdftoppm produced no image for page {page}")
+    return os.path.join(workdir, outs[0])
+
+
+def read_header_id(image_path: str, crop=HEADER_CROP,
+                   timeout: int = 300) -> str | None:
+    """OCR the crash-ID header box of one page image (psm 6, top-right crop)."""
+    from PIL import Image
+
+    tesseract = _require("tesseract")
+    with Image.open(image_path) as img:
+        w, h = img.size
+        box = (int(w * crop[0]), int(h * crop[1]),
+               int(w * crop[2]), int(h * crop[3]))
+        cropped = img.crop(box)
+        crop_path = image_path + ".hdr.png"
+        cropped.save(crop_path)
+    # OMP_THREAD_LIMIT=1: one tesseract per worker thread; letting each spawn
+    # its own OpenMP pool oversubscribes the CPU and stalls whole pages
+    env = dict(os.environ, OMP_THREAD_LIMIT="1")
+    try:
+        proc = subprocess.run(
+            [tesseract, crop_path, "stdout", "--psm", "6"],
+            capture_output=True, text=True, timeout=timeout, check=True,
+            env=env)
+    finally:
+        os.unlink(crop_path)
+    ids = _CRASH_ID_RE.findall(proc.stdout)
+    # the header box holds exactly one crash ID; several distinct 9-digit
+    # tokens would mean we matched noise, so trust only a unanimous read
+    uniq = set(ids)
+    if len(uniq) == 1:
+        return uniq.pop()
+    return None
+
+
+def index_binder(paths: list[str], dpi: int = 150, workers: int = 3,
+                 progress=None) -> BinderIndex:
+    """OCR-index scanned binder files.
+
+    ``paths`` are indexed in the given order; multi-part binders must be
+    passed in part order so continuation pages attach to the right report.
+    ``progress(done, total)`` is called as pages complete.
+    """
+    idx = BinderIndex(files=list(paths), dpi=dpi)
+    jobs: list[PageRef] = []
+    for path in paths:
+        for page in range(1, _page_count(path) + 1):
+            jobs.append(PageRef(path, page))
+
+    results: dict[tuple[str, int], str | None] = {}
+    done = 0
+    with tempfile.TemporaryDirectory(prefix="binder-idx-") as tmp:
+        def _work(ref: PageRef) -> tuple[PageRef, str | None, str | None]:
+            # a page whose render or OCR fails becomes a continuation page
+            # (no ID) with a warning, never a dead run: the engineer sees the
+            # warning and that crash's pages still group with its neighbours
+            try:
+                img = _render_page(ref.file, ref.page, dpi, tmp)
+            except (subprocess.SubprocessError, RuntimeError, OSError) as exc:
+                return ref, None, f"{ref.file} p{ref.page}: render failed ({exc})"
+            try:
+                return ref, read_header_id(img), None
+            except (subprocess.SubprocessError, OSError) as exc:
+                return ref, None, f"{ref.file} p{ref.page}: OCR failed ({exc})"
+            finally:
+                os.unlink(img)
+
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for ref, cid, warning in pool.map(_work, jobs):
+                results[ref.key()] = cid
+                if warning:
+                    idx.warnings.append(warning)
+                done += 1
+                if progress:
+                    progress(done, len(jobs))
+
+    current: str | None = None
+    for ref in jobs:                       # binder order, not completion order
+        cid = results.get(ref.key())
+        if cid:
+            current = cid
+            idx.pages_by_crash.setdefault(cid, []).append(ref)
+        elif current:
+            idx.pages_by_crash[current].append(ref)
+        else:
+            idx.unassigned.append(ref)
+    return idx
+
+
+# --------------------------------------------------------------------------- #
+# redacted retrieval
+# --------------------------------------------------------------------------- #
+def render_crash_pages(index: BinderIndex, crash_id: str, dpi: int = 150,
+                       keep_zip: bool = True) -> list:
+    """Render a crash's pages as REDACTED PIL images (front page first).
+
+    Every page goes through the docs/07 redaction pass before it is
+    returned; callers never see names, addresses, DOB, phone or DL numbers.
+    """
+    from PIL import Image, ImageDraw
+
+    refs = index.pages_for(crash_id)
+    out = []
+    with tempfile.TemporaryDirectory(prefix="binder-get-") as tmp:
+        for ref in refs:
+            img_path = _render_page(ref.file, ref.page, dpi, tmp)
+            img = Image.open(img_path).convert("RGB")
+            os.unlink(img_path)
+            page_png = os.path.join(tmp, "ocr.png")
+            img.save(page_png)
+            words = ocr_words(page_png, page=0)
+            for b in plan_redactions(words, keep_zip=keep_zip):
+                ImageDraw.Draw(img).rectangle(
+                    [b.left, b.top, b.right, b.bottom], fill="black")
+            out.append(img)
+    return out
+
+
+def export_crash_pdf(index: BinderIndex, crash_id: str, output: str,
+                     dpi: int = 150, keep_zip: bool = True) -> int:
+    """Write one crash's redacted pages to an image-only PDF; returns pages."""
+    pages = render_crash_pages(index, crash_id, dpi=dpi, keep_zip=keep_zip)
+    if not pages:
+        raise KeyError(f"crash {crash_id} not in binder index")
+    pages[0].save(output, format="PDF", save_all=True,
+                  append_images=pages[1:], resolution=dpi)
+    return len(pages)

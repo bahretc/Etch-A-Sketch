@@ -10,12 +10,15 @@ Three tabs:
 2. **Redact Crash Reports** - every uploaded DMV-349 is redacted BEFORE it is
    stored or shown: names, addresses, DOB, phone, and license numbers are
    blacked out; ZIP codes and crash IDs are kept. Output is image-only.
-3. **Review Filtered Fiche** - load a workbook's Filtered Fiche and see the
-   determination counts; the engineer edits statuses in Excel (the tool never
-   makes determinations).
+3. **Review Queue** - the interactive fiche review (docs/07 Phase 3): load a
+   workbook's Filtered Fiche and an OCR binder index, walk the queue crash by
+   crash with the REDACTED DMV-349 pages beside the coded data, and record
+   IS/RE/ADD/DEL/NIS determinations with validation and an audit trail. The
+   tool prepares and records; the engineer decides every status.
 """
 from __future__ import annotations
 
+import functools
 import os
 import tempfile
 
@@ -35,7 +38,7 @@ def main() -> None:
     st.set_page_config(page_title="NCDOT Safety Evaluations", layout="wide")
     st.title("NCDOT HSIP Safety Evaluations")
     tab_build, tab_redact, tab_review = st.tabs(
-        ["Build Evaluation", "Redact Crash Reports", "Review Filtered Fiche"])
+        ["Build Evaluation", "Redact Crash Reports", "Review Queue"])
 
     with tab_build:
         st.caption("Populate a real NCDOT Evaluation Workbook template from "
@@ -132,26 +135,192 @@ def main() -> None:
                                        file_name="redacted.pdf")
 
     with tab_review:
-        st.caption("Counts from a workbook's Filtered Fiche. Determinations "
-                   "are made by the engineer in the sheet itself.")
-        wb_up = st.file_uploader("Evaluation workbook (.xlsx)", type=["xlsx"])
-        if wb_up:
-            from collections import Counter
+        _review_queue_tab(st)
 
-            from .binned_sheet import read_filtered_fiche
-            with tempfile.TemporaryDirectory() as tmp:
-                path = _save_upload(wb_up, tmp)
-                try:
-                    statuses = read_filtered_fiche(path)
-                except KeyError as exc:
-                    st.error(str(exc))
-                    st.stop()
-            counts = Counter((d.get("status") or "(blank)")
-                             for d in statuses.values())
-            st.write({k: v for k, v in counts.most_common()})
-            blank = counts.get("(blank)", 0)
-            if blank:
-                st.info(f"{blank} crash(es) still need a determination.")
+
+@functools.lru_cache(maxsize=16)
+def _queue_pages(index_path: str, crash_id: str, keep_zip: bool = True):
+    """Redacted page images for one crash (cached; OCR redaction is slow)."""
+    from .binder import BinderIndex, render_crash_pages
+    idx = BinderIndex.load(index_path)
+    return render_crash_pages(idx, crash_id, dpi=idx.dpi, keep_zip=keep_zip)
+
+
+def _review_queue_tab(st) -> None:
+    from . import review_queue as rq
+
+    st.caption("Fiche review queue (docs/07 Phase 3). Reports are shown "
+               "REDACTED; every determination is validated (docs/03) and "
+               "recorded to the audit trail. The engineer decides every "
+               "status; nothing is ever blanket-reclassified.")
+
+    c1, c2 = st.columns(2)
+    with c1:
+        wb_path = st.text_input(
+            "Evaluation workbook (.xlsx path)",
+            help="The workbook whose Filtered Fiche is being reviewed. A "
+                 "path, not an upload, so the reviewed copy can be saved "
+                 "next to it.")
+        sheet = st.text_input("Filtered Fiche sheet name", "Filtered Fiche")
+        analysis_type = st.selectbox("Analysis type", ["section", "intersection"],
+                                     help="Controls the status vocabulary; "
+                                          "RE only exists for sections.")
+    with c2:
+        index_path = st.text_input(
+            "Binder index JSON (from `safety-eval binder-index`)",
+            help="OCR page index of the scanned DMV-349 binder. Leave blank "
+                 "to review without report retrieval.")
+        coords_path = st.text_input(
+            "Detailed export with coordinates (optional)",
+            help="TEAAS Detailed Crash ID List; enables the GPS distance "
+                 "pre-screen.")
+        study_pt = st.text_input("Study point lat,lon (optional)",
+                                 help="Used with coordinates to sort the "
+                                      "queue by distance.")
+        mp_rng = st.text_input("Study milepost range lo:hi (optional)")
+
+    if not (wb_path and os.path.exists(wb_path)):
+        if wb_path:
+            st.error(f"Workbook not found: {wb_path}")
+        st.stop()
+
+    try:
+        review = rq.load_review_sheet(wb_path, sheet)
+    except KeyError as exc:
+        st.error(str(exc))
+        st.stop()
+
+    binder_index = None
+    if index_path:
+        if not os.path.exists(index_path):
+            st.error(f"Binder index not found: {index_path}")
+            st.stop()
+        from .binder import BinderIndex
+        binder_index = BinderIndex.load(index_path)
+
+    coords = rq.parse_coordinates(coords_path) if coords_path else None
+    point = None
+    if study_pt.strip():
+        try:
+            lat, lon = (float(x) for x in study_pt.split(","))
+            point = (lat, lon)
+        except ValueError:
+            st.error("Study point must be 'lat,lon'.")
+            st.stop()
+    mp_range = None
+    if mp_rng.strip():
+        try:
+            lo, hi = (float(x) for x in mp_rng.split(":"))
+            mp_range = (lo, hi)
+        except ValueError:
+            st.error("Milepost range must be 'lo:hi'.")
+            st.stop()
+
+    queue = rq.build_queue(review, binder_index=binder_index, coords=coords,
+                           study_point=point, mp_range=mp_range)
+    dets: dict = st.session_state.setdefault("rq_determinations", {})
+    audit_path = os.path.splitext(wb_path)[0] + ".review-audit.jsonl"
+
+    prog = rq.queue_progress(queue, set(dets))
+    st.write(f"**{prog['pending'] - len(dets)} to review** · "
+             f"{prog['determined']} already determined on the sheet · "
+             f"{len(dets)} decided this session · "
+             f"{prog['animal_skips']} animal skips")
+
+    pending = [i for i in queue if i.pending and i.crash_id not in dets]
+    if not pending:
+        st.success("Queue empty. Save the reviewed workbook below.")
+    else:
+        pos = min(st.session_state.get("rq_pos", 0), len(pending) - 1)
+        item = pending[pos]
+        row = item.row
+
+        left, right = st.columns([2, 3])
+        with left:
+            st.subheader(f"Crash {row.crash_id}")
+            meta = [f"queue {pos + 1} of {len(pending)}",
+                    f"sheet row {row.row}", f"group: {row.banner or '?'}"]
+            if item.dist_ft is not None:
+                meta.append(f"{item.dist_ft:,.0f} ft from study point")
+            st.caption(" · ".join(meta))
+            if item.skip_reason:
+                st.info(f"Skip suggested: {item.skip_reason}")
+            show = {k: v for k, v in row.fields.items() if v not in (None, "")}
+            st.table({"field": list(show), "value": [str(v) for v in show.values()]})
+
+            nav1, nav2 = st.columns(2)
+            if nav1.button("Previous"):
+                st.session_state["rq_pos"] = max(0, pos - 1)
+                st.rerun()
+            if nav2.button("Skip / next"):
+                st.session_state["rq_pos"] = (pos + 1) % len(pending)
+                st.rerun()
+
+            base = st.radio("Status", rq.STATUS_VOCAB[analysis_type],
+                            horizontal=True, key=f"rq_status_{row.crash_id}")
+            suffix = st.checkbox("Second section (-2)", key=f"rq_sfx_{row.crash_id}",
+                                 help="Split-section evaluations mark section 2 "
+                                      "statuses IS-2 / RE-2 / ... (SS-6002M).")
+            new_mp = st.number_input("New MP", value=float(row.new_mp or 0.0),
+                                     step=0.001, format="%.3f",
+                                     key=f"rq_mp_{row.crash_id}")
+            use_mp = st.checkbox("Record New MP", value=row.new_mp is not None,
+                                 key=f"rq_usemp_{row.crash_id}")
+            comment = st.text_input(
+                "Comment (brief; docs/03 conventions)",
+                value=row.comment or "",
+                key=f"rq_cmt_{row.crash_id}",
+                help="Patterns: `no intersection in diagram`, `>150'`, "
+                     "`at [road]`, `Remileposted from GPS coordinates; "
+                     "near [road]`.")
+
+            if st.button("Record determination", type="primary"):
+                det = rq.Determination(
+                    crash_id=row.crash_id,
+                    status=base + ("-2" if suffix else ""),
+                    new_mp=new_mp if use_mp else None,
+                    comment=comment.strip() or None,
+                )
+                problems = rq.validate_determination(det, analysis_type)
+                if problems:
+                    for pmsg in problems:
+                        st.error(pmsg)
+                else:
+                    rq.record_determination(audit_path, det, previous=row)
+                    dets[row.crash_id] = det
+                    st.session_state["rq_pos"] = min(pos, len(pending) - 2)
+                    st.rerun()
+
+        with right:
+            if binder_index is None:
+                st.info("No binder index loaded; reviewing coded data only.")
+            elif not item.has_report:
+                st.warning("No DMV-349 for this crash in the indexed binder; "
+                           "flag as unverifiable if a determination needs "
+                           "the report (docs/03).")
+            else:
+                st.caption("Redacted DMV-349 (front page first; PII removed "
+                           "before display, ZIPs and crash IDs kept).")
+                with st.spinner("Rendering redacted pages..."):
+                    try:
+                        pages = _queue_pages(index_path, row.crash_id)
+                    except Exception as exc:   # noqa: BLE001 - show, don't die
+                        st.error(f"Page retrieval failed: {exc}")
+                        pages = []
+                for i, img in enumerate(pages, 1):
+                    st.image(img, caption=f"page {i} of {len(pages)}",
+                             use_container_width=True)
+
+    if dets and st.button(f"Save reviewed workbook ({len(dets)} "
+                          "determination(s))"):
+        out_path = os.path.splitext(wb_path)[0] + ".reviewed.xlsx"
+        n = rq.apply_determinations(wb_path, out_path, list(dets.values()),
+                                    sheet=sheet, analysis_type=analysis_type)
+        st.success(f"Wrote {n} determination(s) -> {out_path} "
+                   f"(audit trail: {audit_path})")
+        with open(out_path, "rb") as fh:
+            st.download_button("Download reviewed workbook", fh.read(),
+                               file_name=os.path.basename(out_path))
 
 
 if __name__ == "__main__":

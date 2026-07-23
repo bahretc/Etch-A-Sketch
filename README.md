@@ -69,6 +69,13 @@ safety-eval aadt --where "COUNTY='JOHNSTON'" --point -78.35,35.65 --radius 500
 # redact PII from an uploaded crash report before review (ZIPs and crash IDs kept)
 safety-eval redact --input dmv349_binder.pdf --output dmv349_redacted.pdf
 
+# OCR-index a scanned DMV-349 binder (crash-ID header box, psm 6, top-right
+# crop), then pull any crash's pages as a REDACTED image-only PDF
+safety-eval binder-index --binder binder_part1.pdf binder_part2.pdf \
+  --output binder_index.json
+safety-eval binder-get --index binder_index.json --crash-id 105904161 \
+  --output 105904161_redacted.pdf
+
 # the app: upload -> redact -> review -> build, in a browser
 pip install -e '.[ui]' && streamlit run safety_eval/app.py
 
@@ -114,6 +121,8 @@ assumptions email — it is the auditable record of study scope. See
 | Binned Crashes | `binned_sheet.py` | Bins every fiche crash under exactly one period banner (prior/before/construction/after/NIS) with bulk row writing; header created to match the completed-workbook layout |
 | AADT lookup | `aadt_arcgis.py` | Queries the feature services behind the NCDOT AADT web map (stations + segments); schema-drift tolerant; CSV export |
 | PII redaction | `redact.py` | Blacks out names, addresses, DOB, phone, DL numbers on uploaded crash reports; keeps ZIPs and crash IDs; image-only output so no text layer can leak |
+| Binder index | `binder.py` | OCR page index of scanned DMV-349 binders (crash-ID header box, tesseract psm 6, top-right crop); continuation pages group under the preceding report; per-crash retrieval is redacted before anyone sees it |
+| Review queue | `review_queue.py` | Fiche review workflow (docs/07 Phase 3): header-detected Filtered Fiche read-back, GPS/milepost pre-screen ordering, docs/03 status + comment validation (RE rejected for intersections, RE requires New MP), animal-crash skip, JSONL audit trail, per-cell template-preserving write-back |
 
 ### Crash-report PII redaction
 
@@ -230,9 +239,14 @@ pytest -q
       determinations left blank for the engineer.
 - [x] Streamlit app shell (`streamlit run safety_eval/app.py`): Build
       Evaluation, Redact Crash Reports (PII removed on upload), Review
-      Filtered Fiche tabs.
-- [ ] Fiche review queue with redacted DMV-349 page retrieval (GPS
-      pre-screen, one-keystroke statuses per docs/07 Phase 3).
+      Queue tabs.
+- [x] Fiche review queue with redacted DMV-349 page retrieval (docs/07
+      Phase 3): binder OCR page index (`safety-eval binder-index` /
+      `binder-get`), queue ordered by GPS or milepost distance, quick
+      status entry with docs/03 validation and comment conventions,
+      animal-crash skip, JSONL audit trail, template-preserving
+      write-back of determinations. Statuses accept the `-2` section
+      suffix used by split-section evaluations (seen on SS-6002M).
 - [ ] Assumptions email generator (docs/05); EB before/after; warrant
       screening.
 - [ ] Parse the assignment/assumptions email (`.msg`/`.eml`) directly.

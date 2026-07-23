@@ -254,6 +254,42 @@ def _cmd_redact(args) -> int:
     return 0
 
 
+def _cmd_binder_index(args) -> int:
+    import time
+
+    from .binder import index_binder
+    t0 = time.time()
+
+    def _progress(done, total):
+        if done % 50 == 0 or done == total:
+            print(f"  {done}/{total} pages ({time.time() - t0:.0f}s)",
+                  flush=True)
+
+    idx = index_binder(args.binder, dpi=args.dpi, workers=args.workers,
+                       progress=_progress if not args.quiet else None)
+    idx.save(args.output)
+    pages = sum(len(v) for v in idx.pages_by_crash.values())
+    print(f"Indexed {len(idx.pages_by_crash)} crash report(s) across "
+          f"{pages} page(s) -> {args.output}")
+    if idx.unassigned:
+        print(f"  ! {len(idx.unassigned)} leading page(s) had no crash ID "
+              "and precede the first report; check them manually")
+    for w in idx.warnings:
+        print(f"  ! {w}")
+    return 0
+
+
+def _cmd_binder_get(args) -> int:
+    from .binder import BinderIndex, export_crash_pdf
+    idx = BinderIndex.load(args.index)
+    pages = export_crash_pdf(idx, args.crash_id, args.output,
+                             dpi=args.dpi, keep_zip=not args.no_keep_zip)
+    print(f"Wrote {pages} redacted page(s) for crash {args.crash_id} "
+          f"-> {args.output}")
+    print("Redaction is a screening aid; spot-check the pages (docs/07).")
+    return 0
+
+
 def _cmd_assumptions(args) -> int:
     import os as _os
 
@@ -380,6 +416,30 @@ def build_parser() -> argparse.ArgumentParser:
     rd.add_argument("--dpi", type=int, default=200,
                     help="Rasterization DPI for PDF input (default 200).")
     rd.set_defaults(func=_cmd_redact)
+
+    bi = sub.add_parser(
+        "binder-index",
+        help="OCR-index a scanned DMV-349 binder (crash ID header box, "
+             "psm 6, top-right crop) into a reusable JSON page index.")
+    bi.add_argument("--binder", required=True, nargs="+",
+                    help="Binder PDF part(s), in part order.")
+    bi.add_argument("--output", required=True, help="Index JSON path.")
+    bi.add_argument("--dpi", type=int, default=150)
+    bi.add_argument("--workers", type=int, default=3)
+    bi.add_argument("--quiet", action="store_true")
+    bi.set_defaults(func=_cmd_binder_index)
+
+    bg = sub.add_parser(
+        "binder-get",
+        help="Extract one crash's pages from an indexed binder as a REDACTED "
+             "image-only PDF (PII removed before anyone sees it).")
+    bg.add_argument("--index", required=True, help="Index JSON from binder-index.")
+    bg.add_argument("--crash-id", required=True)
+    bg.add_argument("--output", required=True)
+    bg.add_argument("--dpi", type=int, default=150)
+    bg.add_argument("--no-keep-zip", action="store_true",
+                    help="Redact ZIP codes too (kept by default).")
+    bg.set_defaults(func=_cmd_binder_get)
 
     ae = sub.add_parser(
         "assumptions",

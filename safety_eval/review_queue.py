@@ -133,6 +133,14 @@ def load_review_sheet(workbook_path: str,
                     if role and role not in columns:
                         roles[j] = role
                         columns[role] = _col_letter(j)
+                if "status" in columns and "new_mp" not in columns:
+                    # standalone fiche workbooks leave the New MP header
+                    # blank; the column sits immediately right of the status
+                    # column in every observed layout (SS-6002M, 260412109EA)
+                    j = next(k for k, r in roles.items() if r == "status") + 1
+                    if j not in roles:
+                        roles[j] = "new_mp"
+                        columns["new_mp"] = _col_letter(j)
             continue
         vals = {role: row[j] if j < len(row) else None
                 for j, role in roles.items()}

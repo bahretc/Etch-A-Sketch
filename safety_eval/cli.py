@@ -131,6 +131,21 @@ def _cmd_aadt(args) -> int:
     return 0
 
 
+def _cmd_redact(args) -> int:
+    from .redact import redact_file
+    report = redact_file(args.input, args.output,
+                         keep_zip=not args.no_keep_zip, dpi=args.dpi)
+    print(f"Redacted {report.boxes} region(s) across {report.pages} page(s) "
+          f"-> {args.output}")
+    for reason, n in sorted(report.by_reason.items()):
+        print(f"  {reason}: {n}")
+    for w in report.warnings:
+        print(f"  ! {w}")
+    print("Output is image-only (no text layer). Spot-check before sharing; "
+          "OCR can miss handwriting or poor scans.")
+    return 0
+
+
 def _cmd_doctor(args) -> int:
     print("OCR / PDF backends:")
     for name, ok in available_backends().items():
@@ -209,6 +224,19 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Override the feature-service layer URL.")
     aq.add_argument("--output", default="aadt_stations.csv")
     aq.set_defaults(func=_cmd_aadt)
+
+    rd = sub.add_parser(
+        "redact",
+        help="Redact PII (names, addresses, DOB, phone, DL numbers) from an "
+             "uploaded crash report (PDF/TIFF/image). ZIP codes and crash IDs "
+             "are kept. Output is an image-only PDF.")
+    rd.add_argument("--input", required=True, help="Crash report PDF/TIFF/image.")
+    rd.add_argument("--output", required=True, help="Redacted PDF path.")
+    rd.add_argument("--no-keep-zip", action="store_true",
+                    help="Also redact ZIP codes (kept by default).")
+    rd.add_argument("--dpi", type=int, default=200,
+                    help="Rasterization DPI for PDF input (default 200).")
+    rd.set_defaults(func=_cmd_redact)
 
     d = sub.add_parser("doctor", help="Report available optional backends.")
     d.set_defaults(func=_cmd_doctor)

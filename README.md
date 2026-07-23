@@ -64,6 +64,9 @@ safety-eval fill-template \
 # pull yearly station AADTs from the NCDOT AADT map's feature service
 safety-eval aadt --where "COUNTY='JOHNSTON'" --point -78.35,35.65 --radius 500
 
+# redact PII from an uploaded crash report before review (ZIPs and crash IDs kept)
+safety-eval redact --input dmv349_binder.pdf --output dmv349_redacted.pdf
+
 safety-eval parse  --fiche path/to/fiche.pdf     # preview parsed crashes
 safety-eval doctor                               # which OCR/PDF backends are available
 ```
@@ -103,6 +106,18 @@ assumptions email — it is the auditable record of study scope. See
 | Workbook populate | `eval_workbook.py` | Fills Before/After columns A-M of the real template; formulas untouched |
 | Set-up sheet | `setup_sheet.py` | Date Range Calculator + AADT tables (label-detected cells, both variants), representative years, sample-data clearing |
 | AADT lookup | `aadt_arcgis.py` | Queries the feature services behind the NCDOT AADT web map (stations + segments); schema-drift tolerant; CSV export |
+| PII redaction | `redact.py` | Blacks out names, addresses, DOB, phone, DL numbers on uploaded crash reports; keeps ZIPs and crash IDs; image-only output so no text layer can leak |
+
+### Crash-report PII redaction
+
+Uploaded DMV-349 scans are redacted before review: OCR (tesseract) locates PII
+by form labels (Name/Address/DOB/Phone/License captions), street-address
+patterns, and city/state/ZIP continuation lines. ZIP codes and 9-digit crash
+IDs are always kept. The output PDF is rasterized with the boxes burned in, so
+there is no hidden text layer to extract. The audit report lists counts and
+trigger reasons only, never the PII itself. OCR can miss handwriting or poor
+scans; the engineer does a final visual pass (engineer-in-the-loop, docs/07).
+Requires `tesseract-ocr` and `poppler-utils`.
 
 ### Template-preserving writes (docs/06)
 

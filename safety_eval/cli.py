@@ -83,6 +83,22 @@ def _cmd_fill_template(args) -> int:
     )
     print(f"Populated {len(before)} before / {len(after)} after crashes "
           f"into {args.output}")
+
+    # Evaluation Set-up sheet (dates, representative years, AADT tables)
+    if args.setup:
+        import shutil as _sh
+
+        from .setup_sheet import build_setup_edits, load_setup_yaml
+        from .xlsx_patch import verify_integrity, xlsx_patch
+        data = load_setup_yaml(args.setup)
+        tmp = args.output + ".setup.tmp"
+        xlsx_patch(args.output, tmp,
+                   edits={"Evaluation Set-up": build_setup_edits(args.template, data)})
+        _sh.move(tmp, args.output)
+        rep = verify_integrity(args.template, args.output)
+        if not rep.ok:
+            raise RuntimeError(f"Integrity failed after setup: {rep.problems}")
+        print("Evaluation Set-up populated.")
     print(f"Integrity: OK ({report.checked_members} drawings/media members "
           "byte-identical)")
     if args.recalc:
@@ -93,6 +109,25 @@ def _cmd_fill_template(args) -> int:
             rep2 = verify_integrity(args.template, args.output)
             print("Post-recalc integrity:",
                   "OK" if rep2.ok else f"FAILED: {rep2.problems}")
+    return 0
+
+
+def _cmd_aadt(args) -> int:
+    from .aadt_arcgis import STATIONS_URL, query_stations, stations_to_csv
+    point = None
+    if args.point:
+        lon, lat = (float(x) for x in args.point.split(","))
+        point = (lon, lat)
+    stations = query_stations(
+        where=args.where, point=point, radius_meters=args.radius,
+        service_url=args.service_url or STATIONS_URL)
+    with open(args.output, "w") as fh:
+        fh.write(stations_to_csv(stations))
+    print(f"{len(stations)} station(s) -> {args.output}")
+    for s in stations[:5]:
+        yrs = sorted(s.years)
+        span = f"{yrs[0]}-{yrs[-1]}" if yrs else "no years"
+        print(f"  {s.station_id}  {s.route:<18} {s.county:<12} {span}")
     return 0
 
 
@@ -153,10 +188,27 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Milepost import file for the after period.")
     ft.add_argument("--target1", help="Target-1 crash type name (config key).")
     ft.add_argument("--target2", help="Target-2 crash type name, if defined.")
+    ft.add_argument("--setup",
+                    help="Evaluation Set-up YAML (TEAAS date, construction "
+                         "period, representative years, AADT tables).")
     ft.add_argument("--config", help="Optional config override YAML.")
     ft.add_argument("--recalc", action="store_true",
                     help="Run the single LibreOffice headless recalc pass.")
     ft.set_defaults(func=_cmd_fill_template)
+
+    aq = sub.add_parser(
+        "aadt",
+        help="Query NCDOT AADT stations (ArcGIS service behind the AADT web "
+             "map) and write a CSV of yearly volumes.")
+    aq.add_argument("--where", default="1=1",
+                    help="ArcGIS SQL filter, e.g. \"COUNTY='JOHNSTON'\".")
+    aq.add_argument("--point", help="lon,lat to search around (WGS84).")
+    aq.add_argument("--radius", type=float, default=800.0,
+                    help="Search radius in meters (default 800).")
+    aq.add_argument("--service-url", dest="service_url",
+                    help="Override the feature-service layer URL.")
+    aq.add_argument("--output", default="aadt_stations.csv")
+    aq.set_defaults(func=_cmd_aadt)
 
     d = sub.add_parser("doctor", help="Report available optional backends.")
     d.set_defaults(func=_cmd_doctor)

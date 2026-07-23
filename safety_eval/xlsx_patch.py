@@ -204,7 +204,9 @@ def xlsx_patch(path_in: str, path_out: str,
                     data = patcher.xml.encode("utf-8")
                 elif info.filename == "xl/workbook.xml" and full_calc_on_load:
                     text = data.decode("utf-8")
-                    if "<calcPr" in text:
+                    if "fullCalcOnLoad" in text:
+                        pass                      # already set (idempotent)
+                    elif "<calcPr" in text:
                         text = re.sub(r"<calcPr ",
                                       '<calcPr fullCalcOnLoad="1" ', text, 1)
                     else:

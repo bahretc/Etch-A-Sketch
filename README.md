@@ -50,6 +50,7 @@ safety-eval fill-template \
   --output out.xlsx --recalc
 
 # Section workbook: ID lists + original fiche (C/F/L enrichment) + mileposts
+# + Evaluation Set-up (dates, representative years, AADT tables)
 safety-eval fill-template \
   --template "templates/Section Evaluation Workbook - 2023-12-04.xlsx" \
   --before examples/04-15-39049/Before_ID.txt \
@@ -57,7 +58,11 @@ safety-eval fill-template \
   --before-mp examples/04-15-39049/Before_Import.txt \
   --after-mp  examples/04-15-39049/After_Import.txt \
   --fiche examples/04-15-39049/OriginalFiche.csv \
+  --setup examples/04-15-39049/setup.yaml \
   --output out.xlsx --recalc
+
+# pull yearly station AADTs from the NCDOT AADT map's feature service
+safety-eval aadt --where "COUNTY='JOHNSTON'" --point -78.35,35.65 --radius 500
 
 safety-eval parse  --fiche path/to/fiche.pdf     # preview parsed crashes
 safety-eval doctor                               # which OCR/PDF backends are available
@@ -96,6 +101,8 @@ assumptions email — it is the auditable record of study scope. See
 | Report | `report.py` | Standalone summary workbook + Markdown |
 | Template writer | `xlsx_patch.py` | docs/06-compliant XML patching, LibreOffice recalc (cache transplant), byte-identical integrity gate |
 | Workbook populate | `eval_workbook.py` | Fills Before/After columns A-M of the real template; formulas untouched |
+| Set-up sheet | `setup_sheet.py` | Date Range Calculator + AADT tables (label-detected cells, both variants), representative years, sample-data clearing |
+| AADT lookup | `aadt_arcgis.py` | Queries the feature services behind the NCDOT AADT web map (stations + segments); schema-drift tolerant; CSV export |
 
 ### Template-preserving writes (docs/06)
 
@@ -185,7 +192,9 @@ pytest -q
       place (columns A-M, integrity-verified, LibreOffice recalc).
 - [x] Section Evaluation Workbook population (header-detected layout, Final MP
       column, fiche C/F/L enrichment, milepost import files).
-- [ ] Evaluation Set-up sheet population (dates, AADT calculator, TEAAS date).
+- [x] Evaluation Set-up sheet population (TEAAS date, construction period,
+      representative years, intersection leg / section sub-section AADT
+      tables) with NCDOT AADT ArcGIS lookup (`safety-eval aadt`).
 - [ ] Parse the assignment/assumptions email (`.msg`/`.eml`) directly.
 - [ ] Empirical-Bayes (EB) before/after in addition to the naive method.
 - [ ] 2021 HSIP warrant screening; Streamlit shell per docs/07.

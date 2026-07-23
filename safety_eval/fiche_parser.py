@@ -70,13 +70,25 @@ def _to_int(raw) -> int | None:
 
 
 def _build_header_map(header: list[str]) -> dict[int, str]:
-    """Map column index -> canonical field name."""
+    """Map column index -> canonical field name.
+
+    TEAAS CSV headers can embed newlines inside quoted cells ("Muni.\\nCode")
+    and combine "Miles  /  Dir\\nFrom" into ONE header cell that spans TWO data
+    columns (miles, dir); the map expands it and shifts subsequent columns.
+    """
     mapping: dict[int, str] = {}
+    offset = 0
     for idx, name in enumerate(header):
-        key = (name or "").strip().strip('"').lower()
+        key = re.sub(r"\s+", " ", (name or "")).strip().strip('"').lower()
+        col = idx + offset
+        if re.fullmatch(r"miles\s*/\s*dir(\s+from)?", key):
+            mapping[col] = "miles"
+            mapping[col + 1] = "dir_from"
+            offset += 1
+            continue
         for canon, aliases in _HEADER_ALIASES.items():
             if key in aliases and canon not in mapping.values():
-                mapping[idx] = canon
+                mapping[col] = canon
                 break
     return mapping
 

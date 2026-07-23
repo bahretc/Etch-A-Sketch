@@ -48,12 +48,27 @@ def _cmd_parse(args) -> int:
 
 def _cmd_fill_template(args) -> int:
     from .eval_workbook import populate_evaluation_workbook
-    from .teaas import parse_crash_id_list
+    from .teaas import enrich_from_fiche, parse_crash_id_list, parse_import_list
     from .xlsx_patch import recalc
 
     cfg = Config.load(args.config)
     before = parse_crash_id_list(args.before, cfg)
     after = parse_crash_id_list(args.after, cfg)
+
+    # enrich C/F/L codes from the original fiche, joined by Crash ID
+    if args.fiche:
+        from .fiche_parser import parse_fiche
+        fiche = parse_fiche(args.fiche)
+        n = enrich_from_fiche(before + after, fiche)
+        print(f"Enriched {n}/{len(before) + len(after)} crashes from the fiche.")
+
+    # mileposts for Section workbooks (crash_id|<tab>MP import files)
+    for crashes, mp_path in ((before, args.before_mp), (after, args.after_mp)):
+        if mp_path:
+            mps = parse_import_list(mp_path)
+            for crash in crashes:
+                if crash.crash_id in mps:
+                    crash.mp = mps[crash.crash_id]
 
     # classify targets when requested
     if args.target1 or args.target2:
@@ -128,6 +143,14 @@ def build_parser() -> argparse.ArgumentParser:
     ft.add_argument("--after", required=True,
                     help="TEAAS 5-col Crash ID List for the after period.")
     ft.add_argument("--output", required=True)
+    ft.add_argument("--fiche",
+                    help="Original fiche (csv/txt/pdf) to enrich C/F/L codes "
+                         "by Crash ID.")
+    ft.add_argument("--before-mp", dest="before_mp",
+                    help="Milepost import file for the before period "
+                         "(crash_id|<tab>MP), Section workbooks.")
+    ft.add_argument("--after-mp", dest="after_mp",
+                    help="Milepost import file for the after period.")
     ft.add_argument("--target1", help="Target-1 crash type name (config key).")
     ft.add_argument("--target2", help="Target-2 crash type name, if defined.")
     ft.add_argument("--config", help="Optional config override YAML.")

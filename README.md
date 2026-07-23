@@ -49,6 +49,16 @@ safety-eval fill-template \
   --target1 "Frontal Impact" \
   --output out.xlsx --recalc
 
+# Section workbook: ID lists + original fiche (C/F/L enrichment) + mileposts
+safety-eval fill-template \
+  --template "templates/Section Evaluation Workbook - 2023-12-04.xlsx" \
+  --before examples/04-15-39049/Before_ID.txt \
+  --after  examples/04-15-39049/After_ID.txt \
+  --before-mp examples/04-15-39049/Before_Import.txt \
+  --after-mp  examples/04-15-39049/After_Import.txt \
+  --fiche examples/04-15-39049/OriginalFiche.csv \
+  --output out.xlsx --recalc
+
 safety-eval parse  --fiche path/to/fiche.pdf     # preview parsed crashes
 safety-eval doctor                               # which OCR/PDF backends are available
 ```
@@ -157,16 +167,24 @@ pytest -q
 ## Ground truth in this repo
 
 - `templates/` — pristine 2023-12-04 Intersection and Section Evaluation
-  Workbook templates (authoritative for cell addresses, CLAUDE.md rule 8).
+  Workbook templates plus the Split Time Periods variants and the atypical
+  one-page report templates (authoritative for cell addresses, CLAUDE.md
+  rule 8).
 - `examples/SS-6002AD/` — a completed intersection evaluation (NC 91 at SR
-  1225/SR 1303, Greene County) with its raw TEAAS before/after exports, used
-  as known-value test fixtures.
+  1225/SR 1303, Greene County) with its raw TEAAS before/after exports.
+- `examples/04-15-39049/` — a completed SECTION evaluation (SR 1003,
+  Johnston County) with the full working set: original fiche, before/after
+  crash ID lists, and milepost import files. The test suite regenerates the
+  Before/After sheets from these raw inputs and matches the completed
+  deliverable row for row, and the recalculated KABCO/SI blocks match exactly
+  (Before SI 6.3286, After SI 3.6118).
 
 ## Roadmap
 
 - [x] Populate the official NCDOT Intersection Evaluation Workbook template in
       place (columns A-M, integrity-verified, LibreOffice recalc).
-- [ ] Section Evaluation Workbook population (Before/After A-M plus mileposts).
+- [x] Section Evaluation Workbook population (header-detected layout, Final MP
+      column, fiche C/F/L enrichment, milepost import files).
 - [ ] Evaluation Set-up sheet population (dates, AADT calculator, TEAAS date).
 - [ ] Parse the assignment/assumptions email (`.msg`/`.eml`) directly.
 - [ ] Empirical-Bayes (EB) before/after in addition to the naive method.

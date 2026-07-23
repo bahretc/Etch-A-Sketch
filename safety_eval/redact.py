@@ -73,16 +73,21 @@ class Redaction:
 # --------------------------------------------------------------------------- #
 _LABELS = {
     "name": ("name", "driver", "owner", "insured", "witness", "passenger",
-             "occupant", "pedestrian"),
+             "occupant", "pedestrian", "first", "middle", "last"),
     "address": ("address", "street"),
-    "dob": ("birth", "dob"),
+    # 'pop'/'do8'/'d08' are common OCR garblings of the DOB caption on scans
+    "dob": ("birth", "dob", "pop", "do8", "d08"),
     "phone": ("phone", "telephone"),
     "license": ("license", "dl#", "dl", "cdl"),
+    "vin": ("vin",),
+    "plate": ("plate",),
 }
 _LABEL_WORDS = {w for group in _LABELS.values() for w in group}
 
 _ZIP_RE = re.compile(r"^\d{5}(?:-\d{4})?$")
-_PHONE_RE = re.compile(r"^\(?\d{3}\)?[-. ]?\d{3}[-. ]?\d{4}$")
+# full numbers, and the 7-digit local form scans often show when the area
+# code sits in its own box ("252 ... 214-8149")
+_PHONE_RE = re.compile(r"^(?:\(?\d{3}\)?[-. ]?\d{3}[-. ]?\d{4}|\d{3}[-.]\d{4})$")
 _DATE_RE = re.compile(r"^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$")
 _STREET_SUFFIXES = (
     "ST", "STREET", "RD", "ROAD", "AVE", "AVENUE", "DR", "DRIVE", "LN",
@@ -90,6 +95,9 @@ _STREET_SUFFIXES = (
     "PLACE", "WAY", "TRL", "TRAIL", "PKWY", "LOOP",
 )
 _CRASH_ID_RE = re.compile(r"^\d{9}$")
+# 17-char VIN (no I/O/Q); matched anywhere because the left-column caption is
+# often lost by OCR, leaving the bare VIN on the row
+_VIN_RE = re.compile(r"^[A-HJ-NPR-Z0-9]{17}$")
 
 
 def _norm(token: str) -> str:
@@ -101,6 +109,32 @@ def _lines(words: list[Word]) -> list[list[Word]]:
     for w in words:
         by_line.setdefault((w.page,) + w.line_id, []).append(w)
     out = [sorted(ws, key=lambda w: w.left) for ws in by_line.values()]
+    out.sort(key=lambda ws: (ws[0].page, ws[0].top, ws[0].left))
+    return out
+
+
+def _visual_rows(words: list[Word], factor: float = 0.6) -> list[list[Word]]:
+    """Cluster words into visual rows by vertical position.
+
+    Sparse-mode OCR on form scans often emits each boxed value as its own
+    "line" even when it sits beside its caption (seen on the 600501348
+    binder: Driver / SHONTA / MONEAK / GARDNER arrive as four lines at the
+    same height, so a line-id based label rule misses the name).  Grouping
+    by top coordinate reunites captions with their values.
+    """
+    out: list[list[Word]] = []
+    for page in sorted({w.page for w in words}):
+        pws = sorted((w for w in words if w.page == page),
+                     key=lambda w: (w.top, w.left))
+        row: list[Word] = []
+        for w in pws:
+            if row and abs(w.top - row[0].top) > factor * max(
+                    w.height, row[0].height, 1):
+                out.append(sorted(row, key=lambda x: x.left))
+                row = []
+            row.append(w)
+        if row:
+            out.append(sorted(row, key=lambda x: x.left))
     out.sort(key=lambda ws: (ws[0].page, ws[0].top, ws[0].left))
     return out
 
@@ -149,7 +183,7 @@ def plan_redactions(words: list[Word], keep_zip: bool = True,
     * ZIP-looking tokens are carved OUT of any planned box when ``keep_zip``.
     * 9-digit crash IDs are never redacted.
     """
-    lines = _lines(words)
+    lines = _visual_rows(words)
     planned: list[tuple[list[Word], str]] = []
     redact_next_line_of: dict[tuple, str] = {}
     address_continues_from: int | None = None
@@ -188,8 +222,22 @@ def plan_redactions(words: list[Word], keep_zip: bool = True,
             value_words = [w for w in line[label_pos + 1:]
                            if _norm(w.text) not in _LABEL_WORDS]
             value_words = [w for w in value_words if w.text.strip()]
+            before_words = [w for w in line[:label_pos]
+                            if _norm(w.text) not in _LABEL_WORDS
+                            and w.text.strip()]
             if value_words:
                 planned.append((value_words, f"label:{label_kind}"))
+                # on the DMV-349 the vehicle boxes put the value LEFT of the
+                # surviving caption (unit-1 column), with unit-2 form text to
+                # the right; cover both sides for those kinds
+                if before_words and label_kind in ("vin", "plate"):
+                    planned.append((before_words,
+                                    f"label:{label_kind}(before)"))
+            elif before_words:
+                # boxed forms can lose the left-column caption to OCR, leaving
+                # the value BEFORE the surviving caption on the row (seen with
+                # VIN/plate on the 600501348 binder)
+                planned.append((before_words, f"label:{label_kind}(before)"))
             else:
                 # caption-only line: value sits on the following line
                 redact_next_line_of[("pending", idx + 1)] = f"label:{label_kind}(below)"
@@ -205,6 +253,9 @@ def plan_redactions(words: list[Word], keep_zip: bool = True,
         for w in line:
             if _PHONE_RE.match(w.text.strip()):
                 planned.append(([w], "phone"))
+            elif _VIN_RE.match(w.text.strip()) and \
+                    not w.text.strip().isdigit():
+                planned.append(([w], "vin-pattern"))
 
     out: list[Redaction] = []
     for group, reason in planned:

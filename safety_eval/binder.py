@@ -211,6 +211,53 @@ def index_binder(paths: list[str], dpi: int = 150, workers: int = 3,
 
 
 # --------------------------------------------------------------------------- #
+# reconciliation against known crash IDs
+# --------------------------------------------------------------------------- #
+def _longest_common_run(a: str, b: str) -> int:
+    best = 0
+    for i in range(len(a)):
+        for j in range(len(b)):
+            k = 0
+            while i + k < len(a) and j + k < len(b) and a[i + k] == b[j + k]:
+                k += 1
+            best = max(best, k)
+    return best
+
+
+def reconcile_index(index: BinderIndex, known_ids) -> dict[str, str]:
+    """Suggest fixes for OCR-misread crash IDs.
+
+    A cropped or blurred header digit makes the OCR read a shifted ID (seen
+    on the 600501348 binder: true 108164536 printed with the leading 1 cut
+    off read as 081645367).  For each indexed ID that is not a known crash,
+    the known IDs with no report yet are searched for a unique candidate
+    sharing a run of 7+ consecutive digits; matches are returned as
+    ``{read_id: known_id}`` SUGGESTIONS for the engineer, never applied
+    silently.
+    """
+    known = {str(k) for k in known_ids}
+    unknown_reads = [cid for cid in index.pages_by_crash if cid not in known]
+    missing = [k for k in known if k not in index.pages_by_crash]
+    out: dict[str, str] = {}
+    for read in unknown_reads:
+        cands = [k for k in missing if _longest_common_run(read, k) >= 7]
+        if len(cands) == 1:
+            out[read] = cands[0]
+    return out
+
+
+def apply_reconciliation(index: BinderIndex,
+                         suggestions: dict[str, str]) -> None:
+    """Re-key accepted suggestions (in place) and note each in warnings."""
+    for read, true_id in suggestions.items():
+        if read in index.pages_by_crash and true_id not in index.pages_by_crash:
+            index.pages_by_crash[true_id] = index.pages_by_crash.pop(read)
+            index.warnings.append(
+                f"crash {true_id}: header OCR read {read}; re-keyed per "
+                "reconciliation")
+
+
+# --------------------------------------------------------------------------- #
 # redacted retrieval
 # --------------------------------------------------------------------------- #
 def render_crash_pages(index: BinderIndex, crash_id: str, dpi: int = 150,

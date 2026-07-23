@@ -48,6 +48,35 @@ def test_index_json_round_trip(tmp_path):
     assert back.pages_for("999999999") == []
 
 
+def test_reconcile_suggests_unique_shifted_id():
+    from safety_eval.binder import apply_reconciliation, reconcile_index
+
+    # true 108164536 printed with the leading 1 cut off reads as 081645367
+    idx = BinderIndex(pages_by_crash={
+        "081645367": [PageRef("b.pdf", 33), PageRef("b.pdf", 34)],
+        "105904161": [PageRef("b.pdf", 1)],
+    })
+    known = {"105904161", "108164536", "107000000"}
+    suggestions = reconcile_index(idx, known)
+    assert suggestions == {"081645367": "108164536"}
+
+    apply_reconciliation(idx, suggestions)
+    assert "081645367" not in idx.pages_by_crash
+    assert [p.page for p in idx.pages_for("108164536")] == [33, 34]
+    assert any("108164536" in w for w in idx.warnings)
+
+
+def test_reconcile_ambiguous_or_distant_reads_left_alone():
+    from safety_eval.binder import reconcile_index
+
+    idx = BinderIndex(pages_by_crash={"099999999": [PageRef("b.pdf", 1)]})
+    # nothing shares a 7-digit run: no suggestion
+    assert reconcile_index(idx, {"105904161", "106001234"}) == {}
+    # two candidates sharing a run: ambiguous, no suggestion
+    idx2 = BinderIndex(pages_by_crash={"051234567": [PageRef("b.pdf", 1)]})
+    assert reconcile_index(idx2, {"105123456", "205123456"}) == {}
+
+
 def _front_page(crash_id, body_lines):
     """A DMV-349-style front page: header box top-right with the crash ID."""
     from PIL import Image, ImageDraw

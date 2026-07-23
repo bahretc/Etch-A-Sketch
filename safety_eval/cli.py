@@ -267,6 +267,18 @@ def _cmd_binder_index(args) -> int:
 
     idx = index_binder(args.binder, dpi=args.dpi, workers=args.workers,
                        progress=_progress if not args.quiet else None)
+    if args.known_ids:
+        from .binder import apply_reconciliation, reconcile_index
+        from .config import Config
+        from .teaas import parse_crash_id_list
+        known: set[str] = set()
+        for path in args.known_ids:
+            known |= {c.crash_id
+                      for c in parse_crash_id_list(path, Config.load())}
+        suggestions = reconcile_index(idx, known)
+        for read, true_id in sorted(suggestions.items()):
+            print(f"  reconciled misread header {read} -> {true_id}")
+        apply_reconciliation(idx, suggestions)
     idx.save(args.output)
     pages = sum(len(v) for v in idx.pages_by_crash.values())
     print(f"Indexed {len(idx.pages_by_crash)} crash report(s) across "
@@ -426,6 +438,11 @@ def build_parser() -> argparse.ArgumentParser:
     bi.add_argument("--output", required=True, help="Index JSON path.")
     bi.add_argument("--dpi", type=int, default=150)
     bi.add_argument("--workers", type=int, default=3)
+    bi.add_argument("--known-ids", nargs="*",
+                    help="TEAAS Crash ID List file(s); misread header IDs "
+                         "sharing a 7+ digit run with a unique known ID "
+                         "missing from the index are re-keyed (each fix is "
+                         "printed and recorded in the index warnings).")
     bi.add_argument("--quiet", action="store_true")
     bi.set_defaults(func=_cmd_binder_index)
 

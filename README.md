@@ -120,16 +120,19 @@ assumptions email — it is the auditable record of study scope. See
 | Results sheet | `results_sheet.py` | 1-page results manual cells: identity block, countermeasure/criteria/target text, Additional Information rows (n/a fill), Items for Discussion; enforces the docs/05 no-em-dash rule |
 | Binned Crashes | `binned_sheet.py` | Bins every fiche crash under exactly one period banner (prior/before/construction/after/NIS) with bulk row writing; header created to match the completed-workbook layout |
 | AADT lookup | `aadt_arcgis.py` | Queries the feature services behind the NCDOT AADT web map (stations + segments); schema-drift tolerant; CSV export |
-| PII redaction | `redact.py` | Blacks out names, addresses, DOB, phone, DL numbers on uploaded crash reports; keeps ZIPs and crash IDs; image-only output so no text layer can leak |
+| PII redaction | `redact.py` | Blacks out names, addresses, DOB, phone, DL numbers, VINs and plates on uploaded crash reports; keeps ZIPs and crash IDs; image-only output so no text layer can leak |
 | Binder index | `binder.py` | OCR page index of scanned DMV-349 binders (crash-ID header box, tesseract psm 6, top-right crop); continuation pages group under the preceding report; per-crash retrieval is redacted before anyone sees it |
 | Review queue | `review_queue.py` | Fiche review workflow (docs/07 Phase 3): header-detected Filtered Fiche read-back, GPS/milepost pre-screen ordering, docs/03 status + comment validation (RE rejected for intersections, RE requires New MP), animal-crash skip, JSONL audit trail, per-cell template-preserving write-back |
 
 ### Crash-report PII redaction
 
 Uploaded DMV-349 scans are redacted before review: OCR (tesseract) locates PII
-by form labels (Name/Address/DOB/Phone/License captions), street-address
-patterns, and city/state/ZIP continuation lines. ZIP codes and 9-digit crash
-IDs are always kept. The output PDF is rasterized with the boxes burned in, so
+by form labels (Name/Address/DOB/Phone/License/VIN/Plate captions, including
+common OCR garblings and values printed left of a surviving caption),
+street-address patterns, VIN patterns, and city/state/ZIP continuation lines.
+Words are clustered into visual rows by position, so sparse OCR that splits a
+caption from its boxed value cannot separate a name from its label. ZIP codes
+and 9-digit crash IDs are always kept. The output PDF is rasterized with the boxes burned in, so
 there is no hidden text layer to extract. The audit report lists counts and
 trigger reasons only, never the PII itself. OCR can miss handwriting or poor
 scans; the engineer does a final visual pass (engineer-in-the-loop, docs/07).

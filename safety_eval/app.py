@@ -195,8 +195,15 @@ def _review_queue_tab(st) -> None:
         if not os.path.exists(index_path):
             st.error(f"Binder index not found: {index_path}")
             st.stop()
-        from .binder import BinderIndex
+        from .binder import BinderIndex, reconcile_index
         binder_index = BinderIndex.load(index_path)
+        suggestions = reconcile_index(
+            binder_index, {r.crash_id for r in review.rows})
+        if suggestions:
+            st.warning(
+                "Possible misread binder header IDs (fix with "
+                "`safety-eval binder-index --known-ids ...` and reload): "
+                + ", ".join(f"{a} -> {b}" for a, b in sorted(suggestions.items())))
 
     coords = rq.parse_coordinates(coords_path) if coords_path else None
     point = None

@@ -302,6 +302,60 @@ def _cmd_binder_get(args) -> int:
     return 0
 
 
+def _cmd_qc(args) -> int:
+    from .qc import recount
+    rep = recount(args.workbook, treatment=args.treatment)
+    print("Tallies:")
+    for k, v in rep.tallies.items():
+        print(f"  {k}: {v}")
+    for w in rep.warnings:
+        print(f"  ! confirm: {w}")
+    if rep.errors:
+        print(f"{len(rep.errors)} mismatch(es); do NOT deliver until "
+              "resolved (docs/03 QC habits):")
+        for e in rep.errors:
+            print(f"  E: {e}")
+        return 2
+    print("Recount clean: sheet tallies agree"
+          + (f"; {len(rep.warnings)} item(s) for the engineer's pass"
+             if rep.warnings else "") + ".")
+    return 0
+
+
+def _cmd_ledger(args) -> int:
+    from .ledger import (DepartureCall, apply_call, check_consistency,
+                         read_ledger, tally)
+    ledger = read_ledger(args.workbook)
+    if not ledger:
+        print(f"No ledger columns (Correctable?/Departure) found in "
+              f"{args.workbook}")
+        return 2
+    if args.set_departure or args.exclude:
+        call = DepartureCall(
+            crash_id=args.crash_id,
+            departure=args.set_departure,
+            correctable=(None if args.correctable is None
+                         else args.correctable == "Y"),
+            travel_dir=args.travel_dir,
+            comment=args.comment,
+            exclude=args.exclude,
+        )
+        touched = apply_call(args.workbook, args.output or args.workbook,
+                             call, ledger)
+        print(f"Applied to {touched} sheet(s) -> "
+              f"{args.output or args.workbook}")
+        return 0
+    for sheet in ledger:
+        print(f"{sheet}: {tally(ledger, sheet)}")
+    errors, confirms = check_consistency(ledger, treatment=args.treatment)
+    for e in errors:
+        print(f"  E: {e}")
+    for c in confirms:
+        print(f"  ! confirm: {c}")
+    print(f"{len(errors)} error(s), {len(confirms)} confirmation(s).")
+    return 2 if errors else 0
+
+
 def _cmd_assumptions(args) -> int:
     import os as _os
 
@@ -457,6 +511,36 @@ def build_parser() -> argparse.ArgumentParser:
     bg.add_argument("--no-keep-zip", action="store_true",
                     help="Redact ZIP codes too (kept by default).")
     bg.set_defaults(func=_cmd_binder_get)
+
+    qc = sub.add_parser(
+        "qc",
+        help="Recount the workbook before delivering: Filtered Fiche vs "
+             "Binned Crashes vs Before/After, the lane departure ledger "
+             "across sheets, and 'N crashes' text quotes vs the tallies.")
+    qc.add_argument("--workbook", required=True)
+    qc.add_argument("--treatment", choices=["centerline", "edgeline", "dual"],
+                    help="Enables the correctability coverage checks.")
+    qc.set_defaults(func=_cmd_qc)
+
+    lg = sub.add_parser(
+        "ledger",
+        help="Lane departure CL/R ledger: report or change a crash's "
+             "Departure/Correctable/Target call on EVERY sheet it appears "
+             "(Filtered Fiche, Before/After, Binned Crashes) in one "
+             "template-preserving patch.")
+    lg.add_argument("--workbook", required=True)
+    lg.add_argument("--treatment", choices=["centerline", "edgeline", "dual"])
+    lg.add_argument("--crash-id")
+    lg.add_argument("--set-departure", choices=["Centerline", "Right"])
+    lg.add_argument("--correctable", choices=["Y", "N"])
+    lg.add_argument("--travel-dir")
+    lg.add_argument("--comment")
+    lg.add_argument("--exclude", action="store_true",
+                    help="Side-street run-through: clear Target flags and "
+                         "departure everywhere; requires --comment with the "
+                         "rationale (docs/03).")
+    lg.add_argument("--output", help="Write here instead of in place.")
+    lg.set_defaults(func=_cmd_ledger)
 
     ae = sub.add_parser(
         "assumptions",

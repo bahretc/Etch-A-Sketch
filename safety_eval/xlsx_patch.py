@@ -65,12 +65,23 @@ def sheet_files(template: str) -> dict[str, str]:
     with zipfile.ZipFile(template) as z:
         wb = z.read("xl/workbook.xml").decode("utf-8")
         rels = z.read("xl/_rels/workbook.xml.rels").decode("utf-8")
-    rid_to_target = dict(re.findall(r'Id="(rId\d+)"[^>]*Target="([^"]+)"', rels))
+    # attribute order varies by writer (openpyxl puts Target before Id)
+    rid_to_target: dict[str, str] = {}
+    for rel in re.findall(r"<Relationship\b[^>]*>", rels):
+        rid = re.search(r'\bId="(rId\d+)"', rel)
+        target = re.search(r'\bTarget="([^"]+)"', rel)
+        if rid and target:
+            rid_to_target[rid.group(1)] = target.group(1)
     out: dict[str, str] = {}
-    for name, rid in re.findall(r'<sheet name="([^"]+)"[^>]*r:id="(rId\d+)"', wb):
+    # attributes can precede name= (openpyxl writes xmlns:r first)
+    for name, rid in re.findall(
+            r'<sheet\b[^>]*?name="([^"]+)"[^>]*?r:id="(rId\d+)"', wb):
         target = rid_to_target[rid]
-        if not target.startswith("xl/"):
-            target = "xl/" + target.lstrip("/")
+        if target.startswith("/"):
+            # absolute package path (openpyxl writes /xl/worksheets/sheetN.xml)
+            target = target.lstrip("/")
+        elif not target.startswith("xl/"):
+            target = "xl/" + target
         out[name.replace("&amp;", "&")] = target
     return out
 

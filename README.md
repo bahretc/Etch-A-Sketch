@@ -76,6 +76,14 @@ safety-eval binder-index --binder binder_part1.pdf binder_part2.pdf \
 safety-eval binder-get --index binder_index.json --crash-id 105904161 \
   --output 105904161_redacted.pdf
 
+# lane departure CL/R ledger: change one crash's call on EVERY sheet at once
+safety-eval ledger --workbook eval.xlsx --treatment dual          # report
+safety-eval ledger --workbook eval.xlsx --crash-id 105274289 \
+  --exclude --comment "side-street run-through; non-target" --output out.xlsx
+
+# recount before delivering (docs/03 QC habits); exit 2 on any mismatch
+safety-eval qc --workbook eval.xlsx --treatment dual
+
 # the app: upload -> redact -> review -> build, in a browser
 pip install -e '.[ui]' && streamlit run safety_eval/app.py
 
@@ -122,6 +130,8 @@ assumptions email — it is the auditable record of study scope. See
 | AADT lookup | `aadt_arcgis.py` | Queries the feature services behind the NCDOT AADT web map (stations + segments); schema-drift tolerant; CSV export |
 | PII redaction | `redact.py` | Blacks out names, addresses, DOB, phone, DL numbers, VINs and plates on uploaded crash reports; keeps ZIPs and crash IDs; image-only output so no text layer can leak |
 | Binder index | `binder.py` | OCR page index of scanned DMV-349 binders (crash-ID header box, tesseract psm 6, top-right crop); continuation pages group under the preceding report; per-crash retrieval is redacted before anyone sees it |
+| CL/R ledger | `ledger.py` | Lane departure ledger (docs/03): Centerline/Right calls with the first-harmful-event rule, per-treatment correctability (dual = either line), standing exemptions, side-street run-through exclusion; any change propagates to every sheet the value appears on (Filtered Fiche, Before/After, Binned Crashes) in one template-preserving patch |
+| QC recounts | `qc.py` | Pre-delivery recount: Filtered Fiche vs Binned Crashes vs Before/After crash-ID reconciliation, ledger cross-sheet consistency, and "N crashes" text quotes checked against computed tallies; mismatches block export |
 | Review queue | `review_queue.py` | Fiche review workflow (docs/07 Phase 3): header-detected Filtered Fiche read-back, pre-screen ordering by DetailedFiche coordinates (supplied with the Original Fiche; never taken from the reports, which is what the review checks) or milepost distance, docs/03 status + comment validation (RE rejected for intersections, RE requires New MP), animal-crash skip, JSONL audit trail, per-cell template-preserving write-back |
 
 ### Crash-report PII redaction
@@ -250,8 +260,13 @@ pytest -q
       animal-crash skip, JSONL audit trail, template-preserving
       write-back of determinations. Statuses accept the `-2` section
       suffix used by split-section evaluations (seen on SS-6002M).
-- [ ] Assumptions email generator (docs/05); EB before/after; warrant
-      screening.
+- [x] Lane departure CL/R ledger (docs/07 item 13) with cross-sheet
+      propagation, and QC recount checks (item 14) via `safety-eval
+      ledger` / `safety-eval qc`. Validated on the completed SS-6002M
+      workbook: recount reconciles exactly (549 in-study = 237 before +
+      43 construction + 269 after; ledger consistent across all four
+      sheets), completing the docs/07 Phase 3 review-assistance scope.
+- [ ] EB before/after; warrant screening.
 - [ ] Parse the assignment/assumptions email (`.msg`/`.eml`) directly.
 - [ ] Empirical-Bayes (EB) before/after in addition to the naive method.
 - [ ] 2021 HSIP warrant screening; Streamlit shell per docs/07.

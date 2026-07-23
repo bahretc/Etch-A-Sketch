@@ -99,6 +99,24 @@ def _cmd_fill_template(args) -> int:
         if not rep.ok:
             raise RuntimeError(f"Integrity failed after setup: {rep.problems}")
         print("Evaluation Set-up populated.")
+
+    # 1-page results sheet manual cells
+    if args.results:
+        import shutil as _sh
+
+        from .results_sheet import (RESULTS_1T, RESULTS_2T,
+                                    build_results_edits, load_results_yaml)
+        from .xlsx_patch import verify_integrity, xlsx_patch
+        rdata = load_results_yaml(args.results)
+        rsheet = RESULTS_2T if args.target2 else RESULTS_1T
+        tmp = args.output + ".results.tmp"
+        xlsx_patch(args.output, tmp,
+                   edits={rsheet: build_results_edits(args.template, rdata, rsheet)})
+        _sh.move(tmp, args.output)
+        rep = verify_integrity(args.template, args.output)
+        if not rep.ok:
+            raise RuntimeError(f"Integrity failed after results: {rep.problems}")
+        print(f"Results sheet populated ({rsheet}).")
     print(f"Integrity: OK ({report.checked_members} drawings/media members "
           "byte-identical)")
     if args.recalc:
@@ -206,6 +224,10 @@ def build_parser() -> argparse.ArgumentParser:
     ft.add_argument("--setup",
                     help="Evaluation Set-up YAML (TEAAS date, construction "
                          "period, representative years, AADT tables).")
+    ft.add_argument("--results",
+                    help="Results-sheet YAML (project identity block, "
+                         "countermeasure text, Additional Information rows, "
+                         "Items for Discussion).")
     ft.add_argument("--config", help="Optional config override YAML.")
     ft.add_argument("--recalc", action="store_true",
                     help="Run the single LibreOffice headless recalc pass.")

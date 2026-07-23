@@ -75,13 +75,13 @@ def _col_letter(n: int) -> str:
     return s
 
 
-def _scan_sheet(template: str) -> dict[tuple[str, int], str]:
+def _scan_sheet(template: str, sheet: str = SHEET) -> dict[tuple[str, int], str]:
     """(col, row) -> cell text/value for every non-empty non-formula cell."""
     name_to_file = sheet_files(template)
-    if SHEET not in name_to_file:
-        raise KeyError(f"Template has no {SHEET!r} sheet")
+    if sheet not in name_to_file:
+        raise KeyError(f"Template has no {sheet!r} sheet")
     with zipfile.ZipFile(template) as z:
-        xml = z.read(name_to_file[SHEET]).decode("utf-8")
+        xml = z.read(name_to_file[sheet]).decode("utf-8")
         try:
             sst = z.read("xl/sharedStrings.xml").decode("utf-8")
             strings = [re.sub(r"<[^>]+>", "", m)

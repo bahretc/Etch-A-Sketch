@@ -1,0 +1,29 @@
+# Results-sheet inputs for 04-15-39049 (illustrative wording; the engineer
+# owns the final text). docs/05 style applies: plain, no em dashes.
+order_id: "41000075552"
+project_id: "04-15-39049"
+location: "SR 1003 (Buffalo Road) from SR 1716 to SR 2638, near Wendell"
+length: "0.12 miles"
+gps: "35.6521, -78.3568"
+county: "Johnston"
+city: "n/a"
+division: "4"
+countermeasures: |-
+  Install a two-way center turn lane on SR 1003 (Buffalo Road), including:
+     • Widening for the center turn lane
+     • Resurfacing and pavement markings
+cost: "$1,250,000"
+completion_date: "June 30, 2021"
+analysis_criteria: |-
+  Treatment data consists of all crashes on SR 1003 between MP 17.691
+  and MP 17.811.
+target_crashes: |-
+  Target-1: Left turn crashes (LTSR and LTDR).
+  Target-2: Rear end crashes.
+additional_info:
+  - {label: "TC: Left Turn Same Roadway", before: 18, after: 3}
+  - {label: "TC: Rear End", before: 3, after: 1}
+items_for_discussion:
+  - "A 14 month construction period was used based on provided project records."
+  - "The single Class A injury crash in the before period was a left turn crash at SR 1716."
+  - "Crash 104781542 has no severity stored in TEAAS; the DMV-349 report should be pulled to resolve it."

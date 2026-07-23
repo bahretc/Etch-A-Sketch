@@ -87,7 +87,9 @@ def _cell_xml(ref: str, value, style: str | None) -> str:
         v = repr(value) if isinstance(value, float) else str(value)
         return f'<c r="{ref}"{s_attr}><v>{v}</v></c>'
     text = escape(str(value))
-    space = ' xml:space="preserve"' if str(value) != str(value).strip() else ""
+    raw = str(value)
+    space = (' xml:space="preserve"'
+             if raw != raw.strip() or "\n" in raw else "")
     return f'<c r="{ref}"{s_attr} t="inlineStr"><is><t{space}>{text}</t></is></c>'
 
 

@@ -36,6 +36,9 @@ severity:
   # [CONFIRMED docs/04] Active NCDOT EPDO weights: K/A = 76.8, B/C = 8.4, PDO = 1.0
   epdo_weights: {K: 76.8, A: 76.8, B: 8.4, C: 8.4, O: 1.0}
   injury_letters: [K, A, B, C]   # anything not O and not blank counts as injury
+  # [CONFIRMED examples/SS-6002AD] TEAAS 5-column Crash ID List SVRTY codes:
+  # cross-checked against the Intersection Analysis Report injury columns.
+  numeric_codes: {1: K, 2: A, 3: B, 4: C, 5: O}
 
 # --- Road-surface condition ---------------------------------------------------
 # [VERIFY] "Wet Crashes (Road Codes 2-6)" per Section Eval Workbook guidance.

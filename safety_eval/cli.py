@@ -46,6 +46,41 @@ def _cmd_parse(args) -> int:
     return 0
 
 
+def _cmd_fill_template(args) -> int:
+    from .eval_workbook import populate_evaluation_workbook
+    from .teaas import parse_crash_id_list
+    from .xlsx_patch import recalc
+
+    cfg = Config.load(args.config)
+    before = parse_crash_id_list(args.before, cfg)
+    after = parse_crash_id_list(args.after, cfg)
+
+    # classify targets when requested
+    if args.target1 or args.target2:
+        from .classify import classify_targets
+        wanted = [t for t in (args.target1, args.target2) if t]
+        for crash in before + after:
+            crash.target_types = classify_targets(crash, wanted, cfg)
+
+    report = populate_evaluation_workbook(
+        args.template, args.output, before, after,
+        target1_name=args.target1, target2_name=args.target2,
+    )
+    print(f"Populated {len(before)} before / {len(after)} after crashes "
+          f"into {args.output}")
+    print(f"Integrity: OK ({report.checked_members} drawings/media members "
+          "byte-identical)")
+    if args.recalc:
+        ok = recalc(args.output)
+        print("Recalc pass:", "done" if ok else "SKIPPED (LibreOffice unavailable)")
+        if ok:
+            from .xlsx_patch import verify_integrity
+            rep2 = verify_integrity(args.template, args.output)
+            print("Post-recalc integrity:",
+                  "OK" if rep2.ok else f"FAILED: {rep2.problems}")
+    return 0
+
+
 def _cmd_doctor(args) -> int:
     print("OCR / PDF backends:")
     for name, ok in available_backends().items():
@@ -82,6 +117,23 @@ def build_parser() -> argparse.ArgumentParser:
                     choices=["auto", "csv", "teaas", "pdf"])
     pa.add_argument("--limit", type=int, default=10)
     pa.set_defaults(func=_cmd_parse)
+
+    ft = sub.add_parser(
+        "fill-template",
+        help="Populate a real NCDOT Evaluation Workbook template (columns A-M "
+             "of Before/After) from TEAAS Crash ID List exports.")
+    ft.add_argument("--template", required=True, help="Pristine template xlsx.")
+    ft.add_argument("--before", required=True,
+                    help="TEAAS 5-col Crash ID List for the before period.")
+    ft.add_argument("--after", required=True,
+                    help="TEAAS 5-col Crash ID List for the after period.")
+    ft.add_argument("--output", required=True)
+    ft.add_argument("--target1", help="Target-1 crash type name (config key).")
+    ft.add_argument("--target2", help="Target-2 crash type name, if defined.")
+    ft.add_argument("--config", help="Optional config override YAML.")
+    ft.add_argument("--recalc", action="store_true",
+                    help="Run the single LibreOffice headless recalc pass.")
+    ft.set_defaults(func=_cmd_fill_template)
 
     d = sub.add_parser("doctor", help="Report available optional backends.")
     d.set_defaults(func=_cmd_doctor)

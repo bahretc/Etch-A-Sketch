@@ -41,6 +41,14 @@ safety-eval run \
   --assignment examples/example_assignment.yaml \
   --outdir output
 
+# populate the REAL NCDOT Evaluation Workbook template (template-preserving)
+safety-eval fill-template \
+  --template "templates/Intersection Evaluation Workbook - 2023-12-04.xlsx" \
+  --before examples/SS-6002AD/41000078044BEFORE1_CrashID.txt \
+  --after  examples/SS-6002AD/41000078044AFTER1_CrashID.txt \
+  --target1 "Frontal Impact" \
+  --output out.xlsx --recalc
+
 safety-eval parse  --fiche path/to/fiche.pdf     # preview parsed crashes
 safety-eval doctor                               # which OCR/PDF backends are available
 ```
@@ -69,12 +77,26 @@ assumptions email — it is the auditable record of study scope. See
 | Stage | Module | What it does |
 |---|---|---|
 | Parse | `fiche_parser.py` | CSV + TEAAS-text/PDF → `Crash` records |
+| TEAAS exports | `teaas.py` | 5-column Crash ID List parser (numeric SVRTY → KABCO) |
 | OCR | `ocr.py` | Lazy, pluggable PDF→text (pdfplumber → pypdf → tesseract) |
 | Classify | `classify.py` | In-study (by milepost), study period, target crash types |
 | Periods | `periods.py` | Date Range Calculator (before / construction / after) |
 | AADT | `aadt.py` | Length-weighted corridor AADT by sub-section |
 | Analysis | `analysis.py` | Counts by severity/target, crash rates, effectiveness |
-| Report | `report.py` | Excel workbook + Markdown |
+| Report | `report.py` | Standalone summary workbook + Markdown |
+| Template writer | `xlsx_patch.py` | docs/06-compliant XML patching, LibreOffice recalc (cache transplant), byte-identical integrity gate |
+| Workbook populate | `eval_workbook.py` | Fills Before/After columns A-M of the real template; formulas untouched |
+
+### Template-preserving writes (docs/06)
+
+`fill-template` never resaves the template with openpyxl. It rewrites only the
+targeted worksheet XML inside a copy of the zip, copies every other member
+byte-for-byte, and verifies drawings/media are byte-identical afterward. The
+`--recalc` pass is a LibreOffice headless round-trip with recalc-on-load forced
+(`OOXMLRecalcMode=0`); only the recalculated formula caches are transplanted
+back, so drawings stay untouched. Validated on the SS-6002AD example: the
+populated template's own KABCO block computes Severity Index 4.70, matching the
+TEAAS Intersection Analysis Report for that study.
 
 **Effectiveness methodology** (naive before/after, adjusted for time & traffic):
 
@@ -132,9 +154,21 @@ pip install -e '.[dev]'
 pytest -q
 ```
 
+## Ground truth in this repo
+
+- `templates/` — pristine 2023-12-04 Intersection and Section Evaluation
+  Workbook templates (authoritative for cell addresses, CLAUDE.md rule 8).
+- `examples/SS-6002AD/` — a completed intersection evaluation (NC 91 at SR
+  1225/SR 1303, Greene County) with its raw TEAAS before/after exports, used
+  as known-value test fixtures.
+
 ## Roadmap
 
+- [x] Populate the official NCDOT Intersection Evaluation Workbook template in
+      place (columns A-M, integrity-verified, LibreOffice recalc).
+- [ ] Section Evaluation Workbook population (Before/After A-M plus mileposts).
+- [ ] Evaluation Set-up sheet population (dates, AADT calculator, TEAAS date).
 - [ ] Parse the assignment/assumptions email (`.msg`/`.eml`) directly.
 - [ ] Empirical-Bayes (EB) before/after in addition to the naive method.
-- [ ] Populate the official NCDOT Section Evaluation Workbook template in place.
+- [ ] 2021 HSIP warrant screening; Streamlit shell per docs/07.
 - [ ] Optional Google Drive read/write integration.

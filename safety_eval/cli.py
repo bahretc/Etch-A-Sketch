@@ -254,6 +254,20 @@ def _cmd_redact(args) -> int:
     return 0
 
 
+def _cmd_assumptions(args) -> int:
+    import os as _os
+
+    from .assumptions_email import (default_filename,
+                                    generate_assumptions_email,
+                                    load_assumptions_yaml)
+    data = load_assumptions_yaml(args.input)
+    _os.makedirs(args.outdir, exist_ok=True)
+    out = _os.path.join(args.outdir, default_filename(data))
+    generate_assumptions_email(data, out)
+    print(f"Wrote {out}")
+    return 0
+
+
 def _cmd_doctor(args) -> int:
     print("OCR / PDF backends:")
     for name, ok in available_backends().items():
@@ -366,6 +380,14 @@ def build_parser() -> argparse.ArgumentParser:
     rd.add_argument("--dpi", type=int, default=200,
                     help="Rasterization DPI for PDF input (default 200).")
     rd.set_defaults(func=_cmd_redact)
+
+    ae = sub.add_parser(
+        "assumptions",
+        help="Generate the assumptions email .docx from a YAML (docs/05 team "
+             "template; periods computed from TEAAS date + construction).")
+    ae.add_argument("--input", required=True, help="Assumptions YAML.")
+    ae.add_argument("--outdir", default=".")
+    ae.set_defaults(func=_cmd_assumptions)
 
     d = sub.add_parser("doctor", help="Report available optional backends.")
     d.set_defaults(func=_cmd_doctor)

@@ -39,15 +39,16 @@ def test_results_sheet_names_covers_archive_variants():
     (41000075105, 41000064924, 41000075594); anything ending in
     '- N Target(s)' is a results sheet, lookalikes are not."""
     names = ["Step-by-Step Instructions", "Typical Target Crash Types",
-             "Filtered Fiche", "1 page results - 1 Target",
-             "1 page results - 2 Targets", "Results - 1 Target",
-             "Results - 2 Targets", "Unequal time periods - 1 Target",
-             "Precip. Data Evals - 1 Target"]
+             "Typical Target Crashes", "Filtered Fiche",
+             "1 page results - 1 Target", "1 page results - 2 Targets",
+             "Results - 1 Target", "Results - 2 Targets",
+             "Unequal time periods - 1 Target",
+             "Precip. Data Evals - 1 Target", "3+ Target Crashes"]
     picked = results_sheet_names(names)
     assert picked == ["1 page results - 1 Target",
                       "1 page results - 2 Targets", "Results - 1 Target",
                       "Results - 2 Targets", "Unequal time periods - 1 Target",
-                      "Precip. Data Evals - 1 Target"]
+                      "Precip. Data Evals - 1 Target", "3+ Target Crashes"]
 
 
 def test_variant_results_sheet_extracted(workbook, tmp_path):

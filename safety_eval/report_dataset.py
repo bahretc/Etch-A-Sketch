@@ -28,12 +28,15 @@ from dataclasses import dataclass, field
 RESULTS_SHEETS = ("1 page results - 1 Target", "1 page results - 2 Targets")
 
 # Some delivered workbooks carry the results on a renamed or variant
-# one-pager instead of (or alongside) the standard pair - observed in the
-# archive: "Results - 1 Target"/"Results - 2 Targets" (41000075105),
-# "Unequal time periods - 1 Target" (41000064924), "Precip. Data Evals -
-# 1 Target" (41000075594). Anything ending "- N Target(s)" is a results
-# one-pager; "Typical Target Crash Types" and the like do not match.
-_RESULTS_SHEET_RE = re.compile(r"-\s*\d\s*Targets?\s*$", re.I)
+# one-pager instead of (or alongside) the standard pair. The variant names
+# come from the Split Time Periods templates ("Results - 1/2 Target") and
+# the atypical one-page report template workbook ("Unequal time periods -
+# 1/2 Target", "Precip. Data Evals - 1/2 Target", "3+ Target Crashes"),
+# all in templates/. Anything ending "- N Target(s)" or "N+ Target
+# Crashes" is a results one-pager; "Typical Target Crash Types" /
+# "Typical Target Crashes" (reference sheets) must not match.
+_RESULTS_SHEET_RE = re.compile(
+    r"-\s*\d\s*Targets?\s*$|^\d+\+?\s*Target Crashes\s*$", re.I)
 
 
 def results_sheet_names(sheetnames) -> list[str]:

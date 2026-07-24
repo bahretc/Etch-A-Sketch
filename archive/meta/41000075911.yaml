@@ -1,0 +1,60 @@
+wo: '41000075911'
+title: WO-41000075911 04-15-35683
+folder_ids:
+- 1cJ0fRtMR2Oe9faE-GCu_yUhG0Dsj8zSv
+project_id: 04-15-35683
+tip: W-5601DP
+analysis_type: section
+targets: 1
+countermeasure: Spot pavement widening on SR 1003 where adequate shoulder is available.  Includes
+  piping approximately 800 feet of ditch from SR 1770 (Fletcher Drive) north along
+  the right side where shoulder is not adequate for pavement widening.
+countermeasure_family: shoulders
+county: Johnston
+division: '4'
+completed: 2021
+companions: []
+split: verify
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook - 04-15-35683.xlsx
+    id: 1scjTT72N_A_9HJuq9I40Kp8E4Djmwkxc
+    size: 5855719
+  - path: Crash Analysis/~$Section Evaluation Workbook - 04-15-35683.xlsx
+    id: 1Z-6birHrLmbr8ASbos0Pg8jbxszct_CK
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1BEQppihyYM4HqYB5WjcAtz3WXZb9Bcl_
+    size: 62047
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1S-uvOu6Aisbwntezo6V7Y2KIy8cOiCJN
+    size: 46393
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1LFcwDi83Ciax4ZIe9Dw4WAItYhDLlYpL
+    size: 274176
+  id_lists:
+  - path: Crash Analysis/After_ID.txt
+    id: 1S2S7Z9O-zO-ReTSkqD9MoJXvXgwIcHY_
+    size: 4591
+  - path: Crash Analysis/After_Import.txt
+    id: 1m4IotslVe0JrbYI4atP1DW5I-Aa_2aqS
+    size: 2014
+  - path: Crash Analysis/Before_ID.txt
+    id: 105phrpjzEUGzxZQe1nNXdcDjPoHQMEOn
+    size: 2912
+  - path: Crash Analysis/Before_Import.txt
+    id: 1D2SqxFGyfp8oXVVxArSzME2vSTEQzkQP
+    size: 1273
+  reports:
+  - path: 04-15-35683_Complete Eval.pdf
+    id: 1nnmUjG8E1tkBCrEWFiWqtxmA6OOjQJDX
+    size: 1263648
+  - path: 04-15-35683_Web.pdf
+    id: 1G3KDEJ7xLXiO7ZMcu3aHkX56XQBa5Yg_
+    size: 1000626

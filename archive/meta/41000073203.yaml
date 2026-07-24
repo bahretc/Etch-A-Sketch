@@ -1,0 +1,52 @@
+wo: '41000073203'
+title: WO-41000073203 05-17-6454
+folder_ids:
+- 1ZprjqMkcTxc-4k1gt91plV-zhKLGxbIR
+project_id: 05-17-6454
+tip: ''
+analysis_type: intersection
+targets: 1
+countermeasure: Improve Sight Distance Triangle in northeast quadrant.
+countermeasure_family: other
+county: Wake
+division: '5'
+completed: 2019
+companions: []
+split: verify
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 05-17-6454.xlsx
+    id: 1hXZ9VwOeIrodS5e67yC0-ZMes8wRNNYR
+    size: 3552076
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 05-17-6454.xlsx
+    id: 16YdzjOQrE-GNtVdjN-reXLC2bxE-cJW9
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 11P49BPuRJZyqaqbYVTiiOjZrRH4pGVIZ
+    size: 12947
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1vXvHTCFRt3_ZpPTiRdJ4hO_d69nVltA0
+    size: 13995
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1X-oi66V2X7j_B27-xeYzVnOHusu3WdlU
+    size: 94432
+  id_lists:
+  - path: Crash Analysis/After_CrashID.txt
+    id: 1QtSuBFQKWmszwG_OZUTPh2PjHO9QYtDN
+    size: 509
+  - path: Crash Analysis/Before_CrashID.txt
+    id: 1Hy6i9T37MpRTXnHDyMitIxVdUhfuL8CZ
+    size: 379
+  reports:
+  - path: 05-17-6454_Web.pdf
+    id: 1Ofu3z3ZjYv5jf_lnGf1fqpHMx9gVrJEJ
+    size: 871626
+  - path: 05-17-6454_Complete Evaluation.pdf
+    id: 1mazyCKLTEoYaRjRCvdfnM0dOSMP1QuVS
+    size: 920806

@@ -1,0 +1,57 @@
+wo: '41000069900'
+title: WO-41000069900 08-15-4984 (W-5601EK)
+folder_ids:
+- 1FGlvUyJqPXYH-3Tl-vevbPd1xVYarLCD
+project_id: 08-15-4984
+tip: W-5601EK
+analysis_type: section
+targets: 1
+countermeasure: Widen US 311 to a three-lane cross section with a two-way left-turn
+  (TWLTL).
+countermeasure_family: other
+county: Randolph
+division: '8'
+completed: 2018
+companions: []
+split: train
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook - 08-15-4984 (W-5601EK) table.xlsx
+    id: 1oRrklk8pCLhlORY3c8PFtVa3dh_YuoCo
+    size: 4512646
+  - path: Crash Analysis/Section Evaluation Workbook - 08-15-4984 (W-5601EK).xlsx
+    id: 1TYamqqbbuJwh02BrLy3Afp6FmiPfXEIk
+    size: 4511053
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #20.msg'
+    id: 1_iNZ8T717RuP6O3WA1wVwJWKa_GBjxxe
+    size: 151040
+  fiche_csv:
+  - path: Crash Analysis/41000069900BEFORE.csv
+    id: 1IiXOc-h-R_u0chozT7xkXnYo6bgCKoBg
+    size: 20496
+  - path: Crash Analysis/InitialStudy.csv
+    id: 1Ynv7f7-vS-RYHamPGke8cImUVzTH9dBr
+    size: 23921
+  - path: Crash Analysis/41000069900AFTER.csv
+    id: 1n_cntgl2fVDJVyl_oWo12mKKaCNozcD4
+    size: 12941
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1N7MWxrhR8474hqUA-nKNR0ff3CGPGajT
+    size: 118042
+  id_lists:
+  - path: Crash Analysis/41000069900BEFORE_CrashID.txt
+    id: 1kZNPWLJdYNIR9Y4l0DbtIf1Rn3ecUtdA
+    size: 1024
+  - path: Crash Analysis/41000069900AFTER_CrashID.txt
+    id: 1Fq415SmkpAVgagQ44uMhf3V7ds1wngGm
+    size: 251
+  reports:
+  - path: 08-15-4984 (W-5601EK) Complete Eval.pdf
+    id: 15RUeVyNakoEbk8x0skzV-Ufmz7KpPDss
+    size: 571458
+  - path: 08-15-4984 (W-5601EK) Web.pdf
+    id: 14t6-l5equUZkdynIJJ1zXQw-WsLQPyI-
+    size: 498075

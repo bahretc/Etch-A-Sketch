@@ -1,0 +1,50 @@
+wo: '41000069609'
+title: WO-41000069609 03-16-43808 (SS-4903CS)
+folder_ids:
+- 15y4VCV6K7hOpbOVB1Wyocb79l9rpjKag
+project_id: 03-16-43808
+tip: SS-4903CS
+analysis_type: intersection
+targets: 1
+countermeasure: Construct a right-turn lane on NB SR 1900 (Lanefield Road) and EB
+  NC 24 Business/NC 50.
+countermeasure_family: turn-lanes
+county: Duplin
+division: '3'
+completed: 2018
+companions: []
+split: verify
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 03-16-43808 (SS-4903CS).xlsx
+    id: 1553__jsB0hOpF-dL5mtHhNPu9jVOntC9
+    size: 4071896
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/41000069609AFTER.csv
+    id: 11ObkcvOaSWirefmP6Vpcs9vJ6EyxoI_f
+    size: 11513
+  - path: Crash Analysis/41000069609BEFORE.csv
+    id: 1em2OJf_lBWHZaENUoDPM-tscFt3Ockhv
+    size: 13064
+  - path: Crash Analysis/41000069609_InitialStudy.csv
+    id: 1YBtklxE6zo_CFhpfihl5XgR0hfHO8ABn
+    size: 13797
+  id_lists:
+  - path: Crash Analysis/41000069609AFTER_CrashID.txt
+    id: 15kZ0j88XQeK5LeNXdjZfYGe1Fo05CfQX
+    size: 251
+  - path: Crash Analysis/41000069609BEFORE_CrashID.txt
+    id: 1zZE4zA7pkn_GD6ST55gi1rmrDP4w3rxU
+    size: 337
+  reports:
+  - path: 03-16-43808 (SS-4903CS) Complete Eval.pdf
+    id: 12fvTtLCAGRTHZt4k_LZYVrikQCKdexs3
+    size: 856210
+  - path: 03-16-43808 (SS-4903CS) Web.pdf
+    id: 196_-lGrtWM3UTLH0ENL2x9iG8Aq-s5LT
+    size: 806786

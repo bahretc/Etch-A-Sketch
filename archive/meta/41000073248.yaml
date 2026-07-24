@@ -1,0 +1,45 @@
+wo: '41000073248'
+title: WO-41000073248 09-18-897
+folder_ids:
+- 1k6tYFCRB_c6kz6SaQk5ratOIxslYfl13
+project_id: 09-18-897
+tip: SS-4909CD
+analysis_type: section
+targets: 1
+countermeasure: Wedge curve on SR 2085 to improve superelevation, and provide 1.5”
+  overlay over entire roadway once wedging is complete. Also replace guardrail on
+  outside edge of curve.
+countermeasure_family: barrier
+county: Davidson
+division: '9'
+completed: 2019
+companions: []
+split: verify
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook - 09-18-897.xlsx
+    id: 1O-Cr_0n4892H5MK8uYG9Uno23jNay97h
+    size: 3814920
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1MmWcYNYV2-sQKog0oYNoax4EB9P1DpDw
+    size: 15697
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1Ux7qR9ihljsIuRiN6ZX-HQf6FdcBA8TY
+    size: 12478
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1ng0C_NdkKkBZA14tHFmBMg6RrYheRM0J
+    size: 110535
+  id_lists: []
+  reports:
+  - path: 09-18-897_Complete Eval.pdf
+    id: 1JuAcNTofZuSKHZ6NmB1N7JcCu6CzfVls
+    size: 673906
+  - path: 09-18-897_Web.pdf
+    id: 1NH1M0xtQgbORQUbyUY9cioQY_bGYFdXx
+    size: 614657

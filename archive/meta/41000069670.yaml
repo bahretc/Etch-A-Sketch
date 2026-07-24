@@ -1,0 +1,54 @@
+wo: '41000069670'
+title: WO-41000069670 12-17-201 (SS-4912CK)
+folder_ids:
+- 19jTgCSuugkWnuAaqAJ_BvZlmKdEjAZTy
+project_id: 12-17-201
+tip: SS-4912CK
+analysis_type: intersection
+targets: 1
+countermeasure: Install reflective backing plates on US 64 signal heads. Recalculate
+  clearance times based on current stop bar locations. Add 3 section FYA signal head
+  for US 64 permissive left turns onto SR 1005 to bring attention to the signal. Remove
+  stop bars in US 64 right-turn lanes and replace with yield markings; these movements
+  are not controlled by the signal.
+countermeasure_family: signal
+county: Iredell
+division: '12'
+completed: null
+companions: []
+split: train
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 12-17-201 (SS-4912CK).xlsx
+    id: 1K_pI8c7H7Qcrqovs6NSLMe0bahs9UWMh
+    size: 3332268
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #3.msg'
+    id: 1R2aHZAER40Ke6XomuQmR5lmxP7y0TBX-
+    size: 187392
+  fiche_csv:
+  - path: Crash Analysis/41000069670AFTER.csv
+    id: 1tqR1YjXb0C7wPkDpUjKZD_lrclyLZhEA
+    size: 14191
+  - path: Crash Analysis/41000069670BEFORE.csv
+    id: 1T1G9opMt5SBUCU0HT0WnafCxyzQBu6r0
+    size: 20393
+  - path: Crash Analysis/InitialStudy.csv
+    id: 1VnGM0xyVMRh_E6-Hgp2Qr39e_ZAuslqz
+    size: 25180
+  id_lists:
+  - path: Crash Analysis/41000069670AFTER_CrashID.txt
+    id: 1RDoWbzwfmsYeXFYRBfTShEG9WpvkldcR
+    size: 509
+  - path: Crash Analysis/41000069670BEFORE_CrashID.txt
+    id: 1ghFO5xae2WSDal_-CCT7kIgyK4LVzh8s
+    size: 1154
+  reports:
+  - path: 12-17-201 (SS-4912CK) Complete Eval.pdf
+    id: 1-kHKQMfKwDr6OVFCR-7rVSbwMaTOfUNm
+    size: 604827
+  - path: 12-17-201 (SS-4912CK) Web.pdf
+    id: 1YUaTSCxhLKvaNtE2ytIr8ik8Nl9C61F0
+    size: 532958

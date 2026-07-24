@@ -1,0 +1,54 @@
+wo: '41000069620'
+title: WO-41000069620 04-16-44452 (SS-4904ED)
+folder_ids:
+- 11WLloaRE4T0e3udDd6gvluk-9SbpX3je
+project_id: 04-16-44452
+tip: SS-4904ED
+analysis_type: intersection
+targets: 1
+countermeasure: Signal upgrade including advance radar detection system on northbound
+  and southbound US 301 approaches.
+countermeasure_family: signal
+county: Wilson
+division: '4'
+completed: null
+companions: []
+split: train
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 04-16-44452 (SS-4904ED).xlsx
+    id: 1YerpwrA3tLA7tsVwaC0qnypdv6sLuENp
+    size: 3248485
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 07-16-678 (SS-4907CB).xlsx
+    id: 1OzWbNa1q1SPgkHqVPubm1UcfGNhOkJ_p
+    size: 165
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #2.msg'
+    id: 1M_9CJ_EkDlZMmUVX1g8v4-T0iqhIldsf
+    size: 173568
+  fiche_csv:
+  - path: Crash Analysis/41000069620AFTER.csv
+    id: 1i8e22z13KiShXUkZAu6sQpYEglyY2G-Z
+    size: 15302
+  - path: Crash Analysis/41000069620BEFORE.csv
+    id: 1ELLQQHC7OgrRWQBXqTj-ei5NgoD-C4XN
+    size: 15687
+  - path: Crash Analysis/41000069620_Fiche.csv
+    id: 1huTOXA271iny7xHb0fqNCg-deeVMm4EU
+    size: 254061
+  - path: Crash Analysis/41000069620_InitialStudy.csv
+    id: 1fVJzDkYlWZWFkf4NuWSVPIeXf1_m5LIh
+    size: 21704
+  id_lists:
+  - path: Crash Analysis/41000069620AFTER_CrashID.txt
+    id: 1QVahqAf244BoT7Aqa-fK1nngYJP0c53j
+    size: 552
+  - path: Crash Analysis/41000069620BEFORE_CrashID.txt
+    id: 1I84svm57m30O5DY05lxZO3aPoGuiDZ-M
+    size: 638
+  reports:
+  - path: 04-16-44452 (SS-4904ED) Web.pdf
+    id: 1zCQJx8aEAJFsm6kDzTq7I-NIXYDNNBVa
+    size: 520607

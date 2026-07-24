@@ -1,0 +1,56 @@
+wo: '41000069690'
+title: WO-41000069690 05-13-6997
+folder_ids:
+- 10wWx3O_u_gGB7ogVoo6c6H-gtWDc4F1V
+project_id: 05-13-6997
+tip: ''
+analysis_type: intersection
+targets: 1
+countermeasure: Revise traffic signal by replacing 5-section Protected/Permitted Left
+  Turn signals on both NC 157 approaches with 4-section Flashing Yellow Arrow (FYA)
+  signals, and shift Bojangles entrance driveway/southbound stop bar so that the driveway
+  is contained within the intersection. Crosswalk across southbound leg also removed
+  as part of project.
+countermeasure_family: signal
+county: Durham
+division: '5'
+completed: 2018
+companions: []
+split: verify
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 05-13-6997.xlsx
+    id: 1kuycrGivaQ0ZbrC3i_gXM4k0mEYadL0K
+    size: 2683495
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 05-13-6997.xlsx
+    id: 1wFTGk97KJ7AZirf0zEB68mT2cecY6NfK
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1oi7m0N2mzDmSeTOutMCPOd0eWZaBQiRf
+    size: 62307
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1zexvqatS5WgYoPSe5MMCq_ySJuXVeaAD
+    size: 60065
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1hFF2QAQ0O1UEgJ0WXq1bsnyWXz684wcj
+    size: 618790
+  id_lists:
+  - path: Crash Analysis/After_ID.txt
+    id: 1qFcmg3BEnv0W32a1H-pX2snZxNuiZ8cL
+    size: 5316
+  - path: Crash Analysis/Before_ID.txt
+    id: 1jxJRZinx1fayn1gMyVY306iIodGJAMCb
+    size: 5539
+  reports:
+  - path: 05-13-6997_CompleteEval.pdf
+    id: 18VXeqLUbLAcFtyZlLh-qx-t-2jHr9JFH
+    size: 831956
+  - path: 05-13-6997_Web.pdf
+    id: 10fPByZQFOR7QMONf-ZMGSkxUX_1_7pXS
+    size: 540851

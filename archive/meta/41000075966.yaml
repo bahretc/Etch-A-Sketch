@@ -1,0 +1,50 @@
+wo: '41000075966'
+title: WO-41000075966 10-20-217 (SS-6010Q)
+folder_ids:
+- 1whLig_ESMz0qzhAePD_OyLcSSzyn9Xia
+project_id: 10-20-217
+tip: SS-6010Q
+analysis_type: intersection
+targets: 1
+countermeasure: 'Convert intersection to All-Way STOP Control, including: Installation
+  of STOP Ahead Warning signs (W3-1) with Flashing Beacons and STOP Ahead Pavement
+  Markings on SR 2400 (Irish Potato Road) approaches and adding STOP Ahead Pavement
+  markings and Flashing Beacons to existing STOP Ahead Warning signs on SR 2402 (Sapp
+  Road) approaches.'
+countermeasure_family: awsc
+county: Cabarrus
+division: '10'
+completed: 2021
+companions: []
+split: verify
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook_10-20-217.xlsx
+    id: 1lPD_Yx_zJ81d99pIvg70aldZDVWeAP1U
+    size: 3446138
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 10-20-217.xlsx
+    id: 1iGjmskMXaT33VAVnbY0eRMgIXkjUuWLr
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1UVG-FAOrC2IueLhEGzKZnsJjyvtLk6Yc
+    size: 11660
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1yRYPdUSIz47XXUvPcjcJ8tjEBZVxaKXE
+    size: 12526
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 12aXK0FBYz9xNCHo9GNRLLniyzclm_7iX
+    size: 57603
+  id_lists: []
+  reports:
+  - path: 10-20-217 Complete Eval.pdf
+    id: 1baE1IHAzE4U5pQePMfRMXB2cQBCuIiv3
+    size: 627813
+  - path: 10-20-217 Web.pdf
+    id: 16NOsNZUCd9IzWXs6bDygdB2qp9R8IEth
+    size: 579769

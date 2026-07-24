@@ -1,0 +1,58 @@
+wo: '41000069597'
+title: WO-41000069597 08-17-49850 (SS-4908BT)
+folder_ids:
+- 1d4iKTQh7m1mKJRzwyl2znpV3_U1Ksu5A
+project_id: 08-17-49850
+tip: SS-4908BT
+analysis_type: intersection
+targets: 1
+countermeasure: Install an all way stop. – please also provide info on the signing
+  and marking enhancements in the description for the report (such as approaches that
+  got STOP AHEAD pavement markings, Oversized Stop Signs, etc).
+countermeasure_family: awsc
+county: Lee
+division: '8'
+completed: 2018
+companions: []
+split: train
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 08-17-49850 (SS-4908BT).xlsx
+    id: 1zyq0M0GdZMqHKY_oroT5QvQjn9LiRpDq
+    size: 3882476
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 11-13-400 (W-5601AH).xlsx
+    id: 1Sr45gk-4yyD0sW4lgxkuqOzH7I0FfpED
+    size: 165
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #13.msg'
+    id: 1Hm6ZEh_-KJkJT8Hz1F7TZP45zHdPArzq
+    size: 153088
+  fiche_csv:
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1ze8W_im4vGlavGXNuKPBHlEM2H5IQW_m
+    size: 149700
+  - path: Crash Analysis/InitialStudy.csv
+    id: 18C1aJj3EJax3Rq3y3dCdTHTSF4K496_f
+    size: 14961
+  - path: Crash Analysis/41000069597AFTER.csv
+    id: 1V7zVroM5d5j_il-s0BEaProJySfZZsTH
+    size: 10241
+  - path: Crash Analysis/41000069597BEFORE.csv
+    id: 1gubYH9oOymTIjz5U7pdgKq35mNqT8tJp
+    size: 14182
+  id_lists:
+  - path: Crash Analysis/41000069597AFTER_CrashID.txt
+    id: 19rdU6I0H8LCK_7LLBzljJ1u0wh65A6R7
+    size: 79
+  - path: Crash Analysis/41000069597BEFORE_CrashID.txt
+    id: 1GnJfLIKOTR1MQ0GOzb3ihtzDihXKC_qH
+    size: 509
+  reports:
+  - path: 08-17-49850 (SS-4908BT) Web.pdf
+    id: 1TtrADNdumoCe4PNjjE69HYKOt0izycQW
+    size: 664928
+  - path: 08-17-49850 (SS-4908BT) Complete Eval.pdf
+    id: 1lQx72M1tdJGYbVk3q_rX20l_FOuppg2D
+    size: 708681

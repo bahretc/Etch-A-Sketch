@@ -1,0 +1,61 @@
+wo: '41000073320'
+title: WO-41000073320 04-18-55758
+folder_ids:
+- 11SAY13OpKmVxcxs-wqY235tiV_8BNQA7
+project_id: 04-18-55758
+tip: ''
+analysis_type: section
+targets: 1
+countermeasure: Install long-life 6” edgelines and centerlines along SR 1309.
+countermeasure_family: other
+county: Johnston
+division: '4'
+completed: 2019
+companions: []
+split: train
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook 04-18-55758.xlsx
+    id: 1m_czJtqAsLTyw8mpDa6yCiIudDtGv912
+    size: 2021797
+  - path: Crash Analysis/~$Section Evaluation Workbook 04-18-55758.xlsx
+    id: 17kOwRXWU9bP2iKVe7lVsphgxeVLD2Td7
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 19ZtaU9o5FAPW1PgwYo4THN-NYz18x3xv
+    size: 70208
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1hJZ0QZWZuHAdYvgCceD5zQLqdjcruXKv
+    size: 74052
+  - path: Crash Analysis/OriginalFiche_Harnett.csv
+    id: 1jd8GPGaNeyxdbd4CcqYH-VjZ9wopQ4vx
+    size: 23232
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1A6spqvqjB4nJFRfMWFSpxedFYBVs8GNE
+    size: 61294
+  id_lists:
+  - path: Crash Analysis/After_CrashID.txt
+    id: 1UNasQdN2qphg6F-CG0TPDll4B56x1ci8
+    size: 4978
+  - path: Crash Analysis/After_Import.txt
+    id: 1qu7tLnx-aR3MY71Z8Bl3ZS0dz6ZwOSjc
+    size: 2005
+  - path: Crash Analysis/Before_Import.txt
+    id: 107bRSqxh9SfL_oxMgRF9BtSB-07SOun1
+    size: 1792
+  - path: Crash Analysis/Before_CrashID.txt
+    id: 1WE4wXVgBnWzlvlZzej1l-U5J8__Rc0fc
+    size: 4457
+  reports:
+  - path: 04-18-55758_Web.pdf
+    id: 1k6cdA33fqTK5EQI707ZSKUpRXTWhZzv_
+    size: 518126
+  - path: 04-18-55758_Complete Evaluation.pdf
+    id: 1cMyBdm84bdTHR_HAFVFSAnfPi9Hwxfl0
+    size: 852544

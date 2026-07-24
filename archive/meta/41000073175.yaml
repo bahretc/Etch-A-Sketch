@@ -1,0 +1,64 @@
+wo: '41000073175'
+title: WO-41000073175 04-17-49450 (SS-4904EK)
+folder_ids:
+- 11sbjXopBTYMqYJ_U7_vftNtzxcCzP5Gc
+project_id: 04-17-49450
+tip: SS-4904EK
+analysis_type: intersection
+targets: 2
+countermeasure: Shift southbound left turn lane toward the median to install a 4'
+  monolithic concrete channelization island between the southbound US 117 left turn
+  lane and adjacent through lane for approximately 240'.  I think it’ll be good to
+  explain in the discussion that the median was targeting RT, RE and SS crashes associated
+  with the driveway.  The median also provided some offset to the left turn lane,
+  but the lefts are protected, so the impact of the offset may be negligible.
+countermeasure_family: turn-lanes
+county: Wayne
+division: '4'
+completed: 2019
+companions: []
+split: train
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 04-17-49450 (SS-4904EK).xlsx
+    id: 1VjWAPaGBweTEFM09xcBfS1ynrBPkyGDt
+    size: 7044897
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ #37 04-17-49450 (SS-4904EK) Evaluation Assumptions.msg'
+    id: 1gXCrP5D27xXnYymgcsx8Rk9nBMuKQTBL
+    size: 201216
+  fiche_csv:
+  - path: Crash Analysis/41000073175AFTER.csv
+    id: 16RZqnueGZwgNrJtt0d_SU6J5f4noYm8M
+    size: 44459
+  - path: Crash Analysis/41000073175BEFORE.csv
+    id: 1Bn5qed8fZPZbTEN9naeif4DZQLJ2PAy5
+    size: 43086
+  - path: Crash Analysis/41000073175_Fiche.csv
+    id: 1AMW8hfTA9dua3Wy2tNSs4WopHfhGN4xI
+    size: 624118
+  - path: Crash Analysis/41000073175_InitialStudy.csv
+    id: 12hZt5p9IuAkoGEZGrT0AUL_XJgZJqlJ-
+    size: 71012
+  id_lists:
+  - path: Crash Analysis/41000073175AFTER_CrashID.txt
+    id: 1IKrMVjPIhGt63vgNvq697ZJiucsZOpHz
+    size: 3605
+  - path: Crash Analysis/41000073175BEFORE_CrashID.txt
+    id: 1YRDk90mj3ag97iYZT34JTYzbsZqqJd8o
+    size: 3432
+  - path: Crash Analysis/041116441AFTER_CrashID.txt
+    id: 1LkQpdoQdR4K-M22zyMZ-LXdRIZhrtz8z
+    size: 2400
+  reports:
+  - path: 04-17-49450 (SS-4904EK) Complete Evaluation.pdf
+    id: 1km3lo7UJxuU8HrHXQlPBkrBgHQIOMRWJ
+    size: 759976
+  - path: 04-17-49450 (SS-4904EK) Web.pdf
+    id: 10lQhOnTbmZ1cT3PEEt4CM-wk6UWypu-k
+    size: 545570
+  - path: 02-17-48975 (W-5702Q) Web.pdf
+    id: 1MYlHs3KQnBhyXecyyX2f9_SXwyR6iadv
+    size: 535966

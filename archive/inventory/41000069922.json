@@ -1,0 +1,202 @@
+{
+ "folder_id": "1usTTUFL8l1yRmBlBJDsyvcHIrPpX7aev",
+ "title": "WO-41000069922 08-16-0723 (W-5601HV)",
+ "files": [
+  {
+   "path": "08-16-0723 (W-5601HV) Complete Eval.pdf",
+   "id": "1pJhpDhZuhFl19c2U1mXBrF4a21xrZF0Y",
+   "title": "08-16-0723 (W-5601HV) Complete Eval.pdf",
+   "mime": "application/pdf",
+   "size": 714185
+  },
+  {
+   "path": "08-16-0723 (W-5601HV) Web.pdf",
+   "id": "1FMXnhSwLfeqyfs-fF9pcjapBvjayTxQ7",
+   "title": "08-16-0723 (W-5601HV) Web.pdf",
+   "mime": "application/pdf",
+   "size": 649902
+  },
+  {
+   "path": "~$Section Evaluation Workbook - 08-16-0723 (W-5601HV).xlsm",
+   "id": "1nRj0LU_JZElF2YH22KpyDRlrWntKoxKD",
+   "title": "~$Section Evaluation Workbook - 08-16-0723 (W-5601HV).xlsm",
+   "mime": "application/vnd.ms-excel.sheet.macroenabled.12",
+   "size": 165
+  },
+  {
+   "path": "Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #22.msg",
+   "id": "1nzY-c2GumbEqlpAlx6Vq8zg-YagSV8WW",
+   "title": "RE_ _External_ Safety Evaluation - VHB - Assignment #22.msg",
+   "mime": "application/vnd.ms-outlook",
+   "size": 201216
+  },
+  {
+   "path": "Notes/Ordinances_NC42_Repealed.pdf",
+   "id": "12KX4WQhPv6HizvFNjlUx9TWOwr1ukMX1",
+   "title": "Ordinances_NC42_Repealed.pdf",
+   "mime": "application/pdf",
+   "size": 26526
+  },
+  {
+   "path": "Notes/Ordinances_NC42_Active.pdf",
+   "id": "1TWZhT-ubITPJqzlRYkrJTN_IWW_HHhY0",
+   "title": "Ordinances_NC42_Active.pdf",
+   "mime": "application/pdf",
+   "size": 18243
+  },
+  {
+   "path": "Notes/Assumptions Email - 08-16-0723 (W-5601HV).docx",
+   "id": "1fsO5eOGlT9tWh1fG1W0jAWuNK9uKagGn",
+   "title": "Assumptions Email - 08-16-0723 (W-5601HV).docx",
+   "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+   "size": 18537
+  },
+  {
+   "path": "Crash Analysis/Section Evaluation Workbook - 08-16-0723 (W-5601HV).xlsx",
+   "id": "1BF5fvV28yRqMnND-0Kja1wb9hynzbY9e",
+   "title": "Section Evaluation Workbook - 08-16-0723 (W-5601HV).xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 4213355
+  },
+  {
+   "path": "Crash Analysis/41000069922AFTER_CrashID.txt",
+   "id": "18rv2E754Dw9kVQbj9xB4ksqil_iqVoZM",
+   "title": "41000069922AFTER_CrashID.txt",
+   "mime": "text/plain",
+   "size": 337
+  },
+  {
+   "path": "Crash Analysis/41000069922AFTER.csv",
+   "id": "1hJlvL_nE2j6vhhqs2SGe0Mh12PpSnJCP",
+   "title": "41000069922AFTER.csv",
+   "mime": "text/csv",
+   "size": 14838
+  },
+  {
+   "path": "Crash Analysis/41000069922AFTER.pdf",
+   "id": "1PN7GIOHAmxfwZjShgNHPhpLIQd3nWqbq",
+   "title": "41000069922AFTER.pdf",
+   "mime": "application/pdf",
+   "size": 37746
+  },
+  {
+   "path": "Crash Analysis/41000069922BEFORE.pdf",
+   "id": "1qJ0gIgie4nGd3BLNhl30u1-Y1lXeDZXZ",
+   "title": "41000069922BEFORE.pdf",
+   "mime": "application/pdf",
+   "size": 43226
+  },
+  {
+   "path": "Crash Analysis/41000069922_InitialStudy.pdf",
+   "id": "1P7I5N8wJHhzwiG8f91PSDaHXpLgfLN3I",
+   "title": "41000069922_InitialStudy.pdf",
+   "mime": "application/pdf",
+   "size": 55535
+  },
+  {
+   "path": "Crash Analysis/41000069922_InitialStudy.csv",
+   "id": "1HCj4MjChJjqgS-c6VuvlyceeyP0vVsVW",
+   "title": "41000069922_InitialStudy.csv",
+   "mime": "text/csv",
+   "size": 20738
+  },
+  {
+   "path": "Crash Analysis/41000069922BEFORE_CrashID.txt",
+   "id": "1o2WiEHqmvvhH-L45-AN1eEcU_ZkZCvan",
+   "title": "41000069922BEFORE_CrashID.txt",
+   "mime": "text/plain",
+   "size": 720
+  },
+  {
+   "path": "Crash Analysis/41000069922BEFORE.csv",
+   "id": "1rthPIf97-SCZJfQXDh41kFgUQSuls9cr",
+   "title": "41000069922BEFORE.csv",
+   "mime": "text/csv",
+   "size": 16569
+  },
+  {
+   "path": "Crash Analysis/41000069922BEFORE_Import.txt",
+   "id": "1aZFIZoZXM4iFPh4oP3Z17TiWXiTJgped",
+   "title": "41000069922BEFORE_Import.txt",
+   "mime": "text/plain",
+   "size": 148
+  },
+  {
+   "path": "Crash Analysis/41000069922AFTER_Import.txt",
+   "id": "1SAWX3KxMc3WTuAYlo53DRb_sHk8FnDWh",
+   "title": "41000069922AFTER_Import.txt",
+   "mime": "text/plain",
+   "size": 133
+  },
+  {
+   "path": "Crash Analysis/41000069922_Fiche.csv",
+   "id": "1yWpx_k1GKJeV558HLwqqniBRiyTpTyjI",
+   "title": "41000069922_Fiche.csv",
+   "mime": "text/csv",
+   "size": 272165
+  },
+  {
+   "path": "Crash Analysis/41000069922_InitialID.txt",
+   "id": "1B7jQN5iRV_i-apfqpaufHuUjf5823d43",
+   "title": "41000069922_InitialID.txt",
+   "mime": "text/plain",
+   "size": 1150
+  },
+  {
+   "path": "Crash Analysis/FeaturesReport_SR2895.pdf",
+   "id": "1-8ayLVJau2Cw8hj5C7dTcvPsDviiaG-6",
+   "title": "FeaturesReport_SR2895.pdf",
+   "mime": "application/pdf",
+   "size": 16999
+  },
+  {
+   "path": "Crash Analysis/FeaturesReport_NC42.pdf",
+   "id": "1R3hukP5xRkb4FyvKfPxLUSA_HFjBrl5K",
+   "title": "FeaturesReport_NC42.pdf",
+   "mime": "application/pdf",
+   "size": 31374
+  },
+  {
+   "path": "Background Information/HSIP Project 5 - Division 8  - Randolph Co.pdf",
+   "id": "1MajVFbQtSWhFt0pws1H2GihUUTiBnZDq",
+   "title": "HSIP Project 5 - Division 8  - Randolph Co.pdf",
+   "mime": "application/pdf",
+   "size": 2610431
+  },
+  {
+   "path": "Background Information/08-16-0723.pdf",
+   "id": "1rP-Nc5QOE_pSBXiyBWUtWa1iSZSkVcNT",
+   "title": "08-16-0723.pdf",
+   "mime": "application/pdf",
+   "size": 5365973
+  },
+  {
+   "path": "Background Information/08-16-0723 update.pdf",
+   "id": "1ILQEmAOMmdFTU8tsGymiLEFjh5i4jYqR",
+   "title": "08-16-0723 update.pdf",
+   "mime": "application/pdf",
+   "size": 6453984
+  },
+  {
+   "path": "Background Information/Master Evaluation Spreadsheet.xlsx",
+   "id": "1bJuiwtPy1x8DGyB7JFT6zHTRCh7hJdsl",
+   "title": "Master Evaluation Spreadsheet.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 906018
+  },
+  {
+   "path": "Background Information/0816-0723 map.pdf",
+   "id": "1F3LWjWtjL1pYu3gvDO00_QlTuavKI-Qv",
+   "title": "0816-0723 map.pdf",
+   "mime": "application/pdf",
+   "size": 401184
+  },
+  {
+   "path": "Background Information/Final Inspection/W-5601HV, 08-16-0723, Final.pdf",
+   "id": "1gBVLBYvxObDxE77ODNI6NK5IEDAeNEms",
+   "title": "W-5601HV, 08-16-0723, Final.pdf",
+   "mime": "application/pdf",
+   "size": 890375
+  }
+ ]
+}

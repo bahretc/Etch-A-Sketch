@@ -1,0 +1,328 @@
+{
+ "folder_id": "19lgJAAvRIPuPi8KxKbfHbCkfN1R3pSa3",
+ "title": "WO-41000064924 14-19-218 (SS-6014F)",
+ "files": [
+  {
+   "path": "14-19-218 (SS-6014F) Complete Eval.pdf",
+   "id": "18RCNrDB2NJ9gvv_41HDZmQRTU2xNCtY_",
+   "title": "14-19-218 (SS-6014F) Complete Eval.pdf",
+   "mime": "application/pdf",
+   "size": 652511
+  },
+  {
+   "path": "14-19-218 (SS-6014F) Web.pdf",
+   "id": "1EpJfPHv-3WsQjATC3otdz2qsLIG6VxrS",
+   "title": "14-19-218 (SS-6014F) Web.pdf",
+   "mime": "application/pdf",
+   "size": 581336
+  },
+  {
+   "path": "~$Section Evaluation Workbook - 08-16-0723 (W-5601HV).xlsm",
+   "id": "18hXTTnL2Qc8njGYxEAJ30T7kcqLRK3OZ",
+   "title": "~$Section Evaluation Workbook - 08-16-0723 (W-5601HV).xlsm",
+   "mime": "application/vnd.ms-excel.sheet.macroenabled.12",
+   "size": 165
+  },
+  {
+   "path": "Crash Analysis/Section Evaluation Workbook - 14-19-218 (SS-6014F).xlsx",
+   "id": "1NhvbFC2jWDh4WOzGlE3DOlFWLj6bdNk4",
+   "title": "Section Evaluation Workbook - 14-19-218 (SS-6014F).xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 2886107
+  },
+  {
+   "path": "Crash Analysis/41000064924EVALBEFORE.csv",
+   "id": "1gvfWUvUhptup-9cJ5S8K-YSNOSa3a61H",
+   "title": "41000064924EVALBEFORE.csv",
+   "mime": "text/csv",
+   "size": 29149
+  },
+  {
+   "path": "Crash Analysis/41000064924EVALBEFORE.pdf",
+   "id": "1ojrjz2T1S1JP32vKoOlvkYFMnvyWOzdG",
+   "title": "41000064924EVALBEFORE.pdf",
+   "mime": "application/pdf",
+   "size": 78739
+  },
+  {
+   "path": "Crash Analysis/41000064924_InitialStudy.pdf",
+   "id": "192jeM6vZ5f1bNuAhQR00l76SX8XI6z1w",
+   "title": "41000064924_InitialStudy.pdf",
+   "mime": "application/pdf",
+   "size": 82376
+  },
+  {
+   "path": "Crash Analysis/41000064924EVALAFTER.csv",
+   "id": "17fZi9iYHaNSquXJo-UdfdH3O0Km-Pj3d",
+   "title": "41000064924EVALAFTER.csv",
+   "mime": "text/csv",
+   "size": 15110
+  },
+  {
+   "path": "Crash Analysis/41000064924EVALAFTER.pdf",
+   "id": "1SezrRUj4Fn0QzEqX4MG1bSsbjlmnNqOp",
+   "title": "41000064924EVALAFTER.pdf",
+   "mime": "application/pdf",
+   "size": 39467
+  },
+  {
+   "path": "Crash Analysis/41000064924_InitialStudy.csv",
+   "id": "1SndOR-yqKQAexHrTD1b1U_bSbam3SXwo",
+   "title": "41000064924_InitialStudy.csv",
+   "mime": "text/csv",
+   "size": 30401
+  },
+  {
+   "path": "Crash Analysis/41000064924EVALBEFORE_CrashID.txt",
+   "id": "1HYLhj-mY9f6v4_n-DkWsTjkLa8mOYOZR",
+   "title": "41000064924EVALBEFORE_CrashID.txt",
+   "mime": "text/plain",
+   "size": 2225
+  },
+  {
+   "path": "Crash Analysis/41000064924_InitialCrashID.txt",
+   "id": "1J5BIF0j7kyOwQiZg4rrrBfIh-6dUQpnH",
+   "title": "41000064924_InitialCrashID.txt",
+   "mime": "text/plain",
+   "size": 2442
+  },
+  {
+   "path": "Crash Analysis/41000064924EVALAFTER_CrashID.txt",
+   "id": "1K1s7dw01Jlj8m0vFhcoqVj3Jj0HjGaiT",
+   "title": "41000064924EVALAFTER_CrashID.txt",
+   "mime": "text/plain",
+   "size": 637
+  },
+  {
+   "path": "Crash Analysis/OriginalFiche.csv",
+   "id": "1b__soqZx9luse-hG8sB0byab8QG6xJF1",
+   "title": "OriginalFiche.csv",
+   "mime": "text/csv",
+   "size": 188951
+  },
+  {
+   "path": "Crash Analysis/FeaturesReport_US19.pdf",
+   "id": "1JrmzKvBBNCJ5BuV7h6Yr93YTVGRoEEG0",
+   "title": "FeaturesReport_US19.pdf",
+   "mime": "application/pdf",
+   "size": 38928
+  },
+  {
+   "path": "Crash Analysis/~$Section Evaluation Workbook - 14-19-218 (SS-6014F).xlsx",
+   "id": "1CSIGu-Z2yUxg_wozokzbxQoFYcXjYPY3",
+   "title": "~$Section Evaluation Workbook - 14-19-218 (SS-6014F).xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 165
+  },
+  {
+   "path": "Crash Analysis/FeaturesReport_US23.pdf",
+   "id": "1JEIBgk8GMhPH5U5Ga-sFX3DcIbo5loEd",
+   "title": "FeaturesReport_US23.pdf",
+   "mime": "application/pdf",
+   "size": 33669
+  },
+  {
+   "path": "Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #25.msg",
+   "id": "1H5ZS38aS226L6FWvpPj5fpMPqASy5-Pk",
+   "title": "RE_ _External_ Safety Evaluation - VHB - Assignment #25.msg",
+   "mime": "application/vnd.ms-outlook",
+   "size": 10823680
+  },
+  {
+   "path": "Notes/Ordinances_US23_Active.pdf",
+   "id": "1npH9b6KTkz_VVu7C2BEsRW2v5ExH3u0B",
+   "title": "Ordinances_US23_Active.pdf",
+   "mime": "application/pdf",
+   "size": 28002
+  },
+  {
+   "path": "Notes/Ordinances_US23_Repealed.pdf",
+   "id": "1fMfA0TRV61dpmDWd_e0mhX7Ens_lHzBl",
+   "title": "Ordinances_US23_Repealed.pdf",
+   "mime": "application/pdf",
+   "size": 23792
+  },
+  {
+   "path": "Background Information/Master Evaluation Spreadsheet.xlsx",
+   "id": "1ZXYD7BY-e3R5FhtiXg4gQOcbHgKB2MU0",
+   "title": "Master Evaluation Spreadsheet.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 906158
+  },
+  {
+   "path": "Background Information/Study Area.pptx",
+   "id": "13xAoMDd1rYNLqjeiaG6VUow4im79IxyK",
+   "title": "Study Area.pptx",
+   "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+   "size": 1191898
+  },
+  {
+   "path": "Background Information/October 2018 Streetview - Fresh Resurfacing.PNG",
+   "id": "1ZVYz83CRaEPHgu8-WaWGKd1uSZEw_ksh",
+   "title": "October 2018 Streetview - Fresh Resurfacing.PNG",
+   "mime": "image/png",
+   "size": 2679127
+  },
+  {
+   "path": "Background Information/KPR DIV 14 Report August 2021 Skidabrader Interim Report #2.pdf",
+   "id": "1u-U3xr-d_YFM1fHKTIQ6J8FXOyenoG34",
+   "title": "KPR DIV 14 Report August 2021 Skidabrader Interim Report #2.pdf",
+   "mime": "application/pdf",
+   "size": 2150551
+  },
+  {
+   "path": "Background Information/FW_ _External_ Report Update - Us74 Haywood Skidabrader.msg",
+   "id": "1qqALh-PYUu8We-4b9YpcTzAo_TSeDZGG",
+   "title": "FW_ _External_ Report Update - Us74 Haywood Skidabrader.msg",
+   "mime": "application/vnd.ms-outlook",
+   "size": 2302464
+  },
+  {
+   "path": "Background Information/US 23 Features, Haywood.pdf",
+   "id": "15Wxthf9kXlI2icMzdQm5R5p4JPYy3wQm",
+   "title": "US 23 Features, Haywood.pdf",
+   "mime": "application/pdf",
+   "size": 33673
+  },
+  {
+   "path": "Background Information/14-19-218.pdf",
+   "id": "15JRedocp7GD6yWcHopN9i3_hVctUHe4h",
+   "title": "14-19-218.pdf",
+   "mime": "application/pdf",
+   "size": 1835936
+  },
+  {
+   "path": "Background Information/14-19-218 Funds.pdf",
+   "id": "11Z1Vo1ZCd2Uu8H98Q5I8cvcnUO-j02Uj",
+   "title": "14-19-218 Funds.pdf",
+   "mime": "application/pdf",
+   "size": 70245
+  },
+  {
+   "path": "Background Information/14-19-218 map.pdf",
+   "id": "1CbwSGIYVF2kYAVu-2vV4niLMd2yvO6j7",
+   "title": "14-19-218 map.pdf",
+   "mime": "application/pdf",
+   "size": 127788
+  },
+  {
+   "path": "Background Information/Monitoring Evaluation - 5-month/41000064924 Monitoring Report, 5 months after.docx",
+   "id": "1aVg6cfVMEaPDDM_wRun7GIeoG0FF5-nV",
+   "title": "41000064924 Monitoring Report, 5 months after.docx",
+   "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+   "size": 1075164
+  },
+  {
+   "path": "Background Information/Monitoring Evaluation - 5-month/41000064924 Monitoring Report, 5 months after.pdf",
+   "id": "1ekMBIoQGiy9d3m6AR_gti_F7z1Y6yQ1z",
+   "title": "41000064924 Monitoring Report, 5 months after.pdf",
+   "mime": "application/pdf",
+   "size": 422889
+  },
+  {
+   "path": "Background Information/Monitoring Evaluation - 5-month/Crash Analysis/Filtered Fiche.xlsx",
+   "id": "1b88s6mHP01-AGiccqkRPaWLrkeyz0MIr",
+   "title": "Filtered Fiche.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 2957699
+  },
+  {
+   "path": "Background Information/Monitoring Evaluation - 5-month/Crash Analysis/TEAAS strip report - Before.pdf",
+   "id": "1hBCVsi5OBpDD5AYzJMffGU4NMHbc_DM3",
+   "title": "TEAAS strip report - Before.pdf",
+   "mime": "application/pdf",
+   "size": 78682
+  },
+  {
+   "path": "Background Information/Monitoring Evaluation - 5-month/Crash Analysis/TEAAS strip report - After.pdf",
+   "id": "1V8SeM4ceQrYWxENaUdtj3E3sxIRhnFgP",
+   "title": "TEAAS strip report - After.pdf",
+   "mime": "application/pdf",
+   "size": 25645
+  },
+  {
+   "path": "Background Information/Monitoring Evaluation - 5-month/Crash Analysis/Original Fiche.csv",
+   "id": "1d4WwqVTjatdR7YeG9Q2GvdAOn6kCD2JE",
+   "title": "Original Fiche.csv",
+   "mime": "text/csv",
+   "size": 117839
+  },
+  {
+   "path": "Background Information/Weather Data/WAYN Weather Data, 41000064924.xlsx",
+   "id": "11A7QJpWN6xMls4wake-6i4dBuJNl7fjw",
+   "title": "WAYN Weather Data, 41000064924.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 60778
+  },
+  {
+   "path": "Background Information/Monitoring Evaluation - 10-month/~$Filtered Fiche - 10 month update.xlsx",
+   "id": "1MGK9KZXR-CYJUZmGi9yurLu9plAlVsSs",
+   "title": "~$Filtered Fiche - 10 month update.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 165
+  },
+  {
+   "path": "Background Information/Monitoring Evaluation - 10-month/Filtered Fiche - 10 month update.xlsx",
+   "id": "1nMWAhueTGIDpPhaPuhm1_1WN7s9CqIkS",
+   "title": "Filtered Fiche - 10 month update.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 3102072
+  },
+  {
+   "path": "Background Information/Monitoring Evaluation - 10-month/41000064924 Monitoring Report, 10 months after.docx",
+   "id": "1GuBj3yd82ISyoXmmWcUdWntsluAi9kYi",
+   "title": "41000064924 Monitoring Report, 10 months after.docx",
+   "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+   "size": 1086182
+  },
+  {
+   "path": "Background Information/Monitoring Evaluation - 10-month/Original fiche - 10 month update.csv",
+   "id": "1uMdsCaq0Q1fJkKG-cDj5x6edtQgxWgRT",
+   "title": "Original fiche - 10 month update.csv",
+   "mime": "text/csv",
+   "size": 14960
+  },
+  {
+   "path": "Background Information/Monitoring Evaluation - 10-month/3-years before/3-yr before, original fiche.csv",
+   "id": "1tHq1qsT17Fj3drTd_n8EkhojY40n-qzA",
+   "title": "3-yr before, original fiche.csv",
+   "mime": "text/csv",
+   "size": 105317
+  },
+  {
+   "path": "Background Information/Final Inspection/US 23-74 at Exit 103 AFTER (4).jpg",
+   "id": "1WBnOCp3lmP-BYacinmG6ACXp6SzIOTTh",
+   "title": "US 23-74 at Exit 103 AFTER (4).jpg",
+   "mime": "image/jpeg",
+   "size": 1527541
+  },
+  {
+   "path": "Background Information/Final Inspection/US 23-74 at Exit 103 AFTER (3).jpg",
+   "id": "1OSugG2ay5rEHP5-QfoLu95IuJdoC4vbh",
+   "title": "US 23-74 at Exit 103 AFTER (3).jpg",
+   "mime": "image/jpeg",
+   "size": 1302709
+  },
+  {
+   "path": "Background Information/Final Inspection/US 23-74 at Exit 103 AFTER (2).jpg",
+   "id": "1bJNIlndp1LmVUWm9MnSDQQ4xrETnrWFk",
+   "title": "US 23-74 at Exit 103 AFTER (2).jpg",
+   "mime": "image/jpeg",
+   "size": 1326204
+  },
+  {
+   "path": "Background Information/Final Inspection/US 23-74 at Exit 103 AFTER (1).jpg",
+   "id": "17HgHpg8y-sCeG7a4VfzNp7BwKa-eoS4a",
+   "title": "US 23-74 at Exit 103 AFTER (1).jpg",
+   "mime": "image/jpeg",
+   "size": 1349024
+  },
+  {
+   "path": "Background Information/Final Inspection/Final Review 14-19-218.pdf",
+   "id": "1WQBtp6czzO_BvPuYbNt9IK5Teb5ms7_H",
+   "title": "Final Review 14-19-218.pdf",
+   "mime": "application/pdf",
+   "size": 51915
+  }
+ ]
+}

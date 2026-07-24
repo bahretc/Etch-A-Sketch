@@ -1,0 +1,52 @@
+wo: '41000073350'
+title: WO-41000073350 10-13-245 (W-5601AC)
+folder_ids:
+- 1-_PcCQaZi-HvoXiodXzIgJRapObUdJhq
+project_id: 10-13-245
+tip: W-5601AC
+analysis_type: intersection
+targets: 1
+countermeasure: Construct a roundabout
+countermeasure_family: roundabout
+county: Union
+division: '10'
+completed: 2019
+companions: []
+split: verify
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 10-13-245.xlsx
+    id: 1E1aYTZd7S80NNP8l4UaIKSx_z_0b1Mrc
+    size: 5055152
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 10-13-245.xlsx
+    id: 1DaEJUR7rMol1OAq0h-2lLHcLVXHbYC_V
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1FuvI9vKuMq19tfZpXGC5x-fNbRiY2EcX
+    size: 29723
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1A23kOGrE1vu0haDcUPPv1sJg7RV1pcrq
+    size: 42946
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1sNOkTtFfgTc1SxR8kTAqdt67ly70QwqY
+    size: 413374
+  id_lists:
+  - path: Crash Analysis/After_ID.txt
+    id: 17_-GSEs6RiV3zqNuNR9vcSxyikiTOXsL
+    size: 2312
+  - path: Crash Analysis/Before_ID.txt
+    id: 1rfRvhVf_5v8EhQ9TVJvOSq4Dy2O1NiZh
+    size: 3605
+  reports:
+  - path: 10-13-245_Web.pdf
+    id: 1hgaaXBfAYJTj0rMpn5XGkXV_vGW9IM1O
+    size: 685762
+  - path: 10-13-245_Complete Eval.pdf
+    id: 1oLtuhXshnVe3db2arPZHY_A4wWqCYewN
+    size: 810348

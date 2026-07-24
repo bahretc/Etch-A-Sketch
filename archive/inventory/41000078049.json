@@ -1,0 +1,349 @@
+{
+ "folder_id": "1dtaFr2HvZlWGvB6dLXgDlnrySYCIE3mA",
+ "title": "WO-41000078049 02-21-65106 (SS-6202A)",
+ "files": [
+  {
+   "path": "02-21-65106 (SS-6202A) Complete Evaluation.pdf",
+   "id": "1rNvXWgljoR4P3qKX9y1KPCLTO8tRfmkf",
+   "title": "02-21-65106 (SS-6202A) Complete Evaluation.pdf",
+   "mime": "application/pdf",
+   "size": 611879
+  },
+  {
+   "path": "02-21-65106 (SS-6202A) Web.pdf",
+   "id": "1iNQkNWp0N5Y9FemoUqrhke5eDz70mek6",
+   "title": "02-21-65106 (SS-6202A) Web.pdf",
+   "mime": "application/pdf",
+   "size": 575972
+  },
+  {
+   "path": "Background Information/02-21-65106 - File.pdf",
+   "id": "1kPBT9LNpGEDbLZ8XBpoHeMRgi1y-sUSV",
+   "title": "02-21-65106 - File.pdf",
+   "mime": "application/pdf",
+   "size": 2316430
+  },
+  {
+   "path": "Background Information/Master Evaluation Spreadsheet.xlsx",
+   "id": "19xqayMzK9hmu5gO-XAfjr0R_tzHnWMGt",
+   "title": "Master Evaluation Spreadsheet.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 909244
+  },
+  {
+   "path": "Background Information/02-21-65106 - Sealed TEAAS Analysis.pdf",
+   "id": "15SMg_VR25L4QaJRtghA7Vx0YFjExmZOE",
+   "title": "02-21-65106 - Sealed TEAAS Analysis.pdf",
+   "mime": "application/pdf",
+   "size": 764604
+  },
+  {
+   "path": "Background Information/02-21-65106 - Signed Funds Form & EDS.pdf",
+   "id": "1aD44XTdwHnhZH05bfOv6BEfIOqVCX4_J",
+   "title": "02-21-65106 - Signed Funds Form & EDS.pdf",
+   "mime": "application/pdf",
+   "size": 26010
+  },
+  {
+   "path": "Background Information/02-21-65106 - SR 1810 Features Report.pdf",
+   "id": "1tRKuX80a5wR053gX0GvrobPU6LmE5nh0",
+   "title": "02-21-65106 - SR 1810 Features Report.pdf",
+   "mime": "application/pdf",
+   "size": 27064
+  },
+  {
+   "path": "Background Information/02-21-65106 - Sealed Cover Sheet.pdf",
+   "id": "1CDaU9oqFth2zA8ZweVgzMjwW-gFmT6kQ",
+   "title": "02-21-65106 - Sealed Cover Sheet.pdf",
+   "mime": "application/pdf",
+   "size": 85738
+  },
+  {
+   "path": "Background Information/02-21-65106 - LCTC Resolution.pdf",
+   "id": "1dQiV909VplL1C75ultFLm6k6KfTIvkvA",
+   "title": "02-21-65106 - LCTC Resolution.pdf",
+   "mime": "application/pdf",
+   "size": 722540
+  },
+  {
+   "path": "Background Information/02-21-65106 - Map.pdf",
+   "id": "15tNuHA8WvBCU-gMWqWLj2C5Sn-wm7_bc",
+   "title": "02-21-65106 - Map.pdf",
+   "mime": "application/pdf",
+   "size": 170421
+  },
+  {
+   "path": "Background Information/02-21-65106 - Request for Funds Form.pdf",
+   "id": "1oayh1W_w7q18sIk0xGUENkwG0_P3Ve4T",
+   "title": "02-21-65106 - Request for Funds Form.pdf",
+   "mime": "application/pdf",
+   "size": 11002
+  },
+  {
+   "path": "Background Information/02-21-65106 - Justification Sheet.pdf",
+   "id": "1yuZ3lXQqtFVIYWIWQNnJW7hk7m7MKafq",
+   "title": "02-21-65106 - Justification Sheet.pdf",
+   "mime": "application/pdf",
+   "size": 112605
+  },
+  {
+   "path": "Background Information/02-21-65106 - Complete Streets Evaluation.pdf",
+   "id": "14zIEEHdDUzKtdwMKE7e9KawbFFXbLHKm",
+   "title": "02-21-65106 - Complete Streets Evaluation.pdf",
+   "mime": "application/pdf",
+   "size": 294400
+  },
+  {
+   "path": "Background Information/02-21-65106 - Cost Estimate.pdf",
+   "id": "1__L5e2DIsvi7-kh4J63SQQFrtdlN5dXL",
+   "title": "02-21-65106 - Cost Estimate.pdf",
+   "mime": "application/pdf",
+   "size": 189968
+  },
+  {
+   "path": "Background Information/02-21-65106 - Engineering Data Sheet.pdf",
+   "id": "1p7g0UO6bKoFyjNi2SqQCUpoCGVyRBUTs",
+   "title": "02-21-65106 - Engineering Data Sheet.pdf",
+   "mime": "application/pdf",
+   "size": 10117
+  },
+  {
+   "path": "Background Information/02-21-65106 - BC Analysis.pdf",
+   "id": "1zDvpps0VR1QMlatCme9Ef3Cu8cdFlLNA",
+   "title": "02-21-65106 - BC Analysis.pdf",
+   "mime": "application/pdf",
+   "size": 153360
+  },
+  {
+   "path": "Background Information/02-21-65106 - Collision Diagram.pdf",
+   "id": "1XFnnpPKJolAtEA0yucn1L7YujDmc6KIq",
+   "title": "02-21-65106 - Collision Diagram.pdf",
+   "mime": "application/pdf",
+   "size": 92859
+  },
+  {
+   "path": "Background Information/02-21-65106 - 3000 WO.pdf",
+   "id": "1asvuabuglSuRyISYvWn1MZ6fG904SyFL",
+   "title": "02-21-65106 - 3000 WO.pdf",
+   "mime": "application/pdf",
+   "size": 57656
+  },
+  {
+   "path": "Background Information/Background Information/02-21-65106 - File.pdf",
+   "id": "1EoMdgIKfrLoCKtiNCK_Zl-yoAnyp1PWk",
+   "title": "02-21-65106 - File.pdf",
+   "mime": "application/pdf",
+   "size": 2316430
+  },
+  {
+   "path": "Background Information/Background Information/02-21-65106 - LCTC Resolution.pdf",
+   "id": "1u36l_gCjy0Sldq2ilAXZupVbItmOAUY4",
+   "title": "02-21-65106 - LCTC Resolution.pdf",
+   "mime": "application/pdf",
+   "size": 722540
+  },
+  {
+   "path": "Background Information/Background Information/02-21-65106 - Sealed TEAAS Analysis.pdf",
+   "id": "1nX6RQzMwMds0zJltmwwGjdrhBazvwhFj",
+   "title": "02-21-65106 - Sealed TEAAS Analysis.pdf",
+   "mime": "application/pdf",
+   "size": 764604
+  },
+  {
+   "path": "Background Information/Background Information/02-21-65106 - SR 1810 Features Report.pdf",
+   "id": "1bIkKw1hG93t1LGNiQMtM1ZPV3aPREvDg",
+   "title": "02-21-65106 - SR 1810 Features Report.pdf",
+   "mime": "application/pdf",
+   "size": 27064
+  },
+  {
+   "path": "Background Information/Background Information/02-21-65106 - Complete Streets Evaluation.pdf",
+   "id": "1irRTqCS-RILY0JCz-MfefB_HPsl3bGMN",
+   "title": "02-21-65106 - Complete Streets Evaluation.pdf",
+   "mime": "application/pdf",
+   "size": 294400
+  },
+  {
+   "path": "Background Information/Background Information/02-21-65106 - Cost Estimate.pdf",
+   "id": "1vH5z5VhFw263o-qQEvonHmWBL9HFHCzv",
+   "title": "02-21-65106 - Cost Estimate.pdf",
+   "mime": "application/pdf",
+   "size": 189968
+  },
+  {
+   "path": "Background Information/Background Information/02-21-65106 - BC Analysis.pdf",
+   "id": "1K6MqJy7wmri3_y0NhqwYER2rWmclftBk",
+   "title": "02-21-65106 - BC Analysis.pdf",
+   "mime": "application/pdf",
+   "size": 153360
+  },
+  {
+   "path": "Background Information/Background Information/02-21-65106 - Justification Sheet.pdf",
+   "id": "184kxn6LS07BtQssV8EGObS-Nn_3puDIx",
+   "title": "02-21-65106 - Justification Sheet.pdf",
+   "mime": "application/pdf",
+   "size": 112605
+  },
+  {
+   "path": "Background Information/Background Information/02-21-65106 - Sealed Cover Sheet.pdf",
+   "id": "1UC-r_-NrsWyUHJ-1Qay2axxMNIoi4KOB",
+   "title": "02-21-65106 - Sealed Cover Sheet.pdf",
+   "mime": "application/pdf",
+   "size": 85738
+  },
+  {
+   "path": "Background Information/Background Information/02-21-65106 - Map.pdf",
+   "id": "1s2UIddXKzuQ4LsYUH6DHZfv0E_2Jsj3h",
+   "title": "02-21-65106 - Map.pdf",
+   "mime": "application/pdf",
+   "size": 170421
+  },
+  {
+   "path": "Background Information/Background Information/02-21-65106 - Engineering Data Sheet.pdf",
+   "id": "1qE-1KijnsE5FHMktvXBWucXOp_YVy2zX",
+   "title": "02-21-65106 - Engineering Data Sheet.pdf",
+   "mime": "application/pdf",
+   "size": 10117
+  },
+  {
+   "path": "Background Information/Background Information/02-21-65106 - Collision Diagram.pdf",
+   "id": "1QCnm_Ros3mN-sXv5nvwzTEUd164xhjqV",
+   "title": "02-21-65106 - Collision Diagram.pdf",
+   "mime": "application/pdf",
+   "size": 92859
+  },
+  {
+   "path": "Background Information/Background Information/02-21-65106 - Signed Funds Form & EDS.pdf",
+   "id": "17boxVDqXFiPo70X6P8pO3YniA8c4hLfM",
+   "title": "02-21-65106 - Signed Funds Form & EDS.pdf",
+   "mime": "application/pdf",
+   "size": 26010
+  },
+  {
+   "path": "Background Information/Background Information/02-21-65106 - Request for Funds Form.pdf",
+   "id": "1zEa6Qa_Jw1y5wh9yYXz8EJVizmtgnVX8",
+   "title": "02-21-65106 - Request for Funds Form.pdf",
+   "mime": "application/pdf",
+   "size": 11002
+  },
+  {
+   "path": "Background Information/Background Information/02-21-65106 - 3000 WO.pdf",
+   "id": "1X9IGKq0sr--H2yIlp8YnGXZ5bsmhupTp",
+   "title": "02-21-65106 - 3000 WO.pdf",
+   "mime": "application/pdf",
+   "size": 57656
+  },
+  {
+   "path": "Background Information/Compliance Memo/SS-6202A Final Review Photos.pdf",
+   "id": "1pNjoSKDkaKhW34z9yRDF74nWVUwKj4Fz",
+   "title": "SS-6202A Final Review Photos.pdf",
+   "mime": "application/pdf",
+   "size": 3054548
+  },
+  {
+   "path": "Background Information/Compliance Memo/SS-6202A Final Review Memo.pdf",
+   "id": "1Ryhh9WpOWOdA4_lUXN3yRLGE4r-WZnP5",
+   "title": "SS-6202A Final Review Memo.pdf",
+   "mime": "application/pdf",
+   "size": 217883
+  },
+  {
+   "path": "Crash Analysis/Intersection Evaluation Workbook - 02-21-65106 (SS-6202A).xlsx",
+   "id": "1aM8ona0Aye0vcsP7JJ_rix8N1xg9ANe7",
+   "title": "Intersection Evaluation Workbook - 02-21-65106 (SS-6202A).xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 1316511
+  },
+  {
+   "path": "Crash Analysis/FeaturesReport_SR1845.pdf",
+   "id": "1OBw4Ga5Wj1ynDV6uJ6GXKautbw-IvtSn",
+   "title": "FeaturesReport_SR1845.pdf",
+   "mime": "application/pdf",
+   "size": 18434
+  },
+  {
+   "path": "Crash Analysis/41000078049BEFORE.pdf",
+   "id": "1qquoSIlzTngWoEWnHZci5cUJKriuxgCw",
+   "title": "41000078049BEFORE.pdf",
+   "mime": "application/pdf",
+   "size": 28785
+  },
+  {
+   "path": "Crash Analysis/41000078049BEFORE_CrashID.txt",
+   "id": "1UCkltfd_zDuaw9Cv6dd8ipKI1ckf2GeA",
+   "title": "41000078049BEFORE_CrashID.txt",
+   "mime": "text/plain",
+   "size": 251
+  },
+  {
+   "path": "Crash Analysis/41000078049BEFORE.csv",
+   "id": "1DuAHw6UD6LxVPc4plKvQom0lOjy7saRA",
+   "title": "41000078049BEFORE.csv",
+   "mime": "text/csv",
+   "size": 11559
+  },
+  {
+   "path": "Crash Analysis/41000078049AFTER.csv",
+   "id": "1biey9rbzNhI9VpI4kN8q0IWkdN7wA9RS",
+   "title": "41000078049AFTER.csv",
+   "mime": "text/csv",
+   "size": 10594
+  },
+  {
+   "path": "Crash Analysis/41000078049AFTER_CrashID.txt",
+   "id": "11q3w4S3TURjNOOUTn4LN2uEPQYaKK_DJ",
+   "title": "41000078049AFTER_CrashID.txt",
+   "mime": "text/plain",
+   "size": 113
+  },
+  {
+   "path": "Crash Analysis/41000078049AFTER.pdf",
+   "id": "1Q9MNGJXQLatC3zikadkDV7jyApEatjpz",
+   "title": "41000078049AFTER.pdf",
+   "mime": "application/pdf",
+   "size": 25876
+  },
+  {
+   "path": "Crash Analysis/FeaturesReport_SR1810.pdf",
+   "id": "1GaZusqcFdmzEnG7pbxevjzXFjZRBkd2i",
+   "title": "FeaturesReport_SR1810.pdf",
+   "mime": "application/pdf",
+   "size": 20191
+  },
+  {
+   "path": "Notes/Ordinances_SR1810_Repealed.pdf",
+   "id": "10rtnZK3mByMyzbZrRxY4VXHA6WZ-fzkW",
+   "title": "Ordinances_SR1810_Repealed.pdf",
+   "mime": "application/pdf",
+   "size": 21746
+  },
+  {
+   "path": "Notes/Ordinances_SR1845_Active.pdf",
+   "id": "16QWmUCDaxc3SOBD5o5HvJVLp_FMDgVqe",
+   "title": "Ordinances_SR1845_Active.pdf",
+   "mime": "application/pdf",
+   "size": 17369
+  },
+  {
+   "path": "Notes/Ordinances_SR1845_Repealed.pdf",
+   "id": "1TZtja3kwlVueWY7ArCKKNHqe--ey5_M1",
+   "title": "Ordinances_SR1845_Repealed.pdf",
+   "mime": "application/pdf",
+   "size": 17369
+  },
+  {
+   "path": "Notes/Ordinances_SR1810_Active.pdf",
+   "id": "1BG2_lqp1HN8AG1ISQGGPt5grlxEcur1e",
+   "title": "Ordinances_SR1810_Active.pdf",
+   "mime": "application/pdf",
+   "size": 19577
+  },
+  {
+   "path": "Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #12.msg",
+   "id": "1ptID_iEHf0A3Z0YQ5n-pmRHhFtSO5T_k",
+   "title": "RE_ _External_ Safety Evaluation - VHB - Assignment #12.msg",
+   "mime": "application/vnd.ms-outlook",
+   "size": 195584
+  }
+ ]
+}

@@ -1,0 +1,48 @@
+wo: '41000069548'
+title: WO-41000069548 05-14-7978
+folder_ids:
+- 1jiMfFOi6PbHLOd_I09KTPwyLUDYSX9ux
+project_id: 05-14-7978
+tip: W-5601Z
+analysis_type: intersection
+targets: 1
+countermeasure: Replaced existing full-access intersection with a Reduced Conflict
+  Intersection (RCI) and construct U-turn bulb with dedicated lane to the north of
+  study intersection.
+countermeasure_family: geometry
+county: Wake
+division: '5'
+completed: 2018
+companions: []
+split: verify
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 05-14-7978.xlsx
+    id: 1nvhc5rdsjr32SRGG-YFNNtrX2PfyaXdN
+    size: 6809811
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 05-14-7978.xlsx
+    id: 1o9_AOTTTqn9NsCBUkihWZgSJggDifees
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1Xz0CZ_GVT2AHu0JcqiCFAVnDn7GibNFn
+    size: 1374420
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1MKjZZj6lPukdAypQfu_q4dZGS0uHaqim
+    size: 23113
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1tEwZCddVekTmfLmSlKIFOLJDVvrUYg5f
+    size: 19963
+  id_lists: []
+  reports:
+  - path: 05-14-7978 Complete Evaluation.pdf
+    id: 1jigeYuKQbe80nneP_5KU8HeDecLg6WpG
+    size: 682840
+  - path: 05-14-7978 Web.pdf
+    id: 1bPJ72Wll4zNLNkaRiwOJKsEr_VYsAxEd
+    size: 607276

@@ -1,0 +1,50 @@
+wo: '41000069746'
+title: WO-41000069746 04-11-16545
+folder_ids:
+- 1W6NdchLlnsj4-cXudgY9JduXKGUDguv6
+project_id: 04-11-16545
+tip: ''
+analysis_type: section
+targets: 1
+countermeasure: 'Horizontal realignment of US 64 Eastbound lanes by milling, resurfacing,
+  and overlaying with open-graded asphalt friction course from off-ramp to on-ramp
+  across Bridge #118. Remark lanes to provide equal offset to bridge rail and curbing.
+  Install three-beam guardrail across face of concrete bridge rails. Install interchange
+  lighting.'
+countermeasure_family: resurfacing
+county: Nash
+division: '4'
+completed: 2018
+companions: []
+split: train
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook - 04-11-16545.xlsx
+    id: 1UlzS3WHB1266bWpNeUG_nAvax-R2FKWQ
+    size: 5896930
+  - path: Crash Analysis/~$Section Evaluation Workbook - 04-11-16545.xlsx
+    id: 1snJA5CNiqKKGpzHsLGxBK_uoy5QDnGuf
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 17NoZx9EiISiQNZ_Up5Uib3gveICK8KRX
+    size: 21409
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1LIwKIoY6TAwFec_z7T0BWcrLLUg1KvTu
+    size: 24670
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 17Zs9eIWjHIzzb-bLM5rnECZA1Nv48LKT
+    size: 561264
+  id_lists: []
+  reports:
+  - path: 04-11-16545 Complete Evaluation.pdf
+    id: 1a19l8Zv5UsgLMOxEp2JCAP-uWsOWnIRj
+    size: 695003
+  - path: 04-11-16545 Web.pdf
+    id: 1rI2pJ51w2yY-VelPM_zKnF6nLGUB_9Fa
+    size: 612024

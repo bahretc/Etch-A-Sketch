@@ -1,0 +1,84 @@
+wo: '41000078044'
+title: 'WO-41000078044 02-20-62356 (TIP #SS-6002AD) 1 of 2'
+folder_ids:
+- 1hSo4iMVMBku99aeyg-R9NccW2jbgakE8
+- 1IIRcoj_w5ZJXdA3mM4gUfJO33ezyMP7h
+project_id: 02-20-62356
+tip: SS-6002AD
+analysis_type: intersection
+targets: 1
+countermeasure: 'Convert intersection to All-Way STOP Control, including: Installation
+  of dual STOP signs (one 48” oversized R1-1 and one 30” supplemental R1-1) with ALL
+  WAY (R1-3P) plaques and Stop Bars on the previously uncontrolled NC 91 approaches;
+  Installation of STOP Ahead (W3-1) Advance Warning signs with solar-powered flashing
+  beacons, and STOP AHEAD pavement markings, on the previously unsigned NC 91 approaches;
+  Addition of ALL WAY (R1-3P) plaques to the existing SR 1225 (Speights Bridge Road)/SR
+  1303 (Fieldsboro Road) STOP signs (R1-1) and installation of Stop Bars on the SR
+  1225/SR 1303 approaches; Relocation of the existing STOP Ahead (W3-1) Advance Warning
+  signs on the SR 1225/SR 1303 approaches.'
+countermeasure_family: awsc
+county: Greene
+division: '2'
+completed: 2022
+companions: []
+split: verify
+flags:
+- split-folders-merged
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: 'Crash Analysis/Intersection Evaluation Workbook - 02-20-62356 (TIP #SS-6002AD)
+      1 of 2.xlsx'
+    id: 1yH8U9AWlUloxwnoKvEm1a3vXMLL29P58
+    size: 1382698
+  - path: 'Crash Analysis/Copy of Intersection Evaluation Workbook - 02-20-62356 (TIP
+      #SS-6002AD) 1 of 2_TSN.xlsx'
+    id: 1hg7UFDSWMbLqi9y8c3bcgR5LFNfqHYtr
+    size: 1384199
+  - path: 'Crash Analysis/~$Intersection Evaluation Workbook - 02-20-62356 (TIP #SS-6002AD)
+      1 of 2.xlsx'
+    id: 18N02mP4yTJ5vLAOJ4B7FdeOMZXx0-ICw
+    size: 165
+  - path: 'Crash Analysis/Intersection Evaluation Workbook - 02-20-62356 (TIP #SS-6002AD)
+      2 of 2.xlsx'
+    id: 1d_tN4V-mpcmc2ZXw8Zxm-0vijTAiJaUg
+    size: 1337225
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/41000078044BEFORE1.csv
+    id: 1U2J-uXA_2dICLIHIksdeSqfPeI7rZ_Cp
+    size: 13236
+  - path: Crash Analysis/41000078044AFTER1.csv
+    id: 1L71lL9vpyJlUDX8lrT9cLyW5PgyPl659
+    size: 10232
+  - path: Crash Analysis/41000078044AFTER2.csv
+    id: 1kU1ggBqRK9QxozjTnCOB6MAG2dpZ0GzT
+    size: 1718
+  - path: Crash Analysis/41000078044BEFORE2.csv
+    id: 1VSDHFAWlvdE4gHKBJyOrEInUH5jG0RKV
+    size: 11542
+  id_lists:
+  - path: Crash Analysis/41000078044AFTER1_CrashID.txt
+    id: 1I8HQRHZT6V2wbCjnvwY5-_OIteCufrdL
+    size: 79
+  - path: Crash Analysis/41000078044BEFORE1_CrashID.txt
+    id: 1GafMKifXVci1EeRwn2u8LXZ-cL5Q1a_L
+    size: 380
+  - path: Crash Analysis/41000078044BEFORE2_CrashID.txt
+    id: 15RKqRbs4hndnvOSdPxRUDCkjwAnIloR2
+    size: 251
+  reports:
+  - path: '02-20-62356 (TIP #SS-6002AD) 1 of 2 Complete Evaluation.pdf'
+    id: 1BzdF4dtM4IQKhvlbc3afg0rQGwExfOaH
+    size: 636980
+  - path: '02-20-62356 (TIP #SS-6002AD) 1 of 2 Web.pdf'
+    id: 1hikHx6zyU9FpWvgQ8Dlmh6WKn_nboXd_
+    size: 585242
+  - path: '02-20-62356 (TIP #SS-6002AD) 2 of 2 Complete Evaluation.pdf'
+    id: 1VrD-PqutzwDCZpj_fLoXrCoOJxRPSnca
+    size: 556101
+  - path: '02-20-62356 (TIP #SS-6002AD) 2 of 2 Web.pdf'
+    id: 1VFggIAPwIGNAk0htbu8eZvizohaeFcEA
+    size: 530391

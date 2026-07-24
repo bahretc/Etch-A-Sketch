@@ -1,0 +1,47 @@
+wo: '41000076153'
+title: WO-41000076153 10-17-236
+folder_ids:
+- 17yzPqPreDm7xnRNqDXz7I6DgJ9M7ItzS
+project_id: 10-17-236
+tip: SS-6010T
+analysis_type: intersection
+targets: 1
+countermeasure: 'Convert intersection to All-Way STOP Control including: Installing
+  STOP Ahead pavement markings and W3-1 signage on SR 2048 approaches; Installing
+  Stop Bars and STOP pavement markings on SR 2048 approaches; Installing STOP Ahead
+  and STOP pavement markings on southbound SR 2411 approach; Upgrade Overhead Flasher
+  and shift to all red flashing.'
+countermeasure_family: flashers-vewf
+county: Cabarrus
+division: '10'
+completed: 2021
+companions: []
+split: train
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook 10-17-236.xlsx
+    id: 1VPZBnpJey95OSklSCSSEIb9FddZodK47
+    size: 3886196
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1anGaXyuAmDIX6e6032cGyd1HVLIvzbGu
+    size: 16757
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1qShAVWwfbs_V4zwXp9uwittHqQ5TPG3U
+    size: 10093
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1Bu_pLZRXwORpCx1VFznd8s1eOhLmjhCg
+    size: 78071
+  id_lists: []
+  reports:
+  - path: 10-17-236_Complete_Evaluation.pdf
+    id: 1oaXAmgLF9efBDYKnVcHEoAzilNcclyHO
+    size: 674853
+  - path: 10-17-236_Web.pdf
+    id: 1UcRx4E18Bx22ekgaM3yy775r5RLSsL2D
+    size: 621956

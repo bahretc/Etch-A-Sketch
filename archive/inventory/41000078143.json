@@ -1,0 +1,237 @@
+{
+ "folder_id": "19KU16PakAYHsYErQVhHfQdWQxlBTZIZE",
+ "title": "WO-41000078143 05-21-66243",
+ "files": [
+  {
+   "path": "05-21-66243_Complete Evaluation.pdf",
+   "id": "1c1Ll-yKJtXXq1UZjCHswAyYD42QWPGrI",
+   "title": "05-21-66243_Complete Evaluation.pdf",
+   "mime": "application/pdf",
+   "size": 813572
+  },
+  {
+   "path": "05-21-66243_Web.pdf",
+   "id": "1_1irxZFiykwr2R8av0IIi8QFOYBA6yLp",
+   "title": "05-21-66243_Web.pdf",
+   "mime": "application/pdf",
+   "size": 769442
+  },
+  {
+   "path": "Notes/SR2406_Ordinances.pdf",
+   "id": "12e18OEOAwUNRKUw1bGq6u2yVbFm5S2Xn",
+   "title": "SR2406_Ordinances.pdf",
+   "mime": "application/pdf",
+   "size": 21685
+  },
+  {
+   "path": "Notes/SR2337_Ordinances.pdf",
+   "id": "1MvrO8SHeEDVEOblq19A843o8yO0s7gdK",
+   "title": "SR2337_Ordinances.pdf",
+   "mime": "application/pdf",
+   "size": 21576
+  },
+  {
+   "path": "Notes/Assumptions Email.docx",
+   "id": "1elooY_04SvpIug7O7YqVa0KUVgsg3YSa",
+   "title": "Assumptions Email.docx",
+   "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+   "size": 15982
+  },
+  {
+   "path": "Crash Analysis/Intersection Evaluation Workbook - 05-21-66243.xlsx",
+   "id": "1agtsRFmPod85-7NEkEx7cljO-W5_5YOI",
+   "title": "Intersection Evaluation Workbook - 05-21-66243.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 3269455
+  },
+  {
+   "path": "Crash Analysis/Before_CrashAnalysis.csv",
+   "id": "10CmLVbBhWw6_kegjOuOveabQmmICAYGD",
+   "title": "Before_CrashAnalysis.csv",
+   "mime": "text/csv",
+   "size": 13849
+  },
+  {
+   "path": "Crash Analysis/Before_CrashID.txt",
+   "id": "1P_hMa0lmTQ5fxPZcM-To4xvvkxR1_HLv",
+   "title": "Before_CrashID.txt",
+   "mime": "text/plain",
+   "size": 509
+  },
+  {
+   "path": "Crash Analysis/Before_CrashAnalysis.pdf",
+   "id": "1BPn6YoGD5dZs3SXsNIi8J1BR_2OSXatp",
+   "title": "Before_CrashAnalysis.pdf",
+   "mime": "application/pdf",
+   "size": 35868
+  },
+  {
+   "path": "Crash Analysis/After_CrashID.txt",
+   "id": "1FCdGxQRg8UZavjZKPROETQvD1IJHX5P-",
+   "title": "After_CrashID.txt",
+   "mime": "text/plain",
+   "size": 208
+  },
+  {
+   "path": "Crash Analysis/After_CrashAnalysis.pdf",
+   "id": "1NMt077ICa26QEWWMVhNWRRI4SP9uVpNc",
+   "title": "After_CrashAnalysis.pdf",
+   "mime": "application/pdf",
+   "size": 27124
+  },
+  {
+   "path": "Crash Analysis/After_CrashAnalysis.csv",
+   "id": "1DoQ2XQUQg3fhdKNCSBYiHIyTFIyKDzja",
+   "title": "After_CrashAnalysis.csv",
+   "mime": "text/csv",
+   "size": 10809
+  },
+  {
+   "path": "Crash Analysis/OriginalFiche.csv",
+   "id": "1Nbyn2Jnx9N8JY__tZWAO_NnYba0E1HwU",
+   "title": "OriginalFiche.csv",
+   "mime": "text/csv",
+   "size": 55133
+  },
+  {
+   "path": "Crash Analysis/InitialStudy.pdf",
+   "id": "1wz4OZEV_hqkKh6W6BY7v8jyajiWu3dS8",
+   "title": "InitialStudy.pdf",
+   "mime": "application/pdf",
+   "size": 44241
+  },
+  {
+   "path": "Crash Analysis/InitialID.txt",
+   "id": "10Jqus38Z1C0dJVtbSu2ZUuekdMTNc20G",
+   "title": "InitialID.txt",
+   "mime": "text/plain",
+   "size": 724
+  },
+  {
+   "path": "Crash Analysis/SR2406_FeaturesReport.pdf",
+   "id": "1PKeelB8HD12NDTFpNry9SIxsdqVfueUI",
+   "title": "SR2406_FeaturesReport.pdf",
+   "mime": "application/pdf",
+   "size": 21386
+  },
+  {
+   "path": "Crash Analysis/SR2337_FeaturesReport.pdf",
+   "id": "1oRqeawIu02jQHu-K6KR7B_bDSMZejp-X",
+   "title": "SR2337_FeaturesReport.pdf",
+   "mime": "application/pdf",
+   "size": 21333
+  },
+  {
+   "path": "Crash Analysis/~$Intersection Evaluation Workbook - 05-21-66243.xlsx",
+   "id": "1yS6to_dVQJXGUnB_WkoP4bkGeqaG_Gkn",
+   "title": "~$Intersection Evaluation Workbook - 05-21-66243.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 165
+  },
+  {
+   "path": "Background/15 - 05-21-66243/Master Evaluation Spreadsheet.xlsx",
+   "id": "1KvVx4kn2eY8hZoTe-EiEpmN5v3tnfLg9",
+   "title": "Master Evaluation Spreadsheet.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 907287
+  },
+  {
+   "path": "Background/15 - 05-21-66243/Background Information/shepard school at pippen crash.pdf",
+   "id": "1IVPIZGi1Ni8MZWStAJ185dp7sVNe5APH",
+   "title": "shepard school at pippen crash.pdf",
+   "mime": "application/pdf",
+   "size": 2194601
+  },
+  {
+   "path": "Background/15 - 05-21-66243/Background Information/8073.pdf",
+   "id": "18d8H3bYnNVAruN6VhR2fhecQ0ETmGjHE",
+   "title": "8073.pdf",
+   "mime": "application/pdf",
+   "size": 1278754
+  },
+  {
+   "path": "Background/15 - 05-21-66243/Background Information/05-21-66243.pdf",
+   "id": "16jR4jMrURjH9kg3aq_CxTh6aByhaeDyD",
+   "title": "05-21-66243.pdf",
+   "mime": "application/pdf",
+   "size": 1524624
+  },
+  {
+   "path": "Background/15 - 05-21-66243/Background Information/Map.pdf",
+   "id": "1Ss8tkjeetlEZhXXSvk5AS2GNndMQaGiY",
+   "title": "Map.pdf",
+   "mime": "application/pdf",
+   "size": 355837
+  },
+  {
+   "path": "Background/15 - 05-21-66243/Background Information/Request for funds Form 05-21-66243.pdf",
+   "id": "1i17GFPKwNeMEZV6NwKYepSTvwvoh2VJ1",
+   "title": "Request for funds Form 05-21-66243.pdf",
+   "mime": "application/pdf",
+   "size": 145585
+  },
+  {
+   "path": "Background/15 - 05-21-66243/Background Information/justification_sheet.pdf",
+   "id": "1KxwmZ_SoobB2ylnV81HH6-_6HpjZBdb1",
+   "title": "justification_sheet.pdf",
+   "mime": "application/pdf",
+   "size": 207157
+  },
+  {
+   "path": "Background/15 - 05-21-66243/Background Information/signal warrant analysis.pdf",
+   "id": "1Zo9V3quxzB1vbN7n0zscyJS9LBuUSTLo",
+   "title": "signal warrant analysis.pdf",
+   "mime": "application/pdf",
+   "size": 122632
+  },
+  {
+   "path": "Background/15 - 05-21-66243/Background Information/SAP.pdf",
+   "id": "1ryPFtnzVIoHK3pPfqauw369TabC9CuMu",
+   "title": "SAP.pdf",
+   "mime": "application/pdf",
+   "size": 58404
+  },
+  {
+   "path": "Background/15 - 05-21-66243/Background Information/CRF.pdf",
+   "id": "1MOY-0l6x5jFwaVgiPs81pmEVJwezWo7z",
+   "title": "CRF.pdf",
+   "mime": "application/pdf",
+   "size": 34100
+  },
+  {
+   "path": "Background/15 - 05-21-66243/Background Information/41000066178 - SR 2337 at SR 2406 - Wake.pdf",
+   "id": "1AKRjJm1qS7bG7uxEW6bHzQElY0M3VM0q",
+   "title": "41000066178 - SR 2337 at SR 2406 - Wake.pdf",
+   "mime": "application/pdf",
+   "size": 558688
+  },
+  {
+   "path": "Background/15 - 05-21-66243/Background Information/Cover_Sheet.pdf",
+   "id": "1zzgBratB7yPbPsz2lOp1XibFlNQjVm9k",
+   "title": "Cover_Sheet.pdf",
+   "mime": "application/pdf",
+   "size": 534834
+  },
+  {
+   "path": "Background/15 - 05-21-66243/Background Information/BC worksheet_4 way stop.pdf",
+   "id": "1QziKKXNH__I7ZEqQiSRpsJ5Z5E71S_qs",
+   "title": "BC worksheet_4 way stop.pdf",
+   "mime": "application/pdf",
+   "size": 144129
+  },
+  {
+   "path": "Background/15 - 05-21-66243/Background Information/8073.ppd",
+   "id": "1XtDjRDIKP4DkqjKuAlNEFasCybT7-J3w",
+   "title": "8073.ppd",
+   "mime": "application/octet-stream",
+   "size": 49245
+  },
+  {
+   "path": "Background/15 - 05-21-66243/Compliance Memo/05-21-66243, SS-6205F, Final.pdf",
+   "id": "1AYMDaEHfJV6xeoV2_Pmt8EtggBDAB-36",
+   "title": "05-21-66243, SS-6205F, Final.pdf",
+   "mime": "application/pdf",
+   "size": 842589
+  }
+ ]
+}

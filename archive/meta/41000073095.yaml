@@ -1,0 +1,54 @@
+wo: '41000073095'
+title: WO-41000073095 06-17-47754
+folder_ids:
+- 1Ie4iG00eMrkq10hwZgxJF00wNE_ePtAT
+project_id: 06-17-47754
+tip: SS-4906DH
+analysis_type: intersection
+targets: 1
+countermeasure: ''
+countermeasure_family: other
+county: Harnett
+division: '6'
+completed: 2018
+companions: []
+split: verify
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 06-17-47754.xlsx
+    id: 1zjj3NK5Yr8jCmanPPY3Hi6q3u9lo_1vB
+    size: 4734415
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 06-17-47754.xlsx
+    id: 1CkEibVWUntZXEg0PecPx_dea2pOTWjHe
+    size: 165
+  - path: Background/36 - SS 06-17-47754/Fatal Crash Files (2022)/M210813002 Fiche
+      Report.xlsm
+    id: 1s2U5DE84hlK9rTI0vSSTv0anr-x4WoEa
+    size: 487415
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1Vpqjy0poIaeAG36qAyymaCp4s5lIAdfZ
+    size: 24750
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 15rLLXdl5kDWjYmVj79bGvtodm5BEpv4T
+    size: 24219
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 11z9r_ZCNeX-Vu013JnAcUXWYa9Bj2gRO
+    size: 700656
+  - path: Background/36 - SS 06-17-47754/Fatal Crash Files (2022)/M210813002 Fiche
+      Report.csv
+    id: 1M0FtNCg02v1yuNZwcO-Qs8AhnbepDqxm
+    size: 315783
+  id_lists: []
+  reports:
+  - path: 06-17-47754_Complete Eval.pdf
+    id: 1xHOItV3OBXh5bvyYfjzO3pKpWi5K6MX2
+    size: 562405
+  - path: 06-17-47754_Web.pdf
+    id: 1bCNG-HsJEfF4StaiwQ47_ptAXEgPlIYn
+    size: 466182

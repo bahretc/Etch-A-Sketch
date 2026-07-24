@@ -1,0 +1,146 @@
+{
+ "folder_id": "136sBowZJJTdFXTX2yWloEKBOHMBcyGtx",
+ "title": "WO-41000078043 02-20-62355 (SS-6002AS)",
+ "files": [
+  {
+   "path": "02-20-62355 (SS-6002AS) Web.pdf",
+   "id": "1M91Y7kE7aMDAmc86scgYzTM8wS-ELc-8",
+   "title": "02-20-62355 (SS-6002AS) Web.pdf",
+   "mime": "application/pdf",
+   "size": 1134861
+  },
+  {
+   "path": "02-20-62355 (SS-6002AS) Complete Evaluation.pdf",
+   "id": "119mOlHlzVWalg7aQsUS1kLWmodedGbJF",
+   "title": "02-20-62355 (SS-6002AS) Complete Evaluation.pdf",
+   "mime": "application/pdf",
+   "size": 1200421
+  },
+  {
+   "path": "~$Intersection Evaluation Workbook - 02-20-62355 (SS-6002AS).xlsx",
+   "id": "1yLZrXHHhfT4-D0vkBOxYNtTZtw_6aHPo",
+   "title": "~$Intersection Evaluation Workbook - 02-20-62355 (SS-6002AS).xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 165
+  },
+  {
+   "path": "Background Information/02-20-62355 File.pdf",
+   "id": "1TLiiBoDUfWL3PfUzVDv-tGiKzvBMCZTj",
+   "title": "02-20-62355 File.pdf",
+   "mime": "application/pdf",
+   "size": 1127583
+  },
+  {
+   "path": "Background Information/Master Evaluation Spreadsheet.xlsx",
+   "id": "1ozch5pdsVKmO0c2xI7Q5AdWjD2mRmklb",
+   "title": "Master Evaluation Spreadsheet.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 911642
+  },
+  {
+   "path": "Background Information/02-20-62355 Request for Funds.pdf",
+   "id": "1y04NjZRmDlV7Bl6ODbxFKfLulGiKOKAM",
+   "title": "02-20-62355 Request for Funds.pdf",
+   "mime": "application/pdf",
+   "size": 24823
+  },
+  {
+   "path": "Background Information/Compliance Memo/SS-6002AS Final Review Photos.pdf",
+   "id": "1EzxVH865VYKUUy0ZmzKQEuylPI6lYpW3",
+   "title": "SS-6002AS Final Review Photos.pdf",
+   "mime": "application/pdf",
+   "size": 1715445
+  },
+  {
+   "path": "Background Information/Compliance Memo/SS-6002AS Final Review Memo.pdf",
+   "id": "1L34uKRQlrcscOaucl7CT18DBAV1m8XxD",
+   "title": "SS-6002AS Final Review Memo.pdf",
+   "mime": "application/pdf",
+   "size": 140319
+  },
+  {
+   "path": "Background Information/Signal Files/020240-19960922g.pdf",
+   "id": "1Otgd6utQhAoErBj-idod4G13dL1eG-B5",
+   "title": "020240-19960922g.pdf",
+   "mime": "application/pdf",
+   "size": 3872212
+  },
+  {
+   "path": "Background Information/Signal Files/020240-20211213g.pdf",
+   "id": "12JZ1ZON0SbfKdrRkCC5luFslYDlrJLgQ",
+   "title": "020240-20211213g.pdf",
+   "mime": "application/pdf",
+   "size": 379522
+  },
+  {
+   "path": "Crash Analysis/Intersection Evaluation Workbook - 02-20-62355 (SS-6002AS).xlsx",
+   "id": "11RMmKadvmcYCaAFrWTQTHGouZgCHNCNa",
+   "title": "Intersection Evaluation Workbook - 02-20-62355 (SS-6002AS).xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 20464761
+  },
+  {
+   "path": "Crash Analysis/41000078043AFTER.csv",
+   "id": "1qdYzQtFovFKte2HM7xIG0MOGZovZ_X5L",
+   "title": "41000078043AFTER.csv",
+   "mime": "text/csv",
+   "size": 14368
+  },
+  {
+   "path": "Crash Analysis/41000078043AFTER.pdf",
+   "id": "13BsYuUcZvSUCzB3gb-XN1LlXzfH10Dkr",
+   "title": "41000078043AFTER.pdf",
+   "mime": "application/pdf",
+   "size": 36882
+  },
+  {
+   "path": "Crash Analysis/41000078043AFTER_CrashID.txt",
+   "id": "1T0pUG_edIgd07dTTX1wwBWo0Ctasmp5g",
+   "title": "41000078043AFTER_CrashID.txt",
+   "mime": "text/plain",
+   "size": 509
+  },
+  {
+   "path": "Crash Analysis/41000078043BEFORE.csv",
+   "id": "1_vIs7pDf3dhy1p8AIDKBFaXXdxvqdwAV",
+   "title": "41000078043BEFORE.csv",
+   "mime": "text/csv",
+   "size": 15666
+  },
+  {
+   "path": "Crash Analysis/41000078043BEFORE_CrashID.txt",
+   "id": "1FKTKs_161FykCkie7v7ZuvFEgavuujjy",
+   "title": "41000078043BEFORE_CrashID.txt",
+   "mime": "text/plain",
+   "size": 638
+  },
+  {
+   "path": "Crash Analysis/41000078043BEFORE.pdf",
+   "id": "1Fn1CbQOkKTDV_o5BmxKeCKB2gwok_51c",
+   "title": "41000078043BEFORE.pdf",
+   "mime": "application/pdf",
+   "size": 40296
+  },
+  {
+   "path": "Notes/Ordinances_US13_Repealed.pdf",
+   "id": "1xCisXGeCn0nXBunGEOx7OJXAylb58PG8",
+   "title": "Ordinances_US13_Repealed.pdf",
+   "mime": "application/pdf",
+   "size": 22108
+  },
+  {
+   "path": "Notes/Ordinances_US13_Active.pdf",
+   "id": "1I9FidV0PpaGO4TzmNyS7ZVaUuo610O83",
+   "title": "Ordinances_US13_Active.pdf",
+   "mime": "application/pdf",
+   "size": 37124
+  },
+  {
+   "path": "Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #22 & 23.msg",
+   "id": "1lG4GGeuBgI4C29IzaeYlTDFrnRkD4FI4",
+   "title": "RE_ _External_ Safety Evaluation - VHB - Assignment #22 & 23.msg",
+   "mime": "application/vnd.ms-outlook",
+   "size": 227328
+  }
+ ]
+}

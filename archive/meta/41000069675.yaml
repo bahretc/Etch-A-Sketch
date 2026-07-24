@@ -1,0 +1,53 @@
+wo: '41000069675'
+title: WO-41000069675 03-13-24253 (W-5203W)
+folder_ids:
+- 1z-KlzxJYZwRoBzdvxBZrzcLzCtcH5WQF
+project_id: 03-13-24253
+tip: W-5203W
+analysis_type: intersection
+targets: 1
+countermeasure: Convert intersection from unsignalized full-movement to unsignalized
+  Reduced Conflict Intersection (RCI).
+countermeasure_family: signal
+county: Onslow
+division: '3'
+completed: 2018
+companions: []
+split: train
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 03-13-24253.xlsx
+    id: 1HAf7GUIO7a3QSTDzWstyf3GlA4oDCWkt
+    size: 4102635
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 03-13-24253.xlsx
+    id: 1vbMyga1wqjfVETQxuLTrc-fnUNbZoITy
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1e6bHpuVW8a_V_dTUDoKdtYZ6JSs_4x_3
+    size: 1071371
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1ElMOKXLiseuL9J_jJqtsKnQ-9YUNaWex
+    size: 15022
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1oOmrKbFd8OBYCajjGmCOJOahvw5TSmp5
+    size: 17802
+  id_lists:
+  - path: Crash Analysis/Before_CrashID.txt
+    id: 1acP6vEkc5pnNCPK7aKAOnsHRZdOSV2NI
+    size: 810
+  - path: Crash Analysis/After_CrashID.txt
+    id: 1emhbhdk-4WP9z3XbR6CoF9hScWkSLzEo
+    size: 509
+  reports:
+  - path: 03-13-24253_Complete Eval.pdf
+    id: 16c8DBSiB_kgUxIWTwcdnVHaIVkVh4Oke
+    size: 631032
+  - path: 03-13-24253_Web.pdf
+    id: 1bfM-xSKWiCvBA_zG3d7dxpOn0q_H4ndC
+    size: 583258

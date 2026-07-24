@@ -1,0 +1,61 @@
+wo: '41000078070'
+title: WO-41000078070 03-20-61332 (SS-6003Z)
+folder_ids:
+- 1U6f48auZLB6fseZZ3ThfLbO4Mo7MT5pY
+project_id: 03-20-61332
+tip: SS-6003Z
+analysis_type: intersection
+targets: 1
+countermeasure: 'Convert intersection to All-Way STOP Control, including: Installation
+  of 30” STOP signs with Brightsides and Stop Bars on SR 1004 approaches; Replacement
+  of Crossroads Warning signs (W2-1) with STOP Ahead Warning signs (W3-1) with Brightsides
+  on SR 1004 approaches; Installation of Brightsides on existing SR 1926 STOP signs
+  and Stop bars on SR 1926 approaches; Installation of stop ahead warning signs with
+  brightsides on SR 1926 approaches.'
+countermeasure_family: awsc
+county: Sampson
+division: '3'
+completed: 2022
+companions: []
+split: verify
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 03-20-61332 (SS-6003Z).xlsx
+    id: 10hQdjsyh6AKQG7grtaDVU4MnjIymOODV
+    size: 1308809
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 03-20-61332 (SS-6003Z).xlsx
+    id: 1rV-ilj2U6s9uzQXatJ99v3a4BOWJTwQ3
+    size: 165
+  fiche_workbooks: []
+  emails:
+  - path: Background/RE_ HSIP 81I00059_1104 (Needmore) at 1926 (New Hope Church)_Recommendations_071320.msg
+    id: 1du4jIjxbmlZn3wMzA6nAUqA3384VyJBK
+    size: 213504
+  - path: 'Notes/RE_ _External_ RE_ Safety Evaluation - VHB - Assignment #16.msg'
+    id: 1DYRAl3z5VFOzz4DswiwaFCS_lf1tHIp7
+    size: 192000
+  fiche_csv:
+  - path: Crash Analysis/41000078070BEFORE.csv
+    id: 1Pna2ZP8ahYqFHU4-y7K9HdyUt6YIEQe7
+    size: 12005
+  - path: Crash Analysis/41000078070AFTER.csv
+    id: 1o41O11TmC-4T1sL253iv-SM99ZWfeH_z
+    size: 2451
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1qepRp-2qo-96lnNOMU31bN6hJj-B5Y0Y
+    size: 40038
+  - path: Crash Analysis/InitialStudy.csv
+    id: 1pIx_AVL_opPvp-ynJwpR_UJSctGtquF2
+    size: 13220
+  id_lists:
+  - path: Crash Analysis/41000078070BEFORE_CrashID.txt
+    id: 14O9zVP3Ps5t0LtY-9L7ayWp74T1Wsz2c
+    size: 294
+  reports:
+  - path: 03-20-61332 (SS-6003Z) Web.pdf
+    id: 1RAoY7zJFQUbakk3nXdIDLiuQWgrKiJor
+    size: 572741
+  - path: 03-20-61332 (SS-6003Z) Complete Evaluation.pdf
+    id: 1srUx2VJqD1tnzHWXNstiTIVD374Oxh1s
+    size: 595125

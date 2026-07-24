@@ -1,0 +1,56 @@
+wo: '41000069678'
+title: WO-41000069678 11-13-400 (W-5601AH)
+folder_ids:
+- 1Ff6_AuJc3X82kgwGzdsfX6YU6pMwGGge
+project_id: 11-13-400
+tip: W-5601AH
+analysis_type: intersection
+targets: 1
+countermeasure: Construct NB and SB left turn lanes on US 601.
+countermeasure_family: turn-lanes
+county: Surry
+division: '11'
+completed: 2018
+companions: []
+split: train
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 11-13-400 (W-5601AH).xlsx
+    id: 1k66IuLKY6falFpsLpoqIBhkY6QpjHQQi
+    size: 4565344
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 11-13-400 (W-5601AH).xlsx
+    id: 1JNWBH_JpySiBRi3_rfnGbogZe3J9GP49
+    size: 165
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Assignment #10 Assumptions Email.msg'
+    id: 1G3uljCKRIw8-jRVOuGlaDx-skdijch7l
+    size: 166400
+  fiche_csv:
+  - path: Crash Analysis/41000069678BEFORE.csv
+    id: 1l75Nv8SCyD2ybokMcrA79Jn5Gq8HmJC3
+    size: 15326
+  - path: Crash Analysis/41000069678AFTER.csv
+    id: 1AH5HtABknmwvqYbCUuzlAIPsZU3q2T19
+    size: 10928
+  - path: Crash Analysis/41000069678_InitialStudy.csv
+    id: 1ry5AC2v04IkM_aJvo-DveYptW--24wVj
+    size: 17071
+  id_lists:
+  - path: Crash Analysis/41000069678BEFORE_CrashID.txt
+    id: 1AcYlBV-bNbZm7bw--e4dxmgVOUZ9-_tD
+    size: 595
+  - path: Crash Analysis/41000069678AFTER_CrashID.txt
+    id: 1V0d5VKYYaNDwXzE0NbR1VEX8AKph054l
+    size: 165
+  - path: Crash Analysis/41000069678_InitialCrashID.txt
+    id: 1M6ER8us9MGeK0glFLCBWKqJMMrS5A2Xn
+    size: 681
+  reports:
+  - path: 11-13-400 (W-5601AH) Complete Eval.pdf
+    id: 1to7SbLsgHShYk1Wj75WuMa7GOsqdyzM8
+    size: 531239
+  - path: 11-13-400 (W-5601AH) Web.pdf
+    id: 1f_IYUukFcHAIeX6b2zMeCHCYacTK6t0A
+    size: 482161

@@ -1,0 +1,65 @@
+wo: '41000075552'
+title: WO-41000075552 02-20-61721 (SS-6002M)
+folder_ids:
+- 11uvllVsUI_AfaOf47l8mMZdAw6f960GB
+project_id: 02-20-61721
+tip: SS-6002M
+analysis_type: section
+targets: 1
+countermeasure: 'Install the following: Sinusoidal centerline rumble strips (18-inch
+  width); Sinusoidal edgeline rumble strips (8-inch width); 6-inch thermoplastic edgeline
+  and centerline pavement markings.'
+countermeasure_family: rumble-strips
+county: Greene
+division: '2'
+completed: 2021
+companions:
+- '41000078043'
+split: train
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook - 02-20-61721 (SS-6002M).xlsx
+    id: 1wtnseFJ1Vwz8CKyKZUsj1gT0OybVFU0H
+    size: 3594356
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #22 & 23.msg'
+    id: 108AP280wNyCGjmn_I2qKZhgFrpsMHlk0
+    size: 227328
+  fiche_csv:
+  - path: Crash Analysis/41000075552S2AFTER.csv
+    id: 1BjBx5pzphA_1hP1mM0-rgisjjOLc5jNE
+    size: 82287
+  - path: Crash Analysis/41000075552S1AFTER.csv
+    id: 1BACW8Fb9rQYL0IaKtpzzHjKXB-w9uFKg
+    size: 89832
+  - path: Crash Analysis/41000075552S2BEFORE.csv
+    id: 1ytwDKdVkpA-sauzp5nuz1wACnHHNkMYd
+    size: 72178
+  - path: Crash Analysis/41000075552S1BEFORE.csv
+    id: 1RdvcPQ3VerxjT5n9FACYO1bIP5M4mNJZ
+    size: 84599
+  id_lists:
+  - path: Crash Analysis/41000075552S2AFTER_CrashID.txt
+    id: 1ichD82I-wNrjZjdINlAv3v4HKZ5PkXJ2
+    size: 5195
+  - path: Crash Analysis/41000075552S1AFTER_CrashID.txt
+    id: 1JwAl4YPmD5Wkl1r1y1rLdNiEmrRBSj_y
+    size: 6441
+  - path: Crash Analysis/41000075552S2BEFORE_CrashID.txt
+    id: 1VMAMCyaDnALe2Nz2aCjlrvpqwsiIu7lk
+    size: 4249
+  - path: Crash Analysis/41000075552S1BEFORE_CrashID.txt
+    id: 1aJ6xi6qT0Di8riu-uLhkSTomt-jFfMio
+    size: 6011
+  reports:
+  - path: 02-20-61721 (SS-6002M) Web.pdf
+    id: 1dqT9wfAROM3XH2DhhD1gEzTYOrkA5Q1Q
+    size: 1339825
+  - path: 02-20-61721 (SS-6002M) Complete Evaluation.pdf
+    id: 1fxOY3FWF2LJxa-egaN-JB2DpM3Fz3d0C
+    size: 3388489
+  - path: Crash Analysis/02-20-61721 (SS-6002M) Supplemental Evaluation Report.pdf
+    id: 1NzFutbuCkK2hhoVCcUXar3koOOkVA9RB
+    size: 242571

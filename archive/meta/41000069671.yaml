@@ -1,0 +1,53 @@
+wo: '41000069671'
+title: WO-41000069671 12-17-217
+folder_ids:
+- 1PlJYO-TxZNq7uTUqVjhOT7QqGSdSyq_8
+project_id: 12-17-217
+tip: ''
+analysis_type: section
+targets: 1
+countermeasure: Install oversized Exit and Ramp Curve Warning signage, as well as
+  Chevrons throughout the exit ramp.
+countermeasure_family: signing
+county: Iredell
+division: '12'
+completed: 2018
+companions: []
+split: verify
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook - 12-17-217.xlsx
+    id: 18nFOI3naYGzy76ztS-fox32NjlQlb0It
+    size: 7531254
+  - path: Crash Analysis/~$Section Evaluation Workbook - 12-17-217.xlsx
+    id: 1xooQiSwXcejDUFBdChvDx71T9CIpxKgb
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1dzDy-XJ1NVXUypxnUL2eIS62-M4tvSVM
+    size: 1761599
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 137CzuSAjNta3IDIipjuGrz8PZugt0ZtI
+    size: 13954
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1IasK3by5yuQJ6ej6yN73n-Rpfu05YN1-
+    size: 12333
+  id_lists:
+  - path: Crash Analysis/Before_CrashID.txt
+    id: 1kGVMhmoYZIqYLxA-JxXtihTLpe2cucTw
+    size: 377
+  - path: Crash Analysis/After_CrashID.txt
+    id: 13VuDSIw2hvNK9mWI-GskWYvGFLWBDhR3
+    size: 251
+  reports:
+  - path: 12-17-217_CompleteEval.pdf
+    id: 19t9Cnhdza0GzZhugm2tFpB1s5hGTjnsz
+    size: 489736
+  - path: 12-17-217_Web.pdf
+    id: 1_d9lSrOmhmBg5s7t9TqCYytLJKoJAgYB
+    size: 461504

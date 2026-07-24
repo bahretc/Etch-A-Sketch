@@ -1,0 +1,54 @@
+wo: '41000073347'
+title: WO-41000073347 10-17-342 (W-5710P)
+folder_ids:
+- 1xI2EVUiamkntRtIR1ID2y2al14gvyimV
+project_id: 10-17-342
+tip: W-5710P
+analysis_type: intersection
+targets: 1
+countermeasure: Convert existing full-access intersection to Reduced Conflict Intersection
+  (RCI), and install crosswalk with pedestrian refuge island across US 52/US 74/NC
+  742
+countermeasure_family: geometry
+county: Anson
+division: '10'
+completed: 2019
+companions: []
+split: train
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 10-17-342.xlsx
+    id: 1YZhU7IvONOeH_k0XSWP7QzHNJj9waL1C
+    size: 5032164
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 10-17-342.xlsx
+    id: 1aK8Y5Wv5mQfdTA7hFkze2Bi9fUIlaHvV
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1ogxxqo0_CShVAZAIq9eJ1gQdBjhbaErB
+    size: 24266
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1TdKCjcNUgnlwmro7GZL7Lc4FOWmvQRr_
+    size: 17230
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1_HeVsuTnrJNabDFz__39LRvKpCybL_2r
+    size: 563849
+  id_lists:
+  - path: Crash Analysis/Before_CrashID.txt
+    id: 1AC7Dy5EuHcQs2ku3sfKCHJpJaH6pCICy
+    size: 1486
+  - path: Crash Analysis/After_CrashID.txt
+    id: 159c4RNmEcAbFGTTRgLJGgjyv42dVa8Dv
+    size: 805
+  reports:
+  - path: 10-17-342 Complete Evaluation.pdf
+    id: 1Samn_fvBSvU0Doqu4pyAu-LP4bXshJxt
+    size: 677548
+  - path: 10-17-342 Web.pdf
+    id: 10s1uVBI6qKjXxHjwviHpUMA_hJu4aGch
+    size: 605324

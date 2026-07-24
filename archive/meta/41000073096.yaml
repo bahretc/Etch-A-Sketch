@@ -1,0 +1,60 @@
+wo: '41000073096'
+title: WO-41000073096 02-17-46265 (SS-4902CT)
+folder_ids:
+- 1TVIRnnOG7BYX2-JNJdF9Izy3J4zIiqp5
+project_id: 02-17-46265
+tip: SS-4902CT
+analysis_type: intersection
+targets: 1
+countermeasure: Install an all-way stop with 36" stop and supplemental stop signs,
+  including All Way plaques and flags, as well as stop bars and Stop Ahead warning
+  signs with flags on all approaches.
+countermeasure_family: awsc
+county: Pitt
+division: '2'
+completed: 2019
+companions: []
+split: train
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 02-17-46265 (SS-4902CT).xlsx
+    id: 1MV34-aj4qTWz1eW_aH7KB2dpX--lIMig
+    size: 6706349
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 11-13-400 (W-5601AH).xlsx
+    id: 1wVaWA7tWioxxcXs7o_UmGqDgDhpgLJna
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/41000073096BEFORE.csv
+    id: 1cCggQ3iqbzy45jVyW0YogEmnXekopzRl
+    size: 17885
+  - path: Crash Analysis/41000073096AFTER.csv
+    id: 1wUSqQ3xEgUanVOUTzpiV_JQn_2xFpCa2
+    size: 10308
+  - path: Crash Analysis/InitialStudy.csv
+    id: 1r0vPhOJL3UA4TLb46GWvMNRTBKMNVD3H
+    size: 19220
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 118ZqiC6X0h9Lk_7T41HecfP9YQOI0DLM
+    size: 24223
+  id_lists:
+  - path: Crash Analysis/41000073096AFTER_CrashID.txt
+    id: 1YdRXxLrAVyp6csks2tF0aLvuyjlh4m-j
+    size: 122
+  - path: Crash Analysis/41000073096BEFORE_CrashID.txt
+    id: 1ILzHgOm_f-9uUzPmVdDPcajCw0NcV6HK
+    size: 896
+  - path: Crash Analysis/InitialCrashID.txt
+    id: 188WbtrizF2OH21xL8mhjjrIBDU9hz0Ej
+    size: 1025
+  reports:
+  - path: 02-17-46265 (SS-4902CT) Complete Eval.pdf
+    id: 1jUb9f1sgzmmg2B0cnOdibmHB_Ibc5BSu
+    size: 564563
+  - path: 02-17-46265 (SS-4902CT) Web.pdf
+    id: 11yyFjIJboVde5W6y2oFHG0-_tMkV82fh
+    size: 508605

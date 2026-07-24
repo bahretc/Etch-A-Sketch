@@ -1,0 +1,49 @@
+wo: '41000075676'
+title: WO-41000075676 06-20-62382 (SS-6006AP)
+folder_ids:
+- 1sBzdRhV91UPHfeo0fXheWu3ecAb-J3nX
+project_id: 06-20-62382
+tip: SS-6006AP
+analysis_type: intersection
+targets: null
+countermeasure: ''
+countermeasure_family: other
+county: ''
+division: ''
+completed: null
+companions:
+- '41000075670'
+split: train
+flags:
+- email-not-parsed
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 06-20-62382 (SS-6006AP).xlsx
+    id: 18ExDfWLc3HbpaYe7Vn4H2h_9PRu93fRZ
+    size: 1895316
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #2 & 3.msg'
+    id: 1zhEHX3XLczEgFqSW5pNbwjqIG7IxWNtD
+    size: 441344
+  fiche_csv:
+  - path: Crash Analysis/41000075676AFTER.csv
+    id: 1MSM-f1lF3zDI9qxkYFt5de0jrvlDWkqe
+    size: 13693
+  - path: Crash Analysis/41000075676BEFORE.csv
+    id: 1YuEN7ZkVZuWjCdt-WiTMcljqnXXs0gwt
+    size: 14857
+  id_lists:
+  - path: Crash Analysis/41000075676BEFORE_CrashID.txt
+    id: 1J52prpkjbMeE9vo56oEdIhtNEtlTOpBA
+    size: 423
+  - path: Crash Analysis/41000075676AFTER_CrashID.txt
+    id: 1JWei2mkzMoudGCC7jZPrJdVoZEVvb7jQ
+    size: 380
+  reports:
+  - path: 06-20-62382 (SS-6006AP) Complete Eval.pdf
+    id: 1gI3dF6pLtc2nTn2a6oisz2zN-SfYYoSG
+    size: 642962
+  - path: 06-20-62382 (SS-6006AP) Web.pdf
+    id: 1iew5CQPw3piUdELu5O_09M3BmYdieXcR
+    size: 595423

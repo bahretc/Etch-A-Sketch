@@ -1,0 +1,391 @@
+{
+ "folder_id": "1FxM_g_uJ0_BUtxLyQU-XM1vtVnB-TMkT",
+ "title": "WO-41000075105 07-17-430 AND 07-21-3747",
+ "files": [
+  {
+   "path": "07-21-3747_Web.pdf",
+   "id": "12JKL8XgbxadwRk_BaCXfz2zmTEKAK8-u",
+   "title": "07-21-3747_Web.pdf",
+   "mime": "application/pdf",
+   "size": 477002
+  },
+  {
+   "path": "07-21-3747_Complete Eval.pdf",
+   "id": "1vi0pQfBS2s0UuCqCaIeonWVEnL71qePP",
+   "title": "07-21-3747_Complete Eval.pdf",
+   "mime": "application/pdf",
+   "size": 497904
+  },
+  {
+   "path": "07-21-3747 and 07-17-430_Complete Eval.pdf",
+   "id": "1gOluoBCSCNgw9fvrS0_bm9wkPrqJuYeF",
+   "title": "07-21-3747 and 07-17-430_Complete Eval.pdf",
+   "mime": "application/pdf",
+   "size": 451851
+  },
+  {
+   "path": "07-21-3747 and 07-17-430_Web.pdf",
+   "id": "1Ue3ognJ7euFG-Ihp9D_YVLzUb2BBA9jm",
+   "title": "07-21-3747 and 07-17-430_Web.pdf",
+   "mime": "application/pdf",
+   "size": 403676
+  },
+  {
+   "path": "Notes/NC62_Ordinances.pdf",
+   "id": "1JMJg1ZvxAM4ZNRapWpn73eyqJPfM6xUA",
+   "title": "NC62_Ordinances.pdf",
+   "mime": "application/pdf",
+   "size": 35386
+  },
+  {
+   "path": "Notes/SR1113_Ordinances.pdf",
+   "id": "1wNAEFM1LupsyjijusqMouqF4WXk5LcKy",
+   "title": "SR1113_Ordinances.pdf",
+   "mime": "application/pdf",
+   "size": 25930
+  },
+  {
+   "path": "Notes/SR1005_Ordinances.pdf",
+   "id": "1PSCYS8HtsVrQr8hKOxFe3fsb-FHyo2J6",
+   "title": "SR1005_Ordinances.pdf",
+   "mime": "application/pdf",
+   "size": 16045
+  },
+  {
+   "path": "Notes/SR1129_Ordinances.pdf",
+   "id": "1VzD8fqZdlB_jUmGG8R8EC9-TPW96WTmh",
+   "title": "SR1129_Ordinances.pdf",
+   "mime": "application/pdf",
+   "size": 21698
+  },
+  {
+   "path": "Notes/Assumptions Email - SR 1129@SR 1113.docx",
+   "id": "1QgKCel-UGJm5JuTopf4iOQckyEDkhcKe",
+   "title": "Assumptions Email - SR 1129@SR 1113.docx",
+   "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+   "size": 16474
+  },
+  {
+   "path": "Notes/Assumptions Email - NC 62@SR1005.docx",
+   "id": "1cv8Ah4rZPW_Ruj2obS9wW13z3njmBB4Z",
+   "title": "Assumptions Email - NC 62@SR1005.docx",
+   "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+   "size": 15777
+  },
+  {
+   "path": "Crash Analysis/Intersection Evaluation Workbook - 07-21-3747.xlsx",
+   "id": "16MpfCIVLwNq2KGiQcivtKTphxqDwQdfR",
+   "title": "Intersection Evaluation Workbook - 07-21-3747.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 3543926
+  },
+  {
+   "path": "Crash Analysis/Intersection Evaluation Workbook, Split Time Periods - 07-21-3747 and 07-17-430.xlsx",
+   "id": "1R7t2aCnlE9C-QQtEK65oTzBekPs1Tmtv",
+   "title": "Intersection Evaluation Workbook, Split Time Periods - 07-21-3747 and 07-17-430.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 4958194
+  },
+  {
+   "path": "Crash Analysis/~$Intersection Evaluation Workbook - 07-21-3747.xlsx",
+   "id": "1GBYKirb9q7MksXO0K0T9BGRGUuYm8NHo",
+   "title": "~$Intersection Evaluation Workbook - 07-21-3747.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 165
+  },
+  {
+   "path": "Crash Analysis/Before_B_CrashID.txt",
+   "id": "1ERFwzaRWX6MPPSNONAV8RcCM27lFk8Qt",
+   "title": "Before_B_CrashID.txt",
+   "mime": "text/plain",
+   "size": 337
+  },
+  {
+   "path": "Crash Analysis/Before_B_CrashAnalysis.pdf",
+   "id": "1-fRWysfKhg1QZMyRU60E7eLbYleuoEVe",
+   "title": "Before_B_CrashAnalysis.pdf",
+   "mime": "application/pdf",
+   "size": 29947
+  },
+  {
+   "path": "Crash Analysis/Before_B_CrashAnalysis.csv",
+   "id": "1cu3hhG_2WfSPLbEzGnXf_lLZJhb6nEU7",
+   "title": "Before_B_CrashAnalysis.csv",
+   "mime": "text/csv",
+   "size": 11757
+  },
+  {
+   "path": "Crash Analysis/After_B_CrashAnalysis.pdf",
+   "id": "1Mwis6xGFKTGXc3bzSlb5PcCxYhdQm-FM",
+   "title": "After_B_CrashAnalysis.pdf",
+   "mime": "application/pdf",
+   "size": 27108
+  },
+  {
+   "path": "Crash Analysis/After2_A_CrashAnalysis.pdf",
+   "id": "15i3r-gQ5cbt9v6xQE-a4sruN9NEDR8vH",
+   "title": "After2_A_CrashAnalysis.pdf",
+   "mime": "application/pdf",
+   "size": 24317
+  },
+  {
+   "path": "Crash Analysis/After_B_CrashAnalysis.csv",
+   "id": "1JY-ztc0guvloysXZ4xw9ssw4AdfY0qyt",
+   "title": "After_B_CrashAnalysis.csv",
+   "mime": "text/csv",
+   "size": 10640
+  },
+  {
+   "path": "Crash Analysis/Before_A_CrashAnalysis.pdf",
+   "id": "1Yijn4OPFN1JESQ92v122UMVw2QBgxMSD",
+   "title": "Before_A_CrashAnalysis.pdf",
+   "mime": "application/pdf",
+   "size": 33034
+  },
+  {
+   "path": "Crash Analysis/After_B_CrashID.txt",
+   "id": "11r5RCSHVw7-9A9_FEZO6T_GE7ZiohqtS",
+   "title": "After_B_CrashID.txt",
+   "mime": "text/plain",
+   "size": 294
+  },
+  {
+   "path": "Crash Analysis/After1_A_CrashID.txt",
+   "id": "1W47SO5lPDhkxqQ6Q8SeAuTcFCPyy3mgT",
+   "title": "After1_A_CrashID.txt",
+   "mime": "text/plain",
+   "size": 165
+  },
+  {
+   "path": "Crash Analysis/Before_A_CrashID.txt",
+   "id": "1LQF07MPz9hJHt5ivbAJ2i1gKAa1x2r0U",
+   "title": "Before_A_CrashID.txt",
+   "mime": "text/plain",
+   "size": 380
+  },
+  {
+   "path": "Crash Analysis/After2_A_CrashID.txt",
+   "id": "16B7yoWyx_r6CTNFgGq8ke141EkbQayXP",
+   "title": "After2_A_CrashID.txt",
+   "mime": "text/plain",
+   "size": 165
+  },
+  {
+   "path": "Crash Analysis/Before_A_CrashAnalysis.csv",
+   "id": "1k1TCTHFoQqe394MvU0CcLbGRJyFf5F1D",
+   "title": "Before_A_CrashAnalysis.csv",
+   "mime": "text/csv",
+   "size": 12947
+  },
+  {
+   "path": "Crash Analysis/After1_A_CrashAnalysis.pdf",
+   "id": "1ibmOO5djmIWS0Il811wWpFXIJpyv2iiy",
+   "title": "After1_A_CrashAnalysis.pdf",
+   "mime": "application/pdf",
+   "size": 24630
+  },
+  {
+   "path": "Crash Analysis/After2_A_CrashAnalysis.csv",
+   "id": "1wYepLIVCeVtHukthhxaRsMAj1DMepObn",
+   "title": "After2_A_CrashAnalysis.csv",
+   "mime": "text/csv",
+   "size": 9729
+  },
+  {
+   "path": "Crash Analysis/After1_A_CrashAnalysis.csv",
+   "id": "1TB5HD2lE1GxafB9gwuu-bQr0Bn_8kGof",
+   "title": "After1_A_CrashAnalysis.csv",
+   "mime": "text/csv",
+   "size": 9874
+  },
+  {
+   "path": "Crash Analysis/OriginalFiche_B.csv",
+   "id": "1hlN2YI_UP7uQEwSB1d5IEZcjbtPXS2s0",
+   "title": "OriginalFiche_B.csv",
+   "mime": "text/csv",
+   "size": 290159
+  },
+  {
+   "path": "Crash Analysis/InitialStudy_B.pdf",
+   "id": "1dMpvxPxqlm_Nj5QS73K620UviDaOhjw1",
+   "title": "InitialStudy_B.pdf",
+   "mime": "application/pdf",
+   "size": 34944
+  },
+  {
+   "path": "Crash Analysis/InitialID_B.txt",
+   "id": "1hQPxp3-f0OjdFG26Mgjny7qwBfDnxQkl",
+   "title": "InitialID_B.txt",
+   "mime": "text/plain",
+   "size": 466
+  },
+  {
+   "path": "Crash Analysis/~$Intersection Evaluation Workbook - 07-17-430.xlsx",
+   "id": "102pR6yGfhzoKVqvB98ZB-cDvDJwY1Nzs",
+   "title": "~$Intersection Evaluation Workbook - 07-17-430.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 165
+  },
+  {
+   "path": "Crash Analysis/SR1005_FeaturesReport.pdf",
+   "id": "1BWDL0gaBIJYT5SFFOQtdhba-mQrQm6TX",
+   "title": "SR1005_FeaturesReport.pdf",
+   "mime": "application/pdf",
+   "size": 22110
+  },
+  {
+   "path": "Crash Analysis/NC62_FeaturesReport.pdf",
+   "id": "16DHoLCjz_2fqRdQja5c_XHRoPz7jpWs8",
+   "title": "NC62_FeaturesReport.pdf",
+   "mime": "application/pdf",
+   "size": 19027
+  },
+  {
+   "path": "Crash Analysis/OriginalFiche_A.csv",
+   "id": "1n0kWkNkZyLmXjwZ55o0psaTmcJMik_vD",
+   "title": "OriginalFiche_A.csv",
+   "mime": "text/csv",
+   "size": 745177
+  },
+  {
+   "path": "Crash Analysis/InitialStudy_A.pdf",
+   "id": "1fZ2J2EPrR0OjsYaAZG9mEh_ZGgG17TYJ",
+   "title": "InitialStudy_A.pdf",
+   "mime": "application/pdf",
+   "size": 47809
+  },
+  {
+   "path": "Crash Analysis/InitialID_A.txt",
+   "id": "15coRsfMdo2JkCEKOzR_fpEeddUfmF6_-",
+   "title": "InitialID_A.txt",
+   "mime": "text/plain",
+   "size": 853
+  },
+  {
+   "path": "Crash Analysis/SR1113_FeaturesReport.pdf",
+   "id": "1hnh0MtWdqn29t7wgNHdAaAg5QsYUyFXU",
+   "title": "SR1113_FeaturesReport.pdf",
+   "mime": "application/pdf",
+   "size": 19718
+  },
+  {
+   "path": "Crash Analysis/SR1129_FeaturesReport.pdf",
+   "id": "1XH6KgHreOCECL9P5e6dNvh8vLkPiaBbR",
+   "title": "SR1129_FeaturesReport.pdf",
+   "mime": "application/pdf",
+   "size": 16256
+  },
+  {
+   "path": "Crash Analysis/~$Intersection Evaluation Workbook, Split Time Periods - 07-21-3747.xlsx",
+   "id": "1PnPu60UTUOpwPIhnYcjhWCfhQ2EWBG2x",
+   "title": "~$Intersection Evaluation Workbook, Split Time Periods - 07-21-3747.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 165
+  },
+  {
+   "path": "Background/49-50 SS 07-17-430 - 07-21-3747/Master Evaluation Spreadsheet.xlsx",
+   "id": "1NB5-MecRRhkMqCY4x1G8HG7kLPhv39zY",
+   "title": "Master Evaluation Spreadsheet.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 909227
+  },
+  {
+   "path": "Background/49-50 SS 07-17-430 - 07-21-3747/~$Master Evaluation Spreadsheet.xlsx",
+   "id": "18K7GC3jrCmxC4YshvpDUyX2WDAcI81FG",
+   "title": "~$Master Evaluation Spreadsheet.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 165
+  },
+  {
+   "path": "Background/49-50 SS 07-17-430 - 07-21-3747/Thumbs.db",
+   "id": "178qzgAh4Xyc_EIlVgbvMMAWYsPCu1Ll5",
+   "title": "Thumbs.db",
+   "mime": "application/octet-stream",
+   "size": 41984
+  },
+  {
+   "path": "Background/49-50 SS 07-17-430 - 07-21-3747/07-17-430/Final Inspection/SS-4907BZ Before-After.pdf",
+   "id": "1LcPTCWzVjUMNyTZGzTEJu1WbRpxqYAyV",
+   "title": "SS-4907BZ Before-After.pdf",
+   "mime": "application/pdf",
+   "size": 1258923
+  },
+  {
+   "path": "Background/49-50 SS 07-17-430 - 07-21-3747/07-17-430/Final Inspection/SS-4907BZ Final Insp, Memo.pdf",
+   "id": "1-UjXM05ephny0vtfjfi52BRFRxhj6MSf",
+   "title": "SS-4907BZ Final Insp, Memo.pdf",
+   "mime": "application/pdf",
+   "size": 534020
+  },
+  {
+   "path": "Background/49-50 SS 07-17-430 - 07-21-3747/07-17-430/Background Information/07-17-430.pdf",
+   "id": "1JjiEM5o9BGeTRgWu3HuYTaSUGlVYY6tp",
+   "title": "07-17-430.pdf",
+   "mime": "application/pdf",
+   "size": 3610904
+  },
+  {
+   "path": "Background/49-50 SS 07-17-430 - 07-21-3747/07-17-430/Background Information/07-17-430 funds.pdf",
+   "id": "1EeAOuZ7FksKtOxfhLREZ443j2r1cmQHa",
+   "title": "07-17-430 funds.pdf",
+   "mime": "application/pdf",
+   "size": 572460
+  },
+  {
+   "path": "Background/49-50 SS 07-17-430 - 07-21-3747/07-17-430/Background Information/map 07-17-430.pdf",
+   "id": "1GegmvbJ-9cO7sFUYIMTOGzheKP87Gg2l",
+   "title": "map 07-17-430.pdf",
+   "mime": "application/pdf",
+   "size": 274934
+  },
+  {
+   "path": "Background/49-50 SS 07-17-430 - 07-21-3747/07-21-3747/Background Info/07-21-3747_funds.pdf",
+   "id": "19piyXY75UJX9UvJO_bsZQN5q54ZddZGj",
+   "title": "07-21-3747_funds.pdf",
+   "mime": "application/pdf",
+   "size": 1561788
+  },
+  {
+   "path": "Background/49-50 SS 07-17-430 - 07-21-3747/07-21-3747/Background Info/07-21-3747.pdf",
+   "id": "1AlhSNe0I1MyT4kOQuOKCQW6lCNCXGa8c",
+   "title": "07-21-3747.pdf",
+   "mime": "application/pdf",
+   "size": 14614731
+  },
+  {
+   "path": "Background/49-50 SS 07-17-430 - 07-21-3747/07-21-3747/Final Inspection/Before Pics SR 1129 at SR 1113.pdf",
+   "id": "1RbBy7q798RBHKs1IQOlQ2uRdsvO5dE3_",
+   "title": "Before Pics SR 1129 at SR 1113.pdf",
+   "mime": "application/pdf",
+   "size": 2620054
+  },
+  {
+   "path": "Background/49-50 SS 07-17-430 - 07-21-3747/07-21-3747/Final Inspection/Before Pics NC 62 at SR 1005.pdf",
+   "id": "1CEO645KWtpekXOZP7q-8JLhaXLeUaqbG",
+   "title": "Before Pics NC 62 at SR 1005.pdf",
+   "mime": "application/pdf",
+   "size": 2534641
+  },
+  {
+   "path": "Background/49-50 SS 07-17-430 - 07-21-3747/07-21-3747/Final Inspection/After Pics SR 1129 at SR 1113.pdf",
+   "id": "1j6weUWf6x0dVmgBjVXTE610a6i6RJg5D",
+   "title": "After Pics SR 1129 at SR 1113.pdf",
+   "mime": "application/pdf",
+   "size": 1540698
+  },
+  {
+   "path": "Background/49-50 SS 07-17-430 - 07-21-3747/07-21-3747/Final Inspection/After Pics NC 62 at SR 1005.pdf",
+   "id": "1tMVgUyFhzmMJJzhHqibWs9C_y7U3WO9w",
+   "title": "After Pics NC 62 at SR 1005.pdf",
+   "mime": "application/pdf",
+   "size": 2559348
+  },
+  {
+   "path": "Background/49-50 SS 07-17-430 - 07-21-3747/07-21-3747/Final Inspection/SS-6007X Final Review Memo.pdf",
+   "id": "1TxsIhlbsDLscdZIXWPH6Fiti0V0FdFCN",
+   "title": "SS-6007X Final Review Memo.pdf",
+   "mime": "application/pdf",
+   "size": 597990
+  }
+ ]
+}

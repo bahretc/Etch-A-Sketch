@@ -1,0 +1,44 @@
+wo: '41000073056'
+title: WO-41000073056 10-15-236
+folder_ids:
+- 1KZYFPYfcyBWrRcZJpqHEe66K6yRJlWWV
+project_id: 10-15-236
+tip: ''
+analysis_type: intersection
+targets: 1
+countermeasure: Install directional lefts on NC 49 at SR 1157 and downstream/upstream
+  signalized U-turn lanes with bulb-outs.
+countermeasure_family: signal
+county: Cabarrus
+division: '10'
+completed: 2019
+companions: []
+split: verify
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 10-15-236.xlsx
+    id: 1UQgovnxgUbT3W3qGMmys0JNYIChdwT-f
+    size: 5652161
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 10-15-236.xlsx
+    id: 1G4fVtquosrUA87BF3HtvdHPUJGNIjKJb
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1z680NPcxXZKztGik-MFrKsoczlnlZWn8
+    size: 63642
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 165Zcb1CEWYCWLnncr_AXQW23suysg82n
+    size: 38557
+  id_lists: []
+  reports:
+  - path: 10-15-236 Complete Evaluation.pdf
+    id: 1ZiJ2jNfMVM_ucn78dWPk_0fo-LqxS80j
+    size: 890069
+  - path: 10-15-236 Web.pdf
+    id: 1rTBH4LwKdiJTl9iVB6QsWV9AGO0CZ7BG
+    size: 651746

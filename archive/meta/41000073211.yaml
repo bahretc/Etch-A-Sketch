@@ -1,0 +1,55 @@
+wo: '41000073211'
+title: WO-41000073211 02-15-37560 (SS-4902CW)
+folder_ids:
+- 17Kb1hCvLEOFYPik2bG16oDy8i0fTnwR3
+project_id: 02-15-37560
+tip: SS-4902CW
+analysis_type: intersection
+targets: 1
+countermeasure: Install flashing yellow arrow heads for the left turn movements and
+  side-by-side dual red signal heads for all through lanes on both approaches of NC
+  11.
+countermeasure_family: signal
+county: Lenoir
+division: '2'
+completed: null
+companions: []
+split: train
+flags: []
+files:
+  workbooks:
+  - path: ~$Intersection Evaluation Workbook - 02-15-37560 (SS-4902CW).xlsx
+    id: 1oCsOo8gGpwJrZ9gq5YiYDtlPdV4f4kZn
+    size: 165
+  - path: Crash Analysis/Intersection Evaluation Workbook - 02-15-37560 (SS-4902CW).xlsx
+    id: 1jXIwQjPucKj3kbU1tKburKX-TqLfxITz
+    size: 8180924
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #42.msg'
+    id: 1J0xceXOoq5IXUWI0YHc4Tm4Lhg07zHrY
+    size: 158720
+  fiche_csv:
+  - path: Crash Analysis/41000073211BEFORE.csv
+    id: 1dDYBTgO4xAbffU8KpT4mUaaMzCLnQ2q4
+    size: 23510
+  - path: Crash Analysis/41000073211AFTER.csv
+    id: 1gWtLiM1o_rlId3UGMzymIsEB2wLDDTVY
+    size: 19023
+  - path: Crash Analysis/41000073211_InitialStudy.csv
+    id: 1m5K9GN7WTnNp52o2fF5P2yCXW0sxE6Gm
+    size: 45082
+  id_lists:
+  - path: Crash Analysis/41000073211BEFORE_CrashID.txt
+    id: 1fOwYa9Cu75Z5xWcT-4rgQhAsFB4Wv6D6
+    size: 1412
+  - path: Crash Analysis/41000073211AFTER_CrashID.txt
+    id: 10BG4C9uJJFn5S8DKv0qCEN960h8WOJZN
+    size: 982
+  reports:
+  - path: 02-15-37560 (SS-4902CW) Complete Eval.pdf
+    id: 1xCTT4ccr0EAiI1kQq2IStV0tRv8AGvgY
+    size: 532862
+  - path: 02-15-37560 (SS-4902CW) Web.pdf
+    id: 164QWNTUZ22J4b4ZEIcZmkiRdx9snc3Dx
+    size: 437606

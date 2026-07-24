@@ -1,0 +1,60 @@
+wo: '41000078143'
+title: WO-41000078143 05-21-66243
+folder_ids:
+- 19KU16PakAYHsYErQVhHfQdWQxlBTZIZE
+project_id: 05-21-66243
+tip: SS-6205F
+analysis_type: intersection
+targets: 1
+countermeasure: 'Convert intersection to All-Way STOP control, including: Replacing
+  Crossroads Warning signs (W2-1) with STOP Ahead Warning signs (W3-1) with Brightsides
+  on SR 2406 approaches; Installing STOP AHEAD and STOP pavement markings on SR 2406
+  approaches; Installing left-side STOP Ahead Warning sign (W3-1) with Brightside
+  on southbound SR 2406 approach; Installing dual 36” STOP signs with Brightsides
+  and Stop Bars on SR 2406 approaches; Installing left-side STOP Ahead Warning signs
+  (W3-1) with Brightsides on SR 2337 approaches; Adding Brightsides to existing STOP
+  signs on SR 2337 approaches, and installing new left-side STOP sign on westbound
+  SR 2337 approach; Installing STOP pavement markings at Stop Bars on SR 2337 approaches.'
+countermeasure_family: awsc
+county: Wake
+division: '5'
+completed: 2022
+companions: []
+split: train
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 05-21-66243.xlsx
+    id: 1agtsRFmPod85-7NEkEx7cljO-W5_5YOI
+    size: 3269455
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 05-21-66243.xlsx
+    id: 1yS6to_dVQJXGUnB_WkoP4bkGeqaG_Gkn
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 10CmLVbBhWw6_kegjOuOveabQmmICAYGD
+    size: 13849
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1DoQ2XQUQg3fhdKNCSBYiHIyTFIyKDzja
+    size: 10809
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1Nbyn2Jnx9N8JY__tZWAO_NnYba0E1HwU
+    size: 55133
+  id_lists:
+  - path: Crash Analysis/Before_CrashID.txt
+    id: 1P_hMa0lmTQ5fxPZcM-To4xvvkxR1_HLv
+    size: 509
+  - path: Crash Analysis/After_CrashID.txt
+    id: 1FCdGxQRg8UZavjZKPROETQvD1IJHX5P-
+    size: 208
+  reports:
+  - path: 05-21-66243_Complete Evaluation.pdf
+    id: 1c1Ll-yKJtXXq1UZjCHswAyYD42QWPGrI
+    size: 813572
+  - path: 05-21-66243_Web.pdf
+    id: 1_1irxZFiykwr2R8av0IIi8QFOYBA6yLp
+    size: 769442

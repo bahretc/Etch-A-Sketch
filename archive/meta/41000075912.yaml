@@ -1,0 +1,59 @@
+wo: '41000075912'
+title: WO-41000075912 04-15-39049
+folder_ids:
+- 1JpND4_o52JX5MJ4SO7EwUNjUoossTkHD
+project_id: 04-15-39049
+tip: W-5601HO
+analysis_type: section
+targets: 1
+countermeasure: Construct 3 lane section with center turn lane with appropriate tapers
+  and improve skew angles at two side road intersections.
+countermeasure_family: turn-lanes
+county: Johnston
+division: '4'
+completed: 2021
+companions: []
+split: verify
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook - 04-15-39049.xlsx
+    id: 1h1XTFU7keR0Ta5xTxqi9Uk0In_Ni3ztk
+    size: 4359957
+  - path: Crash Analysis/~$Section Evaluation Workbook - 04-15-39049.xlsx
+    id: 1rEUwXWeJfzV_oeCVvCqRSA0KR64MOZCo
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 17rS9DtPnRL-F3d_Lf5Y8Ir60cc0Cohw9
+    size: 29668
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1m2GKzrxbEecHVyCAUmXCD1d_A7lhF3qP
+    size: 18108
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 14DAFI9qW4Ol9w0TJ6SrJyIZvDOPdZVK6
+    size: 274176
+  id_lists:
+  - path: Crash Analysis/Before_ID.txt
+    id: 1F3qgMy9CU8dWQ1k_ZN9WOktf-qwjf7vw
+    size: 1842
+  - path: Crash Analysis/After_ID.txt
+    id: 1ePgGOVnZ_iU88j1wNJ8qsnVZ5CgfEtos
+    size: 767
+  - path: Crash Analysis/Before_Import.txt
+    id: 1m9rJxf9AG_qbNECsFZE0PwWHQVmFRb7C
+    size: 798
+  - path: Crash Analysis/After_Import.txt
+    id: 1wcBHwS5qzVHgioLlthD4JJxVnqa3wIvI
+    size: 323
+  reports:
+  - path: 04-15-39049_Complete Eval.pdf
+    id: 1R3H7A48_XgbKGXsaqWQqVeAVVh4vix33
+    size: 1025924
+  - path: 04-15-39049_Web.pdf
+    id: 1BcSWaw2kQjSeVPmv41p5t6KQZPjaWIA3
+    size: 923344

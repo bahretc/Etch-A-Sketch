@@ -1,0 +1,63 @@
+wo: '41000078218'
+title: WO-41000078218 10-20-220 (SS-6010O)
+folder_ids:
+- 1svkExsBNWnJoQfVBEzhxhldxPDD5y-nQ
+project_id: 10-20-220
+tip: SS-6010O
+analysis_type: intersection
+targets: 1
+countermeasure: Install an all-way stop condition with upgraded flashers (yellow to
+  red).
+countermeasure_family: flashers-vewf
+county: Stanly
+division: '10'
+completed: 2022
+companions: []
+split: verify
+flags: []
+files:
+  workbooks:
+  - path: Background Information/2024 HSIP Files/Order 41000073907 PH 83I00070_FicheReport.xlsm
+    id: 1foNVztr8iBL07PglhjzWNPyWZcIjEFob
+    size: 527155
+  - path: Crash Analysis/Intersection Evaluation Workbook - 10-20-220 (SS-6010O).xlsx
+    id: 1alSeCJ1c9VL-9d9EDiTXoJgvMr2uzlf1
+    size: 1768408
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #14.msg'
+    id: 1BCtoi3N208It1aG3jxoIum2BlwhsJd9p
+    size: 89600
+  fiche_csv:
+  - path: Background Information/2024 HSIP Files/Order 41000073907 PH 83I00070_FicheReport.csv
+    id: 1ggTmKWlnVS_lav2pcgv5JiNs5deAegHI
+    size: 335190
+  - path: Background Information/2024 HSIP Files/Order 41000073907 PH 83I00070_CrashAnalysis.csv
+    id: 1ys3niCNuTinPLGTOMRMtQrELc7zso_Tw
+    size: 24928
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1eOaE4pTS2ODqPPCuxMMUiRwtzVrJZXCS
+    size: 301786
+  - path: Crash Analysis/41000078218AFTER.csv
+    id: 1-kn6idAkrLSwD7TDYecEf0BysrpVSwmO
+    size: 19569
+  - path: Crash Analysis/41000078218BEFORE.csv
+    id: 1tQTvcPevBz9DXUwZgv7HojgqJ-H2GNY4
+    size: 15303
+  - path: Crash Analysis/InitialStudy.csv
+    id: 1i43ghSRUZ2Jo6v8Az5H-7WDBJQ35U6AT
+    size: 25722
+  id_lists:
+  - path: Crash Analysis/41000078218BEFORE_CrashID.txt
+    id: 1GaF_cOi2_oaPO-m1vnEG0e37rNsmfndI
+    size: 595
+  - path: Crash Analysis/41000078218AFTER_CrashID.txt
+    id: 1tcL5M25OKVQGq17JYLEDPD3NCnvjy2EG
+    size: 1025
+  reports:
+  - path: 10-20-220 (SS-6010O) Web.pdf
+    id: 1-SZdBo7oUDoId4KGO27VRWINpl_qtu1D
+    size: 521285
+  - path: 10-20-220 (SS-6010O) Complete Evaluation.pdf
+    id: 1ypNr73oIdEULAz_8xn4WQ_seaYg4PjMX
+    size: 593124

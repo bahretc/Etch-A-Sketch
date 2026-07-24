@@ -1,0 +1,328 @@
+{
+ "folder_id": "1z-KlzxJYZwRoBzdvxBZrzcLzCtcH5WQF",
+ "title": "WO-41000069675 03-13-24253 (W-5203W)",
+ "files": [
+  {
+   "path": "03-13-24253_Complete Eval.pdf",
+   "id": "16c8DBSiB_kgUxIWTwcdnVHaIVkVh4Oke",
+   "title": "03-13-24253_Complete Eval.pdf",
+   "mime": "application/pdf",
+   "size": 631032
+  },
+  {
+   "path": "03-13-24253_Web.pdf",
+   "id": "1bfM-xSKWiCvBA_zG3d7dxpOn0q_H4ndC",
+   "title": "03-13-24253_Web.pdf",
+   "mime": "application/pdf",
+   "size": 583258
+  },
+  {
+   "path": "Notes/SR1327_Ordinances.pdf",
+   "id": "1fC_MSvzzSE-D336ZCtIj9wKkZqghmrMB",
+   "title": "SR1327_Ordinances.pdf",
+   "mime": "application/pdf",
+   "size": 17379
+  },
+  {
+   "path": "Notes/SR1410_Ordinances.pdf",
+   "id": "1YBBd7FJNf_qazcbGbtSlTdT9-H_agYj1",
+   "title": "SR1410_Ordinances.pdf",
+   "mime": "application/pdf",
+   "size": 17340
+  },
+  {
+   "path": "Notes/US17_Ordinances.pdf",
+   "id": "1EGBPu8mCNZz7pKgAOMydfe9_W5WA8_BF",
+   "title": "US17_Ordinances.pdf",
+   "mime": "application/pdf",
+   "size": 41959
+  },
+  {
+   "path": "Notes/Assumptions Email.docx",
+   "id": "1ewaLerW1L63bKB93WdZj22ZvliaApvaF",
+   "title": "Assumptions Email.docx",
+   "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+   "size": 15722
+  },
+  {
+   "path": "Crash Analysis/Intersection Evaluation Workbook - 03-13-24253.xlsx",
+   "id": "1HAf7GUIO7a3QSTDzWstyf3GlA4oDCWkt",
+   "title": "Intersection Evaluation Workbook - 03-13-24253.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 4102635
+  },
+  {
+   "path": "Crash Analysis/OriginalFiche.csv",
+   "id": "1e6bHpuVW8a_V_dTUDoKdtYZ6JSs_4x_3",
+   "title": "OriginalFiche.csv",
+   "mime": "text/csv",
+   "size": 1071371
+  },
+  {
+   "path": "Crash Analysis/Before_CrashID.txt",
+   "id": "1acP6vEkc5pnNCPK7aKAOnsHRZdOSV2NI",
+   "title": "Before_CrashID.txt",
+   "mime": "text/plain",
+   "size": 810
+  },
+  {
+   "path": "Crash Analysis/~$Intersection Evaluation Workbook - 03-13-24253.xlsx",
+   "id": "1vbMyga1wqjfVETQxuLTrc-fnUNbZoITy",
+   "title": "~$Intersection Evaluation Workbook - 03-13-24253.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 165
+  },
+  {
+   "path": "Crash Analysis/After_CrashAnalysis.csv",
+   "id": "1ElMOKXLiseuL9J_jJqtsKnQ-9YUNaWex",
+   "title": "After_CrashAnalysis.csv",
+   "mime": "text/csv",
+   "size": 15022
+  },
+  {
+   "path": "Crash Analysis/After_CrashAnalysis.pdf",
+   "id": "1XYb83wes-kwqgNYPUk0rcZ6LtosA4pnR",
+   "title": "After_CrashAnalysis.pdf",
+   "mime": "application/pdf",
+   "size": 38415
+  },
+  {
+   "path": "Crash Analysis/Before_CrashAnalysis.csv",
+   "id": "1oOmrKbFd8OBYCajjGmCOJOahvw5TSmp5",
+   "title": "Before_CrashAnalysis.csv",
+   "mime": "text/csv",
+   "size": 17802
+  },
+  {
+   "path": "Crash Analysis/Before_CrashAnalysis.pdf",
+   "id": "1n7_7o-5Z_Qo-7VJzRHhNRnr8FBzEpLeg",
+   "title": "Before_CrashAnalysis.pdf",
+   "mime": "application/pdf",
+   "size": 46310
+  },
+  {
+   "path": "Crash Analysis/After_CrashID.txt",
+   "id": "1emhbhdk-4WP9z3XbR6CoF9hScWkSLzEo",
+   "title": "After_CrashID.txt",
+   "mime": "text/plain",
+   "size": 509
+  },
+  {
+   "path": "Crash Analysis/InitialID.txt",
+   "id": "1uP1ED9fH50e6LY0TZUuwXCNwPNuhL-dS",
+   "title": "InitialID.txt",
+   "mime": "text/plain",
+   "size": 3475
+  },
+  {
+   "path": "Crash Analysis/InitialStudy.pdf",
+   "id": "1QxeLBT0zoLfJdEAA-4416gfprqGvrDNC",
+   "title": "InitialStudy.pdf",
+   "mime": "application/pdf",
+   "size": 114556
+  },
+  {
+   "path": "Crash Analysis/SR1410_FeaturesReport.pdf",
+   "id": "1YetuwObVrnqEmhC_NimJAPmDRAeuGrdt",
+   "title": "SR1410_FeaturesReport.pdf",
+   "mime": "application/pdf",
+   "size": 17916
+  },
+  {
+   "path": "Crash Analysis/US17_FeaturesReport.pdf",
+   "id": "1KRun9WlNnBcB8_dkz_eVpthb6TGeLupO",
+   "title": "US17_FeaturesReport.pdf",
+   "mime": "application/pdf",
+   "size": 32248
+  },
+  {
+   "path": "Crash Analysis/SR1327_FeaturesReport.pdf",
+   "id": "1uaBc8pFPzFIFx_lstcqPusYtdXa2chGo",
+   "title": "SR1327_FeaturesReport.pdf",
+   "mime": "application/pdf",
+   "size": 17692
+  },
+  {
+   "path": "Background/16 - W-5203W/Master Evaluation Spreadsheet.xlsx",
+   "id": "1NcKvn7fWfvAGevBphP1xicBFJvIonZ1M",
+   "title": "Master Evaluation Spreadsheet.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 905435
+  },
+  {
+   "path": "Background/16 - W-5203W/Final Inspection/W-5203W_Final Inspection Memo_052918.docx",
+   "id": "1f_-CFf_0xskmPFOLADKxk8yu8i06HlFG",
+   "title": "W-5203W_Final Inspection Memo_052918.docx",
+   "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+   "size": 308081
+  },
+  {
+   "path": "Background/16 - W-5203W/Final Inspection/Photos_Post Construction/20180508_135906.jpg",
+   "id": "1m51Yo6ManhYX1ljwFzYPJscuWsP9sNil",
+   "title": "20180508_135906.jpg",
+   "mime": "image/jpeg",
+   "size": 1636376
+  },
+  {
+   "path": "Background/16 - W-5203W/Final Inspection/Photos_Post Construction/20180508_135904.jpg",
+   "id": "1yqc7bz8JsluJGpLgvoU6lzfzjQTXLSxm",
+   "title": "20180508_135904.jpg",
+   "mime": "image/jpeg",
+   "size": 1700575
+  },
+  {
+   "path": "Background/16 - W-5203W/Final Inspection/Photos_Post Construction/20180508_135900.jpg",
+   "id": "15nlrljLPuQ1hzJkE7a6kzGx9a41707DW",
+   "title": "20180508_135900.jpg",
+   "mime": "image/jpeg",
+   "size": 1652603
+  },
+  {
+   "path": "Background/16 - W-5203W/Final Inspection/Photos_Post Construction/20180508_135854.jpg",
+   "id": "179OLNUXDV02xoDgSO42Du6SxxHxdSZDt",
+   "title": "20180508_135854.jpg",
+   "mime": "image/jpeg",
+   "size": 1502887
+  },
+  {
+   "path": "Background/16 - W-5203W/Final Inspection/Photos_Post Construction/20180508_135852.jpg",
+   "id": "14lHpHT97gnZULo11lXqX6gVmrOHy5kIo",
+   "title": "20180508_135852.jpg",
+   "mime": "image/jpeg",
+   "size": 1611603
+  },
+  {
+   "path": "Background/16 - W-5203W/Final Inspection/Photos_Post Construction/20180508_135826.jpg",
+   "id": "1J7kVea3Id-LkhjiQ50jaJf-t7jXU7_Xn",
+   "title": "20180508_135826.jpg",
+   "mime": "image/jpeg",
+   "size": 1642804
+  },
+  {
+   "path": "Background/16 - W-5203W/Final Inspection/Photos_Post Construction/20180508_135825.jpg",
+   "id": "1NrLLiIr5wImZEZvEhFLh6DAXw7H1wAWF",
+   "title": "20180508_135825.jpg",
+   "mime": "image/jpeg",
+   "size": 1590408
+  },
+  {
+   "path": "Background/16 - W-5203W/Final Inspection/Photos_Post Construction/20180508_135823.jpg",
+   "id": "1NvUGKiio4SjMlxpo_YzCL0gvIO7rKUok",
+   "title": "20180508_135823.jpg",
+   "mime": "image/jpeg",
+   "size": 1630979
+  },
+  {
+   "path": "Background/16 - W-5203W/Final Inspection/Photos_Post Construction/20180508_135817.jpg",
+   "id": "1ntr0o9NpVYX5n5qi7nLomhfXbzxUmPvG",
+   "title": "20180508_135817.jpg",
+   "mime": "image/jpeg",
+   "size": 1698884
+  },
+  {
+   "path": "Background/16 - W-5203W/Final Inspection/Photos_Post Construction/20180508_135814.jpg",
+   "id": "1ya7jnSdRImy1bnukNsniM5QPT6RdvU5a",
+   "title": "20180508_135814.jpg",
+   "mime": "image/jpeg",
+   "size": 1718447
+  },
+  {
+   "path": "Background/16 - W-5203W/Final Inspection/Photos_Post Construction/20180508_135551.jpg",
+   "id": "1tA_o354k63PVkfKTqsbh-xRpn3pGyfiW",
+   "title": "20180508_135551.jpg",
+   "mime": "image/jpeg",
+   "size": 1551783
+  },
+  {
+   "path": "Background/16 - W-5203W/Final Inspection/Photos_Post Construction/20180508_135546.jpg",
+   "id": "1xCbh9Nuz3KwvTQwnABMqb5tcgQCDuIWJ",
+   "title": "20180508_135546.jpg",
+   "mime": "image/jpeg",
+   "size": 1489266
+  },
+  {
+   "path": "Background/16 - W-5203W/Final Inspection/Photos_Post Construction/20180508_135544.jpg",
+   "id": "1Y6mbjlxFED3wJ9gJRMjsGn52TdEwDz1M",
+   "title": "20180508_135544.jpg",
+   "mime": "image/jpeg",
+   "size": 1561305
+  },
+  {
+   "path": "Background/16 - W-5203W/Final Inspection/Photos_Post Construction/Thumbs.db",
+   "id": "10_rXE6lS9s4SEjOqkVYnXgKV922PwunF",
+   "title": "Thumbs.db",
+   "mime": "application/octet-stream",
+   "size": 237056
+  },
+  {
+   "path": "Background/16 - W-5203W/Background Information/03-13-24253_US 17 @ Halltown Road_Project File.pdf",
+   "id": "1bI8tN2MyOnm6G7KC3paQGJ4OBOIHmd8d",
+   "title": "03-13-24253_US 17 @ Halltown Road_Project File.pdf",
+   "mime": "application/pdf",
+   "size": 2747864
+  },
+  {
+   "path": "Background/16 - W-5203W/Background Information/03-13-24253_Sealed Crash Reports.pdf",
+   "id": "1-O40WGy8bDtQJoxrUSfAP7qy2oUYHexG",
+   "title": "03-13-24253_Sealed Crash Reports.pdf",
+   "mime": "application/pdf",
+   "size": 1409494
+  },
+  {
+   "path": "Background/16 - W-5203W/Background Information/03-13-24253_Location Map.pdf",
+   "id": "1twN9JP3YBPcyPaIq2VLTSo4txwSTtJKd",
+   "title": "03-13-24253_Location Map.pdf",
+   "mime": "application/pdf",
+   "size": 1081346
+  },
+  {
+   "path": "Background/16 - W-5203W/Background Information/03-13-24253_BC Worksheet (with bounty).pdf",
+   "id": "1ZJkaZIL8wb3ixCTpnldIm9Reve0gIcow",
+   "title": "03-13-24253_BC Worksheet (with bounty).pdf",
+   "mime": "application/pdf",
+   "size": 4729
+  },
+  {
+   "path": "Background/16 - W-5203W/Background Information/03-13-24253_BC Worksheet (without bounty) - Request for Add Funds.xls",
+   "id": "1VLS75vMdGFtv_oeRBEizKvGQoMKv80h8",
+   "title": "03-13-24253_BC Worksheet (without bounty) - Request for Add Funds.xls",
+   "mime": "application/vnd.ms-excel",
+   "size": 70656
+  },
+  {
+   "path": "Background/16 - W-5203W/Background Information/03-13-24253_BC Worksheet (without bounty).pdf",
+   "id": "19DFZggVbp6FzzfCDns4bVHGvAZH0ALqw",
+   "title": "03-13-24253_BC Worksheet (without bounty).pdf",
+   "mime": "application/pdf",
+   "size": 4725
+  },
+  {
+   "path": "Background/16 - W-5203W/Background Information/03-13-24253_Doug Lane Estimate.xls",
+   "id": "1emv9zblpxEFtJG_R78bpnYADS1o8I5Oc",
+   "title": "03-13-24253_Doug Lane Estimate.xls",
+   "mime": "application/vnd.ms-excel",
+   "size": 52224
+  },
+  {
+   "path": "Background/16 - W-5203W/Background Information/03-13-24253_BC Worksheet (with bounty)_Request for Additional Funds.xls",
+   "id": "19xdVP49qNU1obbRG1bnr6I4Yd4qxkXJ7",
+   "title": "03-13-24253_BC Worksheet (with bounty)_Request for Additional Funds.xls",
+   "mime": "application/vnd.ms-excel",
+   "size": 63488
+  },
+  {
+   "path": "Background/16 - W-5203W/Background Information/03-13-24253_BC Worksheet (without bounty).xls",
+   "id": "1YACAwvjA440CsNuDSqxVHdtxUwhCi3oI",
+   "title": "03-13-24253_BC Worksheet (without bounty).xls",
+   "mime": "application/vnd.ms-excel",
+   "size": 63488
+  },
+  {
+   "path": "Background/16 - W-5203W/Background Information/03-13-24253_BC Worksheet (with bounty).xls",
+   "id": "1og4IJf_g16IO_ENEyoFG4KkfFOzvlEba",
+   "title": "03-13-24253_BC Worksheet (with bounty).xls",
+   "mime": "application/vnd.ms-excel",
+   "size": 63488
+  }
+ ]
+}

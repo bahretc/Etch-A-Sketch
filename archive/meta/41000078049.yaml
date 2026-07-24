@@ -1,0 +1,56 @@
+wo: '41000078049'
+title: WO-41000078049 02-21-65106 (SS-6202A)
+folder_ids:
+- 1dtaFr2HvZlWGvB6dLXgDlnrySYCIE3mA
+project_id: 02-21-65106
+tip: SS-6202A
+analysis_type: intersection
+targets: 1
+countermeasure: 'Converted two-way stop control intersection to all-way stop control
+  including the following: includes concrete monolithic islands in existing left turn
+  lanes on both SR 1845 approaches in addition to AWSC conversion.'
+countermeasure_family: awsc
+county: Lenoir
+division: '2'
+completed: 2022
+companions: []
+split: train
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 02-21-65106 (SS-6202A).xlsx
+    id: 1aM8ona0Aye0vcsP7JJ_rix8N1xg9ANe7
+    size: 1316511
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #12.msg'
+    id: 1ptID_iEHf0A3Z0YQ5n-pmRHhFtSO5T_k
+    size: 195584
+  fiche_csv:
+  - path: Crash Analysis/41000078049BEFORE.csv
+    id: 1DuAHw6UD6LxVPc4plKvQom0lOjy7saRA
+    size: 11559
+  - path: Crash Analysis/41000078049AFTER.csv
+    id: 1biey9rbzNhI9VpI4kN8q0IWkdN7wA9RS
+    size: 10594
+  id_lists:
+  - path: Crash Analysis/41000078049BEFORE_CrashID.txt
+    id: 1UCkltfd_zDuaw9Cv6dd8ipKI1ckf2GeA
+    size: 251
+  - path: Crash Analysis/41000078049AFTER_CrashID.txt
+    id: 11q3w4S3TURjNOOUTn4LN2uEPQYaKK_DJ
+    size: 113
+  reports:
+  - path: 02-21-65106 (SS-6202A) Complete Evaluation.pdf
+    id: 1rNvXWgljoR4P3qKX9y1KPCLTO8tRfmkf
+    size: 611879
+  - path: 02-21-65106 (SS-6202A) Web.pdf
+    id: 1iNQkNWp0N5Y9FemoUqrhke5eDz70mek6
+    size: 575972
+  - path: Background Information/02-21-65106 - Complete Streets Evaluation.pdf
+    id: 14zIEEHdDUzKtdwMKE7e9KawbFFXbLHKm
+    size: 294400
+  - path: Background Information/Background Information/02-21-65106 - Complete Streets
+      Evaluation.pdf
+    id: 1irRTqCS-RILY0JCz-MfefB_HPsl3bGMN
+    size: 294400

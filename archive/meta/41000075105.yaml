@@ -1,0 +1,94 @@
+wo: '41000075105'
+title: WO-41000075105 07-17-430 AND 07-21-3747
+folder_ids:
+- 1FxM_g_uJ0_BUtxLyQU-XM1vtVnB-TMkT
+project_id: 07-17-430
+tip: ''
+analysis_type: intersection
+targets: 1
+countermeasure: '(s): #1 - Install actuated “Vehicle Entering When Flashing” signs
+  on SR 1113 approaches to intersection; #2 – Convert intersection to All-Way Stop
+  control, with STOP AHEAD pavement markings and dual STOP AHEAD signage on all approaches,
+  and converting “Vehicle Entering When Flashing” signs on SR 1113 to STOP Ahead signs
+  with flashers.'
+countermeasure_family: flashers-vewf
+county: Guilford
+division: '7'
+completed: 2018
+companions: []
+split: train
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 07-21-3747.xlsx
+    id: 16MpfCIVLwNq2KGiQcivtKTphxqDwQdfR
+    size: 3543926
+  - path: Crash Analysis/Intersection Evaluation Workbook, Split Time Periods - 07-21-3747
+      and 07-17-430.xlsx
+    id: 1R7t2aCnlE9C-QQtEK65oTzBekPs1Tmtv
+    size: 4958194
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 07-21-3747.xlsx
+    id: 1GBYKirb9q7MksXO0K0T9BGRGUuYm8NHo
+    size: 165
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 07-17-430.xlsx
+    id: 102pR6yGfhzoKVqvB98ZB-cDvDJwY1Nzs
+    size: 165
+  - path: Crash Analysis/~$Intersection Evaluation Workbook, Split Time Periods -
+      07-21-3747.xlsx
+    id: 1PnPu60UTUOpwPIhnYcjhWCfhQ2EWBG2x
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/Before_B_CrashAnalysis.csv
+    id: 1cu3hhG_2WfSPLbEzGnXf_lLZJhb6nEU7
+    size: 11757
+  - path: Crash Analysis/After_B_CrashAnalysis.csv
+    id: 1JY-ztc0guvloysXZ4xw9ssw4AdfY0qyt
+    size: 10640
+  - path: Crash Analysis/Before_A_CrashAnalysis.csv
+    id: 1k1TCTHFoQqe394MvU0CcLbGRJyFf5F1D
+    size: 12947
+  - path: Crash Analysis/After2_A_CrashAnalysis.csv
+    id: 1wYepLIVCeVtHukthhxaRsMAj1DMepObn
+    size: 9729
+  - path: Crash Analysis/After1_A_CrashAnalysis.csv
+    id: 1TB5HD2lE1GxafB9gwuu-bQr0Bn_8kGof
+    size: 9874
+  - path: Crash Analysis/OriginalFiche_B.csv
+    id: 1hlN2YI_UP7uQEwSB1d5IEZcjbtPXS2s0
+    size: 290159
+  - path: Crash Analysis/OriginalFiche_A.csv
+    id: 1n0kWkNkZyLmXjwZ55o0psaTmcJMik_vD
+    size: 745177
+  id_lists:
+  - path: Crash Analysis/Before_B_CrashID.txt
+    id: 1ERFwzaRWX6MPPSNONAV8RcCM27lFk8Qt
+    size: 337
+  - path: Crash Analysis/After_B_CrashID.txt
+    id: 11r5RCSHVw7-9A9_FEZO6T_GE7ZiohqtS
+    size: 294
+  - path: Crash Analysis/After1_A_CrashID.txt
+    id: 1W47SO5lPDhkxqQ6Q8SeAuTcFCPyy3mgT
+    size: 165
+  - path: Crash Analysis/Before_A_CrashID.txt
+    id: 1LQF07MPz9hJHt5ivbAJ2i1gKAa1x2r0U
+    size: 380
+  - path: Crash Analysis/After2_A_CrashID.txt
+    id: 16B7yoWyx_r6CTNFgGq8ke141EkbQayXP
+    size: 165
+  reports:
+  - path: 07-21-3747_Web.pdf
+    id: 12JKL8XgbxadwRk_BaCXfz2zmTEKAK8-u
+    size: 477002
+  - path: 07-21-3747_Complete Eval.pdf
+    id: 1vi0pQfBS2s0UuCqCaIeonWVEnL71qePP
+    size: 497904
+  - path: 07-21-3747 and 07-17-430_Complete Eval.pdf
+    id: 1gOluoBCSCNgw9fvrS0_bm9wkPrqJuYeF
+    size: 451851
+  - path: 07-21-3747 and 07-17-430_Web.pdf
+    id: 1Ue3ognJ7euFG-Ihp9D_YVLzUb2BBA9jm
+    size: 403676

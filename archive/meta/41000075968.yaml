@@ -1,0 +1,41 @@
+wo: '41000075968'
+title: WO-41000075968 10-20-227 (SS-6010AG)
+folder_ids:
+- 1dv5pb3tg2BvynGIWZ-CgD-lv942wys23
+project_id: 10-20-227
+tip: SS-6010AG
+analysis_type: intersection
+targets: 1
+countermeasure: Install an all-way stop condition with upgraded flashers.
+countermeasure_family: flashers-vewf
+county: Union
+division: '10'
+completed: 2021
+companions: []
+split: verify
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 10-20-227 (SS-6010AG).xlsx
+    id: 1BLT8lt9RXidj-pfZ7AQhaunxNAbMEwBU
+    size: 1384073
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #6.msg'
+    id: 1Tag6ZJ37b1t-7ZewDJu6WQi-lAfhgZJx
+    size: 414208
+  fiche_csv:
+  - path: Crash Analysis/41000075968BEFORE.csv
+    id: 1QTjnHDtKA6CW0eksCTMd0DJ4sfC-ane-
+    size: 13333
+  id_lists:
+  - path: Crash Analysis/41000075968BEFORE_CrashID.txt
+    id: 11BBVj-Nx9ZTvfGVd0XEU6VA8g5nz2W9W
+    size: 380
+  reports:
+  - path: 10-20-227 (SS-6010AG) Complete Evaluation.pdf
+    id: 1MOSKdNiRiiasd2QbOBJYJH_pVXZQrWdx
+    size: 833954
+  - path: 10-20-227 (SS-6010AG) Web.pdf
+    id: 1MAs8sUWj73qR6pW3Y4d8p4AXbCfB9EVa
+    size: 784077

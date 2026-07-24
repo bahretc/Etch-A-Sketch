@@ -1,0 +1,55 @@
+wo: '41000073177'
+title: WO 41000073177 02-15-35623
+folder_ids:
+- 1crZEU38Uxq5LsdyFHmP6YNB_I_KtmpX7
+project_id: 02-15-35623
+tip: ''
+analysis_type: intersection
+targets: 1
+countermeasure: Modify existing median openings to convert SR 1735 intersection from
+  4-leg unsignalized full-access intersection to 3-leg Reduced Conflict Intersection
+  (RCI) and to convert SR 1835 intersection from 3-leg intersection with median crossover
+  for lefts from SR 1835 to 3-leg right-in/right-out (RIRO) only intersection.
+countermeasure_family: signal
+county: Lenoir
+division: '2'
+completed: 2019
+companions: []
+split: verify
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 02-15-35623.xlsx
+    id: 1m8lmxLrOEn3SqYesHAgebm3EQe6d17JC
+    size: 4702366
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 02-15-35623.xlsx
+    id: 1tx8ZAdb7LEYJEyZ2PDVKwQ0tokka-dUB
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1xXo5RyBAbon2ufztjSs_DrTKsPJk4ucY
+    size: 20210
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1JZKMExDxmamjFq9x-azswVsDvS1EY7js
+    size: 13097
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 15hSGhRnvLDtNR34Xru0KliamYt1zZX_O
+    size: 340187
+  id_lists:
+  - path: Crash Analysis/Before_ID.txt
+    id: 1TYHBe-Xin7ZGH7FgR0DUlKhosmGs_Va3
+    size: 1111
+  - path: Crash Analysis/After_ID.txt
+    id: 1OBoXv-1TiVugiD-ORfMIFHVVueS5LF_d
+    size: 423
+  reports:
+  - path: 02-15-35623 Web.pdf
+    id: 149sKEBujT1hKDyjUtWH0ThmnuXCj-4SR
+    size: 498845
+  - path: 02-15-35623 Complete Eval.pdf
+    id: 1ARZ91-YPpJgwaaHAqS26vg7prqFlkPH-
+    size: 573339

@@ -1,0 +1,53 @@
+wo: '41000073207'
+title: WO-41000073207 03-18-53721
+folder_ids:
+- 1LwfO5XXOClG4-LFGOD52ZyHt-DEy3AgS
+project_id: 03-18-53721
+tip: SS-4903DV
+analysis_type: intersection
+targets: 1
+countermeasure: Add Actuated Yellow Flashing Beacons to Existing Stop Ahead Signs
+  on SR 1472.
+countermeasure_family: signing
+county: Sampson
+division: '3'
+completed: 2019
+companions: []
+split: train
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 03-18-53721.xlsx
+    id: 1lcRGUcr2zxvLrcDGY3kmsYGiJGhZBzm9
+    size: 4549083
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 03-18-53721.xlsx
+    id: 1zBODx1ADIBCKlYtepmHW54asmQ0Zj71D
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 17cbEC04za2oClNQ0_UOxEcYX54CnC6ja
+    size: 14778
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1gCK-T-vwZFrnU6Q0tZAV92cWZM-pJfv9
+    size: 13657
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1parKdocG3f8aOz2JHxujuqAX1wOG2zGJ
+    size: 161108
+  id_lists:
+  - path: Crash Analysis/Before_CrashID.txt
+    id: 1Hi0_-tduulX0wT25cA9njObus54fHg3v
+    size: 595
+  - path: Crash Analysis/After_CrashID.txt
+    id: 1hXB4slQudTY3bJ8BIXpLFHvEpwin902y
+    size: 466
+  reports:
+  - path: 03-18-53721 Complete Evaluation.pdf
+    id: 1fmxhHMOawIDteyDz2uLgCZoHITY41jr5
+    size: 575975
+  - path: 03-18-53721 Web.pdf
+    id: 1J0CYJpnWCD_j16XwRwH0GjWBuh2bnl0I
+    size: 535102

@@ -1,0 +1,57 @@
+wo: '41000078071'
+title: WO-41000078071 03-20-61408
+folder_ids:
+- 1C2fDhsORAAEKOdqTwD8ms7ebR_M_8RTc
+project_id: 03-20-61408
+tip: SS-6003AE
+analysis_type: intersection
+targets: 1
+countermeasure: 'Convert intersection to All-Way Stop Control (AWSC) including: Replace
+  existing Crossroads Warning sign (W2-1) assemblies on SR 1214 approaches with STOP
+  Ahead Warning signs (W3-1) with Brightsides; Conversion of overhead flasher to red
+  flashing lights for all approaches; Installation of STOP signs with Brightsides
+  and stop bars on SR 1214 approaches; Installation of Brightsides on existing STOP
+  signs and stop bars on SR 1222 approaches.'
+countermeasure_family: flashers-vewf
+county: Sampson
+division: '3'
+completed: 2022
+companions: []
+split: train
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 03-20-61408.xlsx
+    id: 1il3pvnRhttFT1VNmB8W51V3Tis2Hgp-r
+    size: 3748926
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 03-20-61408.xlsx
+    id: 1CnvRdmf8plnC8BfpGvGCWP34fp8cG9mH
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1UayQcYM_sQFRMTUiKg7NXVoRLGCAsRrw
+    size: 10676
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1x0YZ5fNYE5j7AfbdnR5IOzi1cNvbHsqQ
+    size: 13856
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1H3KeVxmzSMOP3Vk6OMpLei_qIzjOa3Tw
+    size: 63562
+  id_lists:
+  - path: Crash Analysis/After_CrashID.txt
+    id: 1BDhVpm87i3s6iPU0aG2S2Srb__VDY2kB
+    size: 208
+  - path: Crash Analysis/Before_CrashID.txt
+    id: 16C5hZL7aE1uUChT93NVFK_DmecGvCxe2
+    size: 595
+  reports:
+  - path: 03-20-61408_Complete Eval.pdf
+    id: 1mc8zD2ZjxDnxcZFelR5RtJ9trQiS-Y9r
+    size: 784091
+  - path: 03-20-61408_Web.pdf
+    id: 1SbdmiptkcpAGv08vA8tiT7EOzN_jxzxV
+    size: 739132

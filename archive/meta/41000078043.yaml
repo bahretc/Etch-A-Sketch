@@ -1,0 +1,56 @@
+wo: '41000078043'
+title: WO-41000078043 02-20-62355 (SS-6002AS)
+folder_ids:
+- 136sBowZJJTdFXTX2yWloEKBOHMBcyGtx
+project_id: 02-20-62355
+tip: SS-6002AS
+analysis_type: intersection
+targets: 1
+countermeasure: 'Revise the existing static flashers to a shoulder-mounted “Vehicle
+  Entering When Flashing” (VEWF) system on US 13, including the following: Shoulder-mounted
+  advance warning signs with flashers and “VEHICLE ENTERING WHEN FLASHING” placards
+  on both US 13 approaches; Vehicle detection on the SR 1132 approaches; Removal of
+  the existing overhead static flashers The overhead flashers were not removed, just
+  changed to be actuated.'
+countermeasure_family: flashers-vewf
+county: Greene
+division: '2'
+completed: 2022
+companions:
+- '41000075552'
+split: train
+flags: []
+files:
+  workbooks:
+  - path: ~$Intersection Evaluation Workbook - 02-20-62355 (SS-6002AS).xlsx
+    id: 1yLZrXHHhfT4-D0vkBOxYNtTZtw_6aHPo
+    size: 165
+  - path: Crash Analysis/Intersection Evaluation Workbook - 02-20-62355 (SS-6002AS).xlsx
+    id: 11RMmKadvmcYCaAFrWTQTHGouZgCHNCNa
+    size: 20464761
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #22 & 23.msg'
+    id: 1lG4GGeuBgI4C29IzaeYlTDFrnRkD4FI4
+    size: 227328
+  fiche_csv:
+  - path: Crash Analysis/41000078043AFTER.csv
+    id: 1qdYzQtFovFKte2HM7xIG0MOGZovZ_X5L
+    size: 14368
+  - path: Crash Analysis/41000078043BEFORE.csv
+    id: 1_vIs7pDf3dhy1p8AIDKBFaXXdxvqdwAV
+    size: 15666
+  id_lists:
+  - path: Crash Analysis/41000078043AFTER_CrashID.txt
+    id: 1T0pUG_edIgd07dTTX1wwBWo0Ctasmp5g
+    size: 509
+  - path: Crash Analysis/41000078043BEFORE_CrashID.txt
+    id: 1FKTKs_161FykCkie7v7ZuvFEgavuujjy
+    size: 638
+  reports:
+  - path: 02-20-62355 (SS-6002AS) Web.pdf
+    id: 1M91Y7kE7aMDAmc86scgYzTM8wS-ELc-8
+    size: 1134861
+  - path: 02-20-62355 (SS-6002AS) Complete Evaluation.pdf
+    id: 119mOlHlzVWalg7aQsUS1kLWmodedGbJF
+    size: 1200421

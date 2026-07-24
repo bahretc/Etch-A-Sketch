@@ -1,0 +1,50 @@
+wo: '4100069622'
+title: WO-4100069622 04-16-45245
+folder_ids:
+- 1iLXU5Wm9bpRpHqAl_f-iIbyANHQ2YEan
+project_id: 04-16-45245
+tip: ''
+analysis_type: intersection
+targets: 1
+countermeasure: Realign intersection to reduce skew angle and remove trees along right
+  shoulder of SR 1004 approaching NC 58
+countermeasure_family: shoulders
+county: Nash
+division: '4'
+completed: 2018
+companions: []
+split: train
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 04-16-45245.xlsx
+    id: 1M64RDoPVdrMr_8PJKT-wqCdJyvcxtXV-
+    size: 4331666
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1lVCYVCGDdwUWGg4jA4saLTE8da4tmKH5
+    size: 13713
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1ba8cB_lFDcfS_xABe30Xg95MT7j5OLkI
+    size: 12902
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1XV2nXp9aGpiG2GFb8rWNOTpivKG_FUT_
+    size: 178409
+  id_lists:
+  - path: Crash Analysis/After_CrashID.txt
+    id: 16kZkDn8P1jY-Y2CtWtLbgoW589gw6RRY
+    size: 509
+  - path: Crash Analysis/Before_CrashID.txt
+    id: 1zasOuNScDWQ5dSfgyemPdDP0oSDG_CWz
+    size: 380
+  reports:
+  - path: 04-16-45245_Complete Eval.pdf
+    id: 1J6BrbOzYiq9q9a69Ip0QIolSsm8bqRFR
+    size: 654090
+  - path: 04-16-45245_Web.pdf
+    id: 1E6OFlLx73sRhGpfccwII9ch3pPtdZVkS
+    size: 618000

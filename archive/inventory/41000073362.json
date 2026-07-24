@@ -1,0 +1,447 @@
+{
+ "folder_id": "1fFByDe9eAHuXL8bJWH6vFRmwDEEKFeiC",
+ "title": "WO-41000073362 06-17-44973 (W-5706E)",
+ "files": [
+  {
+   "path": "06-17-44973 (W-5706E) Complete Evaluation.pdf",
+   "id": "1PN0MBnndtYKaAfdCePe05wd-4wYpQa4e",
+   "title": "06-17-44973 (W-5706E) Complete Evaluation.pdf",
+   "mime": "application/pdf",
+   "size": 886493
+  },
+  {
+   "path": "06-17-44973 (W-5706E) Web.pdf",
+   "id": "1xxmRvtCmnvdNsBSeOEY89xOyf29rsf8U",
+   "title": "06-17-44973 (W-5706E) Web.pdf",
+   "mime": "application/pdf",
+   "size": 855370
+  },
+  {
+   "path": "06-17-44973 (W-5706E) Web OLD.pdf",
+   "id": "1ZcLZL1N0T3oACjFDzlhYln1gqNpKM1Mr",
+   "title": "06-17-44973 (W-5706E) Web OLD.pdf",
+   "mime": "application/pdf",
+   "size": 809509
+  },
+  {
+   "path": "Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #44.msg",
+   "id": "1BFxT_TCuQ1IJjDG_WqtU8aHClYNYKCjE",
+   "title": "RE_ _External_ Safety Evaluation - VHB - Assignment #44.msg",
+   "mime": "application/vnd.ms-outlook",
+   "size": 155136
+  },
+  {
+   "path": "Notes/Ordinances_NC211_Repealed.pdf",
+   "id": "1lz3GslDIf8Blz2gf05HYW4ddmHvTFioN",
+   "title": "Ordinances_NC211_Repealed.pdf",
+   "mime": "application/pdf",
+   "size": 30684
+  },
+  {
+   "path": "Notes/Ordinances_SR1529_Active.pdf",
+   "id": "1AnfcdW1oFhK9luLiKsWbFVHfn-vIigwK",
+   "title": "Ordinances_SR1529_Active.pdf",
+   "mime": "application/pdf",
+   "size": 19451
+  },
+  {
+   "path": "Notes/Ordinances_NC211_Active.pdf",
+   "id": "1NP4ZZ10GLIwzcuYudYLnAC3aBIGEBbsu",
+   "title": "Ordinances_NC211_Active.pdf",
+   "mime": "application/pdf",
+   "size": 28768
+  },
+  {
+   "path": "Notes/Assumptions Email - 06-17-44973 (W-5706E).docx",
+   "id": "1Kd7axSEV71Vx_IEnVMLVbd8Gz-c2fcB0",
+   "title": "Assumptions Email - 06-17-44973 (W-5706E).docx",
+   "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+   "size": 18807
+  },
+  {
+   "path": "Crash Analysis/Intersection Evaluation Workbook - 06-17-44973 (W-5706E).xlsx",
+   "id": "1VbUybZnUHEIfg-EYWZQ3HM6mq8zP5qdt",
+   "title": "Intersection Evaluation Workbook - 06-17-44973 (W-5706E).xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 9689171
+  },
+  {
+   "path": "Crash Analysis/41000073362_OriginalFiche.csv",
+   "id": "17pmcSgnLck5p-HJ8EyctxGHo8h70likD",
+   "title": "41000073362_OriginalFiche.csv",
+   "mime": "text/csv",
+   "size": 598787
+  },
+  {
+   "path": "Crash Analysis/41000073362AFTER.pdf",
+   "id": "1veM6F2CwcjQf7GmirgdrCz0nwKVIjxRN",
+   "title": "41000073362AFTER.pdf",
+   "mime": "application/pdf",
+   "size": 45454
+  },
+  {
+   "path": "Crash Analysis/41000073362BEFORE.csv",
+   "id": "1ztaePjI4Evtis1XhWsj9sPYHlxSTwQAN",
+   "title": "41000073362BEFORE.csv",
+   "mime": "text/csv",
+   "size": 15510
+  },
+  {
+   "path": "Crash Analysis/41000073362AFTER.csv",
+   "id": "1CTe_6Ckacg_D3pZf3iZpSxNgW7_qZ1Os",
+   "title": "41000073362AFTER.csv",
+   "mime": "text/csv",
+   "size": 17200
+  },
+  {
+   "path": "Crash Analysis/41000073362BEFORE_CrashID.txt",
+   "id": "1BpuDCVrOpzfhuTIATH3n4Yv_G8dCCbLa",
+   "title": "41000073362BEFORE_CrashID.txt",
+   "mime": "text/plain",
+   "size": 681
+  },
+  {
+   "path": "Crash Analysis/41000073362BEFORE.pdf",
+   "id": "1MQTU_rmp4LwmYXixshBrZ6bzggK3KvbX",
+   "title": "41000073362BEFORE.pdf",
+   "mime": "application/pdf",
+   "size": 40383
+  },
+  {
+   "path": "Crash Analysis/41000073362AFTER_CrashID.txt",
+   "id": "1rb_8pup6EMDRKTCZBM32pTq1wQKgZBLq",
+   "title": "41000073362AFTER_CrashID.txt",
+   "mime": "text/plain",
+   "size": 810
+  },
+  {
+   "path": "Crash Analysis/41000073362_InitialStudy.pdf",
+   "id": "19EXmw_ZCdTzJgkmleUU2gVwMCVol3-fO",
+   "title": "41000073362_InitialStudy.pdf",
+   "mime": "application/pdf",
+   "size": 65411
+  },
+  {
+   "path": "Crash Analysis/41000073362_InitialStudy.csv",
+   "id": "1qdG22qmlTF3rKpcMiTrHVuRL1kQll-xa",
+   "title": "41000073362_InitialStudy.csv",
+   "mime": "text/csv",
+   "size": 24114
+  },
+  {
+   "path": "Crash Analysis/41000073362_InitialID.txt",
+   "id": "1w0PHnf88CqJRNH4VVY_dUfHqhD24Qj8y",
+   "title": "41000073362_InitialID.txt",
+   "mime": "text/plain",
+   "size": 1498
+  },
+  {
+   "path": "Crash Analysis/FeaturesReport_SR1529.pdf",
+   "id": "1tpywI5xaylvH_tg95zA7HqTFu_hDzBUZ",
+   "title": "FeaturesReport_SR1529.pdf",
+   "mime": "application/pdf",
+   "size": 18983
+  },
+  {
+   "path": "Crash Analysis/FeaturesReport_NC211.pdf",
+   "id": "1QeaxKz76jDfUTg9jxZiueni347vRqnWu",
+   "title": "FeaturesReport_NC211.pdf",
+   "mime": "application/pdf",
+   "size": 28916
+  },
+  {
+   "path": "Crash Analysis/Old/41000073362_InitialStudyUpdate.xlsx",
+   "id": "1RtgQ5eWzoAMahQeVB87VeihSo_arjfwA",
+   "title": "41000073362_InitialStudyUpdate.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 18733
+  },
+  {
+   "path": "Crash Analysis/Old/41000064622_CrashAnalysis.xlsx",
+   "id": "1-azAQaPoFA19bop9HrcEyXN-7yyAi1S3",
+   "title": "41000064622_CrashAnalysis.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 24547
+  },
+  {
+   "path": "Crash Analysis/Old/41000073362_FicheUpdate.csv",
+   "id": "1v26PDXGHJ74_BrE8xcUudApSLG47Kd8g",
+   "title": "41000073362_FicheUpdate.csv",
+   "mime": "text/csv",
+   "size": 206818
+  },
+  {
+   "path": "Crash Analysis/Old/41000073362_InitialIDUpdate.txt",
+   "id": "1jipcdCLRnxaZZpz4uKLkvMvY41lYWojM",
+   "title": "41000073362_InitialIDUpdate.txt",
+   "mime": "text/plain",
+   "size": 509
+  },
+  {
+   "path": "Crash Analysis/Old/41000073362_InitialStudyUpdate.pdf",
+   "id": "1v4OFBHzfK38Dkmzp7WFYblnMHm3vvg4u",
+   "title": "41000073362_InitialStudyUpdate.pdf",
+   "mime": "application/pdf",
+   "size": 35001
+  },
+  {
+   "path": "Crash Analysis/Old/41000073362_InitialStudyUpdate.csv",
+   "id": "1-d10gIdOxMnOL-_JkFK7bUqK_TtZabAd",
+   "title": "41000073362_InitialStudyUpdate.csv",
+   "mime": "text/csv",
+   "size": 13475
+  },
+  {
+   "path": "Background Information/collision diagrams.dgn",
+   "id": "1jAkQYPMNnhFIeAqsH4odv-XVWHWmUY2Q",
+   "title": "collision diagrams.dgn",
+   "mime": "application/octet-stream",
+   "size": 1664000
+  },
+  {
+   "path": "Background Information/06-17-44973 Packet.pdf",
+   "id": "1w325RmxJPeb4uMbZSSO3M2jt4Zu2eZ36",
+   "title": "06-17-44973 Packet.pdf",
+   "mime": "application/pdf",
+   "size": 5405114
+  },
+  {
+   "path": "Background Information/Master Evaluation Spreadsheet.xlsx",
+   "id": "1jQiw2U82lrafs34cFQXPk5hM3TMi7M7Z",
+   "title": "Master Evaluation Spreadsheet.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 906421
+  },
+  {
+   "path": "Background Information/RE_ DF00266_W-5706E_06-17-44973 - NC 211 at SR 1529  (Mount Olive Church Road).msg",
+   "id": "1RX5JvhbQjjh6eyq9wXg9L-bOrbBISi3T",
+   "title": "RE_ DF00266_W-5706E_06-17-44973 - NC 211 at SR 1529  (Mount Olive Church Road).msg",
+   "mime": "application/vnd.ms-outlook",
+   "size": 175616
+  },
+  {
+   "path": "Background Information/41000044781_Robeson_NC211AtSR1529_SealedAnalysis (2).pdf",
+   "id": "1yL4_AJO2H7hocnIOrJn3yX7Eo2CgQKEV",
+   "title": "41000044781_Robeson_NC211AtSR1529_SealedAnalysis (2).pdf",
+   "mime": "application/pdf",
+   "size": 417871
+  },
+  {
+   "path": "Background Information/RE  NC 211 at SR 1529 status.msg",
+   "id": "1hIat8nOnVz9hXY2QNWJ3VvWALdHYZXw3",
+   "title": "RE  NC 211 at SR 1529 status.msg",
+   "mime": "application/vnd.ms-outlook",
+   "size": 397824
+  },
+  {
+   "path": "Background Information/RE  NC211 and Mt Olive Church Road.msg",
+   "id": "1vhXE3XJfk4Li18UjdzBYRF5tiD4X-lT4",
+   "title": "RE  NC211 and Mt Olive Church Road.msg",
+   "mime": "application/vnd.ms-outlook",
+   "size": 296448
+  },
+  {
+   "path": "Background Information/RE  NC 211 at SR 1529 in Robeson Co .msg",
+   "id": "1jl59oSBEP8ZFvMSb1MrMF6RSkUEOAvmo",
+   "title": "RE  NC 211 at SR 1529 in Robeson Co .msg",
+   "mime": "application/vnd.ms-outlook",
+   "size": 201728
+  },
+  {
+   "path": "Background Information/Collision Diagram.pdf",
+   "id": "1tCGPsloJA-V49AmqgZBukb76uwedl5yv",
+   "title": "Collision Diagram.pdf",
+   "mime": "application/pdf",
+   "size": 261132
+  },
+  {
+   "path": "Background Information/FW  NC 211 at SR 1529 in Robeson Co .msg",
+   "id": "1-G0FBamtBdfqUZHQ2jAJ84UEWZarIdFm",
+   "title": "FW  NC 211 at SR 1529 in Robeson Co .msg",
+   "mime": "application/vnd.ms-outlook",
+   "size": 167424
+  },
+  {
+   "path": "Background Information/Collision Diagram - Update.pdf",
+   "id": "1XicAGpCVk5K4-cJD-YTWgVkNX_WYm7uW",
+   "title": "Collision Diagram - Update.pdf",
+   "mime": "application/pdf",
+   "size": 108903
+  },
+  {
+   "path": "Background Information/Collision Diagram - Original.pdf",
+   "id": "19D6QyIWJbFKRmRb4ZtWurKXtF-V30WJM",
+   "title": "Collision Diagram - Original.pdf",
+   "mime": "application/pdf",
+   "size": 103383
+  },
+  {
+   "path": "Background Information/Crash summary - Original.pdf",
+   "id": "1knAuOPpDKMenVu7ZDdpTwZMrNYpkzcoV",
+   "title": "Crash summary - Original.pdf",
+   "mime": "application/pdf",
+   "size": 10503
+  },
+  {
+   "path": "Background Information/Crash summary Spreadsheet1.xlsx",
+   "id": "1soYD5kvmN2qCFTEFs3Ss4gVCtgMtvm9S",
+   "title": "Crash summary Spreadsheet1.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 24257
+  },
+  {
+   "path": "Background Information/Crash summary - Update.pdf",
+   "id": "18g_QCV4s2b8Yo5RG9UbYkqQjS8FrimaS",
+   "title": "Crash summary - Update.pdf",
+   "mime": "application/pdf",
+   "size": 10702
+  },
+  {
+   "path": "Background Information/06-17-44973 Map.docx",
+   "id": "1btA6yaOl9mq99zrpakAOmzj45oB3C7Qz",
+   "title": "06-17-44973 Map.docx",
+   "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+   "size": 649200
+  },
+  {
+   "path": "Background Information/06-17-44973 Map.pdf",
+   "id": "1DdQ9xXZcNtQ0LACZ5Q88wE9gjSM2s-h0",
+   "title": "06-17-44973 Map.pdf",
+   "mime": "application/pdf",
+   "size": 376023
+  },
+  {
+   "path": "Background Information/06-17-44973 CRF Update - April 2015 - Final - 040115.pdf",
+   "id": "1P7V8jii8Z_0Lz02uA-5uIDNbfSRpo4QU",
+   "title": "06-17-44973 CRF Update - April 2015 - Final - 040115.pdf",
+   "mime": "application/pdf",
+   "size": 307382
+  },
+  {
+   "path": "Background Information/41000044781_Robeson_NC211AtSR1529_CrashAnalysis.pdf",
+   "id": "1n69Wr4NJO6hCdW1QdMcRO-wRwikunOET",
+   "title": "41000044781_Robeson_NC211AtSR1529_CrashAnalysis.pdf",
+   "mime": "application/pdf",
+   "size": 41944
+  },
+  {
+   "path": "Background Information/Final Inspection/Template for BeforeAfter photos.pptx",
+   "id": "1BjFZGkN37OFx1mf-7R1E1AxFhKwtyXUr",
+   "title": "Template for BeforeAfter photos.pptx",
+   "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+   "size": 3902229
+  },
+  {
+   "path": "Background Information/Final Inspection/Final Inspections.msg",
+   "id": "1XlgekNSgaRN0pZWrlOGZNA6zNckuXDZ1",
+   "title": "Final Inspections.msg",
+   "mime": "application/vnd.ms-outlook",
+   "size": 5212160
+  },
+  {
+   "path": "Background Information/Final Inspection/Div6Fatal65in2016_photos.pptx",
+   "id": "1GN0DkszmR8Dv5wMGc32tydsUNgiaYbqt",
+   "title": "Div6Fatal65in2016_photos.pptx",
+   "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+   "size": 1219384
+  },
+  {
+   "path": "Background Information/Final Inspection/Regional Traffic Final Inspection 06-17-44973 _W-5706E _44973_3_1_ .msg",
+   "id": "1pcLgGot5rZsP0lz3w1PyhEMZnemeSytb",
+   "title": "Regional Traffic Final Inspection 06-17-44973 _W-5706E _44973_3_1_ .msg",
+   "mime": "application/vnd.ms-outlook",
+   "size": 867840
+  },
+  {
+   "path": "Background Information/Final Inspection/RE Regional Traffic Final Inspection 06-17-44973 W-5706E 44973.3.1  Correction.msg",
+   "id": "1IuE1dVSChjfV-gO3jW4mcxBslwmC_GhW",
+   "title": "RE Regional Traffic Final Inspection 06-17-44973 W-5706E 44973.3.1  Correction.msg",
+   "mime": "application/msword",
+   "size": 828416
+  },
+  {
+   "path": "Background Information/Final Inspection/06-17-44973_Letterhead_FinalInspLtr_wPhotos Correction.pdf",
+   "id": "1cyQrhSqS2fEOwIgv61qPgvKouW-VVccC",
+   "title": "06-17-44973_Letterhead_FinalInspLtr_wPhotos Correction.pdf",
+   "mime": "application/pdf",
+   "size": 691655
+  },
+  {
+   "path": "Background Information/Final Inspection/06-17-44973_Letterhead_FinalInspLtr_wPhotos.pdf",
+   "id": "1WN8mPQHf8qRaBjOi5_syeTytIw71U7b6",
+   "title": "06-17-44973_Letterhead_FinalInspLtr_wPhotos.pdf",
+   "mime": "application/pdf",
+   "size": 692394
+  },
+  {
+   "path": "Background Information/Final Inspection/Template for BeforeAfter photos.pdf",
+   "id": "1Sph_-CDKNTkQ7dFry2uUexqEiJ8Nsun9",
+   "title": "Template for BeforeAfter photos.pdf",
+   "mime": "application/pdf",
+   "size": 553355
+  },
+  {
+   "path": "Background Information/Final Inspection/06-17-44973_ W-5706E_Letterhead_FinalInspLtr_wPhotos.docx",
+   "id": "1xhh7g_j20m9QQ_bynNv78CyHYzgA2GZ_",
+   "title": "06-17-44973_ W-5706E_Letterhead_FinalInspLtr_wPhotos.docx",
+   "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+   "size": 311373
+  },
+  {
+   "path": "Background Information/Final Inspection/RE_ DF00266_W-5706E_06-17-44973 - NC 211 at SR 1529  (Mount Olive Church Road).msg",
+   "id": "1FrrP0NP9DoeY_wNMLl_rTnq-3bNd3-IC",
+   "title": "RE_ DF00266_W-5706E_06-17-44973 - NC 211 at SR 1529  (Mount Olive Church Road).msg",
+   "mime": "application/vnd.ms-outlook",
+   "size": 175616
+  },
+  {
+   "path": "Background Information/Final Inspection/06-17-44973_ W-5706E_Letterhead_FinalInspLtr.pdf",
+   "id": "1P4UFDFfFq3GmvLFhkMpJVwj8D4bFCdvj",
+   "title": "06-17-44973_ W-5706E_Letterhead_FinalInspLtr.pdf",
+   "mime": "application/pdf",
+   "size": 142568
+  },
+  {
+   "path": "Background Information/Final Inspection/06-17-44973 CRF Benefit Calc - Final - 120114.xlsx",
+   "id": "1w3xfy8Axu4VJS4CMnLDT4N7K33am5e9c",
+   "title": "06-17-44973 CRF Benefit Calc - Final - 120114.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 60748
+  },
+  {
+   "path": "Background Information/HSIP/41000064622_FicheReport.xlsx",
+   "id": "1xtQRpfEwbrhspVUyO62sAJdMyyUOoGGM",
+   "title": "41000064622_FicheReport.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 793903
+  },
+  {
+   "path": "Background Information/HSIP/41000064622_FicheReport.csv",
+   "id": "1F41aEMlfu8UJ34lv3PtH_xxJJQcWcUNz",
+   "title": "41000064622_FicheReport.csv",
+   "mime": "text/csv",
+   "size": 574830
+  },
+  {
+   "path": "Background Information/HSIP/41000064622_CollisionDiagram.pdf",
+   "id": "1GebHeRSd2VXBV4Dc4rWgH9VhEG2yrVk_",
+   "title": "41000064622_CollisionDiagram.pdf",
+   "mime": "application/pdf",
+   "size": 195752
+  },
+  {
+   "path": "Background Information/HSIP/Response Form - Response Form.pdf",
+   "id": "1Hbs8JmkOERgzNcE5MQVK1s2BnLRWlbf6",
+   "title": "Response Form - Response Form.pdf",
+   "mime": "application/pdf",
+   "size": 155443
+  },
+  {
+   "path": "Background Information/HSIP/41000064622.pdf",
+   "id": "16K3M-YnL8nqIivEHx1RSNFPKSgyqvl5a",
+   "title": "41000064622.pdf",
+   "mime": "application/pdf",
+   "size": 62750
+  }
+ ]
+}

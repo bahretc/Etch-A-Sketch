@@ -1,0 +1,54 @@
+wo: '41000075594'
+title: WO-41000075594 04-20-62617
+folder_ids:
+- 1Ku1tcilaUQzzJX6b6JmqlJ9Rgp4RNQPl
+project_id: 04-20-62617
+tip: SS-6004AD
+analysis_type: section
+targets: 1
+countermeasure: Improve the drainage by switching out the existing drainage grate
+  and constructing a sump area. Also resurface 850 feet of US 301 within the study
+  section (MP 20.3 to MP 20.46) with open-graded friction course asphalt.
+countermeasure_family: resurfacing
+county: Wilson
+division: '4'
+completed: 2021
+companions: []
+split: verify
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook - 04-20-62617.xlsx
+    id: 1wnox0ftu67UWgd98l-VmaIEcMImNpSu3
+    size: 5245237
+  - path: Crash Analysis/~$Section Evaluation Workbook - 04-20-62617.xlsx
+    id: 1prYKqm1lhN46VtO_YXp4lMYN7oyIPRN0
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1SiAQ9TT6yAwvXVFqCoasplMFaFK_zIop
+    size: 16677
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1lyfXeRu-CserPgwZQaiHQ6FqUT1GYQiP
+    size: 16559
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1YMEJWj364F8zWIe7pDESv2XGc55r6g-A
+    size: 521992
+  id_lists:
+  - path: Crash Analysis/After_CrashID.txt
+    id: 12W80GT9ujpLAnct-ScGnjr2k76Oc4I9U
+    size: 724
+  - path: Crash Analysis/Before_CrashID.txt
+    id: 1yW3qKqAFSH83SMHaBxvpbNdg7Yz7NxIn
+    size: 809
+  reports:
+  - path: 04-20-62617_Complete Eval.pdf
+    id: 1mjxNaz7mz7x9dz5vrnxZxq415KhHhHb4
+    size: 926811
+  - path: 04-20-62617_Web.pdf
+    id: 1AqAvbDiqMEZbOENV0HHmiApy2fp-GY7e
+    size: 777355

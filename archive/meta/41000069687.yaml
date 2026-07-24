@@ -1,0 +1,47 @@
+wo: '41000069687'
+title: WO-41000069687 10-15-211
+folder_ids:
+- 1LZQG_Gi87h6NbQmwlkjgUpYLKeie3_T1
+project_id: 10-15-211
+tip: ''
+analysis_type: intersection
+targets: 1
+countermeasure: Install directional crossover along NC 49 at SR 1309 (Slough Road)
+  and install a U-turn with bulb-out downstream.
+countermeasure_family: other
+county: Cabarrus
+division: '10'
+completed: 2018
+companions: []
+split: train
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 10-15-211.xlsx
+    id: 16A2O_dqYw6att_XctagpK4dlH1gOLq22
+    size: 5310229
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 10-15-211.xlsx
+    id: 1DEG8Lx2F4Q0bd-WSeX8EloyCTh_j4Pgi
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1MuuBvW_4-Eo_VisDr9q3nxua2o08Yy-W
+    size: 27652
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1DaxJ_RvO2x87LDAFJcubNh4pTxpnLPy5
+    size: 19051
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1X2xTZJOFHnhWsv4LXryQNXruOzjvyIbr
+    size: 736158
+  id_lists: []
+  reports:
+  - path: 10-15-211 - Complete Eval.pdf
+    id: 10TTnxjcgnHEsQ4AW24lg1FUKvSkyelib
+    size: 750690
+  - path: 10-15-211 - Web.pdf
+    id: 1KCX885_W16usUMRJW_W7Inu7FNsPdWj8
+    size: 660359

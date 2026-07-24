@@ -1,0 +1,130 @@
+wo: '41000069735'
+title: WO-41000069735 06-13-26850 (W-5206AM)
+folder_ids:
+- 1uPYWwHhpSrATYQw-rs9cQ7GeYYBd5bSd
+project_id: 06-13-26850
+tip: W-5206AM
+analysis_type: intersection
+targets: 1
+countermeasure: '(s): Construct raised median along NC 24 from Glenville Avenue to
+  US 401 Business and from Ray Avenue to Ramsey Street; Install directional crossovers
+  at intersections with Glenville Avenue, Westmont Drive, and Filter Plant Drive –
+  Use RCI terminology rather than directional crossovers; Close crossover at Winston
+  Avenue; Upgrade signal at Pearl Street to include crosswalks and pedestrian signals
+  over all approaches, and protected/permitted FYA left-turn signals for Bragg Boulevard
+  approaches; Upgrade signal at Ames Avenue to include crosswalks and pedestrian signals
+  over west and north legs, and refresh crosswalks over east and south legs. Also
+  add protected-permitted FYA signal for southbound approach and permitted-only FYA
+  signal for northbound approach, supplemental through signal heads for eastbound/westbound
+  approaches, and “time of day” phasing for eastbound FYA left-turn signal; Upgrade
+  crosswalks at Ray Avenue intersection to High-Visibility Markings.'
+countermeasure_family: signal
+county: Cumberland
+division: '6'
+completed: 2018
+companions: []
+split: verify
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook - 06-13-26850 (2 of 2).xlsx
+    id: 1cu6XjmrPsZvcgRq0qgobJUFZRVcRojHK
+    size: 7642135
+  - path: Crash Analysis/Section Evaluation Workbook - 06-13-26850 (1 of 2).xlsx
+    id: 1C1q46FNZS4mv6idIQS6RHGTLcgKfeOow
+    size: 8254441
+  - path: Crash Analysis/Intersection Evaluation Workbook - 06-13-26850 (Pearl).xlsx
+    id: 1jYHSgyvKTVURR4yQ90kxL_756LP3GQ6u
+    size: 1458456
+  - path: Crash Analysis/Intersection Evaluation Workbook - 06-13-26850 (Ames).xlsx
+    id: 1LbS0wA7J47r09K1yX6ZM21M860Dx_7CX
+    size: 4447835
+  - path: Crash Analysis/~$Section Evaluation Workbook - 06-13-26850 (1 of 2).xlsx
+    id: 1f3LpVWLApX2on5DFDjME56Hrsd4IGbSz
+    size: 165
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 06-13-26850 (Pearl).xlsx
+    id: 1lQH3wZGYFNXQut2CZN8kVCNvODls7TSH
+    size: 165
+  - path: Crash Analysis/~$Section Evaluation Workbook - 06-13-26850 (2 of 2).xlsx
+    id: 1DfPVce0CEN9OrzioYNL4KcuVUGOb4aMM
+    size: 165
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 06-13-26850 (Ames).xlsx
+    id: 1MqQRkG-AnQ9MJBQMktht1C7h5XXYkg0K
+    size: 165
+  - path: Crash Analysis/~$Section Evaluation Workbook - 06-13-26850.xlsx
+    id: 1FJlqBdL85Nyqp9yajwnlKNxCxByoMlpz
+    size: 165
+  fiche_workbooks:
+  - path: Background/Fatal Crash - M220508003/M220508003_FicheReport.xlsx
+    id: 1Ad_khV0s4nA-n8WKmTSz3HnOBac-qzCT
+    size: 641406
+  - path: Background/Pearl St - 2019 HSIP (25I00681)/41000057312_FicheReport.xlsx
+    id: 10jW7p6ugQHSqiLBEAf1px_YZOknA4QzL
+    size: 353530
+  - path: Background/Background Information/atFilterPlant/fiche.xlsx
+    id: 1vgoE1jkiNTltAEDh4HQBGUoUatSilOH_
+    size: 16808
+  - path: Background/Background Information/OfficialTEAAS/24fiche.xlsx
+    id: 1t-5nbw9TjX64wahgSz3xSfxWZgtxAGdF
+    size: 1045203
+  emails:
+  - path: Notes/RE_ _External_ Evaluation 06-13-26850 Assumptions.msg
+    id: 1LLQMaP5v2LGKEVu49RXsgP5uPbgdruZV
+    size: 192000
+  fiche_csv:
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1J8aTefGaSCyUKzIwXersSr7ZXJIBid5P
+    size: 2432355
+  - path: Crash Analysis/Rowan_After_CrashAnalysis.csv
+    id: 1el7_bkkg6oDmJFRvD7uYK4RlVaN9lHZn
+    size: 92582
+  - path: Crash Analysis/Rowan_Before_CrashAnalysis.csv
+    id: 1aL3tIYh5WFHC54WBpchsMc2y86tWuurf
+    size: 80202
+  - path: Crash Analysis/Bragg_Before_CrashAnalysis.csv
+    id: 1EWIoHNVojfeI4IJAaxAvxpH4b38mNSTk
+    size: 160065
+  - path: Crash Analysis/Bragg_After_CrashAnalysis.csv
+    id: 14Bcesn69RtB9ShXRRxN0ung14yBjHqBE
+    size: 130857
+  - path: Background/Fatal Crash - M220508003/M220508003_FicheReport.csv
+    id: 1KMOqzTQsrddGnp6bohKpqgZ3rQmkjJHO
+    size: 427248
+  - path: Background/Pearl St - 2019 HSIP (25I00681)/41000057312_FicheReport.csv
+    id: 16fXoaai6-rQRNbvgUD2r_NxH2vOMl-4N
+    size: 449005
+  - path: Background/Background Information/atFilterPlant/fiche.csv
+    id: 1cVVvzPc3lUvZMjLfg48Zy8X1h4ZhJCwn
+    size: 10087
+  id_lists:
+  - path: Crash Analysis/Rowan_AfterImport.txt
+    id: 152nAT0qquWalD9l7MnSf55e-hXDl02OG
+    size: 3076
+  - path: Crash Analysis/Rowan_BeforeImport.txt
+    id: 1PwNFndAQJwtzie1Y94fLGz7C6ce9M2sp
+    size: 2764
+  - path: Crash Analysis/Bragg_AfterImport.txt
+    id: 1ApN5UhK1O-35jvs-G564qZqPAM0Tj7GW
+    size: 4689
+  - path: Crash Analysis/Bragg_BeforeImport.txt
+    id: 1EVrKTdI9FTrI8PVeUelk7gyaWL6yNWIv
+    size: 5826
+  reports:
+  - path: 06-13-26850 (W-5206AM) Web.pdf
+    id: 1iYKFaFlhf-VBFPlvRTDnKInkrk8LKi04
+    size: 1765003
+  - path: 06-13-26850 (W-5206AM) Complete Evaluation.pdf
+    id: 1_bNa11qSGAaQqCFF-pDKcTHJ5mGMDfrn
+    size: 2898149
+  - path: Crash Analysis/06-13-26850 (W-5206AM) (2 of 2) Web.pdf
+    id: 1K53OYarDO_ygixxzNsJ2u-YOCqHsjO5E
+    size: 552880
+  - path: Crash Analysis/06-13-26850 (W-5206AM) (1 of 2) Web.pdf
+    id: 1ze5iLDQmmQwyYIxOPWhD1_VRQDUxsUJw
+    size: 642897
+  - path: Crash Analysis/06-13-26850 (W-5206AM) (1E of 2 - Ames) Web.pdf
+    id: 1Xi6GyqbTKP0fsNyPIbvKmVzdJaztlAl4
+    size: 513310
+  - path: Crash Analysis/06-13-26850 (W-5206AM) (1B of 2 - Pearl) Web.pdf
+    id: 1qmBOjrTce3YvPknYSq2cgmzEheb9okwK
+    size: 451527

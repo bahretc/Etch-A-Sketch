@@ -1,0 +1,55 @@
+wo: '41000073352'
+title: WO-41000073352 02-17-48975 (W-5702Q)
+folder_ids:
+- 1uIpTMGmJ60PYq6gGpqpTKjmFgq5In22s
+project_id: 02-17-48975
+tip: W-5702Q
+analysis_type: intersection
+targets: 1
+countermeasure: Install 40' concrete channelization island on the eastern leg of SR
+  1571 and place a supplemental stop sign on it.
+countermeasure_family: signing
+county: Lenoir
+division: '2'
+completed: 2019
+companions: []
+split: verify
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 02-17-48975 (W-5702Q).xlsx
+    id: 1zACBQZiE5M0mNU-lkKJpHythAbitkeTn
+    size: 3113289
+  - path: Crash Analysis/Intersection Evaluation Workbook - 02-17-48975 (W-5702Q)2.xlsx
+    id: 1xLiLUHNJo2qw6YgZRcub9uxz8fUHCklm
+    size: 3111502
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Assignment #32 - 41000073352 02-17-48975 (W-5702Q)
+      Assumptions.msg'
+    id: 1I0YVT7q8R2jY9E2vq1eUJl-NqtM47eFm
+    size: 137216
+  fiche_csv:
+  - path: Crash Analysis/41000073352AFTER.csv
+    id: 1MbzrPUmkL2XYrpVNFrNESJXSm8HXW28R
+    size: 13469
+  - path: Crash Analysis/41000073352BEFORE.csv
+    id: 160EEYmsPPuVvhLglv-GKyjVv4dHNP7fw
+    size: 13760
+  - path: Crash Analysis/41000073352_InitialStudy.csv
+    id: 1_SOjXvnqveqRwsWDk9HvhTc1GcbQsbLG
+    size: 18849
+  id_lists:
+  - path: Crash Analysis/41000073352AFTER_CrashID.txt
+    id: 1qpqeIR3auplZxkQQrRWjl3-aUsYQwnPd
+    size: 423
+  - path: Crash Analysis/41000073352BEFORE_CrashID.txt
+    id: 11RQmDGYqBufrvbG7FarGBdQG8aWHR4RI
+    size: 466
+  reports:
+  - path: 02-17-48975 (W-5702Q) Complete Evaluation.pdf
+    id: 14McB8NZ4hT-fOCEfO8y72d1CfSW_Joaj
+    size: 588710
+  - path: 02-17-48975 (W-5702Q) Web.pdf
+    id: 1SVWzulcHblwVGqL2rcyNNITMDZffDYh5
+    size: 530479

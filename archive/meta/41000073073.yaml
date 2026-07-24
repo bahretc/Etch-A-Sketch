@@ -1,0 +1,67 @@
+wo: '41000073073'
+title: WO-41000073073 12-17-220 (SS-4912CL)
+folder_ids:
+- 1tCAq3Fcw2446zFMdEp1WQmhp_1YV5Vye
+project_id: 12-17-220
+tip: SS-4912CL
+analysis_type: intersection
+targets: 1
+countermeasure: Revise traffic signal to provide a NB 4 section FYA display with alternate
+  phasing capability. Install backing plates with reflectorized borders on all signal
+  heads.  It looks like the SB approach also got a new 3-section FYA at this time.  I
+  like to see the before signal conditions provided (as you provided in the last note
+  below).  If there’s not space, this can be a discussion item.
+countermeasure_family: signal
+county: Gaston
+division: '12'
+completed: null
+companions: []
+split: verify
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 12-17-220 (SS-4912CL).xlsx
+    id: 1F-hOxaZum-d-yID5S2fo0wmAFgBHjqHX
+    size: 7356049
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 12-17-220 (SS-4912CL).xlsx
+    id: 1l5PCsuaNijrAthqEjg2ig7sAJmyHJLNe
+    size: 165
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Assignment #33 - 41000073073 12-17-220 (SS-4912CL)
+      Assumptions.msg'
+    id: 1o36upcFp78mGH4LUkhI6XhGpf3f0NYWQ
+    size: 294912
+  fiche_csv:
+  - path: Background Information/41000049514.csv
+    id: 1Iw_ajILlkCbXHBEYM3mhbl3TBNSl6IJg
+    size: 28815
+  - path: Crash Analysis/41000073073AFTER.csv
+    id: 1vJZjD1EihbAp2c3d3SWp5OpBfdai32wY
+    size: 30389
+  - path: Crash Analysis/41000073073BEFORE.csv
+    id: 1gMwau9dVVOSgPzsH3V_VwKyZ2mOBC6iJ
+    size: 30681
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1jI43RDB8ko5Hu6ma_DgVh8UpuHcuVT_a
+    size: 700972
+  - path: Crash Analysis/InitialStudy.csv
+    id: 1nqm6v90mfUE3mPw_CSxV16v8szIg9z_z
+    size: 49593
+  id_lists:
+  - path: Background Information/41000049514_CrashID.txt
+    id: 1uS6xqXRGtynOpAj6Sfbjt7E7BiK4hxg4
+    size: 1996
+  - path: Crash Analysis/41000073073AFTER_CrashID.txt
+    id: 1dcJngNElWz1a3_khj3b0P5qZlpRkhdqs
+    size: 2134
+  - path: Crash Analysis/41000073073BEFORE_CrashID.txt
+    id: 1hXsmcfyupWudz_OiB4wtuns1Ys_QPU6L
+    size: 2142
+  reports:
+  - path: 12-17-220 (SS-4912CL) Complete Evaluation.pdf
+    id: 1Xzssfuwr-3T7ye3TzPl7vkFaDvHA5lgz
+    size: 653196
+  - path: 12-17-220 (SS-4912CL) Web.pdf
+    id: 1PCQTjo34O1dumvCHpGmO0Vyvc4lFdZhw
+    size: 511110

@@ -1,0 +1,65 @@
+wo: '41000078083'
+title: WO-41000078083 04-20-60583
+folder_ids:
+- 1ndVDJbKSB41bDYJzlP8-PlQ5G_1Bc5lz
+project_id: 04-20-60583
+tip: SS-6004AS
+analysis_type: intersection
+targets: 1
+countermeasure: 'Convert Intersection to All-Way STOP Control, including: Installation
+  of dual Oversized STOP signs w/ Brightsides on NC 55 approaches; Installation of
+  Dual STOP Ahead Warning signs (W3-1) w/ Brightsides and “800 ft” plaques on NC 55
+  approaches; Conversion of existing actuated “Vehicles Entering when Flashing” signs
+  on NC 55 approaches to non-actuated flashing STOP Ahead Warning signs (W3-1) and
+  installation of supplemental left-side STOP Ahead Warning sign (W3-1), both w/ Brightsides
+  and “300 ft” plaques; Installation of STOP AHEAD pavement markings on NC 55 approaches;
+  Installation of STOP Ahead Warning signs (W3-1) w/ Brightsides on SR 1744 approaches;
+  Replacement of right-side STOP signs with oversized STOP signs on SR 1774 approaches,
+  and installation of Brightsides on all STOP signs; Installation of Keep Right at
+  Median (R4-7) signs on SR 1744 medians.'
+countermeasure_family: awsc
+county: Wayne
+division: '4'
+completed: 2022
+companions: []
+split: verify
+flags:
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 04-20-60583.xlsx
+    id: 1zzinY3Odji2coK-QVdSwenHCjBSWRiaY
+    size: 3146223
+  - path: Crash Analysis/~$Intersection Evaluation Workbook.xlsx
+    id: 1hW7m4mfIf0DrQr8926qhR0Ue_Jh3Z5CE
+    size: 165
+  fiche_workbooks: []
+  emails:
+  - path: Background/13 - 04-20-60583/Background Information/RE_ AWS Capacity Analysis
+      Request - NC 55 at SR 1744 (Indian Springs Rd)_ Wayne County.msg
+    id: 1o9JV1o_aYcl3zLAmvrrhEECUPVXqE7A_
+    size: 197120
+  fiche_csv:
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 15ymgLL5H-XN9r-4b9gIieBxb1XMxsaVH
+    size: 13999
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1HG68Ou_jzCF_RJTU4hB_8swgysI09cQi
+    size: 12170
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1NF6CcOUL2NrEUKaJtie3DH-OvnKbOmmX
+    size: 159307
+  id_lists:
+  - path: Crash Analysis/Before_CrashID.txt
+    id: 1YyUl8EqE8dCsOnuYnW9UMzYNPlHlAcEn
+    size: 509
+  - path: Crash Analysis/After_CrashID.txt
+    id: 1bmilyINYxWtGRTzKhH33THV-vlycjgIj
+    size: 294
+  reports:
+  - path: 04-20-60583_Complete Eval.pdf
+    id: 142_ZbLtUmnHqEwE_X5-RwxohwtjfvIzi
+    size: 788820
+  - path: 04-20-60583_Web.pdf
+    id: 1DRo9P_-a3U55pimmdrxs8sALXTOgrWqi
+    size: 741057

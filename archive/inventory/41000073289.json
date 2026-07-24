@@ -1,0 +1,321 @@
+{
+ "folder_id": "1Lmb5k6gdf8avogMHHGDlkxBSJ2NA-lJt",
+ "title": "WO-41000073289 06-18-51382 (SS-4906DT)",
+ "files": [
+  {
+   "path": "06-18-51382 (SS-4906DT) Complete Eval.pdf",
+   "id": "1KOLh5y_AcjE-RMWWXGBnubR169Z15RgL",
+   "title": "06-18-51382 (SS-4906DT) Complete Eval.pdf",
+   "mime": "application/pdf",
+   "size": 1258597
+  },
+  {
+   "path": "06-18-51382 (SS-4906DT) Web.pdf",
+   "id": "1F-HOwEeSHMsQI8d7HkU_o_Dp8FZK6cZF",
+   "title": "06-18-51382 (SS-4906DT) Web.pdf",
+   "mime": "application/pdf",
+   "size": 692959
+  },
+  {
+   "path": "Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #39-40.msg",
+   "id": "1_gM7j4k0vz3HSzovedbta2ikA_GvyJpg",
+   "title": "RE_ _External_ Safety Evaluation - VHB - Assignment #39-40.msg",
+   "mime": "application/vnd.ms-outlook",
+   "size": 271872
+  },
+  {
+   "path": "Notes/Ordinances_NC87_Repealed.pdf",
+   "id": "1gms3EHcgHrhi_0vRKRLMzUbrLTGH1vsI",
+   "title": "Ordinances_NC87_Repealed.pdf",
+   "mime": "application/pdf",
+   "size": 48614
+  },
+  {
+   "path": "Notes/Ordinances_NC87_Active.pdf",
+   "id": "1m2UmF_qnlxy_Az_Wcb39vB_3Hy1v5c50",
+   "title": "Ordinances_NC87_Active.pdf",
+   "mime": "application/pdf",
+   "size": 35262
+  },
+  {
+   "path": "Notes/Assumptions Email - 06-18-51382 (SS-4906DT).docx",
+   "id": "1QzItTi4q717i3noEk4weiPkAyDMM1DZn",
+   "title": "Assumptions Email - 06-18-51382 (SS-4906DT).docx",
+   "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+   "size": 22325
+  },
+  {
+   "path": "Crash Analysis/Section Evaluation Workbook - 06-18-51382 (SS-4906DT).xlsx",
+   "id": "10X8ndHPrrRMrA78GC1_P7CHyjR4-kJrN",
+   "title": "Section Evaluation Workbook - 06-18-51382 (SS-4906DT).xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 7012585
+  },
+  {
+   "path": "Crash Analysis/41000073289AFTER_CrashID.txt",
+   "id": "11ROAfAyx7enQ3voR4PG0n-LxidyCapZM",
+   "title": "41000073289AFTER_CrashID.txt",
+   "mime": "text/plain",
+   "size": 10906
+  },
+  {
+   "path": "Crash Analysis/41000073289_CrashID.txt",
+   "id": "129_OLnkrOcM7IzkUiYLndxcxOSAleOvW",
+   "title": "41000073289_CrashID.txt",
+   "mime": "text/plain",
+   "size": 10906
+  },
+  {
+   "path": "Crash Analysis/41000073289AFTER.pdf",
+   "id": "1ITVs9o_hqICD5UNN_TkOfqJ3oI6B7um_",
+   "title": "41000073289AFTER.pdf",
+   "mime": "application/pdf",
+   "size": 375617
+  },
+  {
+   "path": "Crash Analysis/41000073289AFTER.csv",
+   "id": "1Zeew8nMmqkjKI0896tC62hS5ZrRzriGZ",
+   "title": "41000073289AFTER.csv",
+   "mime": "text/csv",
+   "size": 135079
+  },
+  {
+   "path": "Crash Analysis/41000073289BEFORE.csv",
+   "id": "1KYYJXjdrsxqSUQ4XW5lJdtVj-SWjrmdL",
+   "title": "41000073289BEFORE.csv",
+   "mime": "text/csv",
+   "size": 104258
+  },
+  {
+   "path": "Crash Analysis/41000073289BEFORE.pdf",
+   "id": "1osBaySoLxYvuI9wHbBxQd8JXzM22XBN5",
+   "title": "41000073289BEFORE.pdf",
+   "mime": "application/pdf",
+   "size": 290261
+  },
+  {
+   "path": "Crash Analysis/41000073289BEFORE_CrashID.txt",
+   "id": "1qMMuqWemSSt3yz-mAe9_yCr93k8_Odnk",
+   "title": "41000073289BEFORE_CrashID.txt",
+   "mime": "text/plain",
+   "size": 7972
+  },
+  {
+   "path": "Crash Analysis/41000073289AFTER_Import.txt",
+   "id": "102Ca1G6WGUrXoqxirnUc0YpRCvhCQEPc",
+   "title": "41000073289AFTER_Import.txt",
+   "mime": "text/plain",
+   "size": 4494
+  },
+  {
+   "path": "Crash Analysis/41000073289BEFORE_Import.txt",
+   "id": "1F8r1DX3weGDCIlEfpTS-8lPqZSJ2NNyV",
+   "title": "41000073289BEFORE_Import.txt",
+   "mime": "text/plain",
+   "size": 3271
+  },
+  {
+   "path": "Crash Analysis/aerial.jpg",
+   "id": "1EukEtYX6XaX36SdiUHkOCDZTb7LuTC63",
+   "title": "aerial.jpg",
+   "mime": "image/jpeg",
+   "size": 1019456
+  },
+  {
+   "path": "Crash Analysis/41000073289_InitialStudy.pdf",
+   "id": "1A6HbnO5diXgavHFgfFet1Voi5WDBENaj",
+   "title": "41000073289_InitialStudy.pdf",
+   "mime": "application/pdf",
+   "size": 872311
+  },
+  {
+   "path": "Crash Analysis/~$Section Evaluation Workbook - 06-18-51382 (SS-4906DT).xlsx",
+   "id": "1_Tyx3ROKCV3xIOHEntFyJm0zTXR-X1Q0",
+   "title": "~$Section Evaluation Workbook - 06-18-51382 (SS-4906DT).xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 165
+  },
+  {
+   "path": "Crash Analysis/41000073289_InitialStudy.csv",
+   "id": "1xHt8gqjPsHFdHYRpln8p2WujMnj19Md1",
+   "title": "41000073289_InitialStudy.csv",
+   "mime": "text/csv",
+   "size": 311784
+  },
+  {
+   "path": "Crash Analysis/41000073289_Fiche.csv",
+   "id": "1g0Px35KPJqFhE6ennOzvtjzVFoDJ6ByA",
+   "title": "41000073289_Fiche.csv",
+   "mime": "text/csv",
+   "size": 134792
+  },
+  {
+   "path": "Crash Analysis/41000073289_InitialID.txt",
+   "id": "1afe57K51BmIKE3avkIK9cGSbQ36Vcjce",
+   "title": "41000073289_InitialID.txt",
+   "mime": "text/plain",
+   "size": 31391
+  },
+  {
+   "path": "Crash Analysis/FeaturesReport_NC87.pdf",
+   "id": "1Xp3kp6vHZwLB5avFIlMTXDAVfQPxT2xI",
+   "title": "FeaturesReport_NC87.pdf",
+   "mime": "application/pdf",
+   "size": 47033
+  },
+  {
+   "path": "Background Information/06-18-51382_Project Packet.pdf",
+   "id": "1qdJ7fYS_cRRBSBHdRMSTZZotsMNNS6Mq",
+   "title": "06-18-51382_Project Packet.pdf",
+   "mime": "application/pdf",
+   "size": 2973119
+  },
+  {
+   "path": "Background Information/06-18-51382_map.pptx",
+   "id": "1eCC04eXtX0WciHrt4_Q16Y0HLotYgnpi",
+   "title": "06-18-51382_map.pptx",
+   "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+   "size": 1366376
+  },
+  {
+   "path": "Background Information/Master Evaluation Spreadsheet.xlsx",
+   "id": "1Sc7EGYkYUKEIdJbpucj4tyEXax_QDklM",
+   "title": "Master Evaluation Spreadsheet.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 906567
+  },
+  {
+   "path": "Background Information/18_06-18-51382_List crashes.pdf",
+   "id": "1UFuibTI7UqkzH-Y3eokPvmbVgQLGb4gA",
+   "title": "18_06-18-51382_List crashes.pdf",
+   "mime": "application/pdf",
+   "size": 96532
+  },
+  {
+   "path": "Background Information/12_06-18-51382 Correctable.pdf",
+   "id": "1DVy4hnweAPajB0T8HuREglaCXhBFq5LF",
+   "title": "12_06-18-51382 Correctable.pdf",
+   "mime": "application/pdf",
+   "size": 82462
+  },
+  {
+   "path": "Background Information/17_06-18-51382_Features_NC 87.pdf",
+   "id": "1nK8pCqUIU4GvR9ilzMUGmW-OHJiEKl28",
+   "title": "17_06-18-51382_Features_NC 87.pdf",
+   "mime": "application/pdf",
+   "size": 27409
+  },
+  {
+   "path": "Background Information/06_06-18-51382_Funds and Data sheet.pdf",
+   "id": "1WDJfNkV7kuAt-baYw651YZpN31iMdcEb",
+   "title": "06_06-18-51382_Funds and Data sheet.pdf",
+   "mime": "application/pdf",
+   "size": 627891
+  },
+  {
+   "path": "Background Information/10_06-18-51382_CRF's.pdf",
+   "id": "1FZXx5KeAX34QP2ZdMo1vDuYKlXi9kT5a",
+   "title": "10_06-18-51382_CRF's.pdf",
+   "mime": "application/pdf",
+   "size": 67417
+  },
+  {
+   "path": "Background Information/09_06-18-51382 Annual Benefits.pdf",
+   "id": "1njrj-oocTQiBOZHSYWDft7CAkEH301Fl",
+   "title": "09_06-18-51382 Annual Benefits.pdf",
+   "mime": "application/pdf",
+   "size": 118726
+  },
+  {
+   "path": "Background Information/06-18-51382_map.pdf",
+   "id": "10W3tNWcspK1MsK4VJOePsEeTF7oNxIfr",
+   "title": "06-18-51382_map.pdf",
+   "mime": "application/pdf",
+   "size": 127256
+  },
+  {
+   "path": "Background Information/06-18-51382_Funds.pdf",
+   "id": "1R7JuvMAIoOu7HNH9uJKfdTwZ5RJPwYiW",
+   "title": "06-18-51382_Funds.pdf",
+   "mime": "application/pdf",
+   "size": 627891
+  },
+  {
+   "path": "Background Information/03_06-18-51382_Justification Sheet.pdf",
+   "id": "1vrUGL4hy3_0j21TByGo06WYHRLSsybu7",
+   "title": "03_06-18-51382_Justification Sheet.pdf",
+   "mime": "application/pdf",
+   "size": 488656
+  },
+  {
+   "path": "Background Information/02_06-18-51382_Cover Sheet.pdf",
+   "id": "1SfHXUm3QMVQkkSX-WgGu-B40zJq_7o49",
+   "title": "02_06-18-51382_Cover Sheet.pdf",
+   "mime": "application/pdf",
+   "size": 204508
+  },
+  {
+   "path": "Background Information/01_06-18-51382_Log Sheet.pdf",
+   "id": "1IqipdIDE1ENoxmretSq63muvQQXvnmYI",
+   "title": "01_06-18-51382_Log Sheet.pdf",
+   "mime": "application/pdf",
+   "size": 175701
+  },
+  {
+   "path": "Background Information/06-18-51382 Annual Benefits.pdf",
+   "id": "13OLTOby5_bIkR8Uc__QC4Krll4bcjB5b",
+   "title": "06-18-51382 Annual Benefits.pdf",
+   "mime": "application/pdf",
+   "size": 109732
+  },
+  {
+   "path": "Background Information/06-18-51382 BC.pdf",
+   "id": "12nZyedgeFDYq_XYKwhisB10DQRCJlzPm",
+   "title": "06-18-51382 BC.pdf",
+   "mime": "application/pdf",
+   "size": 11720
+  },
+  {
+   "path": "Background Information/06-18-51382_Basic Worksheet.xlsx",
+   "id": "1iWrShoe3i0onV0Jh4v1sUHRnY4o7RlOm",
+   "title": "06-18-51382_Basic Worksheet.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 31408
+  },
+  {
+   "path": "Background Information/04_06-18-51382 BC.pdf",
+   "id": "1Ue9CG_Lj86u04EbXEy5i8M61ckf9Eg4y",
+   "title": "04_06-18-51382 BC.pdf",
+   "mime": "application/pdf",
+   "size": 14508
+  },
+  {
+   "path": "Background Information/06-18-51382 CRF and Annual Benefits.xlsx",
+   "id": "1CoujSh74Ezx9A1YJoRw_--N3wvnhm0s2",
+   "title": "06-18-51382 CRF and Annual Benefits.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 42983
+  },
+  {
+   "path": "Background Information/Final Inspection/Final Inspection 06-18-51382 SS-4906DTWBS 47935.3.1 NC 87 Cumberland Rumbles.msg",
+   "id": "1HqvvWHN0aWH7eTmSgGP7aUvITvDjljBY",
+   "title": "Final Inspection 06-18-51382 SS-4906DTWBS 47935.3.1 NC 87 Cumberland Rumbles.msg",
+   "mime": "application/vnd.ms-outlook",
+   "size": 872448
+  },
+  {
+   "path": "Background Information/Final Inspection/Final Inspection 06-18-51382 _SS-4906DT_WBS 47935_3_1_ NC 87 Cumberland Rumbles.msg",
+   "id": "1n1cmTumZN0r7PRL2LhVpGwIsElKJLTdb",
+   "title": "Final Inspection 06-18-51382 _SS-4906DT_WBS 47935_3_1_ NC 87 Cumberland Rumbles.msg",
+   "mime": "application/vnd.ms-outlook",
+   "size": 873984
+  },
+  {
+   "path": "Background Information/Final Inspection/06-18-51382_SS-4906DT_FinalInspLtr wPhotos.pdf",
+   "id": "1qIoozk5uriHGoBvhmVAiLn1d_-9m7UIn",
+   "title": "06-18-51382_SS-4906DT_FinalInspLtr wPhotos.pdf",
+   "mime": "application/pdf",
+   "size": 760484
+  }
+ ]
+}

@@ -1,0 +1,272 @@
+{
+ "folder_id": "1xI2EVUiamkntRtIR1ID2y2al14gvyimV",
+ "title": "WO-41000073347 10-17-342 (W-5710P)",
+ "files": [
+  {
+   "path": "10-17-342 Complete Evaluation.pdf",
+   "id": "1Samn_fvBSvU0Doqu4pyAu-LP4bXshJxt",
+   "title": "10-17-342 Complete Evaluation.pdf",
+   "mime": "application/pdf",
+   "size": 677548
+  },
+  {
+   "path": "10-17-342 Web.pdf",
+   "id": "10s1uVBI6qKjXxHjwviHpUMA_hJu4aGch",
+   "title": "10-17-342 Web.pdf",
+   "mime": "application/pdf",
+   "size": 605324
+  },
+  {
+   "path": "Notes/US74_Ordinances.pdf",
+   "id": "1j8aAkxIJu9FMAahpq5QyWqAyMNnc4XvQ",
+   "title": "US74_Ordinances.pdf",
+   "mime": "application/pdf",
+   "size": 43850
+  },
+  {
+   "path": "Notes/US52_Ordinances.pdf",
+   "id": "1pGojpV3EQ4aImUpQdOIFScwMNhsPe60y",
+   "title": "US52_Ordinances.pdf",
+   "mime": "application/pdf",
+   "size": 52607
+  },
+  {
+   "path": "Notes/NC742_Ordinances.pdf",
+   "id": "1WyKVDFOtsvRSIDiz0XugL4EFYfE3C6zT",
+   "title": "NC742_Ordinances.pdf",
+   "mime": "application/pdf",
+   "size": 13904
+  },
+  {
+   "path": "Notes/Assumptions Email.docx",
+   "id": "1iGZH0GcjBLLzdAymyQgNNq3rxh2emgEq",
+   "title": "Assumptions Email.docx",
+   "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+   "size": 15868
+  },
+  {
+   "path": "Crash Analysis/Intersection Evaluation Workbook - 10-17-342.xlsx",
+   "id": "1YZhU7IvONOeH_k0XSWP7QzHNJj9waL1C",
+   "title": "Intersection Evaluation Workbook - 10-17-342.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 5032164
+  },
+  {
+   "path": "Crash Analysis/Before_CrashID.txt",
+   "id": "1AC7Dy5EuHcQs2ku3sfKCHJpJaH6pCICy",
+   "title": "Before_CrashID.txt",
+   "mime": "text/plain",
+   "size": 1486
+  },
+  {
+   "path": "Crash Analysis/Before_CrashAnalysis.csv",
+   "id": "1ogxxqo0_CShVAZAIq9eJ1gQdBjhbaErB",
+   "title": "Before_CrashAnalysis.csv",
+   "mime": "text/csv",
+   "size": 24266
+  },
+  {
+   "path": "Crash Analysis/Before_CrashAnalysis.pdf",
+   "id": "1qVajsDN0dnPTK2OaXLbP6fnO8fDan_vR",
+   "title": "Before_CrashAnalysis.pdf",
+   "mime": "application/pdf",
+   "size": 64625
+  },
+  {
+   "path": "Crash Analysis/After_CrashID.txt",
+   "id": "159c4RNmEcAbFGTTRgLJGgjyv42dVa8Dv",
+   "title": "After_CrashID.txt",
+   "mime": "text/plain",
+   "size": 805
+  },
+  {
+   "path": "Crash Analysis/After_CrashAnalysis.pdf",
+   "id": "1fho5DGKaX-Ho2ISd_FptKr5qt2syv1mY",
+   "title": "After_CrashAnalysis.pdf",
+   "mime": "application/pdf",
+   "size": 44861
+  },
+  {
+   "path": "Crash Analysis/After_CrashAnalysis.csv",
+   "id": "1TdKCjcNUgnlwmro7GZL7Lc4FOWmvQRr_",
+   "title": "After_CrashAnalysis.csv",
+   "mime": "text/csv",
+   "size": 17230
+  },
+  {
+   "path": "Crash Analysis/OriginalFiche.csv",
+   "id": "1_HeVsuTnrJNabDFz__39LRvKpCybL_2r",
+   "title": "OriginalFiche.csv",
+   "mime": "text/csv",
+   "size": 563849
+  },
+  {
+   "path": "Crash Analysis/InitialStudy.pdf",
+   "id": "1EwxN3nULFXkYxVR8DKle7HmpP8UOIlYq",
+   "title": "InitialStudy.pdf",
+   "mime": "application/pdf",
+   "size": 82445
+  },
+  {
+   "path": "Crash Analysis/InitialID.txt",
+   "id": "1o-mMOerjCEIbmfjCUoBdAG2nNWSnX0gU",
+   "title": "InitialID.txt",
+   "mime": "text/plain",
+   "size": 2306
+  },
+  {
+   "path": "Crash Analysis/SR1472_FeaturesReport.pdf",
+   "id": "1nyxahvnL9EP26byOTfAcX8Gc3WsmhdhO",
+   "title": "SR1472_FeaturesReport.pdf",
+   "mime": "application/pdf",
+   "size": 18427
+  },
+  {
+   "path": "Crash Analysis/NC742_FeaturesReport.pdf",
+   "id": "1etgTSHqs1u7gJDtz9YNv4EtTJvjeAzNV",
+   "title": "NC742_FeaturesReport.pdf",
+   "mime": "application/pdf",
+   "size": 32188
+  },
+  {
+   "path": "Crash Analysis/US74_FeaturesReport.pdf",
+   "id": "1IATg6m4wynsekibxO10Fs48jCdxh27Cf",
+   "title": "US74_FeaturesReport.pdf",
+   "mime": "application/pdf",
+   "size": 38544
+  },
+  {
+   "path": "Crash Analysis/US52_FeaturesReport.pdf",
+   "id": "1PQOT43x59i-mHqIBFqkFtkQ69JfgwS6e",
+   "title": "US52_FeaturesReport.pdf",
+   "mime": "application/pdf",
+   "size": 35939
+  },
+  {
+   "path": "Crash Analysis/~$Intersection Evaluation Workbook - 10-17-342.xlsx",
+   "id": "1aK8Y5Wv5mQfdTA7hFkze2Bi9fUIlaHvV",
+   "title": "~$Intersection Evaluation Workbook - 10-17-342.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 165
+  },
+  {
+   "path": "Background/45 - W-5710P/Background_TEAAS.pdf",
+   "id": "1-tzAc1eHnF_0_qJhf1__kALT948VVblY",
+   "title": "Background_TEAAS.pdf",
+   "mime": "application/pdf",
+   "size": 56925
+  },
+  {
+   "path": "Background/45 - W-5710P/~$Master Evaluation Spreadsheet.xlsx",
+   "id": "1nVffTQaNzZ4qfGTBqy5zSVPMWCaWCGhe",
+   "title": "~$Master Evaluation Spreadsheet.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 165
+  },
+  {
+   "path": "Background/45 - W-5710P/Master Evaluation Spreadsheet.xlsx",
+   "id": "1RAvYOQ0pHjfFps3PlERnApvjdwGI4tgO",
+   "title": "Master Evaluation Spreadsheet.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 906108
+  },
+  {
+   "path": "Background/45 - W-5710P/Final Inspection/10-17-243 final.pdf",
+   "id": "1Y0M-HMw9sGofdtUfNEEUr7oo0Cqfc5se",
+   "title": "10-17-243 final.pdf",
+   "mime": "application/pdf",
+   "size": 35064
+  },
+  {
+   "path": "Background/45 - W-5710P/Final Inspection/After Photos/IMG_5845.jpg",
+   "id": "1tSOgMDGz11wUL9OJmw58p_dZExYEhE2H",
+   "title": "IMG_5845.jpg",
+   "mime": "image/jpeg",
+   "size": 77981
+  },
+  {
+   "path": "Background/45 - W-5710P/Final Inspection/After Photos/Thumbs.db",
+   "id": "1J_yRFDq-PkIZjJpEdB2m18P0yskzFzsa",
+   "title": "Thumbs.db",
+   "mime": "application/octet-stream",
+   "size": 69632
+  },
+  {
+   "path": "Background/45 - W-5710P/Final Inspection/After Photos/IMG_5844.jpg",
+   "id": "1Ne1uQzPt0KK-QKwg4AXkmoyB1tcVoLF1",
+   "title": "IMG_5844.jpg",
+   "mime": "image/jpeg",
+   "size": 95983
+  },
+  {
+   "path": "Background/45 - W-5710P/Final Inspection/After Photos/IMG_5842.jpg",
+   "id": "1b_YCazc2KA55uNRt6GjN7o6OBDmZ3f7u",
+   "title": "IMG_5842.jpg",
+   "mime": "image/jpeg",
+   "size": 87486
+  },
+  {
+   "path": "Background/45 - W-5710P/Final Inspection/After Photos/IMG_5843.jpg",
+   "id": "1KwFBGYrB0CiM_OvhSzfTsGAI0YvUc0i9",
+   "title": "IMG_5843.jpg",
+   "mime": "image/jpeg",
+   "size": 86945
+  },
+  {
+   "path": "Background/45 - W-5710P/Final Inspection/After Photos/IMG_5841.jpg",
+   "id": "1lP0HHKkaxXyQUBkXARvduBTfBvurBZXw",
+   "title": "IMG_5841.jpg",
+   "mime": "image/jpeg",
+   "size": 105331
+  },
+  {
+   "path": "Background/45 - W-5710P/Final Inspection/After Photos/IMG_5840.jpg",
+   "id": "17FwLyFj4BZtDbutQ6Aap41gFDTpGE3rK",
+   "title": "IMG_5840.jpg",
+   "mime": "image/jpeg",
+   "size": 99149
+  },
+  {
+   "path": "Background/45 - W-5710P/Final Inspection/After Photos/IMG_5839.jpg",
+   "id": "1NTQ5HizOgUjFv1VZhUqKq5BzF9oBZ-RZ",
+   "title": "IMG_5839.jpg",
+   "mime": "image/jpeg",
+   "size": 86973
+  },
+  {
+   "path": "Background/45 - W-5710P/Final Inspection/Before Photo/Before Photo.pdf",
+   "id": "1VARd3_XaAAoykmNmqRPdF7pZLRHdKMok",
+   "title": "Before Photo.pdf",
+   "mime": "application/pdf",
+   "size": 50269
+  },
+  {
+   "path": "Background/45 - W-5710P/Background Information/10-17-243.pdf",
+   "id": "1PZRXOry_uldGJyyRdpA1NBkmnaj5TsJ6",
+   "title": "10-17-243.pdf",
+   "mime": "application/pdf",
+   "size": 342609
+  },
+  {
+   "path": "Background/45 - W-5710P/Background Information/10-17-243 (2016) Benefit Costs without Incentive Funds.xlsx",
+   "id": "1St9DsTbZnAm1q7sy0Dh_UmpymvBjG0Ai",
+   "title": "10-17-243 (2016) Benefit Costs without Incentive Funds.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 42246
+  },
+  {
+   "path": "Background/45 - W-5710P/Background Information/10-17-243 (2016) Benefit Costs with Incentive Funds.xlsx",
+   "id": "1ubySZsF21Rb_-yaB6IixpvZpMS0mtCOu",
+   "title": "10-17-243 (2016) Benefit Costs with Incentive Funds.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 44180
+  },
+  {
+   "path": "Background/45 - W-5710P/Background Information/10-17-243 map.pdf",
+   "id": "1B81F-QPmIOxxxVYsG1c5QKIxz3Ntzdz1",
+   "title": "10-17-243 map.pdf",
+   "mime": "application/pdf",
+   "size": 34553
+  }
+ ]
+}

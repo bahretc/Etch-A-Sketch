@@ -1,0 +1,343 @@
+wo: '41000075534'
+title: WO-41000075534 02-18-52752
+folder_ids:
+- 1iahm7gGFnM1QHBSnCmcVy5cGiuhMpO3B
+project_id: 02-18-52752
+tip: SS-4902DF
+analysis_type: intersection
+targets: 1
+countermeasure: Install additional westbound 3-section signal head for through movement
+  to meet standard of one signal head per lane.
+countermeasure_family: signal
+county: Craven
+division: '2'
+completed: 2021
+companions: []
+split: train
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: 02-18-52752 Resubmittal/Intersection Evaluation Workbook - 02-18-52752 (9
+      of 10).xlsx
+    id: 1Vadgctfv_zWm7YM-m92vUsgJb-oI5LMy
+    size: 6267106
+  - path: 02-18-52752 Resubmittal/Intersection Evaluation Workbook - 02-18-52752 (5
+      of 10).xlsx
+    id: 1lOEpyoTanEwK5hpJH4KDUZbxFmnUZTRN
+    size: 6877303
+  - path: 02-18-52752 Resubmittal/Intersection Evaluation Workbook - 02-18-52752 (4
+      of 10).xlsx
+    id: 1RHA00RwFr2y7R-mELeq7sLR31DkCFC2e
+    size: 6528858
+  - path: 02-18-52752 Resubmittal/Intersection Evaluation Workbook - 02-18-52752 (3
+      of 10).xlsx
+    id: 1FMrc1Bsw0DDHEG-U-Kea982m-Zz7b4th
+    size: 6750459
+  - path: 02-18-52752 Resubmittal/Intersection Evaluation Workbook - 02-18-52752 (2
+      of 10).xlsx
+    id: 1OLvD2cYnAtIHjMbge3ROdvdugovVmAuL
+    size: 7157009
+  - path: 02-18-52752 Resubmittal/Intersection Evaluation Workbook - 02-18-52752 (1
+      of 10).xlsx
+    id: 1VyI3W7z5oN8CH6vvaoTpEwokhhujCgrh
+    size: 6958717
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 02-18-52752 (4 of 10).xlsx
+    id: 1s4Ctqkk7v0lkRfiUJMsBTQYoqshDKM-8
+    size: 165
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 02-18-52752 (3 of 10).xlsx
+    id: 1qeZn2Km6wRBZ6wvt4L76GS2ekx1wdrLj
+    size: 165
+  - path: Crash Analysis/~$Copy of Intersection Evaluation Workbook - 02-18-52752
+      (1 of 10).xlsx
+    id: 1g78B2t_96MSumP5TLHFHSZ162Fw0TETu
+    size: 165
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 02-18-52752 (1 of 10).xlsx
+    id: 1sSe_wwQs-XLc3WxNFQFcjxg2lS_QuTCm
+    size: 165
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 02-18-52752 (8 of 10).xlsx
+    id: 1si7uQ7OiqdrXHeowF87bTSm9wFIXAAhT
+    size: 165
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 02-18-52752.xlsx
+    id: 1kzsqTcrcZhA2XBN8qhncDezwnTfdhx6k
+    size: 165
+  - path: Crash Analysis/1 of 10/Intersection Evaluation Workbook - 02-18-52752 (1
+      of 10).xlsx
+    id: 1EuADf5tKw34QI_wO1Lyvsy-7VfAALHTd
+    size: 6958717
+  - path: Crash Analysis/10 of 10/Intersection Evaluation Workbook - 02-18-52752 (10
+      of 10).xlsx
+    id: 1wbWGXNjUQCEfeyUzxFHOUWBQk8TQGYZv
+    size: 6838263
+  - path: Crash Analysis/2 of 10/Intersection Evaluation Workbook - 02-18-52752 (2
+      of 10).xlsx
+    id: 1P0mm0OCC7Jkn77FN5cm61UJwRWgpHHSX
+    size: 7157009
+  - path: Crash Analysis/3 of 10/Intersection Evaluation Workbook - 02-18-52752 (3
+      of 10).xlsx
+    id: 1uzU9pwgPQdbjNLYtYW5sD-8dWZsP9mf-
+    size: 6750459
+  - path: Crash Analysis/4 of 10/Intersection Evaluation Workbook - 02-18-52752 (4
+      of 10).xlsx
+    id: 1x4O5wJI-KvHVmXP1kSmd_mzq02Or6ziV
+    size: 6528858
+  - path: Crash Analysis/5 of 10/Intersection Evaluation Workbook - 02-18-52752 (5
+      of 10).xlsx
+    id: 1ggCyN7IDS85yf1ZIGWlIvS-RLnmJ12AS
+    size: 6877303
+  - path: Crash Analysis/6 of 10/Intersection Evaluation Workbook - 02-18-52752 (6
+      of 10).xlsx
+    id: 1IxfVUn6wm5Zp47qjPitinnhdnyoNXDwl
+    size: 6887200
+  - path: Crash Analysis/7 of 10/Intersection Evaluation Workbook - 02-18-52752 (7
+      of 10).xlsx
+    id: 14-UBdqgL5h6wVIvAXH5iQFwdYDWm21l8
+    size: 6813965
+  - path: Crash Analysis/8 of 10/Intersection Evaluation Workbook - 02-18-52752 (8
+      of 10).xlsx
+    id: 1e50LNYPIiULphiV7NEWR0KQfgFInUOVO
+    size: 6613860
+  - path: Crash Analysis/9 of 10/Intersection Evaluation Workbook - 02-18-52752 (9
+      of 10).xlsx
+    id: 1x3wuvZ8qjDIyKQzlzig5MatyeU9De-M4
+    size: 6267106
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1WLHVqYipdqGxL_woVclab7mP7pBHKkXJ
+    size: 1765916
+  - path: Crash Analysis/OriginalFiche_parameters.csv
+    id: 1PBRRQIf_zUH0ss34rUSYgGUk1qUOg-Gq
+    size: 1995
+  - path: Crash Analysis/1 of 10/1of10_After_CrashAnalysis.csv
+    id: 15KrUH-Qq8tc8v7GRx1MP0ZLdiipQX46e
+    size: 12380
+  - path: Crash Analysis/1 of 10/1of10_Before_CrashAnalysis.csv
+    id: 1i2bcBJFN2kuUGNTKciz3zpw42IbyUqoc
+    size: 16163
+  - path: Crash Analysis/10 of 10/10of10_Before_CrashAnalysis.csv
+    id: 1zjlvAMPe45L2sXBV7JJ6bDaBK8-WBGvJ
+    size: 49805
+  - path: Crash Analysis/10 of 10/10of10_After_CrashAnalysis.csv
+    id: 1mGnE6-3NzFIU5yp0N_8XHupTT_aK73ta
+    size: 34837
+  - path: Crash Analysis/2 of 10/2of10_Before_CrashAnalysis.csv
+    id: 1rlFQUH5w_qW2HhGgToJPInkNQbqnTNyD
+    size: 27337
+  - path: Crash Analysis/2 of 10/2of10_After_CrashAnalysis.csv
+    id: 1kvkDy6I1WK44mUOgs1PbsByv38cweC7y
+    size: 28826
+  - path: Crash Analysis/3 of 10/3of10_Before_CrashAnalysis.csv
+    id: 17E4yWuR8ocbkRX5N4b7pl4xrb7yz2R2W
+    size: 28093
+  - path: Crash Analysis/3 of 10/3of10_After_CrashAnalysis.csv
+    id: 1JCkfGWKDD_d4ysLp-x3Ro5V3UPuIN_W7
+    size: 22537
+  - path: Crash Analysis/4 of 10/4of10_After_CrashAnalysis.csv
+    id: 1K6mxUYT3NSTb7PfQ7xixgVdwOLuZ5c7W
+    size: 36781
+  - path: Crash Analysis/4 of 10/4of10_Before_CrashAnalysis.csv
+    id: 1u8Ey5YetBXgSfz3iu2yvH_ug77Z_x6nv
+    size: 35160
+  - path: Crash Analysis/5 of 10/5of10_Before_CrashAnalysis.csv
+    id: 1u1VTWtJLcBnwNx_mKJiqyV0wPhoXBMS8
+    size: 41098
+  - path: Crash Analysis/5 of 10/5of10_After_CrashAnalysis.csv
+    id: 1nNcVnZauVf83TuYhDX_luGKFGQ4KDH9I
+    size: 37133
+  - path: Crash Analysis/6 of 10/6of10_Before_CrashAnalysis.csv
+    id: 1JyDVjyRX5ydor8K5VufSFI-MOeLs8Wth
+    size: 35283
+  - path: Crash Analysis/6 of 10/6of10_After_CrashAnalysis.csv
+    id: 1kUQY-KUAZ1CwO1zHkmAS_XFi7RAc6_5g
+    size: 30970
+  - path: Crash Analysis/7 of 10/7of10_Before_CrashAnalysis.csv
+    id: 1UeSifFIM5BBzpyNItfHWJbtjCXP01ech
+    size: 46135
+  - path: Crash Analysis/7 of 10/7of10_After_CrashAnalysis.csv
+    id: 1eoQF3z2D4YC6foUZbtycJ5t77xM7wkiT
+    size: 38610
+  - path: Crash Analysis/8 of 10/8of10_Before_CrashAnalysis.csv
+    id: 1FLCydZTz8EyPmSIGmGDZtP7Z_WW1wo-G
+    size: 37412
+  - path: Crash Analysis/8 of 10/8of10_After_CrashAnalysis.csv
+    id: 1hEuhLYMt2s18Fztq8gZ5jJBpaE0WUk5n
+    size: 28269
+  - path: Crash Analysis/9 of 10/9of10_After_CrashAnalysis.csv
+    id: 16fiOXYCNxdv1vSX_MVF7GsxHP4R9n_8T
+    size: 26674
+  - path: Crash Analysis/9 of 10/9of10_Before_CrashAnalysis.csv
+    id: 1vPfUrvnDvYI0s_xvbejUwzEIG5bXGiht
+    size: 32585
+  id_lists:
+  - path: Crash Analysis/1 of 10/1of10_Before_CrashID.txt
+    id: 1LcMft-OGles18p7MdSxYgcZFa7LO465W
+    size: 681
+  - path: Crash Analysis/1 of 10/1of10_After_CrashID.txt
+    id: 16F4gwF8IY1B1bDEnmqwWN0CGdr4Q1TFE
+    size: 329
+  - path: Crash Analysis/1 of 10/1of10_Before_Import.txt
+    id: 1svgUGfrNjty_1EmOLd9pnnX1UKxj6zB3
+    size: 165
+  - path: Crash Analysis/1 of 10/1of10_After_Import.txt
+    id: 1jNqdjQ0au4bxihivTabkaI6YKZrs2HPK
+    size: 79
+  - path: Crash Analysis/10 of 10/10of10_Before_CrashID.txt
+    id: 1mApvfcLqOmHQxfGXMjSEEId3evY6h1j2
+    size: 4034
+  - path: Crash Analysis/10 of 10/10of10_After_CrashID.txt
+    id: 1HimlncLKcuzVqplAGwk9nTBufz2FriS6
+    size: 2571
+  - path: Crash Analysis/10 of 10/10of10_Before_Import.txt
+    id: 19m_GuvbL9S7yGbXTY2kFovxYgXrv-cSz
+    size: 1023
+  - path: Crash Analysis/10 of 10/10of10_After_Import.txt
+    id: 1i6jhiLu8l5FHeJy2tkLGzp5Ct43A5fye
+    size: 649
+  - path: Crash Analysis/2 of 10/2of10_After_CrashID.txt
+    id: 1LJRNmS5bnjRiZyJsPoKzh27AJUdxcYN2
+    size: 1968
+  - path: Crash Analysis/2 of 10/2of10_Before_Import.txt
+    id: 1hvWpbRkAZ4xGKvfVDJ_1HuSdt2VddDJL
+    size: 464
+  - path: Crash Analysis/2 of 10/2of10_Before_CrashID.txt
+    id: 1hWA3rQJFY88E82Aj0rbElS5TpIZ2UR24
+    size: 1840
+  - path: Crash Analysis/2 of 10/2of10_After_Import.txt
+    id: 16obSonoM90shBFLSs6s9gHaWPsjCF-UQ
+    size: 510
+  - path: Crash Analysis/3 of 10/3of10_Before_CrashID.txt
+    id: 1WwAGByFwEiCvl857RG98im5NCIn_0nva
+    size: 1841
+  - path: Crash Analysis/3 of 10/3of10_After_CrashID.txt
+    id: 1uBhZwqMkA-rVY1DnsHFlSvi5ktO7xbVI
+    size: 1325
+  - path: Crash Analysis/3 of 10/3of10_Before_Import.txt
+    id: 1oqMz7ABvDBY67uqapysq5K41WbZ7hHAc
+    size: 462
+  - path: Crash Analysis/3 of 10/3of10_After_Import.txt
+    id: 1jgeuzs1gFHk_YVVHfRG9o-JxGmrZXrx4
+    size: 332
+  - path: Crash Analysis/4 of 10/4of10_After_CrashID.txt
+    id: 1l_XzyeL3EsO3aViIUrNThuoY6NGSm2X6
+    size: 2650
+  - path: Crash Analysis/4 of 10/4of10_Before_CrashID.txt
+    id: 1nIxM2K5iui7MfCSACRfQA31PG8pZCJB6
+    size: 2615
+  - path: Crash Analysis/4 of 10/4of10_After_Import.txt
+    id: 1zPJOrEvogsvZqRS3Tj_I06dEDEbtp1ON
+    size: 671
+  - path: Crash Analysis/4 of 10/4of10_Before_Import.txt
+    id: 16U5AmOXIEuzTdRw5KZnBVE6tQ2zQAspM
+    size: 660
+  - path: Crash Analysis/5 of 10/5of10_Before_CrashID.txt
+    id: 1OzZusdPGYmGb9FYguQj9XfuWauQ90lQq
+    size: 3123
+  - path: Crash Analysis/5 of 10/5of10_Before_Import.txt
+    id: 1H61e05uQFEyk9DpufhRBxiLvxvGyuoHt
+    size: 792
+  - path: Crash Analysis/5 of 10/5of10_After_CrashID.txt
+    id: 1Bl8uJjU0B-5txabtWoDqsp1fwDS3GJbU
+    size: 2786
+  - path: Crash Analysis/5 of 10/5of10_After_Import.txt
+    id: 1bShAZb9Tx8MMmg5t9neUviBlw79m5gvY
+    size: 704
+  - path: Crash Analysis/6 of 10/6of10_Before_CrashID.txt
+    id: 1_swnQGrx5SOMZzJDN1_2C8-TNU7l8rDv
+    size: 2571
+  - path: Crash Analysis/6 of 10/6of10_After_CrashID.txt
+    id: 1fqgVcwhvQiHzOOTfeDDJrFXBXWar3qt4
+    size: 2143
+  - path: Crash Analysis/6 of 10/6of10_Before_Import.txt
+    id: 1skGyDxvNQDpP5ij2p16GDbbr1XIXlqZG
+    size: 649
+  - path: Crash Analysis/6 of 10/6of10_After_Import.txt
+    id: 1D-ZHNfJUIteDTIyw2PMMa3KwZwVyRQ28
+    size: 539
+  - path: Crash Analysis/7 of 10/7of10_After_CrashID.txt
+    id: 1SiMyes63-3nVtA5-pmsjUltY4mjofvTk
+    size: 2853
+  - path: Crash Analysis/7 of 10/7of10_Before_CrashID.txt
+    id: 1yXXaf6K2VFJz2QVvIGsOBGtn_I-kScxo
+    size: 3620
+  - path: Crash Analysis/7 of 10/7of10_After_Import.txt
+    id: 18eZA5wQQHfslkZRoxOITaGfQRY7m6JK6
+    size: 737
+  - path: Crash Analysis/7 of 10/7of10_Before_Import.txt
+    id: 1hLyHr08RPyibkXZClrCmuZA5o2N3IgjW
+    size: 946
+  - path: Crash Analysis/8 of 10/8of10_Before_CrashID.txt
+    id: 1TDQb4lcu7Mdo2L1xJXudlnyG7iimf0Gb
+    size: 2789
+  - path: Crash Analysis/8 of 10/8of10_After_CrashID.txt
+    id: 12-Vx5lE4ykyFmM_yE53ShlpeMQab8RjU
+    size: 1868
+  - path: Crash Analysis/8 of 10/8of10_Before_Import.txt
+    id: 1Lut_oD8dftGn-ZeIXLfhnOqj8bMG6QdE
+    size: 715
+  - path: Crash Analysis/8 of 10/8of10_After_Import.txt
+    id: 1HvVD2XrcADysQpNuV9zZW0EVgKZAxyx5
+    size: 473
+  - path: Crash Analysis/9 of 10/9of10_After_CrashID.txt
+    id: 1iNvggNjBfS4RA0HtjLYNUacL-Rhzb4qC
+    size: 1713
+  - path: Crash Analysis/9 of 10/9of10_Before_CrashID.txt
+    id: 1dDwJ9C6BcjY8uOcDOJKwuDNL9Osb_oDH
+    size: 2306
+  - path: Crash Analysis/9 of 10/9of10_After_Import.txt
+    id: 12TD-jhH8TaBvLzM3eMAHwQ3C-yY2vqm_
+    size: 429
+  - path: Crash Analysis/9 of 10/9of10_Before_Import.txt
+    id: 1xC71bnzTuJHrcAje0yfyBT5pJbulSMp1
+    size: 583
+  reports:
+  - path: 02-18-52752_CompleteEval_4of10.pdf
+    id: 1UznYFfqpKlisRT0A_MPUoRAXhJF5zsFT
+    size: 1603423
+  - path: 02-18-52752_CompleteEval_9of10.pdf
+    id: 1i8ljh1ydrafT5BqTU4qGIrjvegzQuNsy
+    size: 884722
+  - path: 02-18-52752_CompleteEval_5of10.pdf
+    id: 1kDOFBMUZSPU1AryChEa9Xz5JRS7ftOwy
+    size: 977942
+  - path: 02-18-52752_CompleteEval_3of10.pdf
+    id: 1gGhMEgCxjfeTBWWmuwBFPlUsKwtdbjm_
+    size: 898405
+  - path: 02-18-52752_CompleteEval_2of10.pdf
+    id: 18gQboctRsadZcWbW81erd2cNi_QBUEEh
+    size: 923975
+  - path: 02-18-52752_CompleteEval_1of10.pdf
+    id: 1cQ04lbj_hFn6pB5b6pQ2od2m32H34yw0
+    size: 829904
+  - path: 02-18-52752_CompleteEval_8of10.pdf
+    id: 1tYCJ5Fx4u0Ur45WTImh3-2qbjJG5LM_N
+    size: 953889
+  - path: 02-18-52752_CompleteEval_10of10.pdf
+    id: 1kjJEezQNFXYh0HB1lxvX_Pffh28cKlRH
+    size: 989497
+  - path: 02-18-52752_CompleteEval_7of10.pdf
+    id: 1fJHueVrHTu4BCWkJCb-opQxgG7ryU6_N
+    size: 999753
+  - path: 02-18-52752_CompleteEval_6of10.pdf
+    id: 1HGLz-C3LyMbsvJPkxfmOhOSp5LWSHyKe
+    size: 956948
+  - path: 02-18-52752 Resubmittal/02-18-52752_CompleteEval_4of10.pdf
+    id: 1wiVFtAFS6dS-DcOGlueaSV-Il-9lpalN
+    size: 1603423
+  - path: 02-18-52752 Resubmittal/02-18-52752_CompleteEval_3of10.pdf
+    id: 1diMMR3JaocONIizRt0p3VxHz-MU92fIb
+    size: 898405
+  - path: 02-18-52752 Resubmittal/02-18-52752_CompleteEval_9of10.pdf
+    id: 1DMWEHr7TZ9G1qliYSn_4PUU2EWSdpZEh
+    size: 884722
+  - path: 02-18-52752 Resubmittal/02-18-52752_CompleteEval_5of10.pdf
+    id: 1dhsW3vZBCcca2GnKOpnmTjjwh8Ew0lFg
+    size: 977942
+  - path: 02-18-52752 Resubmittal/02-18-52752_CompleteEval_2of10.pdf
+    id: 1t1-mSLhOIAaecWmh8d2yqi1vUSLH1kSk
+    size: 923975
+  - path: 02-18-52752 Resubmittal/02-18-52752_CompleteEval_1of10.pdf
+    id: 1AbJQkUgSgSIm4p5ExFt-Yg6XiGP5cjIM
+    size: 829904

@@ -1,0 +1,77 @@
+wo: '41000073289'
+title: WO-41000073289 06-18-51382 (SS-4906DT)
+folder_ids:
+- 1Lmb5k6gdf8avogMHHGDlkxBSJ2NA-lJt
+project_id: 06-18-51382
+tip: SS-4906DT
+analysis_type: section
+targets: 1
+countermeasure: Resurface roadway and install shoulder rumble stripes with 4” thermoplastic
+  markings on NC 87 from the Bladen County line to SR 2212 (Doc Bennett Road). – These
+  are rumble strips, not stripes.  “Originally the plan was to install rumble stripes
+  with 6” wide thermo; however, that was revised to rumble strips due to paved shoulder
+  widths in spots…”
+countermeasure_family: rumble-strips
+county: Cumberland & Bladen
+division: '06'
+completed: 2020
+companions: []
+split: train
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook - 06-18-51382 (SS-4906DT).xlsx
+    id: 10X8ndHPrrRMrA78GC1_P7CHyjR4-kJrN
+    size: 7012585
+  - path: Crash Analysis/~$Section Evaluation Workbook - 06-18-51382 (SS-4906DT).xlsx
+    id: 1_Tyx3ROKCV3xIOHEntFyJm0zTXR-X1Q0
+    size: 165
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #39-40.msg'
+    id: 1_gM7j4k0vz3HSzovedbta2ikA_GvyJpg
+    size: 271872
+  - path: Background Information/Final Inspection/Final Inspection 06-18-51382 SS-4906DTWBS
+      47935.3.1 NC 87 Cumberland Rumbles.msg
+    id: 1HqvvWHN0aWH7eTmSgGP7aUvITvDjljBY
+    size: 872448
+  - path: Background Information/Final Inspection/Final Inspection 06-18-51382 _SS-4906DT_WBS
+      47935_3_1_ NC 87 Cumberland Rumbles.msg
+    id: 1n1cmTumZN0r7PRL2LhVpGwIsElKJLTdb
+    size: 873984
+  fiche_csv:
+  - path: Crash Analysis/41000073289AFTER.csv
+    id: 1Zeew8nMmqkjKI0896tC62hS5ZrRzriGZ
+    size: 135079
+  - path: Crash Analysis/41000073289BEFORE.csv
+    id: 1KYYJXjdrsxqSUQ4XW5lJdtVj-SWjrmdL
+    size: 104258
+  - path: Crash Analysis/41000073289_InitialStudy.csv
+    id: 1xHt8gqjPsHFdHYRpln8p2WujMnj19Md1
+    size: 311784
+  - path: Crash Analysis/41000073289_Fiche.csv
+    id: 1g0Px35KPJqFhE6ennOzvtjzVFoDJ6ByA
+    size: 134792
+  id_lists:
+  - path: Crash Analysis/41000073289AFTER_CrashID.txt
+    id: 11ROAfAyx7enQ3voR4PG0n-LxidyCapZM
+    size: 10906
+  - path: Crash Analysis/41000073289_CrashID.txt
+    id: 129_OLnkrOcM7IzkUiYLndxcxOSAleOvW
+    size: 10906
+  - path: Crash Analysis/41000073289BEFORE_CrashID.txt
+    id: 1qMMuqWemSSt3yz-mAe9_yCr93k8_Odnk
+    size: 7972
+  - path: Crash Analysis/41000073289AFTER_Import.txt
+    id: 102Ca1G6WGUrXoqxirnUc0YpRCvhCQEPc
+    size: 4494
+  - path: Crash Analysis/41000073289BEFORE_Import.txt
+    id: 1F8r1DX3weGDCIlEfpTS-8lPqZSJ2NNyV
+    size: 3271
+  reports:
+  - path: 06-18-51382 (SS-4906DT) Complete Eval.pdf
+    id: 1KOLh5y_AcjE-RMWWXGBnubR169Z15RgL
+    size: 1258597
+  - path: 06-18-51382 (SS-4906DT) Web.pdf
+    id: 1F-HOwEeSHMsQI8d7HkU_o_Dp8FZK6cZF
+    size: 692959

@@ -1,0 +1,72 @@
+wo: '41000069734'
+title: WO-41000069734 02-12-19300
+folder_ids:
+- 1Vif1283b3yBfwQ8Fkgno5g0LH2C2ryaT
+project_id: 02-12-19300
+tip: W-5202K
+analysis_type: section
+targets: 1
+countermeasure: Close median crossovers at SR 1719 (Odham Road) and just north of
+  Executive Drive, construct 19 left turn lanes at existing median openings, and remove/replace
+  9 non-standard drop inlets in the median.
+countermeasure_family: turn-lanes
+county: Lenoir
+division: '2'
+completed: 2018
+companions: []
+split: train
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook - 02-12-19300.xlsx
+    id: 1QoA6TeHl75b-GVCBvnpJTOzogGy8SM0s
+    size: 5439923
+  - path: Crash Analysis/~$Section Evaluation Workbook - 02-12-19300.xlsx
+    id: 1zK9Hud4b0_m-2GG_bmJz-DwVGvUo26mw
+    size: 165
+  fiche_workbooks:
+  - path: Background/7-9 - W-5202K - 02-12-19300/Fatal Crash Analysis/220909009AA_FicheReport.xlsx
+    id: 1JP5y7RZEDm-JwVLCcgXrOxl-xwsz4xK1
+    size: 276194
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1AuxcSEyeH0eMcSAGoO_uRXdvWJ_PbYOa
+    size: 170994
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1LaaqGpFgalT4vSUi5BLoj9vR2aS-BJXP
+    size: 166754
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1y3VPU9qVD9b7k3fKmwIvvngH7uc81erN
+    size: 416043
+  - path: Background/7-9 - W-5202K - 02-12-19300/Fatal Crash Analysis/220909009AA_FicheReport.csv
+    id: 1kojJvwNVxI_q30XA6AuWSIyEnMlHqdGR
+    size: 159630
+  - path: Background/7-9 - W-5202K - 02-12-19300/Fatal Crash Analysis/180810033AA_FicheReport.csv
+    id: 12sPXMQVWUjIqVD9TG4Mr9pnQ5qIpLYQ0
+    size: 132607
+  - path: Background/7-9 - W-5202K - 02-12-19300/Fatal Crash Analysis/180810033AA_CrashAnalysis.csv
+    id: 1tOd0iepNoIXFZj_dfyczvum1TmeU2Aes
+    size: 54702
+  id_lists:
+  - path: Crash Analysis/Before_ImportID.txt
+    id: 1es9AOqoVPaEub-yXk_PIYc3_ZhzOFenc
+    size: 6760
+  - path: Crash Analysis/Before_CrashID.txt
+    id: 1CbcRE0J6v4Glw2-pSpQ18mPlKGqbAnn-
+    size: 15619
+  - path: Crash Analysis/After_CrashID.txt
+    id: 1tfeGyqCvhWOFQ5i8n3eMnX93z6ybt8qs
+    size: 15280
+  - path: Crash Analysis/After_ImportID.txt
+    id: 1WMF1zeea31pBuP6g1-ps6cuckzHp4koW
+    size: 6589
+  reports:
+  - path: 02-12-19300 Complete Eval.pdf
+    id: 1yO99pN4R5bbWaonhGjIlvw8fskfz00Qz
+    size: 1381541
+  - path: 02-12-19300 Web.pdf
+    id: 1iGFuxzlbQarLFMN7BBZ0Io6M9zxdoLRd
+    size: 569927

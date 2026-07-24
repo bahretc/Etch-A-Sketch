@@ -1,0 +1,461 @@
+{
+ "folder_id": "1Ie4iG00eMrkq10hwZgxJF00wNE_ePtAT",
+ "title": "WO-41000073095 06-17-47754",
+ "files": [
+  {
+   "path": "06-17-47754_Complete Eval.pdf",
+   "id": "1xHOItV3OBXh5bvyYfjzO3pKpWi5K6MX2",
+   "title": "06-17-47754_Complete Eval.pdf",
+   "mime": "application/pdf",
+   "size": 562405
+  },
+  {
+   "path": "06-17-47754_Web.pdf",
+   "id": "1bCNG-HsJEfF4StaiwQ47_ptAXEgPlIYn",
+   "title": "06-17-47754_Web.pdf",
+   "mime": "application/pdf",
+   "size": 466182
+  },
+  {
+   "path": "Notes/US421_Ordinances.pdf",
+   "id": "1-6dVlbaTHP-A9k8oxPoEl1wD16hjoont",
+   "title": "US421_Ordinances.pdf",
+   "mime": "application/pdf",
+   "size": 39700
+  },
+  {
+   "path": "Notes/NC55_Ordinances.pdf",
+   "id": "19DkD7OxKC8uBPdRL3fRjprjYMqtSH5Vd",
+   "title": "NC55_Ordinances.pdf",
+   "mime": "application/pdf",
+   "size": 33398
+  },
+  {
+   "path": "Notes/SR1703_Ordinances.pdf",
+   "id": "1hCgB4bPfIfAl0zgXgOmapJ2yqRux1frT",
+   "title": "SR1703_Ordinances.pdf",
+   "mime": "application/pdf",
+   "size": 13742
+  },
+  {
+   "path": "Notes/Assumptions Email.docx",
+   "id": "15TyGHzKIwBMoWhkAS1PsXEgr9ngH6g26",
+   "title": "Assumptions Email.docx",
+   "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+   "size": 16556
+  },
+  {
+   "path": "Crash Analysis/Intersection Evaluation Workbook - 06-17-47754.xlsx",
+   "id": "1zjj3NK5Yr8jCmanPPY3Hi6q3u9lo_1vB",
+   "title": "Intersection Evaluation Workbook - 06-17-47754.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 4734415
+  },
+  {
+   "path": "Crash Analysis/After_CrashAnalysis.csv",
+   "id": "1Vpqjy0poIaeAG36qAyymaCp4s5lIAdfZ",
+   "title": "After_CrashAnalysis.csv",
+   "mime": "text/csv",
+   "size": 24750
+  },
+  {
+   "path": "Crash Analysis/After_CrashAnalysis.pdf",
+   "id": "1z_gNaqV6OJ8iXkueUzsGOtJlcIj3xvGZ",
+   "title": "After_CrashAnalysis.pdf",
+   "mime": "application/pdf",
+   "size": 66273
+  },
+  {
+   "path": "Crash Analysis/Before_CrashAnalysis.csv",
+   "id": "15rLLXdl5kDWjYmVj79bGvtodm5BEpv4T",
+   "title": "Before_CrashAnalysis.csv",
+   "mime": "text/csv",
+   "size": 24219
+  },
+  {
+   "path": "Crash Analysis/AfterID.txt",
+   "id": "1D_foYcxsnISyqqwoAaVnsUkZhPjqn8bY",
+   "title": "AfterID.txt",
+   "mime": "text/plain",
+   "size": 1541
+  },
+  {
+   "path": "Crash Analysis/Before_CrashAnalysis.pdf",
+   "id": "1pvdNeTO7fhS0L0_N-wAyfisetkh37ZK0",
+   "title": "Before_CrashAnalysis.pdf",
+   "mime": "application/pdf",
+   "size": 64567
+  },
+  {
+   "path": "Crash Analysis/BeforeID.txt",
+   "id": "1J8Hq4JRTkcwqwK8k-1kwVXJgs-oX2W91",
+   "title": "BeforeID.txt",
+   "mime": "text/plain",
+   "size": 1498
+  },
+  {
+   "path": "Crash Analysis/OriginalFiche.csv",
+   "id": "11z9r_ZCNeX-Vu013JnAcUXWYa9Bj2gRO",
+   "title": "OriginalFiche.csv",
+   "mime": "text/csv",
+   "size": 700656
+  },
+  {
+   "path": "Crash Analysis/InitialStudy.pdf",
+   "id": "1sOHL9hLAFcFL3bGvdAm6FROEd8YAu7Xl",
+   "title": "InitialStudy.pdf",
+   "mime": "application/pdf",
+   "size": 111071
+  },
+  {
+   "path": "Crash Analysis/NC55_FeaturesReport.pdf",
+   "id": "1sErdfGeq7HheoQf9flJJoGYJAs2Zbc0J",
+   "title": "NC55_FeaturesReport.pdf",
+   "mime": "application/pdf",
+   "size": 35665
+  },
+  {
+   "path": "Crash Analysis/SR1703_FeaturesReport.pdf",
+   "id": "1XMRZ1MiyrHTERJSB52jmOw8xsW-oL2pX",
+   "title": "SR1703_FeaturesReport.pdf",
+   "mime": "application/pdf",
+   "size": 20196
+  },
+  {
+   "path": "Crash Analysis/InitialID.txt",
+   "id": "1zEhUhvp1ZwKPKC0GnLVUM1i5U3odGngm",
+   "title": "InitialID.txt",
+   "mime": "text/plain",
+   "size": 3174
+  },
+  {
+   "path": "Crash Analysis/US421_FeaturesReport.pdf",
+   "id": "1bEKuBTqv2Rt0vhYennzEzrHvFX4KipRi",
+   "title": "US421_FeaturesReport.pdf",
+   "mime": "application/pdf",
+   "size": 36587
+  },
+  {
+   "path": "Crash Analysis/~$Intersection Evaluation Workbook - 06-17-47754.xlsx",
+   "id": "1CkEibVWUntZXEg0PecPx_dea2pOTWjHe",
+   "title": "~$Intersection Evaluation Workbook - 06-17-47754.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 165
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Master Evaluation Spreadsheet.xlsx",
+   "id": "1TuwSEHj5LWd7sWVHFgvhXqfCI6ylCmAt",
+   "title": "Master Evaluation Spreadsheet.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 906383
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Signal Files/060417-20111007g.pdf",
+   "id": "1TupYRQQnZS7UbGlqxTdyMA84PFmcETD7",
+   "title": "060417-20111007g.pdf",
+   "mime": "application/pdf",
+   "size": 4952124
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Signal Files/060417-20180123g.pdf",
+   "id": "14Ywl_XYW89iZp0jT8EgwkHKFcfOIdHph",
+   "title": "060417-20180123g.pdf",
+   "mime": "application/pdf",
+   "size": 505825
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/06-17-47754 Project packet.pdf",
+   "id": "1HCr1D8CdbUhCS2Cs07DWplqbEijceoGW",
+   "title": "06-17-47754 Project packet.pdf",
+   "mime": "application/pdf",
+   "size": 5145850
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/06-17-47754 funds.pdf",
+   "id": "1YKbzdYao5M9Lzqfa8Uiuz9I0iGT8FW72",
+   "title": "06-17-47754 funds.pdf",
+   "mime": "application/pdf",
+   "size": 623336
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/06-17-47754 map.pdf",
+   "id": "1AA12WqftKf14OCV_CjsPU9lKBOJbDMUJ",
+   "title": "06-17-47754 map.pdf",
+   "mime": "application/pdf",
+   "size": 160260
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/TEAAS/41000047329_Harnett_US421AtSR1703_SealedAnalysis.pdf",
+   "id": "1Wr9k-zW9FZTd1YPVXk0G2PL6AJCgbOBY",
+   "title": "41000047329_Harnett_US421AtSR1703_SealedAnalysis.pdf",
+   "mime": "application/pdf",
+   "size": 81776
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/TEAAS/06-17-47754_Crash summary.xlsx",
+   "id": "1lpQHy-TOjK_2O_hv8F0zPo6Nk34kuKuT",
+   "title": "06-17-47754_Crash summary.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 19358
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Misc/HSIP_2017list_42I00112.pdf",
+   "id": "1bGLWcJCrSxuDaYa2OE3X6RxOMl49YsRQ",
+   "title": "HSIP_2017list_42I00112.pdf",
+   "mime": "application/pdf",
+   "size": 1024040
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Misc/060417-20111007g.tif",
+   "id": "1yxLeiVHGZzLA2mDs4fVBa4pOSoK-dKZp",
+   "title": "060417-20111007g.tif",
+   "mime": "image/tiff",
+   "size": 121098
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Misc/Thumbs.db",
+   "id": "1ilPMh1IwO5b7Dv2jb83eEJJCGPWX3LD3",
+   "title": "Thumbs.db",
+   "mime": "application/octet-stream",
+   "size": 12800
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Misc/Features.pdf",
+   "id": "1LS6VofdNTOyfQhXSAB2isUrvhZfdpnzN",
+   "title": "Features.pdf",
+   "mime": "application/pdf",
+   "size": 41509
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Misc/Crash summary_Fatal19in2017.xlsx",
+   "id": "1AqkHIr9vd2FVdLJNcMisyph0VVAKdYc0",
+   "title": "Crash summary_Fatal19in2017.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 25204
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/15_06-17-47754_Fatal study photos.pdf",
+   "id": "1ORCWU7T6EHXrc3Zc5q8uinNSjEGVqBf9",
+   "title": "15_06-17-47754_Fatal study photos.pdf",
+   "mime": "application/pdf",
+   "size": 2322451
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/19_06-17-47754_TEAAS.pdf",
+   "id": "1VevfpSpUzHW8SCIf0JMM7jothNIdKXK7",
+   "title": "19_06-17-47754_TEAAS.pdf",
+   "mime": "application/pdf",
+   "size": 82462
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/17_06-17-47754_HSIP listing.pdf",
+   "id": "1INMVXaErcgGOQfTSeYMSZ12CG6dD0O7D",
+   "title": "17_06-17-47754_HSIP listing.pdf",
+   "mime": "application/pdf",
+   "size": 1019707
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/03_06-17-47754_JustificationSheet.pdf",
+   "id": "1b6j3zKFv8sTQ3UJOEyFV4nMjTZPIGaCo",
+   "title": "03_06-17-47754_JustificationSheet.pdf",
+   "mime": "application/pdf",
+   "size": 497941
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/18_06-17-44754_SignalPlan.pdf",
+   "id": "1uea0BrY6o0bO2p-dvsqitFctq3sSO3Km",
+   "title": "18_06-17-44754_SignalPlan.pdf",
+   "mime": "application/pdf",
+   "size": 413506
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/06_06-17-47754_RequestFunds.pdf",
+   "id": "1g5d1DsxQ65Ii12iHXu3isuYK5GDqZ4Ek",
+   "title": "06_06-17-47754_RequestFunds.pdf",
+   "mime": "application/pdf",
+   "size": 309110
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/07_06-17-47754_DataSheet.pdf",
+   "id": "1ou0dwjzneF0wsAtlKspESfGT6031lbFK",
+   "title": "07_06-17-47754_DataSheet.pdf",
+   "mime": "application/pdf",
+   "size": 271424
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/11_06-17-47754_AnnualBenefits.pdf",
+   "id": "126XqF7rOH8W5V9tfS6IcuhF3dV0N4Ft3",
+   "title": "11_06-17-47754_AnnualBenefits.pdf",
+   "mime": "application/pdf",
+   "size": 122004
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/02_06-17-47754_CoverSheet.pdf",
+   "id": "1VDMpRf1lci5zmSZwFELmvtItWnBJZRjA",
+   "title": "02_06-17-47754_CoverSheet.pdf",
+   "mime": "application/pdf",
+   "size": 204590
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/13_06-17-47754_CorrectableCrashes.pdf",
+   "id": "1Xm3pdjgaNJCqYPC0eh6zw0bulMkKYI4v",
+   "title": "13_06-17-47754_CorrectableCrashes.pdf",
+   "mime": "application/pdf",
+   "size": 10447
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/14_06-17-47754_Fatal study.pdf",
+   "id": "1fIhMcJy_kIPf6X-IDhKrqwdv-emO_3t3",
+   "title": "14_06-17-47754_Fatal study.pdf",
+   "mime": "application/pdf",
+   "size": 19365
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/16_06-17-47754_ HSIP_Response.pdf",
+   "id": "1DpFQubB2vNNIUJcwHD3quoVwaEVb2gZs",
+   "title": "16_06-17-47754_ HSIP_Response.pdf",
+   "mime": "application/pdf",
+   "size": 43790
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/05_06-17-47754 map.pdf",
+   "id": "10PydBHXPEu8T1JZHHd1VmK5f3VfFBzqV",
+   "title": "05_06-17-47754 map.pdf",
+   "mime": "application/pdf",
+   "size": 160260
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/04_06-17-47754_BC.pdf",
+   "id": "1kVkJw5bgg21xWyqAXcVALZeDSqiYoQAL",
+   "title": "04_06-17-47754_BC.pdf",
+   "mime": "application/pdf",
+   "size": 43850
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/09_06-17-47754_Crash summary.pdf",
+   "id": "10FrQ6q1VktavDMSUyu8H6-Y1T6cmjqOC",
+   "title": "09_06-17-47754_Crash summary.pdf",
+   "mime": "application/pdf",
+   "size": 13693
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/12_06-17-47754_CR.pdf",
+   "id": "1GjTXkaCqQvWa9N8N0QgDqM8yFME041Fn",
+   "title": "12_06-17-47754_CR.pdf",
+   "mime": "application/pdf",
+   "size": 9151
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/08_06-17-44754_Cost Estimate.pdf",
+   "id": "1iK8UtOe9q0jEws_nqgJaTJ-hhvfMX3ww",
+   "title": "08_06-17-44754_Cost Estimate.pdf",
+   "mime": "application/pdf",
+   "size": 28034
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/10_06-17-47754_CRFs.pdf",
+   "id": "1g9loPa44vljhrWUdRbrBD4V-X1fiAF6Q",
+   "title": "10_06-17-47754_CRFs.pdf",
+   "mime": "application/pdf",
+   "size": 52086
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Packet/01_06-17-47754_Log Sheet.pdf",
+   "id": "1xvFdccHfKuw29lGEgkIpagD7blJSCNM_",
+   "title": "01_06-17-47754_Log Sheet.pdf",
+   "mime": "application/pdf",
+   "size": 191320
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Docs/06-17-47754 map.pptx",
+   "id": "1mshwf8Vzuz7DitZbFwC3KRPRH2s-G1cY",
+   "title": "06-17-47754 map.pptx",
+   "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+   "size": 729203
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Docs/06-17-47754_BC_AnnualBenefits.xlsx",
+   "id": "1P5TcDy4Quk0ZPpg7a_cpDLob8-8zxoe_",
+   "title": "06-17-47754_BC_AnnualBenefits.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 69817
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Docs/06-17-47754_Basic Worksheet.xlsx",
+   "id": "1Hl49mdt5kPdovMIntR4TsRFbg1X-NluJ",
+   "title": "06-17-47754_Basic Worksheet.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 31442
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Docs/NCDOT CRF Update - April 2015 - Final - 040115.pdf",
+   "id": "1M7iTD6VpzLKhAEbQfRO5FwTBHFEtdY9K",
+   "title": "NCDOT CRF Update - April 2015 - Final - 040115.pdf",
+   "mime": "application/pdf",
+   "size": 53510
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Docs/Crash summary_Fatal19in2017.xlsx",
+   "id": "1Nsvoa-OLE4c6t-b5MrLVu6dH1rMrJIHR",
+   "title": "Crash summary_Fatal19in2017.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 25204
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Docs/06-17-47754_CRFs.pdf",
+   "id": "1EP-kGQmN4O3H7QVErnbR_xjZC23TWlG2",
+   "title": "06-17-47754_CRFs.pdf",
+   "mime": "application/pdf",
+   "size": 52086
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/Docs/Thumbs.db",
+   "id": "1uoSwmtbYiOtumyPjWGY6ESPRMliHDi1f",
+   "title": "Thumbs.db",
+   "mime": "application/octet-stream",
+   "size": 14848
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Background Information/CostEst/06-0417 US 421 @ Masonic.xlsx",
+   "id": "1VRsjMTDbsWfBcfr86gcBIH01T42QA9rw",
+   "title": "06-0417 US 421 @ Masonic.xlsx",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 52287
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Final Inspection/06-17-47754_FinalInspLtr_wPhotos.pdf",
+   "id": "1RY_BtL5W7YzEgI-LVGsG8tt84FpMEoYa",
+   "title": "06-17-47754_FinalInspLtr_wPhotos.pdf",
+   "mime": "application/pdf",
+   "size": 928555
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Fatal Crash Files (2022)/M210813002 Fiche Report.xlsm",
+   "id": "1s2U5DE84hlK9rTI0vSSTv0anr-x4WoEa",
+   "title": "M210813002 Fiche Report.xlsm",
+   "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "size": 487415
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Fatal Crash Files (2022)/M210813002 Fiche Report.csv",
+   "id": "1M0FtNCg02v1yuNZwcO-Qs8AhnbepDqxm",
+   "title": "M210813002 Fiche Report.csv",
+   "mime": "text/csv",
+   "size": 315783
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Fatal Crash Files (2022)/Field Investigation Notes - Inv Notes.pdf",
+   "id": "1UfBUhHBseVWPdV2nZfswQBHZN13itiUL",
+   "title": "Field Investigation Notes - Inv Notes.pdf",
+   "mime": "application/pdf",
+   "size": 122025
+  },
+  {
+   "path": "Background/36 - SS 06-17-47754/Fatal Crash Files (2022)/M210813002 Crash Analysis.pdf",
+   "id": "1IKuvLWaTcRRXIk71mWq9G2yoYTHwhpvV",
+   "title": "M210813002 Crash Analysis.pdf",
+   "mime": "application/pdf",
+   "size": 60262
+  }
+ ]
+}

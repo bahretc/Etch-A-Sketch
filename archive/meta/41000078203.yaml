@@ -1,0 +1,58 @@
+wo: '41000078203'
+title: WO-41000078203 09-22-6770
+folder_ids:
+- 1uLIjtnf4HPDj9EEhx6fWjAsrHGMIfHpI
+project_id: 09-22-6770
+tip: SS-6209F
+analysis_type: intersection
+targets: 1
+countermeasure: 'Convert intersection to All-Way STOP Control including: Replacing
+  Crossroads Warning signs (W2-1) with STOP Ahead Warning signs (W3-1) on SR 2341
+  approaches; Installing STOP AHEAD pavement markings and Stop Bars on SR 2341 approaches;
+  Installing oversized (48”) double post-mounted STOP signs (R1-1) on SR 2341 approaches;
+  Replacing existing STOP signs on SR 2340 approaches with oversized (48”) double
+  post-mounted STOP signs (R1-1); Removal of Curve Warning sign assembly on westbound
+  SR 2341 approach.'
+countermeasure_family: awsc
+county: Rowan
+division: '9'
+completed: 2022
+companions: []
+split: verify
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 09-22-6770.xlsx
+    id: 1sYbGNg41Gg8cNgNdiITp4aaXvn6ufOTu
+    size: 4202068
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 09-22-6770.xlsx
+    id: 1mmcejZJDpYbIpUeFAS0mSXDFjgLTtV3X
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1JqW1Io2pc2FBMLzA2Ewm-27HUoYDl_Ni
+    size: 11492
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1-WW8Y3gDMUYG5vJXDHCKZn8HhrdtBRHS
+    size: 9925
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1ywDr1Smpwk0jUqM_LCswrtuL0pQaJC1m
+    size: 16863
+  id_lists:
+  - path: Crash Analysis/After_CrashID.txt
+    id: 1cIkv_CYygqZOWIWK7UkSfxzs41EmkE0L
+    size: 122
+  - path: Crash Analysis/Before_CrashID.txt
+    id: 1SGtwutSBRnbPkV2Z9UDKDywYYjHGg7A1
+    size: 294
+  reports:
+  - path: 09-22-6770_Complete Eval.pdf
+    id: 17lQkL8ytiQm1Mib4KMCOvX0GBhoVUny4
+    size: 841667
+  - path: 09-22-6770_Web.pdf
+    id: 1QxXnFjuh3cfzfnxQrZBPeILajChM7nkk
+    size: 799999

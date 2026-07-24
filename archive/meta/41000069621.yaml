@@ -1,0 +1,47 @@
+wo: '41000069621'
+title: WO-41000069621 04-17-46313
+folder_ids:
+- 11i3FOaLHEaytTlAAVX5sg3mczpWskqYy
+project_id: 04-17-46313
+tip: ''
+analysis_type: intersection
+targets: 1
+countermeasure: Remove existing median crossover and install eastbound right turn
+  lane onto the service road.
+countermeasure_family: turn-lanes
+county: Wayne
+division: '4'
+completed: 2018
+companions: []
+split: verify
+flags:
+- no-assignment-email
+- meta-from-assumptions-docx
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 04-17-46313.xlsx
+    id: 1JM_a83NH7JDApRbFThlFwTKIiHE2egWl
+    size: 5261119
+  - path: Crash Analysis/~$Intersection Evaluation Workbook - 04-17-46313.xlsx
+    id: 1BEklJs6wnZ1hCjvJP4Qc2tj5fALt2t0H
+    size: 165
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1_f-BVg-TedoH1BvWLrIQv8c699ZuzIsq
+    size: 13413
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1xn9V7E2wpdnxMNMv5hhUJWInhZXt4i30
+    size: 586833
+  id_lists:
+  - path: Crash Analysis/Before_CrashID.txt
+    id: 1PqpxK5HTf_LiLXyGD0WcupX7g2gvIBOH
+    size: 423
+  reports:
+  - path: 04-17-46313_Web.pdf
+    id: 1rRmQ-IzEP_mp3YGu_l91P2E8GCjBSVVX
+    size: 600903
+  - path: 04-17-46313_Complete Eval.pdf
+    id: 1901cK8Ng9aB9Ubsqo8ePLDkUmHA3z1Wh
+    size: 606271

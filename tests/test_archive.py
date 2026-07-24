@@ -155,3 +155,95 @@ def test_build_manifest_end_to_end(tmp_path):
     assert all(l["split"] in ("train", "verify") for l in lines)
     assert lines[0]["split"] == lines[1]["split"]      # companions together
     assert os.path.exists(os.path.join(out, "meta", "41000075552.yaml"))
+
+
+# --------------------------------------------------------------------------- #
+# new-batch extension (frozen split)
+# --------------------------------------------------------------------------- #
+def _folder_inv(d, title, files):
+    os.makedirs(d, exist_ok=True)
+    with open(os.path.join(d, f"{title}.json"), "w") as fh:
+        json.dump({"folder": title, "id": f"fid-{title}", "files": files}, fh)
+
+
+def _wb_file(name, size=100, sub="Crash Analysis"):
+    return {"path": f"{sub}/{name}", "id": f"id-{name}", "name": name,
+            "mimeType": "sheet", "size": size}
+
+
+def test_load_folder_inventories_merges_and_preserves_odd_wo(tmp_path):
+    from safety_eval.archive import load_folder_inventories
+
+    d = str(tmp_path / "ninv")
+    _folder_inv(d, "WO-41000069819 06-15-36512 (W-5601DF)",
+                [_wb_file("Section Evaluation Workbook - 06-15-36512.xlsx")])
+    _folder_inv(d, "WO-41000069819 06-21-63348 (SS-6006AS)",
+                [_wb_file("Section Evaluation Workbook - 06-21-63348.xlsx"),
+                 {"path": "Notes", "id": "f", "name": "Notes",
+                  "mimeType": "application/vnd.google-apps.folder",
+                  "size": None},
+                 _wb_file("~$lockfile.xlsx", 165)])
+    _folder_inv(d, "WO-410000749019 06-16-39083",
+                [_wb_file("Section Evaluation Workbook - 06-16-39083.xlsx")])
+
+    merged = load_folder_inventories(d)
+    assert set(merged) == {"41000069819", "410000749019"}
+    both = merged["41000069819"]
+    assert both.get("split_folders") and len(both["folder_ids"]) == 2
+    # folders and ~$ lock files are dropped
+    names = [f["title"] for f in both["files"]]
+    assert "Notes" not in names and not any(n.startswith("~$") for n in names)
+
+
+def test_extend_manifest_freezes_existing_split(tmp_path):
+    from safety_eval.archive import extend_manifest
+
+    out = str(tmp_path / "archive")
+    os.makedirs(out)
+    existing = [
+        {"wo": "41000000001", "split": "train", "analysis_type": "section",
+         "countermeasure_family": "rumble-strips"},
+        {"wo": "41000000002", "split": "verify", "analysis_type": "section",
+         "countermeasure_family": "rumble-strips"},
+        {"wo": "41000000003", "split": "verify", "analysis_type": "section",
+         "countermeasure_family": "rumble-strips"},
+    ]
+    with open(os.path.join(out, "manifest.jsonl"), "w") as fh:
+        for rec in existing:
+            fh.write(json.dumps(rec) + "\n")
+
+    d = str(tmp_path / "ninv")
+    _folder_inv(d, "WO-41000000010 01-20-100",
+                [_wb_file("Section Evaluation Workbook - Rumble Strips "
+                          "01-20-100.xlsx")])
+    summary = extend_manifest(d, str(tmp_path / "noemails"), out)
+
+    recs = {json.loads(l)["wo"]: json.loads(l)
+            for l in open(os.path.join(out, "manifest.jsonl"))}
+    # existing assignments byte-frozen
+    for rec in existing:
+        assert recs[rec["wo"]]["split"] == rec["split"]
+    # the stratum had train=1 verify=2, so the new WO balances to train
+    assert recs["41000000010"]["split"] == "train"
+    assert summary["added"] == ["41000000010"]
+    assert os.path.exists(os.path.join(out, "meta", "41000000010.yaml"))
+
+
+def test_stray_workbook_flagged(tmp_path):
+    from safety_eval.archive import extend_manifest
+
+    out = str(tmp_path / "archive")
+    os.makedirs(out)
+    open(os.path.join(out, "manifest.jsonl"), "w").close()
+    d = str(tmp_path / "ninv")
+    _folder_inv(d, "WO-41000075960 10-19-230 (SS-6010I)",
+                [_wb_file("Intersection Evaluation Workbook - 10-19-230 "
+                          "(SS-6010I).xlsx"),
+                 _wb_file("Section Evaluation Workbook - 13-18-210 "
+                          "(SS-4913CX).xlsm", size=14973781)])
+    extend_manifest(d, str(tmp_path / "noemails"), out)
+    rec = json.loads(open(os.path.join(out, "manifest.jsonl")).readline())
+    assert "stray-workbook" in rec["flags"]
+    wb_names = [f["path"] for f in rec["files"]["workbooks"]]
+    assert not any("13-18-210" in n for n in wb_names)
+    assert rec["analysis_type"] == "intersection"

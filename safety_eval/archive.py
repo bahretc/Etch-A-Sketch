@@ -370,6 +370,183 @@ def assign_split(metas: dict[str, EvaluationMeta],
 # --------------------------------------------------------------------------- #
 # driver
 # --------------------------------------------------------------------------- #
+def load_folder_inventories(inventory_dir: str) -> dict[str, dict]:
+    """Load per-folder inventory JSONs of the newer enumeration format
+    ({"folder": "WO-<digits> <project> (<TIP>)", "id": ..., "files":
+    [{path,id,name,mimeType,size}]}) into the same shape
+    ``load_inventories`` produces. Folders sharing a WO number (multi
+    -project assignments) merge into one evaluation record.
+
+    The WO is taken as the FULL digit run after "WO-" so a nonstandard
+    id (e.g. the 12-digit 410000749019) is preserved verbatim for the
+    engineer to resolve rather than silently truncated by ``_WO_RE``.
+    """
+    merged: dict[str, dict] = {}
+    for fn in sorted(os.listdir(inventory_dir)):
+        if not fn.endswith(".json"):
+            continue
+        with open(os.path.join(inventory_dir, fn), encoding="utf-8") as fh:
+            inv = json.load(fh)
+        title = inv.get("folder") or fn[:-5]
+        m = re.match(r"WO-(\d+)", title)
+        if not m:
+            continue                       # not a WO folder (e.g. Documents)
+        wo = m.group(1)
+        files = [{"path": f.get("path"), "id": f.get("id"),
+                  "size": f.get("size"), "title": f.get("name")}
+                 for f in inv.get("files", [])
+                 if f.get("mimeType") != "application/vnd.google-apps.folder"
+                 and not (f.get("name") or "").startswith("~$")]
+        if wo in merged:
+            merged[wo]["files"].extend(files)
+            merged[wo]["folder_ids"].append(inv.get("id", ""))
+            merged[wo]["title"] += " + " + title
+            merged[wo]["split_folders"] = True
+        else:
+            merged[wo] = {"title": title,
+                          "folder_ids": [inv.get("id", "")],
+                          "files": files}
+    return merged
+
+
+def _flag_stray_workbooks(meta: EvaluationMeta) -> None:
+    """Workbooks filed under a WO but named for a project the WO does not
+    cover (observed: a 13-18-210 workbook inside WO-41000075960) are moved
+    out of the workbook list and flagged, so classification, downloads and
+    extraction never treat a neighbour's deliverable as this evaluation's.
+    """
+    own = set(_PROJECT_RE.findall(meta.title))
+    if not own:
+        return
+    kept, stray = [], []
+    for f in meta.files.get("workbooks", []):
+        name = os.path.basename(f.get("path") or "")
+        codes = set(_PROJECT_RE.findall(name))
+        (stray if codes and not (codes & own) else kept).append(f)
+    if stray:
+        meta.files["workbooks"] = kept
+        meta.files["stray_workbooks"] = stray
+        meta.flags.append("stray-workbook")
+
+
+def assign_split_frozen(metas: dict[str, EvaluationMeta],
+                        clusters: list[set[str]],
+                        existing: list[dict]) -> None:
+    """Deal ONLY the new clusters, keeping every existing assignment
+    frozen (docs/10: the split is assigned once and recorded).
+
+    The per-stratum and global counters are seeded from the existing
+    manifest records, so new clusters balance against what is already
+    assigned instead of re-dealing it.
+    """
+    total = {"train": 0, "verify": 0}
+    local: dict[tuple, dict[str, int]] = {}
+    for rec in existing:
+        half = rec.get("split")
+        if half not in total:
+            continue
+        total[half] += 1
+        key = (rec.get("analysis_type"), rec.get("countermeasure_family"))
+        local.setdefault(key, {"train": 0, "verify": 0})[half] += 1
+
+    def stratum(cluster: set[str]) -> tuple:
+        lead = metas[min(cluster)]
+        return (lead.analysis_type, lead.countermeasure_family)
+
+    buckets: dict[tuple, list[set[str]]] = {}
+    for cluster in clusters:
+        buckets.setdefault(stratum(cluster), []).append(cluster)
+
+    for key in sorted(buckets):
+        counts = local.setdefault(key, {"train": 0, "verify": 0})
+        ordered = sorted(
+            buckets[key],
+            key=lambda c: hashlib.sha256(min(c).encode()).hexdigest())
+        for cluster in ordered:
+            if counts["train"] < counts["verify"]:
+                half = "train"
+            elif counts["verify"] < counts["train"]:
+                half = "verify"
+            elif total["train"] < total["verify"]:
+                half = "train"
+            elif total["verify"] < total["train"]:
+                half = "verify"
+            else:
+                digest = hashlib.sha256(min(cluster).encode()).hexdigest()
+                half = "train" if int(digest, 16) % 2 == 0 else "verify"
+            for wo in cluster:
+                metas[wo].split = half
+                metas[wo].companions = sorted(set(cluster) - {wo})
+                counts[half] += 1
+                total[half] += 1
+
+
+def extend_manifest(inventory_dir: str, emails_dir: str, output_dir: str,
+                    docx_dir: str | None = None) -> dict:
+    """Add a new batch of evaluations to an existing archive manifest.
+
+    Existing records (and their split assignments) are carried over
+    byte-for-byte; new WOs get meta built from the per-folder inventories
+    and a frozen-split assignment. Returns the same summary shape as
+    ``build_manifest`` plus the list of newly added WOs.
+    """
+    import yaml
+
+    manifest_path = os.path.join(output_dir, "manifest.jsonl")
+    existing: list[dict] = []
+    if os.path.exists(manifest_path):
+        with open(manifest_path, encoding="utf-8") as fh:
+            existing = [json.loads(l) for l in fh if l.strip()]
+    known = {rec["wo"] for rec in existing}
+
+    inventories = {wo: inv
+                   for wo, inv in load_folder_inventories(inventory_dir).items()
+                   if wo not in known}
+    metas = {wo: build_meta(wo, inv, emails_dir, docx_dir=docx_dir)
+             for wo, inv in inventories.items()}
+    for meta in metas.values():
+        _flag_stray_workbooks(meta)
+        if len(meta.wo) != 11:
+            meta.flags.append("wo-nonstandard-length")
+    clusters = companion_clusters(metas, emails_dir)
+    assign_split_frozen(metas, clusters, existing)
+
+    os.makedirs(os.path.join(output_dir, "meta"), exist_ok=True)
+    records = existing + [metas[wo].record() for wo in sorted(metas)]
+    with open(manifest_path, "w", encoding="utf-8") as mf:
+        for record in records:
+            mf.write(json.dumps(record) + "\n")
+    for wo in sorted(metas):
+        with open(os.path.join(output_dir, "meta", f"{wo}.yaml"), "w",
+                  encoding="utf-8") as yf:
+            yaml.safe_dump(metas[wo].record(), yf, sort_keys=False,
+                           allow_unicode=True)
+
+    halves = {"train": 0, "verify": 0}
+    strata: dict[str, dict[str, int]] = {}
+    flagged: dict[str, list[str]] = {}
+    for rec in records:
+        if rec.get("split") in halves:
+            halves[rec["split"]] += 1
+        key = f"{rec.get('analysis_type')}/{rec.get('countermeasure_family')}"
+        strata.setdefault(key, {"train": 0, "verify": 0})
+        if rec.get("split") in ("train", "verify"):
+            strata[key][rec["split"]] += 1
+    for wo, meta in metas.items():
+        for flag in meta.flags:
+            flagged.setdefault(flag, []).append(wo)
+    return {
+        "evaluations": len(records),
+        "added": sorted(metas),
+        "clusters": len(clusters),
+        "multi_wo_clusters": [sorted(c) for c in clusters if len(c) > 1],
+        "split": halves,
+        "strata": strata,
+        "flags": {k: sorted(v) for k, v in sorted(flagged.items())},
+        "manifest": manifest_path,
+    }
+
+
 def build_manifest(inventory_dir: str, emails_dir: str,
                    output_dir: str, docx_dir: str | None = None) -> dict:
     """Build meta records + manifest.jsonl; returns a summary dict."""

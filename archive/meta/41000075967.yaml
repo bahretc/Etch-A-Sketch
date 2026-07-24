@@ -1,0 +1,44 @@
+wo: '41000075967'
+title: WO-41000075967 10-20-221 (SS-6010P)
+folder_ids:
+- 1vuIb2eiJacDdmkfDoc5gKJVSPqndcZk4
+project_id: 10-20-221
+tip: SS-6010P
+analysis_type: intersection
+targets: null
+countermeasure: ''
+countermeasure_family: other
+county: ''
+division: ''
+completed: null
+companions: []
+split: verify
+assumptions_source: none
+flags:
+- no-assignment-email
+- email-not-parsed
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 10-20-221 (SS-6010P).xlsx
+    id: 1CAv6ByRdeED46GhQFDkdEYrlAIJcP1QP
+    size: 2105704
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/41000075967AFTER.csv
+    id: 1e4-WimPlFgbDgX0VV9mUO7oM9C-hz5J2
+    size: 12096
+  - path: Crash Analysis/41000075967BEFORE.csv
+    id: 1_jxwFKRil5SslmGSXly7GWcbtZJUX5sJ
+    size: 13760
+  id_lists:
+  - path: Crash Analysis/41000075967BEFORE_CrashID.txt
+    id: 1VjAOxy23beEs0w8Eiz-1apokU32PrDGx
+    size: 423
+  - path: Crash Analysis/41000075967AFTER_CrashID.txt
+    id: 1DuEMOp-RFqgnxpw6Th_agfSu-xeTl0Ki
+    size: 294
+  reports:
+  - path: 10-20-221 (SS-6010P) Web.pdf
+    id: 1kUyl2vQgmZBsAftgaeyqohzOPqi90WIa
+    size: 576829

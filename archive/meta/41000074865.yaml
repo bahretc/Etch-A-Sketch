@@ -1,0 +1,54 @@
+wo: '41000074865'
+title: WO-41000074865 04-18-55242 (SS-6004C)
+folder_ids:
+- 1YzDv_40PoIFwNWXEtx_9tNsskWsgW7EL
+project_id: 04-18-55242
+tip: SS-6004C
+analysis_type: intersection
+targets: 1
+countermeasure: Install an all-way stop.
+countermeasure_family: awsc
+county: Wayne
+division: '4'
+completed: 2020
+companions: []
+split: train
+assumptions_source: msg
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 04-18-55242 (SS-6004C).xlsx
+    id: 1KoPoHoBdTa2LvmV0dfEqoCc3mdqVamAS
+    size: 1767397
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/Re_ _External_ Safety Evaluation - VHB - Assignment #13.msg'
+    id: 1tjQ9BpUDpfb4CGe2wDyjRb0qVQjVDNI7
+    size: 204800
+  fiche_csv:
+  - path: Crash Analysis/41000074865_InitialStudy.csv
+    id: 1OEr0bifZWDUTQggOHTKbNRzoRL4nQUJV
+    size: 21439
+  - path: Crash Analysis/41000074865BEFORE.csv
+    id: 1CbXlBMGOiU5ZrwQFx-8gXHfHW2Q6_dL4
+    size: 18586
+  - path: Crash Analysis/41000074865AFTER.csv
+    id: 1HlSq7uLPy29mYOQHVa9Nmc2Cmzk1duMO
+    size: 13074
+  - path: Crash Analysis/41000074865_Fiche.csv
+    id: 1ijilr4s3QaV1KjvZXAaDJYcF_VihxQGv
+    size: 57259
+  id_lists:
+  - path: Crash Analysis/41000074865AFTER_CrashID.txt
+    id: 1JBHthnkdarACjfndjNmtbNuhZv5PzcAr
+    size: 380
+  - path: Crash Analysis/41000074865BEFORE_CrashID.txt
+    id: 1z8zMxioRDc1uVtAIEDQzs6Yt-HcIz6QN
+    size: 982
+  reports:
+  - path: 04-18-55242 (SS-6004C) Complete Eval.pdf
+    id: 18B51E7SfuwGEhpov3JrQ48AaCWj-wBA3
+    size: 551712
+  - path: 04-18-55242 (SS-6004C) Web.pdf
+    id: 1VOEaO0xsdP4XvvShsXlfbMcNfMDNtqzB
+    size: 484634

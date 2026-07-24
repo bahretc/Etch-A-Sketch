@@ -1,0 +1,54 @@
+wo: '41000074940'
+title: WO-41000074940 07-18-927 (W-5707K)
+folder_ids:
+- 1AO0yhnVR_dbkOvSVQ1ccUDb9E50ue_Vb
+project_id: 07-18-927
+tip: W-5707K
+analysis_type: section
+targets: 1
+countermeasure: Install pedestrian amenities to complete the pedestrian network in
+  the area. All pedestrian crossings are not currently served. The work will include
+  curb ramps, connecting sidewalk, pedestrian signal heads, high visibility crosswalks,
+  overhead lighting, vehicular and bike/pedestrian wayfinding signs, and construction
+  of a concrete channelization island on SR 1010 between SR 1927/SR 1771 (Merritt
+  Mill Road) and Graham Street to restrict turning movements and reduce conflicts
+  with bike and pedestrian movements.
+countermeasure_family: signal
+county: Orange
+division: '7'
+completed: 2020
+companions: []
+split: verify
+assumptions_source: msg
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook - 07-18-927 (W-5707K).xlsx
+    id: 18nWfoZOvq1ZDKymZIXGgoV43e8XW60ZQ
+    size: 5411783
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #20.msg'
+    id: 1B2CD3U3_0WI-bhZuIegDaVY7HrOPji5A
+    size: 3913216
+  fiche_csv:
+  - path: Crash Analysis/41000074940BEFORE.csv
+    id: 1SeMNRV0yo8RJD3Iz2fitw_ZhfmCZEYPv
+    size: 11522
+  - path: Crash Analysis/41000074940AFTER.csv
+    id: 1uQp0TAfczIJ3P_Wl7HJ5i1CG17pYV57D
+    size: 11868
+  id_lists:
+  - path: Crash Analysis/41000074940BEFORE_CrashID.txt
+    id: 18jgAx0tHEI470tmnWJlABz06QGl6l0dM
+    size: 79
+  - path: Crash Analysis/41000074940AFTER_CrashID.txt
+    id: 1dVK0VXopW81Cx_ls6TOVzfRNozEY2UZt
+    size: 122
+  reports:
+  - path: 07-18-927 (W-5707K) Web.pdf
+    id: 1Yze-rz1DqWgPozV7bDlOjKM-8e55rjZs
+    size: 756337
+  - path: 07-18-927 (W-5707K) Complete Eval.pdf
+    id: 1lq22EpFxauhtYtxyfG3j04Xrbl2pu2Ba
+    size: 796414

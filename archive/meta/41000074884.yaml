@@ -1,0 +1,60 @@
+wo: '41000074884'
+title: WO-41000074884 13-18-210 (SS-4913CX)
+folder_ids:
+- 1uLKpcJBBhPoNek9CsXX1KX5oJxAAPVid
+project_id: 13-18-210
+tip: SS-4913CX
+analysis_type: section
+targets: 2
+countermeasure: Install two Dynamic Message Signs on I-40
+countermeasure_family: signing
+county: Buncombe and McDowell Counties
+division: '13'
+completed: 2020
+companions: []
+split: train
+assumptions_source: msg
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook - 13-18-210 (SS-4913CX).xlsm
+    id: 1h-DOOJmUKTyp0EilDsXs0YFfLgz2Cjgk
+    size: 8509974
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #46.msg'
+    id: 1k7TE-GdTsKZJGw-Lf1QNTUteVWpGHlwL
+    size: 161792
+  fiche_csv:
+  - path: Crash Analysis/DetailedFicheBuncombe.csv
+    id: 1rzKCcbKkhHeoSoxcscFoVRNv0cg5QLlY
+    size: 1428843
+  - path: Crash Analysis/41000074884BUNCOMBE_Fiche.csv
+    id: 1qO0hn-iQQrIwkEDufgyqq0LW1jRT76F3
+    size: 1187980
+  - path: Crash Analysis/DetailedFicheMcDowell.csv
+    id: 1msGHoUrb_NZMRFV5dfhRFxm_wnwZxBVV
+    size: 493335
+  - path: Crash Analysis/41000074884MCDOWELL_InitialStudy.csv
+    id: 1A8-8ZmwvAz8PlsbYpahrpw253K77u2rn
+    size: 460324
+  - path: Crash Analysis/41000074884MCDOWELL_Fiche.csv
+    id: 1aIMFM2o9bLiLPq9zbFVU9XmczU3ionvH
+    size: 447200
+  - path: Crash Analysis/41000074884BUNCOMBE_InitialStudy.csv
+    id: 1w8bvHiEXdR0qxJSvoOAWbz8c9NTBh6d1
+    size: 74852
+  - path: Notes/Ordinances_I-40_Active_Buncombe.csv
+    id: 1-2YmVeYB8c_A9oTtLWTEjxo75rzKBkTQ
+    size: 10003
+  - path: Notes/Ordinances_I-40_Active_McDowell.csv
+    id: 1TH-sbXSBkKlxTP1eq4dJPjNatiDnW-H-
+    size: 8386
+  id_lists: []
+  reports:
+  - path: 13-18-210 (SS-4913CX) Complete Evaluation Report.pdf
+    id: 1cFtAp_GO97WunW3dKFPN1bLpLD54nfw2
+    size: 2186758
+  - path: 13-18-210 (SS-4913CX) Web.pdf
+    id: 1zu3tT44cvJ0r_fHShKLxkaVEcWdkd-Eb
+    size: 614311

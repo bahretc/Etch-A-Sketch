@@ -1,0 +1,50 @@
+wo: '41000076130'
+title: WO-41000076130 09-19-9152 (SS-6009E)
+folder_ids:
+- 1aad_y4gCGFBOHoJo2WbFT1koyyvT7f9i
+project_id: 09-19-9152
+tip: SS-6009E
+analysis_type: intersection
+targets: null
+countermeasure: ''
+countermeasure_family: other
+county: ''
+division: ''
+completed: null
+companions: []
+split: train
+assumptions_source: none
+flags:
+- no-assignment-email
+- email-not-parsed
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 09-19-9152.xlsx
+    id: 1LhefP1xDRIwJcbbW4nEzQqQcTnOUGV5l
+    size: 3335036
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1mqRCx3mrWqRsrQcWpAu4YjV6gn-HK3BT
+    size: 13311
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 16zGvOyIZFqETih-MRCjbPltup_lCY2-M
+    size: 14011
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1z3ls3mZpINzWoBQ0cBSukuGHnv5ZHWie
+    size: 178508
+  id_lists:
+  - path: Crash Analysis/After_CrashID.txt
+    id: 1wYYM7TU1GIqiUHZ7kPqt3fgNJWXa3YLc
+    size: 466
+  - path: Crash Analysis/Before_CrashID.txt
+    id: 1Y3rof8d1MTBZDv8tOPDgQ3doGUK_JRMo
+    size: 552
+  reports:
+  - path: 09-19-9152_Complete Eval.pdf
+    id: 19N742aA4BA0DX2Au2fhrU4aW8To1kUOk
+    size: 537649
+  - path: 09-19-9152_Web.pdf
+    id: 1dJABXxcVJFqko-oE-ExmBRfY4YH1AAwy
+    size: 486592

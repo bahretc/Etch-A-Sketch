@@ -1,0 +1,48 @@
+wo: '41000075499'
+title: WO-41000075499 04-20-60308 (SS-6004AU)
+folder_ids:
+- 1z7KtFjNJjRSE2NoUangc37ZGlRdtBra5
+project_id: 04-20-60308
+tip: SS-6004AU
+analysis_type: intersection
+targets: 1
+countermeasure: Install All Way Stop including Improvements
+countermeasure_family: awsc
+county: Johnston
+division: '4'
+completed: null
+companions: []
+split: train
+assumptions_source: msg
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 04-20-60308 (SS-6004AU).xlsx
+    id: 1HeA8R-4gFK1N7uyy6ojcZDzvUuIWgsMh
+    size: 1300415
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #29.msg'
+    id: 1euruvNTZGywCwtXDaR5b9-ozoMwIjT3Y
+    size: 116224
+  fiche_csv:
+  - path: Crash Analysis/41000075499AFTER.csv
+    id: 150tGLeJuUACELqal0xW_hm7zIt88j3gv
+    size: 9985
+  - path: Crash Analysis/41000075499BEFORE.csv
+    id: 1VvxFinq8iML0UYUG1UCjGLzAnvq8b30a
+    size: 15771
+  id_lists:
+  - path: Crash Analysis/41000075499AFTER_CrashID.txt
+    id: 12n7JLbj_F-ug2GBKC3hhMAqSfbzaXrlV
+    size: 79
+  - path: Crash Analysis/41000075499BEFORE_CrashID.txt
+    id: 1iENa0-MIfYGnP-vIiqGAUyXq02rqin9m
+    size: 724
+  reports:
+  - path: 04-20-60308 (SS-6004AU) Web.pdf
+    id: 1yFmdDTBN9kJYJt5l-lqEw6eml3NF593r
+    size: 872626
+  - path: 04-20-60308 (SS-6004AU) Complete Evaluation.pdf
+    id: 1blFx2MGqCgvoXsmKyv_ErmjnObbqtkIO
+    size: 540371

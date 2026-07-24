@@ -41,8 +41,12 @@ _GPS_RE = re.compile(r"(-?\d{1,3}\.\d{3,}),\s*(-?\d{1,3}\.\d{3,})")
 _TIP_RE = re.compile(r"\(TIP\s*#?([^)]+)\)")
 _HEADING_RE = re.compile(r"^\s*Assignment\s*#(\d+)\s*$", re.I)
 # the pre-2026 template heads its single block "Evaluation Assumptions" and
-# names the assignment number only in the surrounding prose or subject
-_ALT_HEADING_RE = re.compile(r"^\s*Evaluation Assumptions\s*:?\s*$", re.I)
+# names the assignment number only in the surrounding prose or subject; the
+# 2023-contract emails add a study-type suffix after a hyphen or en dash
+# ("Evaluation Assumptions - Intersection" / "Evaluation Assumptions – Section")
+_ALT_HEADING_RE = re.compile(
+    r"^\s*Evaluation Assumptions\s*(?:[:\-–—]\s*\w[\w /&()-]{0,30})?\s*$",
+    re.I)
 _NUM_NEARBY_RE = re.compile(r"Assignment\s*#(\d+)", re.I)
 # top-level bullet labels, in the order they appear in the templates; longer
 # variants must precede their prefixes (Countermeasures before Countermeasure)

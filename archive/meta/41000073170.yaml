@@ -1,0 +1,44 @@
+wo: '41000073170'
+title: WO-41000073170 09-17-386
+folder_ids:
+- 1B6xlDG2uYzCq9lPezdT3YlsHXKgPgCAD
+project_id: 09-17-386
+tip: ''
+analysis_type: intersection
+targets: null
+countermeasure: ''
+countermeasure_family: other
+county: ''
+division: ''
+completed: null
+companions: []
+split: train
+assumptions_source: none
+flags:
+- no-assignment-email
+- email-not-parsed
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook -09-17-386.xlsx
+    id: 1kmPqroxENkLAEnr_cgq5QcUvGtGYmZYK
+    size: 4367524
+  fiche_workbooks: []
+  emails: []
+  fiche_csv:
+  - path: Crash Analysis/Before_CrashAnalysis.csv
+    id: 1WGUEd64vPzQOSdmkXBv2IwM_O5SQHTe3
+    size: 16301
+  - path: Crash Analysis/After_CrashAnalysis.csv
+    id: 1tZPgTpafG9j6daUAZWFcbQ0CSc1PjvnN
+    size: 13460
+  - path: Crash Analysis/OriginalFiche.csv
+    id: 1uyajHaalyIT76cdVn1wZm_hr6fFAkuCM
+    size: 340322
+  id_lists: []
+  reports:
+  - path: 09-17-386_Web.pdf
+    id: 1lxSfSsYefyqtrJ19BE-d0ZfNvMdzo_iC
+    size: 561625
+  - path: 09-17-386_Complete Eval.pdf
+    id: 1zsply___ba30vQjtk9MMa6UK3vVBH9A9
+    size: 604913

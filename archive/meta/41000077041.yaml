@@ -1,0 +1,52 @@
+wo: '41000077041'
+title: WO-41000077041 12-18-221 (SS-4912CT)
+folder_ids:
+- 1soGeCvwTPHSbQpVzIYS5XWkB-anCY7TA
+project_id: 12-18-221
+tip: SS-4912CT
+analysis_type: section
+targets: 2
+countermeasure: Revise Streetscape plans for US 74 Business (Marion Street), reducing
+  cross section from four lanes to three lanes.
+countermeasure_family: other
+county: Cleveland
+division: '12'
+completed: 2020
+companions: []
+split: train
+assumptions_source: msg
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook - 12-18-221 (SS-4912CT)_TSN.xlsx
+    id: 1p_5beLKbNKSiWmeF25ep9ZT4Ypj3vXPq
+    size: 8795929
+  - path: Crash Analysis/Section Evaluation Workbook - 12-18-221 (SS-4912CT).xlsx
+    id: 1BiB0Rxk1hrsUnkly1Io5us0KyVhK7FWB
+    size: 8792870
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #31.msg'
+    id: 1RNCdAZnfYZB7KHSYhbJxAFHOv--yQtNv
+    size: 208896
+  fiche_csv:
+  - path: Crash Analysis/41000077041BEFORE.csv
+    id: 1Vo_0RPlv-hZWiJZUrjCHx50h5gDLTtUL
+    size: 48299
+  - path: Crash Analysis/41000077041AFTER.csv
+    id: 1eEUiYcBJzn8FDDCoQRvMoiO-nzKnC5wz
+    size: 31662
+  id_lists:
+  - path: Crash Analysis/41000077041BEFORE_CrashID.txt
+    id: 1KMemSOBmmmBXmQkekQ1i778suT_XVjOY
+    size: 3646
+  - path: Crash Analysis/41000077041AFTER_CrashID.txt
+    id: 1DCA0d5hbEPnMf3Tst1U4cTLcgWq3MTrt
+    size: 2014
+  reports:
+  - path: 12-18-221 (SS-4912CT) Web.pdf
+    id: 16Ryo1eIh8DBOK2XGzfGm3JbNFJnSktey
+    size: 992961
+  - path: 12-18-221 (SS-4912CT) Complete Eval.pdf
+    id: 1iPPAuNvgF27YzDSoC3EiwuuPOaKOl0VM
+    size: 730409

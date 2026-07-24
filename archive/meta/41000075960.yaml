@@ -1,0 +1,59 @@
+wo: '41000075960'
+title: WO-41000075960 10-19-230 (SS-6010I)
+folder_ids:
+- 1plQkl5WUHocbebI_NOUCk0WyvJwjK5gN
+project_id: 10-19-230
+tip: SS-6010I
+analysis_type: intersection
+targets: 1
+countermeasure: 'Converted intersection to all-way stop control (AWSC): Replaced existing
+  dual-indicated 30” Stop signs (R1-1) with 36” Stop signs (R1-1) and All Way plaques
+  (R1-3P) on both SR 1658 approaches; Installed Stop signs (R1-1) and All Way plaques
+  (R1-3P) on both SR 1627 approaches; Added bright sides to existing Stop Ahead warning
+  signs (W3-1) on both SR 1658 approaches; Installed Stop Ahead warning signs (W3-1)
+  with flashing beacons on both SR 1627 approaches; Installed “Stop” and “Stop Ahead”
+  pavement markings on all approaches.'
+countermeasure_family: awsc
+county: Union
+division: '10'
+completed: 2021
+companions: []
+split: train
+assumptions_source: msg
+flags:
+- stray-workbook
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 10-19-230 (SS-6010I).xlsx
+    id: 1bVgMlw2Ium-HuWETK7cFys6BACqYlXHr
+    size: 6802120
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #50.msg'
+    id: 1ozoonwpVTzv2xt94jADbfoGHDzzUOJb5
+    size: 171520
+  fiche_csv:
+  - path: Crash Analysis/41000075960AFTER.csv
+    id: 1dTy6609rgdd77WhQwWx1ZeN6dK9KLH4U
+    size: 10372
+  - path: Crash Analysis/41000075960BEFORE.csv
+    id: 1WPRuH8tA4_21h8m7kdZXbYEVr6Pzz65t
+    size: 14687
+  id_lists:
+  - path: Crash Analysis/41000075960AFTER_CrashID.txt
+    id: 1KkJJ1qJE-EiNbYUrKMHJYxiX3Dz9k8u9
+    size: 122
+  - path: Crash Analysis/41000075960BEFORE_CrashID.txt
+    id: 1chhx3T4uJnwY0NfsCwf3T5gpgybCcgUH
+    size: 595
+  reports:
+  - path: 10-19-230 (SS-6010I) Complete Evaluation.pdf
+    id: 11AY5MjY_Pc_UJAR-RiHb0rEEc4Mq2Su2
+    size: 578621
+  - path: 10-19-230 (SS-6010I) Web.pdf
+    id: 129OwppJkVn5gK-sGMDSF7Rp8cYFr8g1w
+    size: 530873
+  stray_workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook - 13-18-210 (SS-4913CX).xlsm
+    id: 1PO4BaqvLD2vWoSJY0457gUNsgoSzlu4E
+    size: 14973781

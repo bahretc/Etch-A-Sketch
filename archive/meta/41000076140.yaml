@@ -1,0 +1,61 @@
+wo: '41000076140'
+title: WO-41000076140 09-20-2846 (SS-6009U) + WO-41000076140 09-20-2846
+folder_ids:
+- 1NSLRXgAQckTfa0-NWiaEYNuivjd256M3
+- 1M94chd3FyMZCjuVdVvbokdFlp_nQ-Ssl
+project_id: 09-20-2846
+tip: SS-6009U
+analysis_type: intersection
+targets: 1
+countermeasure: Convert intersection from two way stop to all way stop control, including
+  the installation of oversized (48”) STOP signs, STOP Ahead pavement markings, and
+  STOP Ahead signage on SR 1147 approaches.
+countermeasure_family: awsc
+county: Davidson
+division: '9'
+completed: 2021
+companions: []
+split: verify
+assumptions_source: msg
+flags:
+- split-folders-merged
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 09-20-2846 (SS-6009U).xlsx
+    id: 19lGYWdXmQW3hM0B_1XNA7dgNqHv5AWIf
+    size: 7724938
+  - path: Crash Analysis/Intersection Evaluation Workbook - 09-20-2846.xlsx
+    id: 19pN-ZxCtedaKYbFfcix17b1cATri-54G
+    size: 457764
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #48.msg'
+    id: 1UdmBsFICiSqUua5JzQpG1bxBI5O8enAF
+    size: 161792
+  fiche_csv:
+  - path: Crash Analysis/41000076140AFTER.csv
+    id: 1ftMkhwZMqqEDPgTScI3jx2VhZ90EeoeU
+    size: 13955
+  - path: Crash Analysis/41000076140BEFORE.csv
+    id: 1Di1uV5G6aO7b-mAArUbhSd1Uh2zzOzjY
+    size: 13067
+  - path: Crash Analysis/41000076140_InitialStudy.csv
+    id: 1E2Xjabu9p0sScQtyJ4Aau3-MBsdXi_di
+    size: 15332
+  - path: Crash Analysis/41000076140_Fiche.csv
+    id: 1txD4fVWg0xqJ6dTU8D6FnN5rR7OTWvFi
+    size: 324506
+  id_lists:
+  - path: Crash Analysis/41000076140AFTER_CrashID.txt
+    id: 1jzTne1VDfz4RW__pu5wGdh2tPOo46mKY
+    size: 337
+  - path: Crash Analysis/41000076140BEFORE_CrashID.txt
+    id: 1XK-ZuNMWLtXlzPR0k2ZyFG9k7fInGi98
+    size: 294
+  reports:
+  - path: 09-20-2846 (SS-6009U) Complete Evaluation.pdf
+    id: 1Os06Y_QefZy6IJs4mocrK2pIa1RK00kg
+    size: 587916
+  - path: 09-20-2846 (SS-6009U) Web.pdf
+    id: 1SMZ-kkRxcVxoRcijiYXHppe_QPdC6xOw
+    size: 538845

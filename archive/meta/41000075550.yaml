@@ -1,0 +1,66 @@
+wo: '41000075550'
+title: WO-41000075550 02-20-61248 (SS-6002O)
+folder_ids:
+- 1VHZK2df5KuBGhxKu54XWSDYT62NMz0U9
+project_id: 02-20-61248
+tip: SS-6002O
+analysis_type: intersection
+targets: 1
+countermeasure: Install an all-way stop including
+countermeasure_family: awsc
+county: Pitt
+division: '2'
+completed: 2021
+companions: []
+split: verify
+assumptions_source: msg
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 02-20-61248 (SS-6002O).xlsx
+    id: 1-3nLdBrYj6gnsTB-I5Ebrvy_hf0sFClc
+    size: 1704178
+  - path: Background Information/FATAL FILES/230720048AA_FicheReport.xlsm
+    id: 1g-k20fGL8-yZTEFU54AEDiuXYknKsdYB
+    size: 85996
+  fiche_workbooks: []
+  emails:
+  - path: Notes/RE Fatal Crash 230720048AA - SR 1700 (Old Tar Road) at SR 1713 (Laurie
+      Ellis Road) Pitt County.msg
+    id: 1A48J5bS2aKi-b3ckaL5iBiQveNU87CO1
+    size: 78336
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #39.msg'
+    id: 1nkSRJ5TsWatl6QiRYXwuJCfOMSdpvWKW
+    size: 114176
+  - path: Background Information/FATAL FILES/230720048AA - Recommendations Email to
+      DTE on 20240521.msg
+    id: 1PPdK8309ttafr_5EFWTSY56QnxLgP1g4
+    size: 110080
+  - path: Background Information/FATAL FILES/230720048AA - DTE Final Response Email
+      on 20240521.msg
+    id: 1lc1ZRrjBDSTV1TBOsMaYOL1UYr_xAVRn
+    size: 139264
+  fiche_csv:
+  - path: Crash Analysis/41000075550BEFORE.csv
+    id: 1aG2PXB-Ywku_S3S8QxQyPeiIyYtdci4j
+    size: 13029
+  - path: Crash Analysis/41000075550AFTER.csv
+    id: 1ubG_aGV3rvntRJDoBeg1BGFsMXC3rSgQ
+    size: 14432
+  - path: Background Information/FATAL FILES/230720048AA_FicheReport.csv
+    id: 1n2q8xLKdxccdAVFNasx_NztAuqBzTRIR
+    size: 41613
+  id_lists:
+  - path: Crash Analysis/41000075550AFTER_CrashID.txt
+    id: 1JackEss4mOZozkpRNDSWVeUMWUOqF_ml
+    size: 551
+  - path: Crash Analysis/41000075550BEFORE_CrashID.txt
+    id: 1DH-F3j589MgDDJnVTWaCSVCXx_5PvXZN
+    size: 380
+  reports:
+  - path: 02-20-61248 (SS-6002O) Complete Evaluation.pdf
+    id: 1mtGaiMyEYLChh91Kc77edkLkuYaZrYXY
+    size: 603354
+  - path: 02-20-61248 (SS-6002O) Web.pdf
+    id: 15R_4oAu4ffkFbpMlyuolj_PnrrYu71GC
+    size: 548107

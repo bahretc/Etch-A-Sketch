@@ -1,0 +1,93 @@
+wo: '41000073401'
+title: WO-41000073401 06-16-40539 (W-5706A)
+folder_ids:
+- 1xUJMl5wswph0YqfaD5AsjHPuLBlNvBrK
+project_id: 06-16-40539
+tip: W-5706A
+analysis_type: intersection
+targets: 1
+countermeasure: Construct raised median with directional crossovers including conversion
+  of the Hidden Creek Dr/Cutchen Ln and Cliffdale Rd intersections to reduced conflict
+  intersections (RCIs) as well as pedestrian improvements and signal revisions at
+  the Bunce Rd intersection.
+countermeasure_family: signal
+county: Cumberland
+division: '6'
+completed: 2019
+companions: []
+split: verify
+assumptions_source: msg
+flags: []
+files:
+  workbooks:
+  - path: Crash Analysis/3. Carlie C's IGA Access intersection/Intersection Evaluation
+      Workbook - 06-16-40539 (W-5706A) (3 of 3).xlsx
+    id: 1g-dN3teppK06UoVdZBDf0TFXPy-gLIk8
+    size: 6792758
+  - path: Crash Analysis/2. Cutchen & Hidden Creek Intersection/Intersection Evaluation
+      Workbook - 06-16-40539 (W-5706A) (2 of 3).xlsx
+    id: 1e83wFnepHXaa_atxFl5kCjByl0U6_94L
+    size: 6027060
+  - path: Crash Analysis/1. Section/Section Evaluation Workbook - 06-16-40539 (W-5706A)
+      (1 of 3).xlsx
+    id: 1dK-S4qJbzK9ezBXKIcw3VsA-5kR1iEDN
+    size: 41551442
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/Re_ _External_ RE_ Safety Evaluation - VHB - Assignment #9-11.msg'
+    id: 1tWgk7pKmmCzvss5977NdKtcfIuDqPdQ0
+    size: 225280
+  fiche_csv:
+  - path: Crash Analysis/3. Carlie C's IGA Access intersection/41000073401AFTER3OF3CARLIEC.csv
+    id: 1b5eJcEiIygjeaRrfqpy-3Zyz8VD1Hw7v
+    size: 11033
+  - path: Crash Analysis/3. Carlie C's IGA Access intersection/41000073401BEFORE3OF3CARLIEC.csv
+    id: 1iqmjPvpjoOsHKspg-nwOnM1OvSyLcMnx
+    size: 19660
+  - path: Crash Analysis/2. Cutchen & Hidden Creek Intersection/41000073401AFTER2OF3CUTCHEN.csv
+    id: 1EWHfudfDQEkEj2o8vLzepUoIuv7UZVSs
+    size: 45250
+  - path: Crash Analysis/2. Cutchen & Hidden Creek Intersection/41000073401BEFORE2OF3CUTCHEN.csv
+    id: 1iWBczs9D89vLwIMUNZ7v6fIbD-d1gnBz
+    size: 41722
+  - path: Crash Analysis/1. Section/41000073401BEFORE1OF3SECTION.csv
+    id: 1M4BQRVsLfa_w9UWaodOnNoRGVMMLrhmO
+    size: 357564
+  - path: Crash Analysis/1. Section/41000073401AFTER1OF3SECTION.csv
+    id: 1iOSTe1OnU4iWIYKuVM8MljDtzP4QrC7t
+    size: 310362
+  - path: Crash Analysis/1. Section/41000073401section_InitialStudy.csv
+    id: 1hYNdgJwMJSudfZrYnbJFW4hOFjjBTX5t
+    size: 656480
+  id_lists:
+  - path: Crash Analysis/3. Carlie C's IGA Access intersection/41000073401BEFORE3OF3CARLIEC_CrashID.txt
+    id: 1k-wmY46O_OMOCuRUguag1h0XutbHj6B9
+    size: 982
+  - path: Crash Analysis/3. Carlie C's IGA Access intersection/41000073401AFTER3OF3CARLIEC_CrashID.txt
+    id: 1NwhMsg6-qZy7r_VKbilQyySyWAVW7lWk
+    size: 208
+  - path: Crash Analysis/2. Cutchen & Hidden Creek Intersection/41000073401BEFORE2OF3CUTCHEN_CrashID.txt
+    id: 1sLN7DubKKG9vWElf5Xp3eallMde9x6eK
+    size: 3216
+  - path: Crash Analysis/2. Cutchen & Hidden Creek Intersection/41000073401AFTER2OF3CUTCHEN_CrashID.txt
+    id: 1UVXm9eKPA2rAfww57oXyeTitfojicfxy
+    size: 3471
+  - path: Crash Analysis/1. Section/41000073401BEFORE1OF3SECTION_CrashID.txt
+    id: 1kVScngfN8jGIpYIGN7IciBkAAjtPtzYv
+    size: 31763
+  - path: Crash Analysis/1. Section/41000073401AFTER1OF3SECTION_CrashID.txt
+    id: 1JU-tyzKFze37ZU0mKu5aqaG2xKKWR-I_
+    size: 27451
+  reports:
+  - path: 06-16-40539 (W-5706A) Complete Eval.pdf
+    id: 1Vidcrz7iHFcyhZ8jPXRdK5Os5DsfwIon
+    size: 2844681
+  - path: 06-16-40539 (W-5706A) (1 of 3) Web.pdf
+    id: 1VOQ5AZLr5dgFsuTbLmLKXehKamLt-ati
+    size: 601924
+  - path: 06-16-40539 (W-5706A) (2 of 3) Web.pdf
+    id: 1o3CqvK2ZI8NNBBESm1r26rOUO-UbVjra
+    size: 478837
+  - path: 06-16-40539 (W-5706A) (3 of 3) Web.pdf
+    id: 1Qw10DZOPc7FcktT_MxbF3YWbaoRdg1a1
+    size: 468230

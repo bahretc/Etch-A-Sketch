@@ -1,0 +1,98 @@
+wo: '41000069819'
+title: WO-41000069819 06-15-36512 (W-5601DF) + WO-41000069819 06-21-63348 (SS-6006AS)
+folder_ids:
+- 1pBow5REC_5CpeH1f-s_JZwItLdM0dMKW
+- 1KKD_MaGTrGQPx7fDpZc4mK50iZOvpLPX
+project_id: 06-15-36512
+tip: W-5601DF
+analysis_type: intersection
+targets: 1
+countermeasure: Convert to All-Way Stop.
+countermeasure_family: awsc
+county: Robeson
+division: '6'
+completed: 2022
+companions: []
+split: verify
+assumptions_source: msg
+flags:
+- split-folders-merged
+files:
+  workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook - 06-15-36512 (W-5601DF).xlsx
+    id: 1_fWqCYNloG9jawBG7qEoMWx-lcc65mMJ
+    size: 3703751
+  - path: Crash Analysis/Intersection Evaluation Workbook - 06-21-63348 (SS-6006AS).xlsx
+    id: 1QiZsyWgByoa48OnZlzgFiFmt84IbElBX
+    size: 1771144
+  fiche_workbooks:
+  - path: Background Information/Fatal Files/210923080BA_Fiche.xlsx
+    id: 1mn06e0Ra2bZFVtrIxnkooMLAkBU63oA_
+    size: 143073
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #24-25.msg'
+    id: 14Fh9CjgnOc-CdWGWOugSClPnxLT39wgQ
+    size: 196096
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #24-25.msg'
+    id: 1oTS8LiGCS61qRD38sw3zV692P8IWuXgM
+    size: 190464
+  fiche_csv:
+  - path: Crash Analysis/41000069819SECTIONAFTER.csv
+    id: 1_2W1LYKS5ke9yJzy9Y_qGJ7sBSt0B86Q
+    size: 102016
+  - path: Crash Analysis/41000069819SECTIONBEFORE.csv
+    id: 1ZrgDmyztEbnCmvYeaO7Wk2HbPjO14-Qz
+    size: 85442
+  - path: Crash Analysis/41000069819SECTION_InitialStudy_Hoke.csv
+    id: 1iXZwORN_x3G06BhB1H9GzWM279wAEVkg
+    size: 52432
+  - path: Crash Analysis/41000069819SECTION_InitialStudy_Robeson.csv
+    id: 1G6lk0otX9Cb_DnOwWAy3-8UzZg0tyvmW
+    size: 132591
+  - path: Crash Analysis/41000069819SECTION_Fiche_Robeson.csv
+    id: 1W5umbbDUEtfn7wu-FglXBta29lfIAMVa
+    size: 36810
+  - path: Crash Analysis/41000069819SECTION_Fiche_Hoke.csv
+    id: 1jUiIFwN3rceCrkxxJ2Zla0TDy9MSM4NZ
+    size: 13493
+  - path: Background Information/Fatal Files/210923080BA_Crash Analysis.csv
+    id: 1on1RbeKuQkyLJbr3C7q8CYpFpJFxF_Pe
+    size: 36465
+  - path: Crash Analysis/41000069819_InitialStudy.csv
+    id: 1oiWnuIhGfauhNSUZlyctSV8OE3fr6_VB
+    size: 17132
+  - path: Crash Analysis/41000069819BEFORE.csv
+    id: 1pc9D3pl0ung7lCVwqkqc1zp9XbeDBEn0
+    size: 12590
+  - path: Crash Analysis/41000069819AFTER.csv
+    id: 10wt_DV4SJ7xJMWtQrJY-mahqBnBcaf8H
+    size: 12273
+  - path: Crash Analysis/41000069819_Fiche.csv
+    id: 1MlVzYU1C6jdg7yNQd1zc4wdFzgIcukpy
+    size: 25225
+  id_lists:
+  - path: Crash Analysis/41000069819SECTIONAFTER_CrashID.txt
+    id: 16ovt8dePmsXCkGb92dHdfqcGFW3AsGVX
+    size: 8119
+  - path: Crash Analysis/41000069819SECTIONBEFORE_CrashID.txt
+    id: 12iopRgYitjeGck2Fj4xo0WtZe-L4reGP
+    size: 7075
+  - path: Crash Analysis/41000069819BEFORE_CrashID.txt
+    id: 17ruo3YNXrTyT2SSvjgFZnzMHyD3H5fG5
+    size: 380
+  - path: Crash Analysis/41000069819AFTER_CrashID.txt
+    id: 1VVhc0CxIavtkwUjBEivHKxgiAeniReGl
+    size: 380
+  reports:
+  - path: 06-15-36512 (W-5601DF) Complete Eval.pdf
+    id: 1gXC5vn9zcwBqw-EKJZSzfaHwOvOQglUk
+    size: 1030716
+  - path: 06-15-36512 (W-5601DF) Web.pdf
+    id: 1R3Rfk3so-hPz9mYalWXa3deEXyDg-lq_
+    size: 573018
+  - path: 06-21-63348 (SS-6006AS) Complete Eval.pdf
+    id: 1VivucAGmrSzFu1vP6wCvNByzy5A7MIEJ
+    size: 654575
+  - path: 06-21-63348 (SS-6006AS) Web.pdf
+    id: 1ZhR_-tGWpuWHN_KA9lfe0YqROPzRvYAB
+    size: 598325

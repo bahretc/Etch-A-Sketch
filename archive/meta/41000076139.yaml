@@ -1,0 +1,56 @@
+wo: '41000076139'
+title: WO-41000076139 09-20-2114 (SS-6009O)
+folder_ids:
+- 1yk4iwdEXP4KlJqvypQDokdu7YMQck734
+project_id: 09-20-2114
+tip: SS-6009O
+analysis_type: intersection
+targets: 1
+countermeasure: 'Implement all-way stop control (AWSC): Installed 36” Stop signs (R1-1)
+  with All Way plaques (R1-3P) on all approaches, replacing 30” stop signs on SR 1743
+  (Abbotts Creek Church Road); Replaced Cross Road warning sign (W2-1) and 35 mph
+  Advisory Speed plaque with Stop Ahead warning sign (W3-1) with flags on SR 1741
+  (Wallburg-High Point Road); Installed transverse rumble strips on SR 1741 (Wallburg-High
+  Point Road) **I also see STOP AHEAD pavement markings.**; Relocated and added flags
+  to Stop Ahead warning signs (W3-1) on SR 1743 (Abbotts Creek Church Road).'
+countermeasure_family: rumble-strips
+county: Davidson
+division: '9'
+completed: 2021
+companions: []
+split: train
+assumptions_source: msg
+flags:
+- stray-workbook
+files:
+  workbooks: []
+  fiche_workbooks: []
+  emails:
+  - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #44.msg'
+    id: 1-GsEi8LCiEPpVQmFiYKo0aQ-Lz-LXby6
+    size: 235520
+  fiche_csv:
+  - path: Crash Analysis/41000076139BEFORE.csv
+    id: 18xqs6XNUt4ICpw4A9O0E_uZq-rTVPgwh
+    size: 14255
+  - path: Crash Analysis/41000076139AFTER.csv
+    id: 1SCOxKQAilsMvjk_WMUWK0p1ZOn2WrJiQ
+    size: 11319
+  id_lists:
+  - path: Crash Analysis/41000076139BEFORE_CrashID.txt
+    id: 1Dt-kS_gYX5qRDJgrUx1WfZYux-l67XE4
+    size: 466
+  - path: Crash Analysis/41000076139AFTER_CrashID.txt
+    id: 1f9GR-8WsYIlS3x7Tmbm6HGv2auXNceBM
+    size: 208
+  reports:
+  - path: 09-20-2114 (SS-6009O) Web.pdf
+    id: 1q2nBaWXH4wsUe9JTCpPxQ-2u0F8Hxlh8
+    size: 1484487
+  - path: 09-20-2114 (SS-6009O) Complete Evaluation.pdf
+    id: 1pdGc0xABk7PrenGzY-0sAUeimCvS31zy
+    size: 613179
+  stray_workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 02-20-61248 (SS-6002O).xlsx
+    id: 15dMsbUWkRnleD0PN5keQDPor0eTZx4M9
+    size: 7229911

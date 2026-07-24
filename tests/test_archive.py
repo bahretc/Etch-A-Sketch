@@ -247,3 +247,23 @@ def test_stray_workbook_flagged(tmp_path):
     wb_names = [f["path"] for f in rec["files"]["workbooks"]]
     assert not any("13-18-210" in n for n in wb_names)
     assert rec["analysis_type"] == "intersection"
+
+
+def test_folder_title_typo_keeps_workbook(tmp_path):
+    """When NO workbook matches the folder code, the folder title is the
+    suspect part (WO-41000073336 titled 02-17-43501, workbook 02-17-45301):
+    keep the workbook, flag the mismatch, do not strand the evaluation."""
+    from safety_eval.archive import extend_manifest
+
+    out = str(tmp_path / "archive")
+    os.makedirs(out)
+    open(os.path.join(out, "manifest.jsonl"), "w").close()
+    d = str(tmp_path / "ninv")
+    _folder_inv(d, "WO-41000073336 02-17-43501",
+                [_wb_file("Section Evaluation Workbook - 02-17-45301.xlsx")])
+    extend_manifest(d, str(tmp_path / "noemails"), out)
+    rec = json.loads(open(os.path.join(out, "manifest.jsonl")).readline())
+    assert "folder-project-mismatch" in rec["flags"]
+    assert "stray-workbook" not in rec["flags"]
+    assert len(rec["files"]["workbooks"]) == 1
+    assert rec["analysis_type"] == "section"

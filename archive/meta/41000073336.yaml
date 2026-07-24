@@ -16,9 +16,12 @@ split: verify
 assumptions_source: none
 flags:
 - email-not-parsed
-- stray-workbook
+- folder-project-mismatch
 files:
-  workbooks: []
+  workbooks:
+  - path: Crash Analysis/Section Evaluation Workbook - 02-17-45301.xlsx
+    id: 15koE7mU09Z5G4a9fr1Ir6hNO3g8dneGJ
+    size: 5569127
   fiche_workbooks: []
   emails:
   - path: 'Background/6 - W-5702J/Background Information/RE  Traffic counts   File#
@@ -59,7 +62,3 @@ files:
   - path: 02-17-45301_Web.pdf
     id: 1z-AMeQHqtAb0TgrhiIC00LS6OwXTh9OS
     size: 538601
-  stray_workbooks:
-  - path: Crash Analysis/Section Evaluation Workbook - 02-17-45301.xlsx
-    id: 15koE7mU09Z5G4a9fr1Ir6hNO3g8dneGJ
-    size: 5569127

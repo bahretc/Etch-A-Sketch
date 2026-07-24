@@ -26,14 +26,29 @@ from statistics import median
 
 from . import draft as D
 
-_WB_NAME_RE = re.compile(r"^(?P<wo>\d{10,11})__(?P<name>.+)$")
+# WO ids are normally 11 digits; one archived folder is mis-named with 12
+# (410000749019) and is preserved verbatim, so allow up to 12.
+_WB_NAME_RE = re.compile(r"^(?P<wo>\d{10,12})__(?P<name>.+)$")
+
+
+# Blank scope-package templates are named with the template release date
+# (e.g. "... Evaluation Workbook - 2023-12-04.xlsx"); a copy sometimes sits
+# in an evaluation's Background subfolder. It has no authored content, so
+# extracting it as the deliverable scores a spurious zero. A real delivered
+# workbook is named for the project, never the bare template date.
+_TEMPLATE_NAME_RE = re.compile(r"\b20\d{2}-\d{2}-\d{2}\s*(?:\(\d+\))?\.xls[mx]$",
+                               re.I)
 
 
 def _is_eval_workbook(fn: str) -> bool:
     """Deliverable evaluation workbooks only; folders also hold fiche
-    reports and other .xlsm/.xlsx siblings that must never be extracted
-    as an evaluation's results."""
-    return "evaluation workbook" in fn.lower()
+    reports, blank templates, and other .xlsm/.xlsx siblings that must
+    never be extracted as an evaluation's results."""
+    if "evaluation workbook" not in fn.lower():
+        return False
+    if _TEMPLATE_NAME_RE.search(fn):
+        return False
+    return True
 
 
 def _primary_workbooks(workbook_dir: str) -> dict[str, str]:

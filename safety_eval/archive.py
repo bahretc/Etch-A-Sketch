@@ -410,23 +410,39 @@ def load_folder_inventories(inventory_dir: str) -> dict[str, dict]:
 
 
 def _flag_stray_workbooks(meta: EvaluationMeta) -> None:
-    """Workbooks filed under a WO but named for a project the WO does not
-    cover (observed: a 13-18-210 workbook inside WO-41000075960) are moved
-    out of the workbook list and flagged, so classification, downloads and
-    extraction never treat a neighbour's deliverable as this evaluation's.
+    """Reconcile workbook filenames against the folder's project code.
+
+    Two distinct situations, distinguished by whether ANY workbook matches
+    the folder's project code:
+
+    * The folder has its own deliverable AND an extra one named for a
+      different project (observed: a 13-18-210 workbook inside
+      WO-41000075960 next to its own 10-19-230). The extras are moved to
+      ``stray_workbooks`` and flagged, so nothing downstream treats a
+      neighbour's deliverable as this evaluation's.
+    * NO workbook matches the folder's project code (observed:
+      WO-41000073336 titled 02-17-43501 whose workbook and both emails say
+      02-17-45301 - a single-digit folder-title typo). Here the filenames,
+      not the folder title, are the reliable identity, so the workbooks are
+      KEPT as this WO's own and the disagreement is flagged rather than
+      stranding the evaluation with zero workbooks.
     """
     own = set(_PROJECT_RE.findall(meta.title))
     if not own:
         return
-    kept, stray = [], []
+    matching, nonmatching = [], []
     for f in meta.files.get("workbooks", []):
         name = os.path.basename(f.get("path") or "")
         codes = set(_PROJECT_RE.findall(name))
-        (stray if codes and not (codes & own) else kept).append(f)
-    if stray:
-        meta.files["workbooks"] = kept
-        meta.files["stray_workbooks"] = stray
+        (nonmatching if codes and not (codes & own) else matching).append(f)
+    if not nonmatching:
+        return
+    if matching:
+        meta.files["workbooks"] = matching
+        meta.files["stray_workbooks"] = nonmatching
         meta.flags.append("stray-workbook")
+    else:
+        meta.flags.append("folder-project-mismatch")
 
 
 def assign_split_frozen(metas: dict[str, EvaluationMeta],

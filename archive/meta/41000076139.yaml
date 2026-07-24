@@ -21,9 +21,12 @@ companions: []
 split: train
 assumptions_source: msg
 flags:
-- stray-workbook
+- folder-project-mismatch
 files:
-  workbooks: []
+  workbooks:
+  - path: Crash Analysis/Intersection Evaluation Workbook - 02-20-61248 (SS-6002O).xlsx
+    id: 15dMsbUWkRnleD0PN5keQDPor0eTZx4M9
+    size: 7229911
   fiche_workbooks: []
   emails:
   - path: 'Notes/RE_ _External_ Safety Evaluation - VHB - Assignment #44.msg'
@@ -50,7 +53,3 @@ files:
   - path: 09-20-2114 (SS-6009O) Complete Evaluation.pdf
     id: 1pdGc0xABk7PrenGzY-0sAUeimCvS31zy
     size: 613179
-  stray_workbooks:
-  - path: Crash Analysis/Intersection Evaluation Workbook - 02-20-61248 (SS-6002O).xlsx
-    id: 15dMsbUWkRnleD0PN5keQDPor0eTZx4M9
-    size: 7229911

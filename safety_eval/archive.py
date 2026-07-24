@@ -91,6 +91,13 @@ class EvaluationMeta:
     completed: int | None = None
     companions: list = field(default_factory=list)
     split: str = ""
+    #: where the assumption data came from (per the engineer, 2026-07):
+    #: 'msg' = the assignment email thread, the AUTHORITATIVE record with
+    #: NCDOT's feedback incorporated; 'docx-draft' = VHB's initial
+    #: assumptions document BEFORE feedback - used for classification only
+    #: (countermeasure family, county, study type), never as final
+    #: assumptions; 'none' = no parseable source.
+    assumptions_source: str = "none"
     flags: list = field(default_factory=list)
     files: dict = field(default_factory=dict)   # role -> [{path,id,size}]
 
@@ -219,12 +226,17 @@ def build_meta(wo: str, inv: dict, emails_dir: str,
         # matches this WO if present under a synthetic key, else none
         pa = next((b for k, b in blocks.items() if k.startswith(f"{wo}#")),
                   None)
-    if pa is None:
-        # fall back to the archived assumptions .docx (52 of the 60 archive
-        # folders carry one even when the .msg thread is missing)
+    if pa is not None:
+        meta.assumptions_source = "msg"
+    else:
+        # fall back to the archived assumptions .docx for CLASSIFICATION
+        # only: it is VHB's initial draft sent to NCDOT, without their
+        # feedback or later changes, so it must never be treated as the
+        # final assumptions record (engineer's direction, 2026-07)
         pa = _docx_block(docx_dir, wo)
         if pa is not None:
-            meta.flags.append("meta-from-assumptions-docx")
+            meta.assumptions_source = "docx-draft"
+            meta.flags.append("assumptions-draft-only")
     if pa is not None:
         meta.countermeasure = pa.countermeasure_text()
         meta.county = pa.county

@@ -13,6 +13,7 @@ division: ''
 completed: null
 companions: []
 split: verify
+assumptions_source: none
 flags:
 - email-not-parsed
 files:

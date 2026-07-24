@@ -13,8 +13,9 @@ division: '1'
 completed: 2021
 companions: []
 split: train
+assumptions_source: docx-draft
 flags:
-- meta-from-assumptions-docx
+- assumptions-draft-only
 files:
   workbooks:
   - path: Crash Analysis/Intersection Evaluation Workbook - 01-20-62607 (SS-6001P).xlsx

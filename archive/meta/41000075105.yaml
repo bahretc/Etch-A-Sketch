@@ -17,9 +17,10 @@ division: '7'
 completed: 2018
 companions: []
 split: train
+assumptions_source: docx-draft
 flags:
 - no-assignment-email
-- meta-from-assumptions-docx
+- assumptions-draft-only
 files:
   workbooks:
   - path: Crash Analysis/Intersection Evaluation Workbook - 07-21-3747.xlsx

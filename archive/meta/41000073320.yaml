@@ -13,9 +13,10 @@ division: '4'
 completed: 2019
 companions: []
 split: train
+assumptions_source: docx-draft
 flags:
 - no-assignment-email
-- meta-from-assumptions-docx
+- assumptions-draft-only
 files:
   workbooks:
   - path: Crash Analysis/Section Evaluation Workbook 04-18-55758.xlsx

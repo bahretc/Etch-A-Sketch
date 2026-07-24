@@ -277,6 +277,11 @@ pytest -q
       periods/targets/notes block per assignment, newest copy in the
       thread wins, notes and questions carried through verbatim.
       Validated on the real SS-6002M/SS-6002AS thread.
+- [x] Assumptions draft generation from the NCDOT Master Evaluation
+      Spreadsheet (`safety-eval assumptions --master ... --order-id ...`):
+      DB-sourced fields validated field-for-field against a real archived
+      draft; target crashes and periods left for the engineer. The .msg
+      thread with NCDOT feedback remains the authoritative record.
 - [x] docs/10-evaluation-archive.md: how to structure the past-evaluation
       archive (layout, manifest, PII rules, 50/50 train/verify split)
       for the future report-drafting layer.

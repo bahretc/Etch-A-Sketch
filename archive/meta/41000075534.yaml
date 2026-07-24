@@ -14,9 +14,10 @@ division: '2'
 completed: 2021
 companions: []
 split: train
+assumptions_source: docx-draft
 flags:
 - no-assignment-email
-- meta-from-assumptions-docx
+- assumptions-draft-only
 files:
   workbooks:
   - path: 02-18-52752 Resubmittal/Intersection Evaluation Workbook - 02-18-52752 (9

@@ -96,9 +96,20 @@ assignment email; filling meta.yaml should be a script, not typing.
 Supervision pairs come from readers that already exist, so archiving the
 files in this layout is the only prerequisite:
 
+Assumption provenance (per the engineer): the **.msg assignment thread is
+the authoritative assumptions record** - it carries NCDOT's feedback and
+the changes made after it. The archived `Assumptions Email - ....docx` is
+VHB's INITIAL DRAFT sent to NCDOT before feedback; it may be used for
+classification (countermeasure family, county, study type) but never as the
+final assumptions. Evaluations without a .msg stay in the dataset for every
+other extraction; their `assumptions_source` is `docx-draft` or `none` and
+the drafting layer must not read final targets or periods from them (the
+delivered workbook is the ground truth for what was actually used).
+
 | From | Reader | Gives |
 |---|---|---|
-| assignment.msg | `assignment_email.py` | scope, countermeasure, targets, periods, notes (model INPUT) |
+| assignment.msg | `assignment_email.py` | scope, countermeasure, targets, periods, notes (model INPUT; AUTHORITATIVE assumptions) |
+| Assumptions Email .docx | `parse_assumptions_docx` | initial-draft fields for classification only, never final assumptions |
 | fiche + ID lists + imports | `fiche_parser.py`, `teaas.py` | crash-level features (INPUT) |
 | deliverable workbook | `review_queue.load_review_sheet`, `ledger.read_ledger`, `qc.recount` | determinations, departure ledger, every tally (INPUT and consistency gate) |
 | results sheets | openpyxl read of the manual cells (`results_sheet.py` addresses) | Items for Discussion text, Additional Information rows (TARGET) |

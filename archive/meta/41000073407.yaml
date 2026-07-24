@@ -13,8 +13,9 @@ division: '4'
 completed: 2019
 companions: []
 split: verify
+assumptions_source: docx-draft
 flags:
-- meta-from-assumptions-docx
+- assumptions-draft-only
 files:
   workbooks:
   - path: Crash Analysis/Section Evaluation Workbook - 04-10-7954 (W-5204D).xlsx

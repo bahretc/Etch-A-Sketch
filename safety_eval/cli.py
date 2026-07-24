@@ -417,7 +417,21 @@ def _cmd_assumptions(args) -> int:
     from .assumptions_email import (default_filename,
                                     generate_assumptions_email,
                                     load_assumptions_yaml)
-    data = load_assumptions_yaml(args.input)
+    if args.master:
+        if not args.order_id:
+            print("--order-id is required with --master")
+            return 2
+        from .master_eval import find_assignment, to_assumptions_data
+        data = to_assumptions_data(find_assignment(args.master,
+                                                   args.order_id))
+        print("Draft from the Master Evaluation Spreadsheet; NCDOT's reply "
+              "in the assignment thread is the authoritative record. "
+              "Target crashes and time periods are left for the engineer.")
+    elif args.input:
+        data = load_assumptions_yaml(args.input)
+    else:
+        print("Provide --input YAML or --master + --order-id")
+        return 2
     _os.makedirs(args.outdir, exist_ok=True)
     out = _os.path.join(args.outdir, default_filename(data))
     generate_assumptions_email(data, out)
@@ -627,9 +641,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     ae = sub.add_parser(
         "assumptions",
-        help="Generate the assumptions email .docx from a YAML (docs/05 team "
-             "template; periods computed from TEAAS date + construction).")
-    ae.add_argument("--input", required=True, help="Assumptions YAML.")
+        help="Generate the assumptions email .docx (docs/05 team template) "
+             "from a YAML, or draft it straight from the NCDOT Master "
+             "Evaluation Spreadsheet row for an order.")
+    ae.add_argument("--input", help="Assumptions YAML.")
+    ae.add_argument("--master",
+                    help="Master Evaluation Spreadsheet .xlsx; drafts the "
+                         "document from the order's row instead of a YAML.")
+    ae.add_argument("--order-id",
+                    help="Evaluation Order Number to pull with --master.")
     ae.add_argument("--outdir", default=".")
     ae.set_defaults(func=_cmd_assumptions)
 

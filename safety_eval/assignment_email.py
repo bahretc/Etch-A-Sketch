@@ -40,14 +40,27 @@ _DATE_RE = re.compile(r"^\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*$")
 _GPS_RE = re.compile(r"(-?\d{1,3}\.\d{3,}),\s*(-?\d{1,3}\.\d{3,})")
 _TIP_RE = re.compile(r"\(TIP\s*#?([^)]+)\)")
 _HEADING_RE = re.compile(r"^\s*Assignment\s*#(\d+)\s*$", re.I)
-# top-level bullet labels, in the order they appear in the template
+# the pre-2026 template heads its single block "Evaluation Assumptions" and
+# names the assignment number only in the surrounding prose or subject
+_ALT_HEADING_RE = re.compile(r"^\s*Evaluation Assumptions\s*:?\s*$", re.I)
+_NUM_NEARBY_RE = re.compile(r"Assignment\s*#(\d+)", re.I)
+# top-level bullet labels, in the order they appear in the templates; longer
+# variants must precede their prefixes (Countermeasures before Countermeasure)
 _LABELS = (
     "Order ID", "Project ID", "Location", "GPS Coordinates",
-    "County/Division", "County / Division", "Signal ID", "Countermeasure",
-    "Total Cost Estimate", "Project Completion", "Time Periods",
-    "Target Crashes", "Project Development Crash Summary",
+    "County/Division", "County / Division", "Signal ID", "Study Type",
+    "Countermeasures", "Countermeasure", "Statement of Problem",
+    "Total Cost Estimate", "Project Cost", "Project Completion",
+    "Time Periods", "Target Crashes",
+    "Project Development Crash Summary", "Project Dev Crash Summary",
     "Additional Notes/Questions", "Additional Notes",
 )
+_LABEL_CANON = {
+    "Countermeasures": "Countermeasure",
+    "Project Cost": "Total Cost Estimate",
+    "Project Dev Crash Summary": "Project Development Crash Summary",
+    "County / Division": "County/Division",
+}
 
 
 # --------------------------------------------------------------------------- #
@@ -114,6 +127,8 @@ class ParsedAssignment:
     order_id: str = ""
     project_id: str = ""                  # "02-20-61721"
     tip: str = ""                         # "SS-6002M"
+    study_type: str = ""                  # pre-2026 template bullet
+    statement_of_problem: str = ""
     location: str = ""
     location_notes: list = field(default_factory=list)
     gps: list = field(default_factory=list)     # [(lat, lon), ...]
@@ -160,10 +175,22 @@ def split_assignments(body: str) -> dict[str, str]:
     """
     lines = clean_text(body).split("\n")
     starts: list[tuple[int, str]] = []
+    alt = 0
     for i, line in enumerate(lines):
-        m = _HEADING_RE.match(line.strip("* \t"))
+        stripped = line.strip("* \t")
+        m = _HEADING_RE.match(stripped)
         if m:
             starts.append((i, m.group(1)))
+            continue
+        if _ALT_HEADING_RE.match(stripped):
+            # number lives in the prose just above, or nowhere
+            num = None
+            for back in range(max(0, i - 12), i):
+                m2 = _NUM_NEARBY_RE.search(lines[back])
+                if m2:
+                    num = m2.group(1)
+            alt += 1
+            starts.append((i, num or f"EA{alt}"))
     boundary = re.compile(
         r"^\s*(?:(?:From|Sent|To|Cc|Subject):\s|--\s*$"
         r"|(?:best regards|thank you|thanks|regards|sincerely)[,.!]?\s*$)",
@@ -190,8 +217,8 @@ def _label_of(line: str) -> tuple[str | None, str]:
     content = stripped.lstrip("*").strip()
     for label in _LABELS:
         if content.lower().startswith(label.lower()):
-            rest = content[len(label):].lstrip(" :–")
-            return label, rest
+            rest = content[len(label):].lstrip(" :–-")
+            return _LABEL_CANON.get(label, label), rest
     return "", content                   # top-level bullet, unknown label
 
 
@@ -279,7 +306,11 @@ def parse_block(number: str, block: str) -> ParsedAssignment:
         pa.division = division.replace("Division", "").strip()
     else:
         pa.county = cd.replace("County", "").strip()
-    pa.signal_id = first("Signal ID") or None
+    signal = first("Signal ID")
+    pa.signal_id = signal if signal and signal.upper() not in ("N/A", "NA") \
+        else None
+    pa.study_type = first("Study Type")
+    pa.statement_of_problem = first("Statement of Problem")
     pa.countermeasure = first("Countermeasure")
     pa.countermeasure_notes = subs("Countermeasure")
     pa.cost = first("Total Cost Estimate")
@@ -309,6 +340,38 @@ def parse_assignment_email(path: str) -> dict[str, ParsedAssignment]:
             for num, block in split_assignments(body).items()}
 
 
+def parse_assumptions_docx(path: str) -> ParsedAssignment:
+    """Parse a generated 'Assumptions Email - ....docx' into one block.
+
+    The archive keeps the drafted assumptions document beside older
+    evaluations whose .msg thread is missing; its bullet paragraphs use the
+    same label vocabulary, so they are rebuilt into pseudo-email lines
+    (list-styled paragraphs indent as sub-bullets) and fed through the same
+    block parser.
+    """
+    import docx
+
+    doc = docx.Document(path)
+    lines = ["Evaluation Assumptions"]
+    for para in doc.paragraphs:
+        text = para.text.strip()
+        if not text or _ALT_HEADING_RE.match(text):
+            continue
+        style = (para.style.name or "") if para.style is not None else ""
+        level = 0
+        if any(ch in style for ch in ("2", "3", "4")):   # List Bullet 2/3...
+            level = 1
+        else:
+            ilvl = para._p.xpath(".//w:numPr/w:ilvl/@w:val")
+            if ilvl and str(ilvl[0]).isdigit() and int(ilvl[0]) > 0:
+                level = 1
+        lines.append(("\t*\t" if level else "*\t") + text)
+    blocks = split_assignments("\n".join(lines))
+    for num, block in blocks.items():
+        return parse_block(num, block)
+    return parse_block("", "\n".join(lines))
+
+
 # --------------------------------------------------------------------------- #
 # conversions (drafts for the engineer to review, docs/07)
 # --------------------------------------------------------------------------- #
@@ -328,8 +391,10 @@ def to_assumptions_dict(pa: ParsedAssignment) -> dict:
         "gps": _gps_text(pa),
         "county": pa.county,
         "division": pa.division,
-        "study_type": ("Intersection Analysis" if pa.intersection_study
-                       else "Strip Analysis"),
+        "study_type": pa.study_type or ("Intersection Analysis"
+                                        if pa.intersection_study
+                                        else "Strip Analysis"),
+        "statement_of_problem": pa.statement_of_problem,
         "location": pa.location,
         "countermeasure": pa.countermeasure_text(),
         "project_cost": pa.cost,

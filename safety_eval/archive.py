@@ -154,7 +154,22 @@ def _email_blocks(emails_dir: str, wo: str) -> dict[str, ParsedAssignment]:
     return out
 
 
-def build_meta(wo: str, inv: dict, emails_dir: str) -> EvaluationMeta:
+def _docx_block(docx_dir: str | None, wo: str) -> ParsedAssignment | None:
+    """Parse the archived 'Assumptions Email - ....docx' when present."""
+    if not docx_dir or not os.path.isdir(docx_dir):
+        return None
+    path = os.path.join(docx_dir, f"{wo}__assumptions.docx")
+    if not os.path.exists(path):
+        return None
+    try:
+        from .assignment_email import parse_assumptions_docx
+        return parse_assumptions_docx(path)
+    except Exception:                                  # noqa: BLE001
+        return None
+
+
+def build_meta(wo: str, inv: dict, emails_dir: str,
+               docx_dir: str | None = None) -> EvaluationMeta:
     meta = EvaluationMeta(wo=wo, title=inv.get("title", ""),
                           folder_ids=inv.get("folder_ids", []))
     title = meta.title
@@ -204,6 +219,12 @@ def build_meta(wo: str, inv: dict, emails_dir: str) -> EvaluationMeta:
         # matches this WO if present under a synthetic key, else none
         pa = next((b for k, b in blocks.items() if k.startswith(f"{wo}#")),
                   None)
+    if pa is None:
+        # fall back to the archived assumptions .docx (52 of the 60 archive
+        # folders carry one even when the .msg thread is missing)
+        pa = _docx_block(docx_dir, wo)
+        if pa is not None:
+            meta.flags.append("meta-from-assumptions-docx")
     if pa is not None:
         meta.countermeasure = pa.countermeasure_text()
         meta.county = pa.county
@@ -213,8 +234,13 @@ def build_meta(wo: str, inv: dict, emails_dir: str) -> EvaluationMeta:
         if not meta.tip and pa.tip:
             meta.tip = pa.tip
         if meta.analysis_type == "unknown":
-            meta.analysis_type = ("intersection" if pa.intersection_study
-                                  else "section")
+            if pa.study_type:
+                meta.analysis_type = ("intersection"
+                                      if "intersection" in pa.study_type.lower()
+                                      else "section")
+            else:
+                meta.analysis_type = ("intersection" if pa.intersection_study
+                                      else "section")
         m = _YEAR_RE.search(pa.completion or "")
         if m:
             meta.completed = int(m.group(1))
@@ -333,12 +359,12 @@ def assign_split(metas: dict[str, EvaluationMeta],
 # driver
 # --------------------------------------------------------------------------- #
 def build_manifest(inventory_dir: str, emails_dir: str,
-                   output_dir: str) -> dict:
+                   output_dir: str, docx_dir: str | None = None) -> dict:
     """Build meta records + manifest.jsonl; returns a summary dict."""
     import yaml
 
     inventories = load_inventories(inventory_dir)
-    metas = {wo: build_meta(wo, inv, emails_dir)
+    metas = {wo: build_meta(wo, inv, emails_dir, docx_dir=docx_dir)
              for wo, inv in inventories.items()}
     clusters = companion_clusters(metas, emails_dir)
     assign_split(metas, clusters)

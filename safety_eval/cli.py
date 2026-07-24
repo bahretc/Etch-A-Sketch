@@ -341,7 +341,8 @@ def _cmd_parse_email(args) -> int:
 
 def _cmd_archive_manifest(args) -> int:
     from .archive import build_manifest
-    summary = build_manifest(args.inventory, args.emails, args.output)
+    summary = build_manifest(args.inventory, args.emails, args.output,
+                             docx_dir=args.docx)
     print(f"{summary['evaluations']} evaluation(s) in "
           f"{summary['clusters']} companion cluster(s) -> "
           f"{summary['manifest']}")
@@ -588,6 +589,10 @@ def build_parser() -> argparse.ArgumentParser:
                          "(<WO>__<name>.msg).")
     am.add_argument("--output", required=True,
                     help="Output directory (manifest.jsonl + meta/*.yaml).")
+    am.add_argument("--docx",
+                    help="Directory of archived assumptions .docx files "
+                         "(<WO>__assumptions.docx), the fallback when a "
+                         "folder has no .msg thread.")
     am.set_defaults(func=_cmd_archive_manifest)
 
     qc = sub.add_parser(

@@ -4,6 +4,8 @@ flattened Time Periods table, safelinks-wrapped URLs, quoted older copies of
 the same blocks, and a signature after the last block)."""
 from datetime import date
 
+import pytest
+
 from safety_eval.assignment_email import (clean_text, parse_assignment_email,
                                           parse_block, split_assignments,
                                           to_assignment_dict,
@@ -201,6 +203,41 @@ def test_conversions_feed_existing_loaders(tmp_path):
     assert a22["study_end"] == "2026-04-30"
     assert a22["construction_start"] == "2021-05-01"
     assert not a22["intersection_study"]
+
+
+def test_assumptions_docx_round_trip(tmp_path):
+    """The archived 'Assumptions Email - ....docx' (written by our own
+    generator, the team template) parses back into a block."""
+    docx = pytest.importorskip("docx")  # noqa: F841
+
+    from safety_eval.assignment_email import parse_assumptions_docx
+    from safety_eval.assumptions_email import (AssumptionsData,
+                                               generate_assumptions_email)
+
+    data = AssumptionsData(
+        order_id="41000069597", project_id="08-17-49850 (TIP #SS-4908BT)",
+        gps="35.509870, -79.303193", county="Lee", division="8",
+        study_type="Intersection Analysis with a 150' Y-line",
+        location="NC 42 at SR 1107 (Plank Rd)",
+        countermeasure="Install an all way stop.",
+        statement_of_problem="Angle type crashes are occurring.",
+        project_cost="$11,000", project_completion="1/25/2018",
+        target_crashes="Frontal impact crashes (Angle, LTSR, LTDR)",
+        project_dev_summary="27 total crashes from 5/1/2010 to 4/30/2020",
+    )
+    path = str(tmp_path / "Assumptions Email - test.docx")
+    generate_assumptions_email(data, path)
+
+    pa = parse_assumptions_docx(path)
+    assert pa.order_id == "41000069597"
+    assert pa.tip == "SS-4908BT"
+    assert pa.county == "Lee" and pa.division == "8"
+    assert pa.study_type.startswith("Intersection Analysis")
+    assert pa.intersection_study
+    assert pa.countermeasure == "Install an all way stop."
+    assert pa.cost == "$11,000"
+    assert pa.completion == "1/25/2018"
+    assert pa.target_crashes.startswith("Frontal impact")
 
 
 def test_eml_end_to_end(tmp_path):

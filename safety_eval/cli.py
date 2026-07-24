@@ -357,6 +357,42 @@ def _cmd_archive_manifest(args) -> int:
     return 0
 
 
+def _cmd_bench(args) -> int:
+    from . import bench
+
+    def _progress(done, total):
+        print(f"  {done}/{total}", flush=True)
+
+    if args.stage == "extract":
+        out = bench.extract_datasets(args.workbooks, args.manifest,
+                                     args.outdir, progress=_progress)
+        print(f"train {out['train']} / verify {out['verify']} records")
+        for p in out["problems"]:
+            print(f"  ! {p}")
+        return 0
+    if args.stage == "draft":
+        out = bench.run_drafts(args.dataset, args.train, args.output,
+                               model=args.model, k=args.exemplars,
+                               mode=args.mode, rehearsal=args.rehearsal,
+                               limit=args.limit, progress=_progress)
+        print(f"drafted {out['drafted']} ({out['mode']}, {out['model']})")
+        for wo, err in out["errors"].items():
+            print(f"  ! {wo}: {err}")
+        return 0
+    if args.stage == "score":
+        report = bench.score_run(args.drafts, args.dataset, args.train,
+                                 args.output)
+        s = report["summary"]
+        print(f"{s['evaluations']} evaluation(s) | median similarity "
+              f"{s['median_similarity']} (p25 {s['p25']} / p75 {s['p75']}) "
+              f"| clean-gate rate {s['clean_gate_rate']}")
+        for k, v in s["per_stratum_median"].items():
+            print(f"  {k}: {v}")
+        return 0
+    print(f"Unknown stage {args.stage!r}")
+    return 2
+
+
 def _cmd_qc(args) -> int:
     from .qc import recount
     rep = recount(args.workbook, treatment=args.treatment)
@@ -608,6 +644,26 @@ def build_parser() -> argparse.ArgumentParser:
                          "(<WO>__assumptions.docx), the fallback when a "
                          "folder has no .msg thread.")
     am.set_defaults(func=_cmd_archive_manifest)
+
+    be = sub.add_parser(
+        "bench",
+        help="Report-drafting benchmark: extract datasets from archived "
+             "workbooks, draft with train-half exemplars, score vs the "
+             "delivered text (docs/10; verify half measured, never mined).")
+    be.add_argument("stage", choices=["extract", "draft", "score"])
+    be.add_argument("--workbooks", help="extract: downloaded workbook dir.")
+    be.add_argument("--manifest", default="archive/manifest.jsonl")
+    be.add_argument("--outdir", default="datasets", help="extract output dir.")
+    be.add_argument("--dataset", help="draft/score: records .jsonl.")
+    be.add_argument("--train", help="train-half records .jsonl (exemplars).")
+    be.add_argument("--output", help="draft: drafts.jsonl; score: report.json.")
+    be.add_argument("--model", default="claude-opus-4-8")
+    be.add_argument("--exemplars", type=int, default=3)
+    be.add_argument("--mode", choices=["batch", "sync"], default="batch")
+    be.add_argument("--rehearsal", action="store_true",
+                    help="Allow drafting the train half (tuning runs).")
+    be.add_argument("--limit", type=int)
+    be.set_defaults(func=_cmd_bench)
 
     qc = sub.add_parser(
         "qc",

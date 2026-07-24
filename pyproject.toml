@@ -11,6 +11,8 @@ requires-python = ">=3.10"
 dependencies = [
     "PyYAML>=6.0",
     "openpyxl>=3.1",
+    # Outlook .msg assignment emails (pure-python OLE reader, no transitive deps)
+    "olefile>=0.46",
 ]
 
 [project.optional-dependencies]

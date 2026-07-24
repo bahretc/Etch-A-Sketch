@@ -302,6 +302,43 @@ def _cmd_binder_get(args) -> int:
     return 0
 
 
+def _cmd_parse_email(args) -> int:
+    import os as _os
+
+    import yaml
+
+    from .assignment_email import (parse_assignment_email, to_assignment_dict,
+                                   to_assumptions_dict)
+    parsed = parse_assignment_email(args.input)
+    if not parsed:
+        print(f"No 'Assignment #N' blocks found in {args.input}")
+        return 2
+    _os.makedirs(args.outdir, exist_ok=True)
+    for num, pa in sorted(parsed.items(), key=lambda kv: int(kv[0])):
+        if args.assignment and num != args.assignment:
+            continue
+        for kind, build in (("assumptions", to_assumptions_dict),
+                            ("assignment", to_assignment_dict)):
+            out = _os.path.join(args.outdir, f"assignment_{num}_{kind}.yaml")
+            with open(out, "w", encoding="utf-8") as fh:
+                fh.write(f"# Draft parsed from {_os.path.basename(args.input)}"
+                         f" (Assignment #{num}); review before use.\n")
+                yaml.safe_dump(build(pa), fh, sort_keys=False,
+                               allow_unicode=True)
+            print(f"Wrote {out}")
+        periods = ", ".join(f"{k} {a} - {b}"
+                            for k, (a, b) in pa.periods.items())
+        print(f"  #{num}: {pa.order_id} {pa.project_id}"
+              + (f" (TIP #{pa.tip})" if pa.tip else "")
+              + f" | {pa.county} Co / Div {pa.division}"
+              + f" | {'intersection' if pa.intersection_study else 'section'}"
+              + (f" | {periods}" if periods else ""))
+        if pa.notes:
+            print(f"     {len(pa.notes)} note(s)/question(s) carried through "
+                  "verbatim; read them before building anything.")
+    return 0
+
+
 def _cmd_qc(args) -> int:
     from .qc import recount
     rep = recount(args.workbook, treatment=args.treatment)
@@ -511,6 +548,16 @@ def build_parser() -> argparse.ArgumentParser:
     bg.add_argument("--no-keep-zip", action="store_true",
                     help="Redact ZIP codes too (kept by default).")
     bg.set_defaults(func=_cmd_binder_get)
+
+    pe = sub.add_parser(
+        "parse-email",
+        help="Parse an assignment/assumptions email (.msg/.eml/.txt) into "
+             "draft assumptions and assignment YAMLs, one pair per "
+             "'Assignment #N' block (newest copy in the thread wins).")
+    pe.add_argument("--input", required=True, help="Email file (.msg/.eml).")
+    pe.add_argument("--outdir", default="output")
+    pe.add_argument("--assignment", help="Only this assignment number.")
+    pe.set_defaults(func=_cmd_parse_email)
 
     qc = sub.add_parser(
         "qc",

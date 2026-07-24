@@ -76,6 +76,10 @@ safety-eval binder-index --binder binder_part1.pdf binder_part2.pdf \
 safety-eval binder-get --index binder_index.json --crash-id 105904161 \
   --output 105904161_redacted.pdf
 
+# parse the assignment/assumptions email thread directly (.msg/.eml):
+# one draft assumptions + assignment YAML pair per 'Assignment #N' block
+safety-eval parse-email --input "Assignment 22 & 23.msg" --outdir parsed
+
 # lane departure CL/R ledger: change one crash's call on EVERY sheet at once
 safety-eval ledger --workbook eval.xlsx --treatment dual          # report
 safety-eval ledger --workbook eval.xlsx --crash-id 105274289 \
@@ -130,6 +134,7 @@ assumptions email — it is the auditable record of study scope. See
 | AADT lookup | `aadt_arcgis.py` | Queries the feature services behind the NCDOT AADT web map (stations + segments); schema-drift tolerant; CSV export |
 | PII redaction | `redact.py` | Blacks out names, addresses, DOB, phone, DL numbers, VINs and plates on uploaded crash reports; keeps ZIPs and crash IDs; image-only output so no text layer can leak |
 | Binder index | `binder.py` | OCR page index of scanned DMV-349 binders (crash-ID header box, tesseract psm 6, top-right crop); continuation pages group under the preceding report; per-crash retrieval is redacted before anyone sees it |
+| Email parsing | `assignment_email.py` | Assignment/assumptions email thread (.msg via olefile property streams, .eml via stdlib) to draft assumptions + assignment YAMLs; newest copy of each Assignment #N block wins; notes/questions verbatim |
 | CL/R ledger | `ledger.py` | Lane departure ledger (docs/03): Centerline/Right calls with the first-harmful-event rule, per-treatment correctability (dual = either line), standing exemptions, side-street run-through exclusion; any change propagates to every sheet the value appears on (Filtered Fiche, Before/After, Binned Crashes) in one template-preserving patch |
 | QC recounts | `qc.py` | Pre-delivery recount: Filtered Fiche vs Binned Crashes vs Before/After crash-ID reconciliation, ledger cross-sheet consistency, and "N crashes" text quotes checked against computed tallies; mismatches block export |
 | Review queue | `review_queue.py` | Fiche review workflow (docs/07 Phase 3): header-detected Filtered Fiche read-back, pre-screen ordering by DetailedFiche coordinates (supplied with the Original Fiche; never taken from the reports, which is what the review checks) or milepost distance, docs/03 status + comment validation (RE rejected for intersections, RE requires New MP), animal-crash skip, JSONL audit trail, per-cell template-preserving write-back |
@@ -267,7 +272,14 @@ pytest -q
       43 construction + 269 after; ledger consistent across all four
       sheets), completing the docs/07 Phase 3 review-assistance scope.
 - [ ] EB before/after; warrant screening.
-- [ ] Parse the assignment/assumptions email (`.msg`/`.eml`) directly.
+- [x] Parse the assignment/assumptions email (`.msg`/`.eml`) directly
+      (`safety-eval parse-email`): one Order ID/Project ID/location/GPS/
+      periods/targets/notes block per assignment, newest copy in the
+      thread wins, notes and questions carried through verbatim.
+      Validated on the real SS-6002M/SS-6002AS thread.
+- [x] docs/10-evaluation-archive.md: how to structure the past-evaluation
+      archive (layout, manifest, PII rules, 50/50 train/verify split)
+      for the future report-drafting layer.
 - [ ] Empirical-Bayes (EB) before/after in addition to the naive method.
 - [ ] 2021 HSIP warrant screening; Streamlit shell per docs/07.
 - [ ] Optional Google Drive read/write integration.

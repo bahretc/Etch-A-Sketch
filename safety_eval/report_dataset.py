@@ -27,6 +27,20 @@ from dataclasses import dataclass, field
 
 RESULTS_SHEETS = ("1 page results - 1 Target", "1 page results - 2 Targets")
 
+# Some delivered workbooks carry the results on a renamed or variant
+# one-pager instead of (or alongside) the standard pair - observed in the
+# archive: "Results - 1 Target"/"Results - 2 Targets" (41000075105),
+# "Unequal time periods - 1 Target" (41000064924), "Precip. Data Evals -
+# 1 Target" (41000075594). Anything ending "- N Target(s)" is a results
+# one-pager; "Typical Target Crash Types" and the like do not match.
+_RESULTS_SHEET_RE = re.compile(r"-\s*\d\s*Targets?\s*$", re.I)
+
+
+def results_sheet_names(sheetnames) -> list[str]:
+    """The results one-pager sheets among ``sheetnames`` (template pair
+    plus any variant), in workbook order."""
+    return [s for s in sheetnames if _RESULTS_SHEET_RE.search(s)]
+
 _ANCHOR_RE = re.compile(
     r"<xdr:(twoCellAnchor|oneCellAnchor)[^>]*>(.*?)</xdr:\1>", re.S)
 _FROM_RE = re.compile(
@@ -112,15 +126,18 @@ def drawing_inventory(xlsx_path: str,
     return items
 
 
-def results_text(xlsx_path: str, sheets=RESULTS_SHEETS) -> dict[str, dict]:
+def results_text(xlsx_path: str, sheets=None) -> dict[str, dict]:
     """{sheet: {cell: text}} for every manual string cell of the results
     sheets (cached values, so formula-driven cells that display text are
-    included with the text the engineer saw)."""
+    included with the text the engineer saw). ``sheets=None`` detects the
+    results one-pagers by name, variants included."""
     import openpyxl
 
     wb = openpyxl.load_workbook(xlsx_path, read_only=True, data_only=True)
     out: dict[str, dict] = {}
     try:
+        if sheets is None:
+            sheets = results_sheet_names(wb.sheetnames)
         for sheet in sheets:
             if sheet not in wb.sheetnames:
                 continue
@@ -157,8 +174,11 @@ def extract_record(xlsx_path: str, meta: dict | None = None,
             ".msg thread (authoritative); "
             f"got source={meta.get('assumptions_source')!r} (docs/10)")
 
+    from .xlsx_patch import sheet_files
+
     qc = recount(xlsx_path, treatment=treatment)
     ledger = read_ledger(xlsx_path)
+    sheets = results_sheet_names(list(sheet_files(xlsx_path)))
     record = {
         "wo": meta.get("wo", ""),
         "split": meta.get("split", ""),
@@ -171,10 +191,10 @@ def extract_record(xlsx_path: str, meta: dict | None = None,
             "assumptions": assumptions,
         },
         "targets": {
-            "results_text": results_text(xlsx_path),
+            "results_text": results_text(xlsx_path, sheets=sheets),
             "drawings": {
                 sheet: [vars(i) for i in drawing_inventory(xlsx_path, sheet)]
-                for sheet in RESULTS_SHEETS
+                for sheet in sheets
                 if drawing_inventory(xlsx_path, sheet)
             },
         },

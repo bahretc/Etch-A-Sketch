@@ -29,12 +29,21 @@ from . import draft as D
 _WB_NAME_RE = re.compile(r"^(?P<wo>\d{10,11})__(?P<name>.+)$")
 
 
+def _is_eval_workbook(fn: str) -> bool:
+    """Deliverable evaluation workbooks only; folders also hold fiche
+    reports and other .xlsm/.xlsx siblings that must never be extracted
+    as an evaluation's results."""
+    return "evaluation workbook" in fn.lower()
+
+
 def _primary_workbooks(workbook_dir: str) -> dict[str, str]:
     """wo -> path of the largest workbook part for that evaluation."""
     best: dict[str, tuple[int, str]] = {}
     for fn in os.listdir(workbook_dir):
         m = _WB_NAME_RE.match(fn)
         if not m or not fn.lower().endswith((".xlsx", ".xlsm")):
+            continue
+        if not _is_eval_workbook(fn):
             continue
         path = os.path.join(workbook_dir, fn)
         size = os.path.getsize(path)
@@ -68,7 +77,7 @@ def extract_datasets(workbook_dir: str, manifest_path: str,
             continue
         rec["companions"] = meta.get("companions", [])
         parts = [f for f in os.listdir(workbook_dir)
-                 if f.startswith(wo + "__")]
+                 if f.startswith(wo + "__") and _is_eval_workbook(f)]
         if len(parts) > 1:
             rec["note"] = (f"primary of {len(parts)} workbook parts "
                            f"({os.path.basename(path)})")

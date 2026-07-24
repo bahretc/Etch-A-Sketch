@@ -5,8 +5,9 @@ these tests cover the same paths on a synthetic workbook plus the
 provenance rule."""
 import pytest
 
-from safety_eval.report_dataset import (extract_record, results_text,
-                                        used_results_sheet, write_dataset)
+from safety_eval.report_dataset import (extract_record, results_sheet_names,
+                                        results_text, used_results_sheet,
+                                        write_dataset)
 
 
 @pytest.fixture()
@@ -31,6 +32,36 @@ def workbook(tmp_path):
     path = str(tmp_path / "eval.xlsx")
     wb.save(path)
     return path
+
+
+def test_results_sheet_names_covers_archive_variants():
+    """Real archive workbooks deliver results on renamed one-pagers
+    (41000075105, 41000064924, 41000075594); anything ending in
+    '- N Target(s)' is a results sheet, lookalikes are not."""
+    names = ["Step-by-Step Instructions", "Typical Target Crash Types",
+             "Filtered Fiche", "1 page results - 1 Target",
+             "1 page results - 2 Targets", "Results - 1 Target",
+             "Results - 2 Targets", "Unequal time periods - 1 Target",
+             "Precip. Data Evals - 1 Target"]
+    picked = results_sheet_names(names)
+    assert picked == ["1 page results - 1 Target",
+                      "1 page results - 2 Targets", "Results - 1 Target",
+                      "Results - 2 Targets", "Unequal time periods - 1 Target",
+                      "Precip. Data Evals - 1 Target"]
+
+
+def test_variant_results_sheet_extracted(workbook, tmp_path):
+    """A workbook whose only prose lives on a variant one-pager must not
+    extract empty targets (the 41000075105 case)."""
+    import openpyxl
+
+    wb = openpyxl.load_workbook(workbook)
+    wb["1 page results - 1 Target"].title = "Results - 1 Target"
+    path = str(tmp_path / "variant.xlsx")
+    wb.save(path)
+    rec = extract_record(path, {"wo": "X", "split": "train"})
+    assert "Results - 1 Target" in rec["targets"]["results_text"]
+    assert used_results_sheet(rec) == "Results - 1 Target"
 
 
 def test_results_text_and_used_sheet(workbook):

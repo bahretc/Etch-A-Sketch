@@ -339,6 +339,23 @@ def _cmd_parse_email(args) -> int:
     return 0
 
 
+def _cmd_archive_manifest(args) -> int:
+    from .archive import build_manifest
+    summary = build_manifest(args.inventory, args.emails, args.output)
+    print(f"{summary['evaluations']} evaluation(s) in "
+          f"{summary['clusters']} companion cluster(s) -> "
+          f"{summary['manifest']}")
+    for cluster in summary["multi_wo_clusters"]:
+        print(f"  companions kept together: {', '.join(cluster)}")
+    print(f"  split: {summary['split']}")
+    for key, halves in sorted(summary["strata"].items()):
+        print(f"  {key}: train {halves['train']} / verify {halves['verify']}")
+    for flag, wos in summary["flags"].items():
+        print(f"  ! {flag}: {len(wos)} ({', '.join(wos[:6])}"
+              + (" ..." if len(wos) > 6 else "") + ")")
+    return 0
+
+
 def _cmd_qc(args) -> int:
     from .qc import recount
     rep = recount(args.workbook, treatment=args.treatment)
@@ -558,6 +575,20 @@ def build_parser() -> argparse.ArgumentParser:
     pe.add_argument("--outdir", default="output")
     pe.add_argument("--assignment", help="Only this assignment number.")
     pe.set_defaults(func=_cmd_parse_email)
+
+    am = sub.add_parser(
+        "archive-manifest",
+        help="Build the evaluation-archive manifest (docs/10): meta records, "
+             "companion clustering, deterministic stratified 50/50 "
+             "train/verify split, missing-piece flags.")
+    am.add_argument("--inventory", required=True,
+                    help="Directory of per-WO inventory JSONs.")
+    am.add_argument("--emails", required=True,
+                    help="Directory of downloaded assignment emails "
+                         "(<WO>__<name>.msg).")
+    am.add_argument("--output", required=True,
+                    help="Output directory (manifest.jsonl + meta/*.yaml).")
+    am.set_defaults(func=_cmd_archive_manifest)
 
     qc = sub.add_parser(
         "qc",

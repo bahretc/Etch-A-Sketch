@@ -83,6 +83,40 @@ _LABELS = {
     "plate": ("plate",),
 }
 _LABEL_WORDS = {w for group in _LABELS.values() for w in group}
+#: captions appear in the plural on the DMV-349 persons table ("Names and
+#: Addresses for All Persons"); matching only the singular skipped that whole
+#: table, leaving names and street addresses in the clear (found on a real
+#: report, 2026-07).
+_LABEL_WORDS |= {w + "s" for w in _LABEL_WORDS}
+_LABEL_WORDS |= {w + "es" for w in ("address",)}
+#: the persons table lists one name + street address per row for several rows,
+#: far below its caption, so the single "value sits on the next line" rule can
+#: never reach them; rows are covered as a band up to the next caption.
+_PERSONS_BAND_MAX = 14
+_PERSONS_END_WORDS = {"injured", "taken", "ems", "treatment", "facility",
+                      "investigating", "officer", "signature"}
+
+
+def _label_key(token: str) -> str:
+    """Normalized token, singularized so plural captions match.
+
+    Both plural forms occur on the DMV-349 persons table: 'Names' (+s) and
+    'Addresses' (+es).
+    """
+    t = _norm(token)
+    if len(t) > 4 and t.endswith("es") and t[:-2] in _LABEL_WORDS:
+        return t[:-2]
+    if len(t) > 3 and t.endswith("s") and t[:-1] in _LABEL_WORDS:
+        return t[:-1]
+    return t
+
+
+def _is_persons_header(norm_tokens: list[str]) -> bool:
+    """The 'Names and Addresses for All Persons' table caption."""
+    s = set(norm_tokens)
+    has_name = bool(s & {"name", "names"})
+    has_addr = bool(s & {"address", "addresses"})
+    return has_name and has_addr and bool(s & {"persons", "person", "all"})
 
 _ZIP_RE = re.compile(r"^\d{5}(?:-\d{4})?$")
 # full numbers, and the 7-digit local form scans often show when the area
@@ -187,10 +221,24 @@ def plan_redactions(words: list[Word], keep_zip: bool = True,
     planned: list[tuple[list[Word], str]] = []
     redact_next_line_of: dict[tuple, str] = {}
     address_continues_from: int | None = None
+    persons_band_until: int = -1
 
     for idx, line in enumerate(lines):
         tokens = [w.text for w in line]
         norm = [_norm(t) for t in tokens]
+
+        # persons table: every row under the caption carries a name and a
+        # street address, so cover the band until the next form caption
+        if idx <= persons_band_until:
+            if set(norm) & _PERSONS_END_WORDS:
+                persons_band_until = -1
+            elif any(len(t) >= 3 and any(c.isalpha() for c in t)
+                     for t in tokens):
+                planned.append((line, "persons-table"))
+                continue
+        if _is_persons_header(norm):
+            persons_band_until = idx + _PERSONS_BAND_MAX
+            continue
 
         # city/state/zip continuation line directly under an address line
         if address_continues_from == idx and _looks_like_city_line(tokens):
@@ -210,9 +258,10 @@ def plan_redactions(words: list[Word], keep_zip: bool = True,
 
         label_pos = None
         label_kind = None
-        for i, tok in enumerate(norm):
+        for i, tok in enumerate(tokens):
+            key = _label_key(tok)
             for kind, keys in _LABELS.items():
-                if tok in keys:
+                if key in keys:
                     label_pos, label_kind = i, kind
                     break
             if label_pos is not None:
@@ -400,3 +449,85 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
         first.save(output_path, format="PDF", save_all=True,
                    append_images=rest, resolution=dpi)
     return report
+
+
+# --------------------------------------------------------------------------- #
+# post-redaction verification (fail closed)
+# --------------------------------------------------------------------------- #
+@dataclass
+class ResidualFinding:
+    """A PII-looking region that SURVIVED redaction. Carries no text: the
+    whole point is not to copy the value anywhere."""
+    page: int
+    reason: str
+    left: int
+    top: int
+    right: int
+    bottom: int
+
+
+def residual_pii(image_paths: list[str], keep_zip: bool = True
+                 ) -> list[ResidualFinding]:
+    """Re-OCR redacted page images and report PII that is still legible.
+
+    Redaction is OCR-driven, so a caption the OCR misses leaves its value in
+    the clear (observed on a real DMV-349: the plural 'Names and Addresses'
+    caption). This is the check that catches that class of miss before a page
+    reaches a human or a model. Findings carry coordinates and a reason only,
+    never the offending text.
+    """
+    out: list[ResidualFinding] = []
+    for page_no, path in enumerate(image_paths, 1):
+        words = ocr_words(path, page=page_no)
+        for group, reason in _residual_groups(words, keep_zip):
+            left = min(w.left for w in group)
+            top = min(w.top for w in group)
+            right = max(w.left + w.width for w in group)
+            bottom = max(w.top + w.height for w in group)
+            out.append(ResidualFinding(page_no, reason, left, top,
+                                       right, bottom))
+    return out
+
+
+def _residual_groups(words: list[Word], keep_zip: bool):
+    """Lines of a redacted page that still look like PII."""
+    for line in _visual_rows(words):
+        tokens = [w.text for w in line]
+        norm = [_norm(t) for t in tokens]
+        if _line_has_street_address(tokens):
+            yield line, "street-address survived"
+            continue
+        if _looks_like_city_line(tokens) and not keep_zip:
+            yield line, "city/state/zip survived"
+            continue
+        for w in line:
+            t = w.text.strip()
+            if _PHONE_RE.match(t):
+                yield [w], "phone survived"
+            elif _VIN_RE.match(t) and not t.isdigit():
+                yield [w], "vin survived"
+        # a date sitting next to a date-of-birth caption
+        if set(norm) & set(_LABELS["dob"]):
+            for w in line:
+                if _DATE_RE.match(w.text.strip()):
+                    yield [w], "date beside a DOB caption survived"
+
+
+def verify_redaction(image_paths: list[str], keep_zip: bool = True) -> None:
+    """Raise if any PII survived redaction (fail closed).
+
+    Call before a redacted page is shown to a reviewer or sent to a model.
+    """
+    findings = residual_pii(image_paths, keep_zip=keep_zip)
+    if findings:
+        counts: dict[str, int] = {}
+        for f in findings:
+            counts[f.reason] = counts.get(f.reason, 0) + 1
+        raise RedactionIncomplete(
+            "Redaction verification failed; PII is still legible: "
+            + ", ".join(f"{k} x{v}" for k, v in sorted(counts.items()))
+            + ". Review the page manually; do not release it.")
+
+
+class RedactionIncomplete(RuntimeError):
+    """Raised when a redacted page still shows PII."""

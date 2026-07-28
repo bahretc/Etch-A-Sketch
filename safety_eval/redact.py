@@ -26,6 +26,7 @@ reasons per page, never the PII text itself) is returned for that review.
 from __future__ import annotations
 
 import csv
+import glob
 import io
 import os
 import re
@@ -93,6 +94,13 @@ _LABEL_WORDS |= {w + "es" for w in ("address",)}
 #: far below its caption, so the single "value sits on the next line" rule can
 #: never reach them; rows are covered as a band up to the next caption.
 _PERSONS_BAND_MAX = 14
+#: OCR reads a page differently at different rasterizations, and a viewer may
+#: render the output smaller than it was redacted at, so each convergence pass
+#: re-reads the redacted page at several scales and covers the union.
+_RECHECK_SCALES = (1.0, 0.75, 0.5)
+#: dpi the shipped PDF is re-rendered at for the output probe; matches what
+#: reviewers and ``binder.render_crash_pages`` use.
+_VERIFY_DPI = 150
 _PERSONS_END_WORDS = {"injured", "taken", "ems", "treatment", "facility",
                       "investigating", "officer", "signature"}
 
@@ -416,9 +424,40 @@ class RedactionReport:
     warnings: list = field(default_factory=list)
 
 
+def _open_image(path: str):
+    from PIL import Image
+    return Image.open(path)
+
+
+def _groups_to_boxes(groups, keep_zip: bool, pad: int = 3) -> list[Redaction]:
+    """Word groups -> boxes, preserving ZIPs and crash IDs (as planning does)."""
+    out: list[Redaction] = []
+    for group, reason in groups:
+        for seg in _split_keeping_zip(group, keep_zip):
+            seg = [w for w in seg if not _CRASH_ID_RE.match(w.text.strip())]
+            if not seg:
+                continue
+            out.append(Redaction(
+                page=seg[0].page,
+                left=max(0, min(w.left for w in seg) - pad),
+                top=max(0, min(w.top for w in seg) - pad),
+                right=max(w.right for w in seg) + pad,
+                bottom=max(w.bottom for w in seg) + pad,
+                reason=reason,
+            ))
+    return out
+
+
 def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
-                dpi: int = 200) -> RedactionReport:
+                dpi: int = 200, passes: int = 3) -> RedactionReport:
     """Redact a crash-report file into an image-only PDF.
+
+    One pass leaves whatever that pass's OCR did not resolve, and OCR results
+    change with the raster scale. ``passes`` therefore re-reads the REDACTED
+    page (at several scales) and finally the written PDF rendered the way a
+    consumer renders it, covering anything the verifier can still read. The
+    planner and the verifier share their predicates, so what the verifier can
+    find, the redactor covers.
 
     Returns an audit report (counts and reasons only; the PII itself is never
     echoed anywhere).
@@ -444,10 +483,75 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
                                fill="black")
                 report.boxes += 1
                 report.by_reason[b.reason] = report.by_reason.get(b.reason, 0) + 1
+            # convergence: cover what the verifier can still read, probing
+            # several scales because OCR is scale sensitive
+            for extra in range(max(0, passes - 1)):
+                again: list[Redaction] = []
+                for scale in _RECHECK_SCALES:
+                    probe = img if scale == 1.0 else img.resize(
+                        (max(1, int(img.width * scale)),
+                         max(1, int(img.height * scale))))
+                    rp = os.path.join(tmp, f"recheck-{i}-{extra}-{scale}.png")
+                    probe.save(rp)
+                    for b in _groups_to_boxes(
+                            _residual_groups(ocr_words(rp, page=i), keep_zip),
+                            keep_zip):
+                        again.append(b if scale == 1.0 else Redaction(
+                            page=b.page, left=int(b.left / scale),
+                            top=int(b.top / scale), right=int(b.right / scale),
+                            bottom=int(b.bottom / scale), reason=b.reason))
+                if not again:
+                    break
+                draw = ImageDraw.Draw(img)
+                for b in again:
+                    draw.rectangle([b.left, b.top, b.right, b.bottom],
+                                   fill="black")
+                    report.boxes += 1
+                    key = f"residual:{b.reason}"
+                    report.by_reason[key] = report.by_reason.get(key, 0) + 1
             out_pages.append(img)
-        first, rest = out_pages[0], out_pages[1:]
-        first.save(output_path, format="PDF", save_all=True,
-                   append_images=rest, resolution=dpi)
+
+        def _write() -> None:
+            first, rest = out_pages[0], out_pages[1:]
+            first.save(output_path, format="PDF", save_all=True,
+                       append_images=rest, resolution=dpi)
+
+        _write()
+        # final closure: rasterizing the PDF is not the same as resizing in
+        # memory, so probe the artifact we actually ship
+        for _ in range(max(0, passes - 1)):
+            probe_dir = os.path.join(tmp, "probe")
+            shutil.rmtree(probe_dir, ignore_errors=True)
+            os.makedirs(probe_dir, exist_ok=True)
+            try:
+                subprocess.run([_require("pdftoppm"), "-png", "-r",
+                                str(_VERIFY_DPI), output_path,
+                                os.path.join(probe_dir, "v")],
+                               check=True, capture_output=True, timeout=600)
+            except (subprocess.SubprocessError, RuntimeError, OSError):
+                break
+            renders = sorted(glob.glob(os.path.join(probe_dir, "v*.png")))
+            found = residual_pii(renders, keep_zip=keep_zip)
+            if not found:
+                break
+            for f in found:
+                if not 1 <= f.page <= len(out_pages):
+                    continue
+                img = out_pages[f.page - 1]
+                with _open_image(renders[f.page - 1]) as r:
+                    sx, sy = img.width / r.width, img.height / r.height
+                ImageDraw.Draw(img).rectangle(
+                    [int(f.left * sx), int(f.top * sy),
+                     int(f.right * sx), int(f.bottom * sy)], fill="black")
+                report.boxes += 1
+                key = f"output-probe:{f.reason}"
+                report.by_reason[key] = report.by_reason.get(key, 0) + 1
+            _write()
+        else:
+            if passes > 1:
+                report.warnings.append(
+                    "output still shows PII after the probe passes; verify "
+                    "manually before release")
     return report
 
 

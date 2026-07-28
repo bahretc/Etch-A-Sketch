@@ -489,6 +489,56 @@ def _cmd_doctor(args) -> int:
     return 0
 
 
+def _cmd_review_assist(args) -> int:
+    import json
+
+    from . import review_assist as ra
+    from . import review_queue as rq
+    from .binder import BinderIndex, render_crash_pages
+
+    review = rq.load_review_sheet(args.workbook, args.sheet)
+    idx = BinderIndex.load(args.index)
+    coords = rq.parse_coordinates(args.coords) if args.coords else None
+    point = None
+    if args.study_point:
+        lat, lon = (float(x) for x in args.study_point.split(","))
+        point = (lat, lon)
+    mp_range = None
+    if args.mp_range:
+        lo, hi = (float(x) for x in args.mp_range.split(":"))
+        mp_range = (lo, hi)
+    queue = rq.build_queue(review, binder_index=idx, coords=coords,
+                           study_point=point, mp_range=mp_range)
+    ctx = ra.StudyContext(name=args.study_name, analysis_type=args.analysis_type,
+                          study_point=point, mp_range=mp_range,
+                          target_definition=args.target)
+
+    import anthropic
+    client = anthropic.Anthropic()
+    n = 0
+    with open(args.output, "w", encoding="utf-8") as fh:
+        for item in queue:
+            if args.limit and n >= args.limit:
+                break
+            row = item.row
+            pages = (render_crash_pages(idx, row.crash_id, dpi=idx.dpi)
+                     if item.has_report else [])
+            ctx.prescreen_ft = item.dist_ft
+            res = ra.assist(row, ctx, pages, mode=args.mode, client=client,
+                            redacted=True, model=args.model)
+            fh.write(json.dumps(vars(res)) + "\n")
+            n += 1
+            label = res.proposed_status or ("prepared" if res.mode == "prepare"
+                                            else "-")
+            flags = " ".join(res.flags) or ""
+            print(f"  {row.crash_id}: {label}"
+                  f"{' [needs manual]' if res.needs_manual else ''}"
+                  f"{' ' + flags if flags else ''}")
+    print(f"{n} proposal(s) -> {args.output} (mode={args.mode}). Proposals "
+          "only; the engineer reviews and seals every determination.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="safety-eval",
@@ -671,6 +721,32 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Allow drafting the train half (tuning runs).")
     be.add_argument("--limit", type=int)
     be.set_defaults(func=_cmd_bench)
+
+    rv = sub.add_parser(
+        "review-assist",
+        help="LLM-assisted fiche determinations over REDACTED DMV-349 pages "
+             "(docs/03): 'decide' proposes a call with evidence; 'prepare' "
+             "assembles the evidence and a draft comment and leaves the status "
+             "to the engineer. Writes proposals.jsonl; never applies anything.")
+    rv.add_argument("--workbook", required=True,
+                    help="Workbook whose Filtered Fiche is being reviewed.")
+    rv.add_argument("--sheet", default="Filtered Fiche")
+    rv.add_argument("--index", required=True,
+                    help="Binder index JSON (redacted per-crash page retrieval).")
+    rv.add_argument("--analysis-type", dest="analysis_type",
+                    choices=["intersection", "section"], default="intersection")
+    rv.add_argument("--mode", choices=["decide", "prepare"], default="decide")
+    rv.add_argument("--coords", help="DetailedFiche for the GPS pre-screen "
+                    "(never the report's own coordinates).")
+    rv.add_argument("--study-point", dest="study_point", help="lat,lon.")
+    rv.add_argument("--mp-range", dest="mp_range", help="lo:hi (sections).")
+    rv.add_argument("--target", default="",
+                    help="Target-crash definition text for context.")
+    rv.add_argument("--study-name", dest="study_name", default="")
+    rv.add_argument("--model", default="claude-opus-4-8")
+    rv.add_argument("--limit", type=int)
+    rv.add_argument("--output", required=True, help="proposals.jsonl")
+    rv.set_defaults(func=_cmd_review_assist)
 
     qc = sub.add_parser(
         "qc",

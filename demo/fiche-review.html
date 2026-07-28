@@ -1,0 +1,970 @@
+<title>NCDOT HSIP Safety Evaluation Workspace</title>
+<style>
+  :root{
+    --bg:#eef2f6; --panel:#ffffff; --panel-2:#f6f9fc; --ink:#0d141a; --muted:#59667a;
+    --line:#d5dee7; --line-2:#e6edf3; --accent:#0e6e82; --accent-ink:#0a5361; --accent-soft:#dff0f3;
+    --is:#1b8a4b; --add:#b26b00; --del:#b0232b; --nis:#5b6675; --re:#2e6be0; --warn:#b26b00;
+    --is-soft:#e3f4e9; --add-soft:#f6ecdb; --del-soft:#f7e2e3; --nis-soft:#e9edf1; --re-soft:#e4ecfb;
+    --shadow:0 1px 2px rgba(13,20,26,.06),0 8px 24px rgba(13,20,26,.06);
+    --radius:10px; --rail:250px;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0d1217; --panel:#151c23; --panel-2:#111820; --ink:#e7edf3; --muted:#93a0ad;
+      --line:#26313b; --line-2:#1e2831; --accent:#26a9c2; --accent-ink:#8fdcea; --accent-soft:#123038;
+      --is:#3fbd75; --add:#d79a3c; --del:#e0666c; --nis:#8593a2; --re:#6f9bf0;
+      --is-soft:#12271a; --add-soft:#2a2213; --del-soft:#2a1517; --nis-soft:#1b232c; --re-soft:#161f33;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#eef2f6; --panel:#ffffff; --panel-2:#f6f9fc; --ink:#0d141a; --muted:#59667a;
+    --line:#d5dee7; --line-2:#e6edf3; --accent:#0e6e82; --accent-ink:#0a5361; --accent-soft:#dff0f3;
+    --is:#1b8a4b; --add:#b26b00; --del:#b0232b; --nis:#5b6675; --re:#2e6be0;
+    --is-soft:#e3f4e9; --add-soft:#f6ecdb; --del-soft:#f7e2e3; --nis-soft:#e9edf1; --re-soft:#e4ecfb;
+    --shadow:0 1px 2px rgba(13,20,26,.06),0 8px 24px rgba(13,20,26,.06);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d1217; --panel:#151c23; --panel-2:#111820; --ink:#e7edf3; --muted:#93a0ad;
+    --line:#26313b; --line-2:#1e2831; --accent:#26a9c2; --accent-ink:#8fdcea; --accent-soft:#123038;
+    --is:#3fbd75; --add:#d79a3c; --del:#e0666c; --nis:#8593a2; --re:#6f9bf0;
+    --is-soft:#12271a; --add-soft:#2a2213; --del-soft:#2a1517; --nis-soft:#1b232c; --re-soft:#161f33;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  h1,h2,h3,h4{margin:0;text-wrap:balance;font-weight:650;letter-spacing:-.01em}
+  a{color:var(--accent-ink)}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:650}
+  button{font-family:inherit;cursor:pointer}
+  ::selection{background:var(--accent);color:#fff}
+
+  /* shell */
+  .app{display:grid;grid-template-columns:var(--rail) 1fr;grid-template-rows:auto 1fr;
+    grid-template-areas:"rail top" "rail main";min-height:100vh}
+  .rail{grid-area:rail;background:var(--panel);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow:auto}
+  .brand{padding:18px 18px 14px;border-bottom:1px solid var(--line-2);display:flex;gap:11px;align-items:center}
+  .brand .mk{width:30px;height:30px;border-radius:7px;background:linear-gradient(150deg,var(--accent),var(--accent-ink));
+    display:grid;place-items:center;color:#fff;font-weight:800;font-size:14px;flex:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}
+  .brand b{font-size:14px;letter-spacing:-.02em;display:block}
+  .brand span{font-size:11px;color:var(--muted)}
+  nav{padding:10px 10px 4px;display:flex;flex-direction:column;gap:2px}
+  .nav-h{padding:12px 10px 4px}
+  .nav-item{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:10px;
+    padding:8px 10px;border-radius:8px;border:none;background:none;color:var(--ink);
+    text-align:left;width:100%;font-size:13.5px;transition:background .12s}
+  .nav-item .idx{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center}
+  .nav-item:hover{background:var(--panel-2)}
+  .nav-item[aria-current="true"]{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+  .nav-item[aria-current="true"] .idx{color:var(--accent-ink)}
+  .nav-item .tick{width:7px;height:7px;border-radius:50%;background:var(--line);justify-self:end}
+  .nav-item.done .tick{background:var(--is)}
+  .rail-foot{margin-top:auto;padding:14px;border-top:1px solid var(--line-2);color:var(--muted);font-size:11.5px}
+
+  .top{grid-area:top;background:color-mix(in srgb,var(--panel) 82%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 22px;
+    display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:5}
+  .wo{display:flex;align-items:center;gap:10px;min-width:0}
+  .wo .tag{font-family:var(--mono);font-size:12px;background:var(--panel-2);border:1px solid var(--line);
+    padding:3px 8px;border-radius:6px;color:var(--muted)}
+  .wo b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .top .spacer{flex:1}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel)}
+  .seg button{border:none;background:none;padding:6px 12px;font-size:12.5px;color:var(--muted);font-weight:600}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+  .icon-btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;width:34px;height:32px;
+    color:var(--ink);font-size:15px;display:grid;place-items:center}
+
+  main{grid-area:main;padding:22px;overflow:auto}
+  .stage{display:none;animation:fade .18s ease}
+  .stage.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  .stage-head{margin-bottom:16px}
+  .stage-head h2{font-size:21px}
+  .stage-head p{margin:6px 0 0;color:var(--muted);max-width:70ch}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .pad{padding:16px 18px}
+  .grid{display:grid;gap:14px}
+  .cols-2{grid-template-columns:repeat(2,1fr)}
+  .cols-3{grid-template-columns:repeat(3,1fr)}
+  @media (max-width:900px){.cols-2,.cols-3{grid-template-columns:1fr}}
+
+  code,.code{font-family:var(--mono);font-size:12.5px}
+  .code-block{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:11px 13px;
+    overflow-x:auto;color:var(--ink);white-space:pre;font-size:12.5px;line-height:1.6}
+  .code-block .fl{color:var(--accent-ink)}
+  .code-block .cm{color:var(--muted)}
+
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;
+    padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--panel-2);color:var(--muted)}
+  .flow{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  .flow .arw{color:var(--muted)}
+
+  /* status pills */
+  .pill{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.03em;
+    padding:2px 8px;border-radius:6px;text-transform:uppercase;border:1px solid transparent;white-space:nowrap}
+  .st-IS{color:var(--is);background:var(--is-soft);border-color:color-mix(in srgb,var(--is) 30%,transparent)}
+  .st-ADD{color:var(--add);background:var(--add-soft);border-color:color-mix(in srgb,var(--add) 30%,transparent)}
+  .st-DEL{color:var(--del);background:var(--del-soft);border-color:color-mix(in srgb,var(--del) 30%,transparent)}
+  .st-NIS{color:var(--nis);background:var(--nis-soft);border-color:color-mix(in srgb,var(--nis) 34%,transparent)}
+  .st-RE{color:var(--re);background:var(--re-soft);border-color:color-mix(in srgb,var(--re) 30%,transparent)}
+  .st-none{color:var(--muted);background:var(--panel-2);border-color:var(--line)}
+
+  /* KPI tiles */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 14px}
+  .kpi .n{font-family:var(--mono);font-size:24px;font-weight:600;letter-spacing:-.02em;line-height:1}
+  .kpi .l{font-size:11.5px;color:var(--muted);margin-top:6px}
+  .kpi .d{font-size:11px;font-weight:700;margin-top:5px}
+  .up{color:var(--is)} .down{color:var(--del)}
+
+  /* ===== Fiche Review 3-pane ===== */
+  .review{display:grid;grid-template-columns:minmax(300px,1.05fr) minmax(340px,1.35fr) minmax(280px,1fr);
+    gap:14px;align-items:start}
+  @media (max-width:1180px){.review{grid-template-columns:1fr}}
+  .rq-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line-2)}
+  .rq-head h3{font-size:13px}
+  .queue{max-height:62vh;overflow:auto}
+  .qrow{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 14px;border-bottom:1px solid var(--line-2);
+    cursor:pointer;border-left:3px solid transparent}
+  .qrow:hover{background:var(--panel-2)}
+  .qrow[aria-selected="true"]{background:var(--accent-soft);border-left-color:var(--accent)}
+  .qrow.done{opacity:.72}
+  .qrow .cid{font-family:var(--mono);font-size:12.5px;font-weight:600}
+  .qrow .meta{font-size:11.5px;color:var(--muted);grid-column:1;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .qrow .rt{grid-row:1;grid-column:2;justify-self:end;display:flex;align-items:center;gap:7px}
+  .qrow .dist{font-family:var(--mono);font-size:12px;font-weight:600}
+  .near{color:var(--is)} .far{color:var(--nis)} .edge{color:var(--add)}
+  .tflag{font-size:10px;font-weight:800;color:var(--accent-ink);background:var(--accent-soft);
+    border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);border-radius:4px;padding:0 4px}
+  .animal-badge{font-size:10.5px;color:var(--muted)}
+
+  /* detail */
+  .radar-wrap{display:flex;gap:14px;align-items:center;padding:14px}
+  canvas#radar{width:184px;height:184px;flex:none}
+  .radar-legend{font-size:11.5px;color:var(--muted);display:flex;flex-direction:column;gap:5px}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+  .cmp{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--line-2)}
+  @media (max-width:560px){.cmp{grid-template-columns:1fr}}
+  .cmp>div{padding:13px 15px}
+  .cmp .coded{border-right:1px solid var(--line-2)}
+  @media (max-width:560px){.cmp .coded{border-right:none;border-bottom:1px solid var(--line-2)}}
+  .cmp h4{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12.5px}
+  .kv dt{color:var(--muted)} .kv dd{margin:0;font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .report-txt{font-size:13px;line-height:1.55}
+  .report-txt .lede{color:var(--muted);font-size:11.5px;margin-bottom:6px}
+  .rule-note{margin:0 15px 14px;padding:9px 12px;border-radius:8px;background:var(--panel-2);
+    border:1px solid var(--line);font-size:12px;color:var(--muted)}
+  .rule-note b{color:var(--ink)}
+
+  /* determine */
+  .det-body{padding:14px}
+  .stbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  .stbtn{padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel);
+    color:var(--ink);font-weight:650;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .stbtn kbd{font-family:var(--mono);font-size:10.5px;color:var(--muted);border:1px solid var(--line);
+    border-radius:4px;padding:0 5px;background:var(--panel-2)}
+  .stbtn:hover{border-color:var(--accent)}
+  .stbtn[aria-pressed="true"]{color:#fff}
+  .stbtn[data-st="IS"][aria-pressed="true"]{background:var(--is);border-color:var(--is)}
+  .stbtn[data-st="ADD"][aria-pressed="true"]{background:var(--add);border-color:var(--add)}
+  .stbtn[data-st="DEL"][aria-pressed="true"]{background:var(--del);border-color:var(--del)}
+  .stbtn[data-st="NIS"][aria-pressed="true"]{background:var(--nis);border-color:var(--nis)}
+  .stbtn[data-st="RE"][aria-pressed="true"]{background:var(--re);border-color:var(--re)}
+  .stbtn[aria-pressed="true"] kbd{color:#fff;border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.15)}
+  .field{margin-bottom:11px}
+  .field label{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .field input,.field textarea{width:100%;font-family:var(--sans);font-size:13px;color:var(--ink);
+    background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical}
+  .field input:focus,.field textarea:focus,.stbtn:focus-visible,.nav-item:focus-visible,button:focus-visible{
+    outline:2px solid var(--accent);outline-offset:1px}
+  .field .hint{font-size:11px;color:var(--muted);margin-top:4px}
+  .field.hidden{display:none}
+  .errs{list-style:none;margin:0 0 11px;padding:0;display:flex;flex-direction:column;gap:6px}
+  .errs li{font-size:12px;color:var(--del);background:var(--del-soft);border:1px solid color-mix(in srgb,var(--del) 30%,transparent);
+    border-radius:7px;padding:7px 10px;display:flex;gap:7px}
+  .errs li::before{content:"!";font-weight:800;color:var(--del)}
+  .rec-btn{width:100%;padding:11px;border-radius:9px;border:1px solid var(--accent);
+    background:var(--accent);color:#fff;font-weight:700;font-size:13.5px}
+  .rec-btn:disabled{opacity:.5;cursor:not-allowed}
+  .rec-btn.ok-flash{background:var(--is);border-color:var(--is)}
+  .ref-call{margin-top:10px;font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding-top:10px}
+  .ref-call b{color:var(--ink)}
+
+  /* audit + banners */
+  .audit{max-height:30vh;overflow:auto;padding:4px 0}
+  .aud{display:grid;grid-template-columns:auto 1fr auto;gap:3px 10px;padding:9px 15px;border-bottom:1px solid var(--line-2);font-size:12px}
+  .aud .t{font-family:var(--mono);font-size:10.5px;color:var(--muted);grid-column:1/-1}
+  .aud .cid{font-family:var(--mono);font-weight:600}
+  .aud .cmt{grid-column:1/-1;color:var(--muted);font-size:11.5px}
+  .empty{padding:20px 15px;color:var(--muted);font-size:12.5px;text-align:center}
+  .banners{display:grid;gap:8px}
+  .ban{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:8px;
+    background:var(--panel-2);border:1px solid var(--line-2);font-size:12.5px}
+  .ban .lab{display:flex;align-items:center;gap:8px}
+  .ban .ct{font-family:var(--mono);font-weight:700}
+  .bar{height:6px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:2px}
+  .bar>span{display:block;height:100%;background:var(--accent)}
+
+  .list-reset{list-style:none;margin:0;padding:0}
+  .feat{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:9px 0;border-top:1px solid var(--line-2);font-size:13px}
+  .feat:first-child{border-top:none}
+  .feat .b{color:var(--is);font-weight:800}
+  .muted{color:var(--muted)}
+  .small{font-size:12px}
+  .hr{height:1px;background:var(--line-2);margin:14px 0;border:none}
+  .tag-row{display:flex;flex-wrap:wrap;gap:6px}
+
+  /* AI assist */
+  .seg-assist{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel);margin-top:6px}
+  .seg-assist button{border:none;background:none;padding:6px 12px;font-size:12.5px;color:var(--muted);font-weight:600;border-right:1px solid var(--line-2)}
+  .seg-assist button:last-child{border-right:none}
+  .seg-assist button[aria-pressed="true"]{background:var(--accent);color:#fff}
+  .assist{margin:10px 0 0;padding:12px;border-radius:9px;border:1px solid color-mix(in srgb,var(--accent) 32%,var(--line));background:var(--accent-soft)}
+  .assist-h{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+  .assist-where{font-size:13px;font-weight:600;margin-bottom:7px}
+  .assist-ev{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+  .assist-ev li{font-size:12px;color:var(--muted);padding-left:15px;position:relative}
+  .assist-ev li::before{content:"\203A";position:absolute;left:3px;color:var(--accent-ink);font-weight:800}
+  .assist-accept{margin-top:10px;width:100%;padding:8px;border-radius:7px;border:1px solid var(--accent);background:var(--panel);color:var(--accent-ink);font-weight:700;font-size:12.5px}
+  .assist-accept:hover{background:var(--accent);color:#fff}
+  .assist-kv{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:12px;margin:0}
+  .assist-kv dt{color:var(--muted);white-space:nowrap}
+  .assist-kv dd{margin:0}
+  .assist-draft{margin-top:9px;font-size:12px}
+  .assist-draft code{font-family:var(--mono);background:var(--panel);padding:1px 6px;border-radius:5px;border:1px solid var(--line)}
+  .assist-note{margin-top:8px}
+</style>
+
+<div class="app">
+  <aside class="rail">
+    <div class="brand">
+      <div class="mk">SE</div>
+      <div><b>Safety Evaluation</b><span>NCDOT HSIP · VHB Raleigh</span></div>
+    </div>
+    <nav id="nav">
+      <div class="nav-h eyebrow">Evaluation pipeline</div>
+    </nav>
+    <div class="rail-foot">
+      Engineer-in-the-loop: the tool prepares and records every step; the PE reviews, decides, and seals.
+      Nothing is auto-final.
+    </div>
+  </aside>
+
+  <header class="top">
+    <div class="wo">
+      <span class="tag mono">WO 41000075552</span>
+      <b id="wo-title">02-20-61721 (SS-6002M) · US 13 corridor</b>
+    </div>
+    <div class="spacer"></div>
+    <div class="seg" id="atype" title="Intersection studies are road-combination-dependent; sections are milepost-dependent">
+      <button data-at="intersection" aria-pressed="true">Intersection</button>
+      <button data-at="section" aria-pressed="false">Section</button>
+    </div>
+    <button class="icon-btn" id="theme" title="Toggle light / dark">◐</button>
+  </header>
+
+  <main id="main"></main>
+</div>
+
+<script>
+"use strict";
+/* ---------- pipeline model ---------- */
+const STAGES = [
+  {id:"overview", n:"00", label:"Overview"},
+  {id:"scope",    n:"01", label:"Scope from email"},
+  {id:"assume",   n:"02", label:"Assumptions email"},
+  {id:"workbook", n:"03", label:"Build workbook"},
+  {id:"review",   n:"04", label:"Fiche review", star:true},
+  {id:"qc",       n:"05", label:"QC recount"},
+  {id:"report",   n:"06", label:"Report drafts"},
+  {id:"bench",    n:"07", label:"Benchmark"},
+];
+
+/* ---------- synthetic study + crashes (no real crash data) ---------- */
+const STUDY = {
+  name:"NC 42 (Carbonton Rd) at SR 1007 (Plank Rd)", lat:35.6042, lon:-79.1071,
+  buffer:150, mpLo:8.02, mpHi:8.18, road:"NC 42",
+  target:"Frontal-impact set (AWSC): Angle, LTSR, LTDR, RTSR, RTDR, Head-On",
+};
+const TARGET_TYPES = new Set(["Angle","LTSR","LTDR","RTSR","RTDR","Head-On"]);
+const SEV = {K:"K · fatal",A:"A · serious",B:"B · minor",C:"C · possible",O:"O · PDO"};
+// place a point (feet,bearing) from study centre -> approx lat/lon
+function place(ft,bdeg){const b=bdeg*Math.PI/180;const dLat=(ft*Math.cos(b))/364000;
+  const dLon=(ft*Math.sin(b))/(364000*Math.cos(STUDY.lat*Math.PI/180));
+  return [STUDY.lat+dLat, STUDY.lon+dLon];}
+function haversineFt(la1,lo1,la2,lo2){const R=20902231,r=Math.PI/180;
+  const p1=la1*r,p2=la2*r,dp=(la2-la1)*r,dl=(lo2-lo1)*r;
+  const a=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));}
+
+const RAW = [
+  {id:"106421887",date:"2019-03-14",type:"Angle",t:2,c:"Failed to yield",f:"Intersection",l:"Daylight",s:"C",
+    road:"NC 42",mp:8.10,ft:41,brg:35,
+    report:"DMV-349 diagram shows NB NC 42 vehicle struck by EB SR 1007 vehicle in the intersection box. Front-page coordinates resolve to the study intersection.",ref:"IS"},
+  {id:"106433201",date:"2019-07-02",type:"LTDR",t:8,c:"Misjudged clearance",f:"Intersection",l:"Daylight",s:"B",
+    road:"NC 42",mp:8.11,ft:88,brg:300,
+    report:"Left-turning SB vehicle across EB through. Diagram and narrative place it squarely at NC 42 / SR 1007.",ref:"IS"},
+  {id:"106450992",date:"2020-01-19",type:"Rear End Slow",t:1,c:"Following too close",f:"Related to intersection",l:"Dark-lighted",s:"O",
+    road:"NC 42",mp:8.09,ft:121,brg:205,
+    report:"Rear-end on the NC 42 southbound approach, within the intersection influence area. In study, but not a frontal-impact target type.",ref:"IS"},
+  {id:"106470145",date:"2020-06-11",type:"RTDR",t:9,c:"Disregarded control",f:"Intersection",l:"Daylight",s:"C",
+    road:"NC 42",mp:8.12,ft:143,brg:150,
+    report:"Right-turn different-roadways collision at the northeast quadrant. Coordinates land ~143 ft from the centre — inside the 150 ft buffer.",ref:"IS"},
+  {id:"106488713",date:"2020-09-05",type:"Angle",t:2,c:"Failed to yield",f:"Driveway",l:"Daylight",s:"A",
+    road:"NC 42",mp:8.14,ft:168,brg:95,
+    report:"Diagram shows a commercial driveway on NC 42 north of the intersection. Coordinates ~168 ft out — beyond the 150 ft buffer, and the conflict is driveway-related, not the study intersection.",ref:"NIS"},
+  {id:"106502260",date:"2021-02-20",type:"Head-On",t:12,c:"Crossed centerline",f:"Non-intersection",l:"Dark-not-lighted",s:"C",
+    road:"NC 42",mp:8.06,ft:311,brg:200,
+    report:"Head-on on the NC 42 mainline ~0.06 mi south of the intersection. Not at or within 150 ft of the study intersection.",ref:"NIS"},
+  {id:"106519842",date:"2021-08-13",type:"Angle",t:2,c:"Failed to yield",f:"Intersection",l:"Daylight",s:"B",
+    road:"SR 1500",mp:0.20,ft:905,brg:250,codedElsewhere:true,
+    report:"Coded to SR 1500 MP 0.20, but the DMV-349 diagram is unmistakably NC 42 / SR 1007 (matching leg geometry and the flashing beacon). Front-page coordinates confirm the study intersection — the coded milepost is wrong.",ref:"ADD"},
+  {id:"106533998",date:"2022-01-07",type:"Rear End Slow",t:1,c:"Inattention",f:"Non-intersection",l:"Daylight",s:"O",
+    road:"NC 42",mp:8.02,ft:523,brg:20,
+    report:"Rear-end well north of the intersection near MP 8.02. Outside the buffer.",ref:"NIS"},
+  {id:"106547120",date:"2022-05-30",type:"Animal",t:17,c:"Animal in road",f:"Non-intersection",l:"Dark-not-lighted",s:"O",
+    road:"NC 42",mp:8.20,ft:262,brg:340,
+    report:"Deer strike on the NC 42 mainline. Animal crash — ignored in the review per docs/03; no report review needed.",ref:"NIS"},
+  {id:"106561884",date:"2022-11-15",type:"Sideswipe",t:6,c:"Improper lane change",f:"Non-intersection",l:"Daylight",s:"O",
+    road:"NC 42",mp:8.18,ft:642,brg:15,
+    report:"Sideswipe during a lane change ~0.1 mi north. Not intersection-related.",ref:"NIS"},
+  {id:"106578443",date:"2023-04-02",type:"LTSR",t:7,c:"Misjudged clearance",f:"Intersection",l:"Daylight",s:"C",
+    road:"NC 42",mp:8.13,ft:305,brg:110,deceptive:true,
+    report:"Coded at 'NC 42 at Deppe Loop'. Two NC 42 / Deppe Loop junctions exist 1.3 mi apart; front-page coordinates resolve to the SOUTHERN junction, not the study intersection.",ref:"NIS"},
+  {id:"106590017",date:"2023-09-21",type:"RTSR",t:9,c:"Disregarded control",f:"Intersection",l:"Dusk",s:"B",
+    road:"NC 42",mp:8.11,ft:62,brg:340,
+    report:"Right-turn same-roadway conflict at the intersection; coordinates ~62 ft from centre.",ref:"IS"},
+];
+RAW.forEach(r=>{const [la,lo]=place(r.ft,r.brg);r.lat=la;r.lon=lo;
+  r.dist=Math.round(haversineFt(la,lo,STUDY.lat,STUDY.lon));
+  r.isTarget=TARGET_TYPES.has(r.type);r.isAnimal=(r.t===17);});
+
+/* ---------- state ---------- */
+const state={stage:"overview",atype:"intersection",assistMode:"off",selected:null,det:{},audit:[],draft:{status:null,newmp:"",comment:""}};
+const VOCAB={intersection:["IS","ADD","DEL","NIS"],section:["IS","RE","ADD","DEL","NIS"]};
+const KEYMAP={i:"IS",n:"NIS",a:"ADD",d:"DEL",r:"RE"};
+const $=(s,r=document)=>r.querySelector(s);
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
+const esc=s=>String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+
+/* ---------- queue ordering (mirrors build_queue) ---------- */
+function queue(){
+  const rows=RAW.map(r=>({r,pending:!state.det[r.id],dist:r.dist,animal:r.isAnimal}));
+  rows.sort((x,y)=>{
+    if(x.pending!==y.pending)return x.pending?-1:1;      // pending first
+    if(x.animal!==y.animal)return x.animal?1:-1;          // animals last in group
+    if(x.dist!==y.dist)return x.dist-y.dist;              // closest first (GPS pre-screen)
+    return x.r.id.localeCompare(y.r.id);
+  });
+  return rows;
+}
+function distClass(d){return d<=STUDY.buffer?"near":(d<=STUDY.buffer+80?"edge":"far");}
+
+/* ---------- baked AI-assist (a static demo simulates what review_assist.py
+   returns from Claude on the redacted DMV-349; the real tool calls the model) ---------- */
+function bakeAssist(r){
+  const inBuf=r.dist<=STUDY.buffer;
+  const conf=(r.deceptive||r.codedElsewhere)?"medium":(Math.abs(r.dist-STUDY.buffer)<30?"medium":"high");
+  const first=r.report.split(". ")[0]+".";
+  const rest=r.report.split(". ").slice(1).join(". ")||r.report;
+  const comment=r.ref==="IS"?"per coords":r.ref==="ADD"?"diagram is study intersection; coded MP wrong":
+    (r.ref==="NIS"?(inBuf?"not the study intersection":">150'"):"");
+  const where=r.ref==="ADD"?`${STUDY.name} (coded elsewhere; diagram + coords place it here)`:
+    r.ref==="IS"?STUDY.name:"away from the study intersection";
+  return {
+    decide:{status:r.ref,confidence:conf,where,comment,
+      evidence:[`pre-screen ${r.dist} ft ${inBuf?"within":"beyond"} the ${STUDY.buffer} ft buffer`,
+        `coded ${r.type}${r.isTarget?" (target)":""} at ${r.road} MP ${r.mp.toFixed(2)}`, first]},
+    prepare:{diagram:first,narrative:rest,
+      report_location:r.ref==="ADD"?"the study intersection per front-page coords, despite the coded milepost":
+        r.ref==="IS"?"the study intersection":"off the study intersection",
+      distance:`pre-screen ${r.dist} ft, ${inBuf?"inside":"outside"} the ${STUDY.buffer} ft buffer`,
+      rule:state.atype==="section"?"Section milepost rule (docs/03)":`Intersection ${STUDY.buffer} ft rule (docs/03)`,
+      candidates:r.ref==="ADD"?["ADD","NIS"]:r.ref==="IS"?["IS"]:(inBuf?["IS","NIS"]:["NIS"]),
+      draft_comment:comment}
+  };
+}
+
+/* ---------- validation (mirrors validate_determination, docs/03) ---------- */
+function validate(d){
+  const p=[];const vocab=VOCAB[state.atype];const base=(d.status||"").split("-")[0];
+  if(!d.status)return ["Choose a determination status."];
+  if(!vocab.includes(base)){
+    if(base==="RE")p.push("RE (re-milepost) is only valid in section analyses; in an intersection analysis it is a data error.");
+    else p.push(`Status ${d.status} is not in the ${state.atype} vocabulary (${vocab.join(", ")}).`);
+  }
+  if(base==="RE"&&!String(d.newmp).trim())p.push("RE requires the corrected milepost in New MP (every RE row carries one).");
+  if((base==="ADD"||base==="DEL")&&!(d.comment||"").trim())p.push(`${base} requires a brief comment saying why.`);
+  if(base==="NIS"&&!(d.comment||"").trim())p.push("A reviewed NIS needs a comment recording what the report showed; blanket NIS without review is not acceptable.");
+  if(/[—–]/.test(d.comment||""))p.push("No em or en dashes in comments (plain house style).");
+  return p;
+}
+
+/* ---------- rendering ---------- */
+function render(){
+  renderNav();
+  const m=$("#main");m.innerHTML="";
+  m.appendChild(STAGE_RENDER[state.stage]());
+  requestAnimationFrame(()=>{const a=$(".stage");if(a)a.classList.add("active");});
+}
+function renderNav(){
+  const nav=$("#nav");nav.querySelectorAll(".nav-item").forEach(n=>n.remove());
+  const total=RAW.filter(r=>!r.isAnimal).length;
+  STAGES.forEach(s=>{
+    const b=el("button","nav-item");b.setAttribute("data-stage",s.id);
+    if(state.stage===s.id)b.setAttribute("aria-current","true");
+    const doneReview=s.id==="review"&&Object.keys(state.det).length>0;
+    if(doneReview)b.classList.add("done");
+    b.innerHTML=`<span class="idx">${s.n}</span><span>${s.label}${s.star?' <span class="tflag">step 4</span>':''}</span><span class="tick"></span>`;
+    b.onclick=()=>{state.stage=s.id;render();};
+    nav.appendChild(b);
+  });
+}
+function head(title,desc){const h=el("div","stage-head");h.innerHTML=`<div class="eyebrow">Stage</div><h2>${title}</h2><p>${desc}</p>`;return h;}
+function stageWrap(){return el("div","stage");}
+
+/* ---- generic informational stage ---- */
+function infoStage(o){
+  const s=stageWrap();s.appendChild(head(o.title,o.desc));
+  const g=el("div","grid cols-2");
+  const left=el("div","panel pad");
+  left.innerHTML=`<div class="eyebrow">What this stage does</div><ul class="list-reset" style="margin-top:8px">`+
+    o.feats.map(f=>`<li class="feat"><span class="b">›</span><span>${f}</span></li>`).join("")+`</ul>`;
+  const right=el("div","grid");right.style.alignContent="start";
+  const io=el("div","panel pad");
+  io.innerHTML=`<div class="eyebrow">Inputs → outputs</div><div class="flow" style="margin:10px 0 4px">`+
+    o.io.map((x,i)=>`<span class="chip">${x}</span>`).join('<span class="arw">→</span>')+`</div>`;
+  const cmd=el("div","panel pad");
+  cmd.innerHTML=`<div class="eyebrow" style="margin-bottom:8px">Command</div><div class="code-block">${o.cmd}</div>`+
+    (o.note?`<p class="small muted" style="margin:10px 0 0">${o.note}</p>`:"");
+  right.appendChild(io);right.appendChild(cmd);
+  g.appendChild(left);g.appendChild(right);s.appendChild(g);
+  if(o.extra)s.appendChild(o.extra());
+  return s;
+}
+
+const STAGE_RENDER={
+  overview(){
+    const s=stageWrap();
+    s.appendChild(head("The evaluation, end to end",
+      "One NCDOT before/after safety evaluation from the assignment email to the delivered workbook and report text. Each stage is a real <code>safety-eval</code> command; every classification and draft is reviewed by the PE. Open <b>step 4</b> for the interactive fiche-review queue."));
+    const grid=el("div","grid cols-3");
+    STAGES.filter(x=>x.id!=="overview").forEach(x=>{
+      const c=el("button","panel pad");c.style.textAlign="left";c.style.cursor="pointer";
+      const dispo={scope:"parse-email",assume:"assumptions",workbook:"fill-template",review:"review queue",qc:"qc",report:"bench draft",bench:"bench score"}[x.id];
+      c.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="idx mono" style="color:var(--muted);font-size:12px">${x.n}</span>
+        ${x.star?'<span class="tflag">interactive</span>':`<span class="chip mono">${dispo}</span>`}</div>
+        <h3 style="margin:10px 0 4px;font-size:15px">${x.label}</h3>
+        <p class="small muted" style="margin:0">${OV_BLURB[x.id]}</p>`;
+      c.onclick=()=>{state.stage=x.id;render();};
+      grid.appendChild(c);
+    });
+    s.appendChild(grid);
+    const note=el("div","panel pad");note.style.marginTop="14px";
+    note.innerHTML=`<div class="eyebrow">Two invariants carried from live work</div>
+      <div class="grid cols-2" style="margin-top:10px">
+        <div class="feat"><span class="b">1</span><span><b>Intersection vs section</b> are separate, tested code paths: intersection crash identification is road-combination-dependent, section is milepost-dependent. Toggle it in the top bar.</span></div>
+        <div class="feat"><span class="b">2</span><span><b>Every number is traceable</b> to a sheet formula, and every report figure must match the recount before delivery (stage 05).</span></div>
+      </div>`;
+    s.appendChild(note);
+    return s;
+  },
+  scope(){return infoStage({
+    title:"Scope the study from NCDOT's email",
+    desc:"Parse the assignment/assumptions <code>.msg</code> thread into the authoritative study scope: countermeasure, target crashes, and the before/construction/after periods. The newest copy of each <code>Assignment #N</code> block wins.",
+    feats:["Reads Outlook <code>.msg</code> straight from the MAPI property streams (no converter).",
+      "Splits the thread into <code>Assignment #N</code> blocks and keeps NCDOT's inline answers.",
+      "Emits a draft assumptions YAML and an assignment YAML per block for the PE to review.",
+      "This is the same authoritative record the drafting layer later reads (stage 07)."],
+    io:["Assignment .msg","parse-email","assumptions.yaml + assignment.yaml"],
+    cmd:`<span class="fl">safety-eval parse-email</span> \\\n  --input <span class="cm">"Assignment #22.msg"</span> --outdir scope/`,
+    extra(){const p=el("div","panel pad");p.style.marginTop="14px";
+      p.innerHTML=`<div class="eyebrow" style="margin-bottom:8px">Parsed block (example)</div>
+      <div class="code-block">Assignment #22
+  Order ID:        41000075552
+  Countermeasure:  Convert to All-Way STOP control (oversized signs, beacons)
+  Target Crashes:  Frontal impact set (Angle, LTSR, LTDR, RTSR, RTDR, Head-On)
+  Time Periods:    Before 11/01/2016–05/25/2021 · Construction · After 10/17/2021–…</div>`;return p;}
+  });},
+  assume(){return infoStage({
+    title:"Draft the assumptions email",
+    desc:"Generate the assumptions email the PE sends to NCDOT for confirmation, from the parsed YAML or straight from a Master Evaluation Spreadsheet row. Plain house style, validated on the way out.",
+    feats:["Fills the team .docx template from the assumptions YAML (docs/05 style).",
+      "Alternatively drafts from the Master Evaluation Spreadsheet row for an order.",
+      "Style gate: plain, understated, no em dashes anywhere.",
+      "A draft to review — NCDOT's reply on the thread remains authoritative."],
+    io:["assumptions.yaml","assumptions","Assumptions Email .docx"],
+    cmd:`<span class="fl">safety-eval assumptions</span> \\\n  --input scope/assumptions.yaml --outdir out/\n<span class="cm"># or straight from the master spreadsheet:</span>\n<span class="fl">safety-eval assumptions</span> --master Master.xlsx --order-id 41000075552`,
+    note:"Minor/side-road AADT estimates are rounded to the nearest hundred (a hard rule)."
+  });},
+  workbook(){return infoStage({
+    title:"Build the Evaluation Workbook",
+    desc:"Populate the real NCDOT template from TEAAS Crash ID List exports: Before/After columns A–M only, letting the template's own formulas compute the KABCO / Severity Index blocks. Live formulas throughout; the template's drawings and media are byte-preserved.",
+    feats:["Writes at the XML level inside the xlsx zip, then one LibreOffice recalc — never an openpyxl resave (it would destroy the aerials and charts).",
+      "Optional Binned Crashes and pre-screened Filtered Fiche sheets.",
+      "Sections add milepost import files; the EB/CMF tracking section is never touched.",
+      "Every derived number stays a formula a reviewer can trace."],
+    io:["template.xlsx","Before/After Crash ID Lists","fiche","fill-template","eval.xlsx"],
+    cmd:`<span class="fl">safety-eval fill-template</span> \\\n  --template templates/Section\\ Evaluation\\ Workbook.xlsx \\\n  --before before_CrashID.txt --after after_CrashID.txt \\\n  --fiche OriginalFiche.csv --setup setup.yaml --results results.yaml \\\n  --binned --filtered --output out/eval.xlsx --recalc`,
+    note:"Output passes verify_integrity against the template (drawings + media byte-identical) before anyone opens it."
+  });},
+  review(){return reviewStage();},
+  qc(){return infoStage({
+    title:"QC recount before delivery",
+    desc:"Recount everything and refuse to ship on a mismatch. The Filtered Fiche, Binned Crashes and Before/After tallies must agree; the lane-departure ledger must be consistent across every sheet a crash appears on; and each “N crashes” quote in the text must equal a computed tally.",
+    feats:["Filtered Fiche vs Binned vs Before/After counts must match exactly.",
+      "Lane-departure CL/R ledger reconciled across all sheets.",
+      "Every “N crashes” text quote checked against the tallies (a 13-vs-14 is a real defect).",
+      "Correctability coverage checks when a treatment is given."],
+    io:["eval.xlsx","qc","pass / fail report"],
+    cmd:`<span class="fl">safety-eval qc</span> --workbook out/eval.xlsx --treatment centerline`,
+    extra(){const p=el("div","panel pad");p.style.marginTop="14px";
+      p.innerHTML=`<div class="eyebrow" style="margin-bottom:10px">Recount checks</div>
+      <div class="banners">
+        <div class="ban"><span class="lab"><span class="pill st-IS">pass</span> Filtered Fiche ↔ Binned ↔ Before/After</span><span class="ct">312 = 312 = 312</span></div>
+        <div class="ban"><span class="lab"><span class="pill st-IS">pass</span> Lane-departure ledger across sheets</span><span class="ct">CL 44 · R 61</span></div>
+        <div class="ban"><span class="lab"><span class="pill st-IS">pass</span> Text quotes vs tallies</span><span class="ct">7 quotes ✓</span></div>
+      </div>`;return p;}
+  });},
+  report(){return reportStage();},
+  bench(){return benchStage();},
+};
+const OV_BLURB={
+  scope:"Parse the NCDOT .msg thread into authoritative scope, targets and periods.",
+  assume:"Draft the assumptions email for NCDOT confirmation.",
+  workbook:"Populate the real template with live formulas; drawings preserved.",
+  review:"Crash-by-crash IS / NIS / ADD triage against the DMV-349 reports.",
+  qc:"Recount the whole workbook; refuse to ship on a mismatch.",
+  report:"Draft the results-sheet narrative from tallies + assumptions.",
+  bench:"Measure how close the drafts come to delivered text.",
+};
+
+/* ================= STAGE 04 — interactive fiche review ================= */
+function reviewStage(){
+  const s=stageWrap();
+  s.appendChild(head("Fiche review queue",
+    `Crash-by-crash triage of the Filtered Fiche. The GPS pre-screen sorts pending crashes closest-first; you confirm each against its DMV-349 report and assign a status. <b>IS</b> = at or within ${STUDY.buffer} ft of ${esc(STUDY.name)}. Every call is validated (docs/03) and appended to an audit trail. Try the keys <kbd>I</kbd> <kbd>N</kbd> <kbd>A</kbd> <kbd>D</kbd>, <kbd>Enter</kbd> to record, <kbd>J</kbd>/<kbd>K</kbd> to move.`));
+  if(state.selected==null){
+    const q=queue();state.selected=q.length?q[0].r.id:null;
+    const d=state.selected?state.det[state.selected]:null;
+    state.draft=d?{status:d.status,newmp:d.newmp||"",comment:d.comment||""}:{status:null,newmp:"",comment:""};
+  }
+  const wrap=el("div","review");
+  wrap.appendChild(queuePane());
+  wrap.appendChild(detailPane());
+  wrap.appendChild(determinePane());
+  s.appendChild(wrap);
+  return s;
+}
+function queuePane(){
+  const p=el("div","panel");p.style.overflow="hidden";
+  const q=queue();const pend=q.filter(x=>x.pending&&!x.animal).length;
+  p.appendChild(el("div","rq-head",`<h3>Queue · <span class="mono">${RAW.length}</span> crashes</h3><span class="chip mono">${pend} pending</span>`));
+  const list=el("div","queue");
+  q.forEach(({r,pending})=>{
+    const done=!pending;const row=el("div","qrow"+(done?" done":""));
+    row.setAttribute("aria-selected",String(state.selected===r.id));
+    row.setAttribute("data-id",r.id);
+    const d=state.det[r.id];
+    const st=d?`<span class="pill st-${d.status.split("-")[0]}">${d.status}</span>`:'<span class="pill st-none">—</span>';
+    const dc=distClass(r.dist);
+    row.innerHTML=`<span class="cid">${r.id}</span>
+      <span class="rt"><span class="dist ${dc}">${r.dist} ft</span>${st}</span>
+      <span class="meta">${esc(r.type)} ${r.isTarget?'<span class="tflag">TARGET</span>':''}
+        ${r.isAnimal?'<span class="animal-badge">· animal, skip</span>':''}
+        <span class="mono">${esc(r.road)} MP ${r.mp.toFixed(2)}</span></span>`;
+    row.onclick=()=>{selectCrash(r.id);};
+    list.appendChild(row);
+  });
+  p.appendChild(list);
+  return p;
+}
+function detailPane(){
+  const p=el("div","panel");p.style.overflow="hidden";
+  const r=RAW.find(x=>x.id===state.selected);
+  if(!r){p.appendChild(el("div","empty","Select a crash to review."));return p;}
+  p.appendChild(el("div","rq-head",`<h3>Crash <span class="mono">${r.id}</span></h3><span class="chip">${r.date}</span>`));
+  // radar
+  const rw=el("div","radar-wrap");
+  const cv=el("canvas");cv.id="radar";cv.width=368;cv.height=368;
+  rw.appendChild(cv);
+  rw.appendChild(el("div","radar-legend",
+    `<div><span class="dot" style="background:var(--accent)"></span>study intersection</div>
+     <div><span class="dot" style="background:var(--is)"></span>≤ ${STUDY.buffer} ft (buffer ring)</div>
+     <div><span class="dot" style="background:var(--nis)"></span>this crash · <b class="mono">${r.dist} ft</b></div>
+     <div class="small muted" style="margin-top:2px">GPS pre-screen from the DetailedFiche, not the report.</div>`));
+  p.appendChild(rw);
+  // coded vs report
+  const cmp=el("div","cmp");
+  cmp.innerHTML=`
+    <div class="coded"><h4>Coded data (fiche)</h4>
+      <dl class="kv">
+        <dt>Type</dt><dd>${esc(r.type)} (T ${r.t})${r.isTarget?' · target':''}</dd>
+        <dt>Contrib.</dt><dd>${esc(r.c)}</dd>
+        <dt>Relation</dt><dd>${esc(r.f)}</dd>
+        <dt>Light</dt><dd>${esc(r.l)}</dd>
+        <dt>Severity</dt><dd>${SEV[r.s]}</dd>
+        <dt>Coded loc.</dt><dd>${esc(r.road)} MP ${r.mp.toFixed(2)}</dd>
+        <dt>Coords</dt><dd>${r.lat.toFixed(5)}, ${r.lon.toFixed(5)}</dd>
+        <dt>Pre-screen</dt><dd class="${distClass(r.dist)}">${r.dist} ft to study</dd>
+      </dl></div>
+    <div class="report"><h4>DMV-349 report</h4>
+      <div class="report-txt"><div class="lede">Diagram + narrative + front-page coordinates</div>${esc(r.report)}</div></div>`;
+  p.appendChild(cmp);
+  const rule=el("div","rule-note");
+  rule.innerHTML=state.atype==="intersection"
+    ? `<b>150 ft rule.</b> IS if the report confirms the crash at or within ${STUDY.buffer} ft of the study intersection. A “?” becomes NIS only after the diagram and narrative confirm it. Coded location can be deceptive — identical cross-street names exist.`
+    : `<b>Milepost rule.</b> Section studies are milepost-dependent. If the report shows the crash belongs but the coded milepost is wrong, record <b>RE</b> and enter the corrected New MP.`;
+  p.appendChild(rule);
+  requestAnimationFrame(()=>drawRadar(r));
+  return p;
+}
+function determinePane(){
+  const p=el("div","panel");p.style.overflow="hidden";
+  const r=RAW.find(x=>x.id===state.selected);
+  p.appendChild(el("div","rq-head",`<h3>Determination</h3>${r?`<span class="chip mono">${r.id}</span>`:""}`));
+  const body=el("div","det-body");
+  if(!r){body.appendChild(el("div","empty","Select a crash."));p.appendChild(body);return p;}
+
+  if(r.isAnimal){
+    const w=el("div","rule-note");w.style.margin="0 0 12px";
+    w.innerHTML=`<b>Animal crash (T 17).</b> Ignored in the IS review per docs/03 — no report review needed. Record it out of study (NIS) with a one-line note, or DEL.`;
+    body.appendChild(w);
+  }
+  // ---- AI assist selector (Off / Decide / Prepare) ----
+  const amWrap=el("div");amWrap.style.marginBottom="12px";
+  amWrap.appendChild(el("div","eyebrow","AI assist over the redacted report"));
+  const seg=el("div","seg-assist");
+  [["off","Off"],["decide","Decide"],["prepare","Prepare"]].forEach(([m,lab])=>{
+    const b=el("button");b.textContent=lab;b.setAttribute("aria-pressed",String(state.assistMode===m));
+    b.onclick=()=>{state.assistMode=m;refreshDetermine();};
+    seg.appendChild(b);
+  });
+  amWrap.appendChild(seg);
+  body.appendChild(amWrap);
+  if(state.assistMode!=="off"){
+    if(r.isAnimal){
+      body.appendChild(el("div","assist","Animal crash — the assist skips it (ignored in the IS review, docs/03)."));
+    }else{
+      const A=bakeAssist(r)[state.assistMode];const card=el("div","assist");
+      if(state.assistMode==="decide"){
+        card.innerHTML=`<div class="assist-h"><span class="pill st-${A.status.split("-")[0]}">${A.status}</span>`+
+          `<span class="muted small">proposed · ${A.confidence} confidence</span></div>`+
+          `<div class="assist-where">${esc(A.where)}</div>`+
+          `<ul class="assist-ev">${A.evidence.map(e=>`<li>${esc(e)}</li>`).join("")}</ul>`;
+        const acc=el("button","assist-accept");acc.textContent="Accept proposal";
+        acc.onclick=()=>{state.draft.status=A.status.split("-")[0];state.draft.comment=A.comment||state.draft.comment;refreshDetermine();};
+        card.appendChild(acc);
+      }else{
+        card.innerHTML=`<div class="assist-h"><span class="muted small">Evidence prepared — the call is yours</span></div>`+
+          `<dl class="assist-kv">`+
+          `<dt>Diagram</dt><dd>${esc(A.diagram)}</dd>`+
+          `<dt>Narrative</dt><dd>${esc(A.narrative)}</dd>`+
+          `<dt>Report places it</dt><dd>${esc(A.report_location)}</dd>`+
+          `<dt>Distance</dt><dd>${esc(A.distance)}</dd>`+
+          `<dt>Rule</dt><dd>${esc(A.rule)}</dd>`+
+          `<dt>Plausible</dt><dd>${A.candidates.map(c=>`<span class="pill st-${c.split("-")[0]}">${c}</span>`).join(" ")}</dd>`+
+          `</dl>`+
+          `<div class="assist-draft"><span class="muted">Draft comment:</span> <code>${esc(A.draft_comment||"—")}</code></div>`;
+      }
+      body.appendChild(card);
+      body.appendChild(el("div","assist-note muted small",
+        "Demo simulates the assist; the real tool calls Claude on the redacted DMV-349 pages, then validates and audits. It proposes; you decide."));
+    }
+  }
+
+  // status buttons
+  const vocab=VOCAB[state.atype];
+  const grid=el("div","stbtns");
+  vocab.forEach(v=>{
+    const key=Object.keys(KEYMAP).find(k=>KEYMAP[k]===v);
+    const b=el("button","stbtn");b.setAttribute("data-st",v);
+    b.setAttribute("aria-pressed",String((state.draft.status||"").split("-")[0]===v));
+    b.innerHTML=`<span>${v} · ${ST_LABEL[v]}</span><kbd>${key.toUpperCase()}</kbd>`;
+    b.onclick=()=>{setStatus(v);};
+    grid.appendChild(b);
+  });
+  body.appendChild(grid);
+
+  // New MP (RE only)
+  const isRE=(state.draft.status||"").split("-")[0]==="RE";
+  const mpf=el("div","field"+(isRE?"":" hidden"));
+  mpf.innerHTML=`<label>New MP <span class="muted">· required for RE</span></label>
+    <input id="newmp" type="text" inputmode="decimal" placeholder="e.g. 8.11" value="${esc(state.draft.newmp)}">`;
+  body.appendChild(mpf);
+
+  // comment
+  const cf=el("div","field");
+  cf.innerHTML=`<label>Comment</label>
+    <textarea id="comment" rows="2" placeholder="brief; don't restate the row (e.g. &quot;>150'&quot;, &quot;at driveway&quot;, &quot;per coords&quot;)">${esc(state.draft.comment)}</textarea>
+    <div class="hint">Plain style, no em dashes. Required for ADD, DEL, and reviewed NIS.</div>`;
+  body.appendChild(cf);
+
+  // errors
+  const errWrap=el("ul","errs");errWrap.id="errs";body.appendChild(errWrap);
+
+  // record
+  const rec=el("button","rec-btn");rec.id="rec";rec.textContent="Record determination";
+  rec.onclick=recordCurrent;
+  body.appendChild(rec);
+  // reflect the current draft's validity on first render (button + errors)
+  const _p0=state.draft.status?validate(state.draft):[];
+  errWrap.innerHTML=_p0.map(p=>`<li>${esc(p)}</li>`).join("");
+  rec.disabled=!state.draft.status||_p0.length>0;
+
+  // wire inputs
+  body.querySelector("#comment").addEventListener("input",e=>{state.draft.comment=e.target.value;liveValidate();});
+  const mpi=body.querySelector("#newmp");
+  if(mpi)mpi.addEventListener("input",e=>{state.draft.newmp=e.target.value;liveValidate();});
+
+  // reference call (feedback after recording)
+  const d=state.det[r.id];
+  if(d){const ref=el("div","ref-call");
+    const match=d.status.split("-")[0]===r.ref;
+    ref.innerHTML=`Recorded <span class="pill st-${d.status.split("-")[0]}">${d.status}</span>
+      · reference review call: <b>${r.ref}</b> ${match?'<span style="color:var(--is)">✓ agrees</span>':'<span style="color:var(--add)">— worth a second look</span>'}`;
+    body.appendChild(ref);
+  }
+  p.appendChild(body);
+
+  // audit + banners live under the pane
+  p.appendChild(auditBlock());
+  return p;
+}
+const ST_LABEL={IS:"in study",ADD:"add",DEL:"delete",NIS:"not in study",RE:"re-milepost"};
+function auditBlock(){
+  const wrap=el("div");
+  wrap.appendChild(el("div","rq-head",`<h3>Binning preview</h3>`));
+  const bans=el("div","banners");bans.style.padding="12px 15px";
+  const groups=[["In study (IS · ADD · RE)","st-IS",["IS","ADD","RE"]],
+    ["NIS · reviewed","st-NIS",["NIS"]],["Removed (DEL)","st-DEL",["DEL"]]];
+  const detvals=Object.values(state.det);
+  groups.forEach(([lab,cls,set])=>{
+    const n=detvals.filter(d=>set.includes(d.status.split("-")[0])).length;
+    const ban=el("div","ban");
+    ban.innerHTML=`<span class="lab"><span class="pill ${cls}">${set.join("/")}</span>${lab}</span><span class="ct">${n}</span>`;
+    bans.appendChild(ban);
+  });
+  const total=RAW.length,done=detvals.length;
+  const prog=el("div","ban");
+  prog.innerHTML=`<span class="lab">Reviewed</span><span class="ct">${done}/${total}</span>`;
+  bans.appendChild(prog);
+  const bar=el("div","bar");bar.innerHTML=`<span style="width:${Math.round(done/total*100)}%"></span>`;
+  bans.appendChild(bar);
+  wrap.appendChild(bans);
+
+  wrap.appendChild(el("div","rq-head",`<h3>Audit trail</h3><span class="chip mono">${state.audit.length} entries</span>`));
+  const au=el("div","audit");
+  if(!state.audit.length)au.appendChild(el("div","empty","No determinations yet. Assign a status and record it."));
+  else state.audit.slice().reverse().forEach(a=>{
+    const row=el("div","aud");
+    row.innerHTML=`<span class="t">${a.ts}${a.prev?` · was ${a.prev}`:""}</span>
+      <span class="cid">${a.crash_id}</span><span></span>
+      <span><span class="pill st-${a.status.split("-")[0]}">${a.status}</span></span>
+      ${a.comment?`<span class="cmt">"${esc(a.comment)}"</span>`:""}`;
+    au.appendChild(row);
+  });
+  wrap.appendChild(au);
+  return wrap;
+}
+
+/* ---------- radar ---------- */
+function drawRadar(sel){
+  const cv=$("#radar");if(!cv)return;const ctx=cv.getContext("2d");
+  const dpr=window.devicePixelRatio||1;const S=184;cv.width=S*dpr;cv.height=S*dpr;
+  cv.style.width=S+"px";cv.style.height=S+"px";ctx.scale(dpr,dpr);
+  const cx=S/2,cy=S/2,maxFt=700,R=S/2-10;
+  const css=getComputedStyle(document.documentElement);
+  const c=n=>css.getPropertyValue(n).trim();
+  ctx.clearRect(0,0,S,S);
+  // rings
+  [700,450,STUDY.buffer].forEach(ft=>{
+    const rr=Math.min(ft/maxFt,1)*R;
+    ctx.beginPath();ctx.arc(cx,cy,rr,0,7);
+    ctx.strokeStyle=ft===STUDY.buffer?c("--is"):c("--line");
+    ctx.lineWidth=ft===STUDY.buffer?1.6:1;ctx.setLineDash(ft===STUDY.buffer?[]:[3,3]);ctx.stroke();
+  });
+  ctx.setLineDash([]);
+  // buffer label
+  ctx.fillStyle=c("--is");ctx.font="700 9px "+c("--mono");ctx.textAlign="left";
+  const br=Math.min(STUDY.buffer/maxFt,1)*R;ctx.fillText(STUDY.buffer+"′",cx+3,cy-br-3);
+  // crashes
+  queue().forEach(({r})=>{
+    const b=(r.brg-90)*Math.PI/180;const rr=Math.min(r.dist/maxFt,1)*R;
+    const x=cx+Math.cos(b)*rr,y=cy+Math.sin(b)*rr;
+    const d=state.det[r.id];const isSel=r.id===sel.id;
+    let col=d?c("--"+d.status.split("-")[0].toLowerCase()):c("--nis");
+    if(!d)col=c("--muted");
+    ctx.beginPath();ctx.arc(x,y,isSel?5.5:3.6,0,7);
+    ctx.fillStyle=col;ctx.globalAlpha=isSel?1:.85;ctx.fill();ctx.globalAlpha=1;
+    if(isSel){ctx.beginPath();ctx.arc(x,y,8.5,0,7);ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.stroke();}
+  });
+  // centre
+  ctx.beginPath();ctx.arc(cx,cy,4,0,7);ctx.fillStyle=c("--accent");ctx.fill();
+  ctx.beginPath();ctx.moveTo(cx-7,cy);ctx.lineTo(cx+7,cy);ctx.moveTo(cx,cy-7);ctx.lineTo(cx,cy+7);
+  ctx.strokeStyle=c("--accent");ctx.lineWidth=1;ctx.stroke();
+}
+
+/* ---------- interactions ---------- */
+function selectCrash(id){
+  state.selected=id;
+  const d=state.det[id];
+  state.draft=d?{status:d.status,newmp:d.newmp||"",comment:d.comment||""}:{status:null,newmp:"",comment:""};
+  // re-render just the panes
+  const wrap=$(".review");if(wrap){wrap.replaceChildren(queuePane(),detailPane(),determinePane());}
+}
+function setStatus(v){
+  const base=(state.draft.status||"").split("-")[0];
+  state.draft.status=(base===v)?null:v;   // toggle off if same
+  refreshDetermine();
+}
+function refreshDetermine(){
+  const wrap=$(".review");if(!wrap)return;
+  wrap.children[2].replaceWith(determinePane());
+  // keep focus friendly: nothing auto-focused to avoid stealing keys
+  liveValidate();
+}
+function liveValidate(){
+  const errs=$("#errs");const rec=$("#rec");if(!errs||!rec)return;
+  const problems=state.draft.status?validate(state.draft):[];
+  errs.innerHTML=problems.map(p=>`<li>${esc(p)}</li>`).join("");
+  rec.disabled=!state.draft.status||problems.length>0;
+}
+function recordCurrent(){
+  const r=RAW.find(x=>x.id===state.selected);if(!r||!state.draft.status)return;
+  const problems=validate(state.draft);if(problems.length){liveValidate();return;}
+  const prev=state.det[r.id]?state.det[r.id].status:null;
+  const rec={status:state.draft.status,newmp:state.draft.newmp.trim(),comment:state.draft.comment.trim()};
+  state.det[r.id]=rec;
+  state.audit.push({ts:new Date().toISOString().slice(0,19).replace("T"," "),
+    crash_id:r.id,status:rec.status,comment:rec.comment,prev});
+  // flash + advance to next pending
+  const btn=$("#rec");if(btn){btn.classList.add("ok-flash");btn.textContent="Recorded ✓";}
+  const q=queue();const next=q.find(x=>x.pending&&!x.animal);
+  setTimeout(()=>{
+    if(next){selectCrash(next.r.id);}else{selectCrash(r.id);}
+    renderNav();
+  },260);
+}
+document.addEventListener("keydown",e=>{
+  if(state.stage!=="review")return;
+  const tag=(document.activeElement&&document.activeElement.tagName)||"";
+  const typing=tag==="INPUT"||tag==="TEXTAREA";
+  if(e.key==="Enter"&&!typing){e.preventDefault();const rec=$("#rec");if(rec&&!rec.disabled)recordCurrent();return;}
+  if(typing)return;   // don't hijack keys while typing a comment
+  const k=e.key.toLowerCase();
+  if(KEYMAP[k]){const v=KEYMAP[k];if(VOCAB[state.atype].includes(v)){e.preventDefault();setStatus(v);}return;}
+  if(k==="j"||k==="k"){
+    e.preventDefault();const q=queue();const idx=q.findIndex(x=>x.r.id===state.selected);
+    const ni=k==="j"?Math.min(q.length-1,idx+1):Math.max(0,idx-1);
+    if(q[ni])selectCrash(q[ni].r.id);
+  }
+});
+
+/* ================= STAGE 06 — report drafts ================= */
+function reportStage(){
+  const s=stageWrap();
+  s.appendChild(head("Report drafts (engineer reviews every one)",
+    "The manual cells of the 1-page results sheets — Items for Discussion, Additional Information, countermeasure text — drafted from the record's tallies and the authoritative assumptions. Every draft passes a style gate (no em dashes) and a numeric gate (each “N crashes” must match a tally) before the PE sees it."));
+  const g=el("div","grid cols-2");
+  const a=el("div","panel pad");
+  a.innerHTML=`<div class="eyebrow" style="margin-bottom:8px">Drafted cell · with assumptions</div>
+    <div class="code-block">1 page results · D15 (countermeasure)
+Convert intersection from Two-Way Stop to All-Way
+Stop control, including oversized stop signs with
+"All Way" plaques and bright sides on NC 42.</div>
+    <div class="tag-row" style="margin-top:10px">
+      <span class="chip"><span class="dot" style="background:var(--is)"></span>style gate ✓</span>
+      <span class="chip"><span class="dot" style="background:var(--is)"></span>numeric gate ✓</span></div>`;
+  const b=el("div","panel pad");
+  b.innerHTML=`<div class="eyebrow" style="margin-bottom:8px">How the draft is built</div>
+    <ul class="list-reset">
+      <li class="feat"><span class="b">›</span><span>Exemplars come <b>only</b> from the train half of the archive; the verify half is measured, never mined.</span></li>
+      <li class="feat"><span class="b">›</span><span>Boilerplate vs authored text is decided by data — cell text recurring across evaluations is template, unique text is what the model drafts.</span></li>
+      <li class="feat"><span class="b">›</span><span>Run synchronously for review, or via the Message Batches API (half price) for a whole half.</span></li>
+    </ul>
+    <div class="code-block" style="margin-top:10px"><span class="fl">safety-eval bench draft</span> --dataset verify.jsonl \\\n  --train train.jsonl --mode batch --output drafts.jsonl</div>`;
+  g.appendChild(a);g.appendChild(b);s.appendChild(g);
+  return s;
+}
+
+/* ================= STAGE 07 — benchmark (today's real numbers) ================= */
+function benchStage(){
+  const s=stageWrap();
+  s.appendChild(head("Credibility benchmark",
+    "How close the drafted report text comes to what engineers actually delivered — char-level similarity per authored cell, plus the gate pass rate. Measured on the held-out verify half. These are the numbers from this session, including the <code>.msg</code>-assumptions experiment."));
+  const k=el("div","kpis");
+  const tiles=[
+    {n:"41/41",l:"verify evals drafted (Batch API)"},
+    {n:"0.128",l:"baseline median similarity"},
+    {n:"0.238",l:"enriched median · the 13 with .msg",d:"+0.122 vs 0.116",cls:"up"},
+    {n:"100%",l:"gate-clean (baseline)"},
+  ];
+  tiles.forEach(t=>{const c=el("div","kpi");
+    c.innerHTML=`<div class="n">${t.n}</div><div class="l">${t.l}</div>${t.d?`<div class="d ${t.cls}">${t.d}</div>`:""}`;k.appendChild(c);});
+  s.appendChild(k);
+  const g=el("div","grid cols-2");g.style.marginTop="14px";
+  const a=el("div","panel pad");
+  a.innerHTML=`<div class="eyebrow" style="margin-bottom:10px">.msg assumptions: before → after</div>
+    <div class="banners">
+      ${benchBar("Enriched 13 (got .msg)",0.116,0.238,"var(--is)")}
+      ${benchBar("Plain 28 (no .msg)",0.135,0.113,"var(--nis)")}
+      ${benchBar("All 41",0.128,0.137,"var(--accent)")}
+    </div>
+    <p class="small muted" style="margin:12px 0 0">Authoritative assumptions roughly double similarity on the records that get them; the overall median moves modestly because only 13 of 41 are .msg-sourced.</p>`;
+  const b=el("div","panel pad");
+  b.innerHTML=`<div class="eyebrow" style="margin-bottom:8px">Pipeline</div>
+    <div class="flow"><span class="chip">archive</span><span class="arw">→</span><span class="chip mono">bench extract --msgs</span><span class="arw">→</span><span class="chip mono">bench draft</span><span class="arw">→</span><span class="chip mono">bench score</span></div>
+    <hr class="hr">
+    <ul class="list-reset">
+      <li class="feat"><span class="b">›</span><span>Two costs of enrichment, both fixable: a small dip on plain records (exemplar shift) and 2 gate failures where the model quoted the assumptions' development-crash summary instead of a study tally.</span></li>
+      <li class="feat"><span class="b">›</span><span>Provenance enforced: only <code>.msg</code>-sourced assumptions are ever attached; the initial draft .docx is never used as final.</span></li>
+    </ul>`;
+  g.appendChild(a);g.appendChild(b);s.appendChild(g);
+  return s;
+}
+function benchBar(lab,b,e,col){
+  const scale=v=>Math.round(v/0.30*100);
+  const up=e>=b;
+  return `<div class="ban" style="display:block">
+    <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+      <span class="lab">${lab}</span>
+      <span class="ct">${b.toFixed(3)} → ${e.toFixed(3)} <span style="color:${up?'var(--is)':'var(--del)'}">${up?'▲':'▼'}${Math.abs(e-b).toFixed(3)}</span></span></div>
+    <div class="bar" style="height:8px"><span style="width:${scale(e)}%;background:${col}"></span></div></div>`;
+}
+
+/* ---------- boot ---------- */
+function boot(){
+  // theme toggle
+  $("#theme").onclick=()=>{
+    const cur=document.documentElement.getAttribute("data-theme");
+    const isDark=cur?cur==="dark":matchMedia("(prefers-color-scheme:dark)").matches;
+    document.documentElement.setAttribute("data-theme",isDark?"light":"dark");
+    if(state.stage==="review"){const r=RAW.find(x=>x.id===state.selected);if(r)requestAnimationFrame(()=>drawRadar(r));}
+  };
+  // analysis type
+  $("#atype").querySelectorAll("button").forEach(btn=>{
+    btn.onclick=()=>{
+      state.atype=btn.getAttribute("data-at");
+      $("#atype").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b===btn)));
+      // clear an RE draft if switching to intersection
+      if(state.atype==="intersection"&&(state.draft.status||"").startsWith("RE"))state.draft.status=null;
+      if(state.stage==="review")selectCrash(state.selected);
+    };
+  });
+  render();
+}
+boot();
+</script>

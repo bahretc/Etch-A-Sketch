@@ -245,6 +245,19 @@ def _review_queue_tab(st) -> None:
         item = pending[pos]
         row = item.row
 
+        report_pages, report_note = [], None
+        if binder_index is None:
+            report_note = "No binder index loaded; reviewing coded data only."
+        elif not item.has_report:
+            report_note = ("No DMV-349 for this crash in the indexed binder; "
+                           "flag as unverifiable if a determination needs the "
+                           "report (docs/03).")
+        else:
+            try:
+                report_pages = _queue_pages(index_path, row.crash_id)
+            except Exception as exc:           # noqa: BLE001 - show, don't die
+                report_note = f"Page retrieval failed: {exc}"
+
         left, right = st.columns([2, 3])
         with left:
             st.subheader(f"Crash {row.crash_id}")
@@ -260,6 +273,72 @@ def _review_queue_tab(st) -> None:
                 st.info(f"Skip suggested: {item.skip_reason}")
             show = {k: v for k, v in row.fields.items() if v not in (None, "")}
             st.table({"field": list(show), "value": [str(v) for v in show.values()]})
+
+            # ---- AI assist over the redacted report (docs/03; proposal only) ----
+            assist_mode = st.radio(
+                "AI assist", ["Off", "Decide", "Prepare"], horizontal=True,
+                key=f"rq_assist_mode_{row.crash_id}",
+                help="Decide: propose the determination from the redacted "
+                     "report. Prepare: assemble the evidence and leave the call "
+                     "to you. Runs on the redacted pages only; never auto-applied.")
+            akey = f"rq_assist_res_{row.crash_id}"
+            if assist_mode != "Off" and st.button("Run AI assist",
+                                                  key=f"rq_run_{row.crash_id}"):
+                if not report_pages:
+                    st.warning("No redacted report to assist from.")
+                else:
+                    from . import review_assist as ra
+                    ctx = ra.StudyContext(analysis_type=analysis_type,
+                                          study_point=point, mp_range=mp_range,
+                                          prescreen_ft=item.dist_ft)
+                    with st.spinner("Reviewing the redacted report..."):
+                        try:
+                            st.session_state[akey] = ra.assist(
+                                row, ctx, report_pages, mode=assist_mode.lower(),
+                                redacted=True)
+                        except Exception as exc:   # noqa: BLE001 - show, don't die
+                            st.error(f"Assist failed: {exc}")
+            res = st.session_state.get(akey)
+            if res is not None and res.mode == assist_mode.lower():
+                if res.mode == "decide":
+                    if res.proposed_status:
+                        st.success(f"AI proposes **{res.proposed_status}** "
+                                   f"({res.confidence}) — {res.where_occurred}")
+                    for ev in res.evidence[:4]:
+                        st.caption("• " + ev)
+                    if res.validation_problems:
+                        st.warning(" ".join(res.validation_problems))
+                    if res.needs_manual:
+                        st.warning("Low confidence or unresolved; decide manually.")
+                    det = res.as_determination()
+                    if (det is not None and not res.needs_manual
+                            and st.button("Accept proposal and record",
+                                          key=f"rq_accept_{row.crash_id}")):
+                        problems = rq.validate_determination(det, analysis_type)
+                        if problems:
+                            for pmsg in problems:
+                                st.error(pmsg)
+                        else:
+                            rq.record_determination(audit_path, det,
+                                                    previous=row,
+                                                    source="review-assist:decide")
+                            dets[row.crash_id] = det
+                            st.session_state["rq_pos"] = min(pos, len(pending) - 2)
+                            st.rerun()
+                else:
+                    st.info("AI prepared the evidence; the determination is yours.")
+                    for lab, val in (("Diagram", res.diagram_summary),
+                                     ("Narrative", res.narrative_summary),
+                                     ("Report places it", res.report_location),
+                                     ("Distance", res.distance_assessment),
+                                     ("Rule", res.applicable_rule)):
+                        if val:
+                            st.caption(f"**{lab}:** {val}")
+                    if res.candidate_statuses:
+                        st.caption("Plausible: " + ", ".join(res.candidate_statuses))
+                    if res.comment:
+                        st.caption("Draft comment (copy if useful):")
+                        st.code(res.comment, language=None)
 
             nav1, nav2 = st.columns(2)
             if nav1.button("Previous"):
@@ -305,23 +384,14 @@ def _review_queue_tab(st) -> None:
                     st.rerun()
 
         with right:
-            if binder_index is None:
-                st.info("No binder index loaded; reviewing coded data only.")
-            elif not item.has_report:
-                st.warning("No DMV-349 for this crash in the indexed binder; "
-                           "flag as unverifiable if a determination needs "
-                           "the report (docs/03).")
-            else:
+            if report_note:
+                (st.info if binder_index is None else st.warning)(report_note)
+            if report_pages:
                 st.caption("Redacted DMV-349 (front page first; PII removed "
-                           "before display, ZIPs and crash IDs kept).")
-                with st.spinner("Rendering redacted pages..."):
-                    try:
-                        pages = _queue_pages(index_path, row.crash_id)
-                    except Exception as exc:   # noqa: BLE001 - show, don't die
-                        st.error(f"Page retrieval failed: {exc}")
-                        pages = []
-                for i, img in enumerate(pages, 1):
-                    st.image(img, caption=f"page {i} of {len(pages)}",
+                           "before display, ZIPs and crash IDs kept). The AI "
+                           "assist sees exactly these redacted pages.")
+                for i, img in enumerate(report_pages, 1):
+                    st.image(img, caption=f"page {i} of {len(report_pages)}",
                              use_container_width=True)
 
     if dets and st.button(f"Save reviewed workbook ({len(dets)} "

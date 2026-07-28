@@ -68,28 +68,77 @@ def _primary_workbooks(workbook_dir: str) -> dict[str, str]:
     return {wo: path for wo, (size, path) in best.items()}
 
 
+_MSG_NAME_RE = re.compile(r"^(?P<wo>\d{10,12})__.+\.(?:msg|eml)$", re.I)
+
+
+def _assignment_msgs(msg_dir: str) -> dict[str, list[str]]:
+    """wo -> downloaded assignment-thread files (``<wo>__*.msg`` / ``.eml``)."""
+    out: dict[str, list[str]] = {}
+    for fn in os.listdir(msg_dir):
+        m = _MSG_NAME_RE.match(fn)
+        if m:
+            out.setdefault(m.group("wo"), []).append(
+                os.path.join(msg_dir, fn))
+    return out
+
+
+def _msg_assumptions(wo: str, meta: dict, msg_paths: list[str]):
+    """Authoritative assumptions for a msg-sourced WO from its assignment
+    thread, or None. Selects the thread block whose Order ID (or Project ID)
+    is this WO; provenance is enforced downstream (extract_record refuses any
+    assumptions whose source is not the .msg thread, docs/10)."""
+    if meta.get("assumptions_source") != "msg" or not msg_paths:
+        return None
+    from .assignment_email import parse_assignment_email, to_assumptions_dict
+
+    want = re.sub(r"\D", "", wo)
+    for path in msg_paths:
+        try:
+            blocks = parse_assignment_email(path)
+        except Exception:                           # noqa: BLE001 - skip bad
+            continue
+        for pa in blocks.values():
+            if re.sub(r"\D", "", pa.order_id) == want or (
+                    pa.project_id and pa.project_id == meta.get("project_id")):
+                return to_assumptions_dict(pa)
+    return None
+
+
 def extract_datasets(workbook_dir: str, manifest_path: str,
-                     outdir: str, progress=None) -> dict:
-    """Build train/verify record files; returns counts and problems."""
+                     outdir: str, msg_dir: str | None = None,
+                     progress=None) -> dict:
+    """Build train/verify record files; returns counts and problems.
+
+    ``msg_dir`` (optional): a directory of downloaded assignment threads named
+    ``<wo>__<name>.msg``. When given, msg-sourced evaluations get their
+    authoritative assumptions attached to ``inputs.assumptions`` (docs/10);
+    without it every record's assumptions stay null.
+    """
     from .report_dataset import extract_record
 
     metas = {json.loads(l)["wo"]: json.loads(l)
              for l in open(manifest_path, encoding="utf-8")}
     paths = _primary_workbooks(workbook_dir)
+    msgs = _assignment_msgs(msg_dir) if msg_dir else {}
     os.makedirs(outdir, exist_ok=True)
     out = {"train": [], "verify": []}
     problems: list[str] = []
     done = 0
+    with_assumptions = 0
     for wo, meta in sorted(metas.items()):
         path = paths.get(wo)
         if path is None:
             problems.append(f"{wo}: no downloaded workbook")
             continue
         try:
-            rec = extract_record(path, meta)
+            rec = extract_record(path, meta,
+                                 assumptions=_msg_assumptions(
+                                     wo, meta, msgs.get(wo, [])))
         except Exception as exc:                    # noqa: BLE001 - collect
             problems.append(f"{wo}: extract failed: {exc}")
             continue
+        if rec["inputs"].get("assumptions") is not None:
+            with_assumptions += 1
         rec["companions"] = meta.get("companions", [])
         parts = [f for f in os.listdir(workbook_dir)
                  if f.startswith(wo + "__") and _is_eval_workbook(f)]
@@ -107,6 +156,7 @@ def extract_datasets(workbook_dir: str, manifest_path: str,
                 fh.write(json.dumps(rec) + "\n")
     return {"train": len(out.get("train", [])),
             "verify": len(out.get("verify", [])),
+            "with_assumptions": with_assumptions,
             "problems": problems}
 
 

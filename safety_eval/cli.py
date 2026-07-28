@@ -365,8 +365,10 @@ def _cmd_bench(args) -> int:
 
     if args.stage == "extract":
         out = bench.extract_datasets(args.workbooks, args.manifest,
-                                     args.outdir, progress=_progress)
-        print(f"train {out['train']} / verify {out['verify']} records")
+                                     args.outdir, msg_dir=args.msgs,
+                                     progress=_progress)
+        print(f"train {out['train']} / verify {out['verify']} records"
+              f" ({out['with_assumptions']} with .msg assumptions)")
         for p in out["problems"]:
             print(f"  ! {p}")
         return 0
@@ -652,6 +654,9 @@ def build_parser() -> argparse.ArgumentParser:
              "delivered text (docs/10; verify half measured, never mined).")
     be.add_argument("stage", choices=["extract", "draft", "score"])
     be.add_argument("--workbooks", help="extract: downloaded workbook dir.")
+    be.add_argument("--msgs", help="extract: dir of downloaded assignment "
+                    "threads (<wo>__*.msg) to attach authoritative "
+                    "assumptions for msg-sourced WOs (docs/10).")
     be.add_argument("--manifest", default="archive/manifest.jsonl")
     be.add_argument("--outdir", default="datasets", help="extract output dir.")
     be.add_argument("--dataset", help="draft/score: records .jsonl.")

@@ -655,6 +655,8 @@ def build_parser() -> argparse.ArgumentParser:
     be.add_argument("--manifest", default="archive/manifest.jsonl")
     be.add_argument("--outdir", default="datasets", help="extract output dir.")
     be.add_argument("--dataset", help="draft/score: records .jsonl.")
+    be.add_argument("--drafts", help="score: drafts.jsonl to score against "
+                    "the dataset.")
     be.add_argument("--train", help="train-half records .jsonl (exemplars).")
     be.add_argument("--output", help="draft: drafts.jsonl; score: report.json.")
     be.add_argument("--model", default="claude-opus-4-8")

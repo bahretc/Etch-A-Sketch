@@ -52,6 +52,11 @@ class StudyContext:
     mp_range: tuple | None = None              # (lo, hi) for sections
     target_definition: str = ""                # from the assignment / results sheet
     prescreen_ft: float | None = None          # DetailedFiche distance (NOT the report's)
+    #: Location resolved from the report's location block against the features
+    #: report (``location.resolve``). Supplied so the assistant is never left
+    #: to work a milepost out of a distance field, which it must not do.
+    resolved_location: object | None = None
+    fiche_milepost: float | None = None         # what the study was built on
 
 
 @dataclass
@@ -106,6 +111,7 @@ intersection analysis.
 mile or more apart. When a diagram superficially matches, confirm with the \
 report's front-page coordinates.
 - Animal crashes are ignored in this review (no report review needed).
+- NOTHING on the DMV-349 is a milepost. "N Miles outside municipality" is a distance from a town and "N Miles from <route>" is a distance from an intersecting route; converting either into a milepost requires the features report, which is done for you before you are called. If a resolved milepost is not given below, say the milepost cannot be confirmed and do NOT infer one from any number on the report.
 - Comments are brief and plain: no em dashes, and do not restate a value the \
 row already shows. Acceptable patterns: "no intersection in diagram", ">150'", \
 "at [road]", "per coords".
@@ -181,6 +187,19 @@ def _context_block(row, ctx: StudyContext) -> str:
             lines.append(f"Study mileposts: {min(ctx.mp_range)}–{max(ctx.mp_range)}")
     if ctx.target_definition:
         lines.append(f"Target crashes: {ctx.target_definition}")
+    rl = getattr(ctx, "resolved_location", None)
+    if rl is not None:
+        lines.append("Resolved crash location: " + rl.summary())
+        for note in getattr(rl, "notes", [])[:4]:
+            lines.append(f"  - {note}")
+    else:
+        lines.append("Resolved crash location: NOT AVAILABLE. No features "
+                     "report was supplied, so no milepost has been "
+                     "established. Do not infer one.")
+    if ctx.fiche_milepost is not None:
+        lines.append(f"Milepost coded on the fiche: {ctx.fiche_milepost:.2f} "
+                     "(this is what the study was built on; the report is "
+                     "being checked against it, not used to restate it)")
     if ctx.prescreen_ft is not None:
         lines.append(f"GPS pre-screen distance (from the DetailedFiche, not the "
                      f"report): {ctx.prescreen_ft:.0f} ft")
@@ -236,7 +255,14 @@ def _parse(data: dict, row, ctx: StudyContext, mode: str) -> AssistResult:
         res.where_occurred = data.get("where_occurred", "")
         res.at_study_location = data.get("at_study_location")
         res.proposed_status = data.get("proposed_status")
-        res.new_mp = data.get("new_mp")
+        # New MP belongs to RE rows only (docs/03): in the delivered workbooks
+        # every RE row carries one and no other row does, and
+        # apply_determinations would otherwise write a milepost onto an IS row.
+        base = (res.proposed_status or "").split("-")[0]
+        res.new_mp = data.get("new_mp") if base == "RE" else None
+        if base != "RE" and data.get("new_mp") is not None:
+            res.flags.append("model returned a New MP on a non-RE status; "
+                             "dropped (New MP is the RE field)")
         res.comment = data.get("comment", "")
         res.confidence = data.get("confidence", "")
         res.evidence = list(data.get("evidence", []))

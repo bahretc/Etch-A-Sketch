@@ -1,0 +1,320 @@
+"""Resolve where a crash happened, from the DMV-349 location block.
+
+The location block is a set of labelled fields, not prose, and each field means
+one thing:
+
+    Crash occurred [In|Near] <municipality>  or <D1> Miles <dir> outside municipality
+    on <on_road>            Highway Number, or Highway, Street: <street>
+    ## from <from_road>     <D2> Miles <dir>   (0 ft-intersection)
+    toward <toward_road>    Latitude / Longitude / Altitude
+
+D1 is a distance from a municipality; D2 is a distance from an intersecting
+route. Neither one is a milepost, and nothing on the form is. Reading either as
+a milepost is a guess, and a drafting layer must never have to guess: it is
+handed a resolved location and told how it was obtained.
+
+Resolution order, best evidence first:
+
+1. **Coordinates.** When the report's Latitude/Longitude boxes are filled and
+   route shape points are available, the milepost comes from projecting the
+   point onto the route and interpolating between the surrounding shape points.
+2. **Distance from an intersecting route.** With a features report (the NCDOT
+   route inventory of intersections and their mileposts), the milepost is
+   ``MP(from_road) +/- D2``. The sign does not need a route convention: the
+   form also names the road the crash lies TOWARD, so the direction of
+   increasing milepost is read off the pair itself, and the result is checked
+   to fall between the two.
+3. **Street address.** Resolvable to a route and milepost only with a
+   geocoder; without one the address is carried through as-is with no milepost,
+   which is honest rather than approximate.
+4. **Distance from a municipality.** Locates the crash to a town, not a point.
+   Never converted to a milepost.
+
+The fiche already carries the milepost the study was built on. This module does
+not duplicate it: it resolves independently and then **verifies**, because a
+disagreement is a finding. In a section analysis a coded milepost that the
+report contradicts is exactly the RE determination (docs/03).
+"""
+from __future__ import annotations
+
+import csv
+import math
+import re
+from dataclasses import dataclass, field
+
+#: Compass directions as unit vectors, for interpreting "0.80 Miles N".
+_COMPASS = {"N": (0.0, 1.0), "S": (0.0, -1.0), "E": (1.0, 0.0),
+            "W": (-1.0, 0.0), "NE": (0.7071, 0.7071), "NW": (-0.7071, 0.7071),
+            "SE": (0.7071, -0.7071), "SW": (-0.7071, -0.7071)}
+
+#: Mileposts agreeing within this are the same location (fiche mileposts are
+#: recorded to 0.01 mi, and a report distance is read to 0.01 mi).
+MP_TOLERANCE = 0.06
+
+
+@dataclass
+class ReportLocation:
+    """The location block of one DMV-349, field by field."""
+    on_road: str = ""
+    from_road: str = ""
+    toward_road: str = ""
+    street: str = ""                     # "Highway Number, or Highway, Street"
+    municipality: str = ""
+    in_municipality: bool | None = None  # In vs Near checkbox
+    dist_from_municipality: float | None = None
+    dir_from_municipality: str = ""
+    dist_from_intersection: float | None = None
+    dir_from_intersection: str = ""
+    at_intersection: bool = False        # the "0 ft-intersection" marker
+    latitude: float | None = None
+    longitude: float | None = None
+    county: str = ""
+
+    @property
+    def has_coordinates(self) -> bool:
+        return self.latitude is not None and self.longitude is not None
+
+
+@dataclass
+class ResolvedLocation:
+    """Where the crash was, and how that was established."""
+    milepost: float | None = None
+    method: str = "unresolved"           # coordinates | features | address | municipality
+    latitude: float | None = None
+    longitude: float | None = None
+    route: str = ""
+    confidence: str = "low"              # low | medium | high
+    notes: list = field(default_factory=list)
+    fiche_milepost: float | None = None
+    agrees_with_fiche: bool | None = None
+
+    def summary(self) -> str:
+        """One plain line for a prompt or a reviewer."""
+        if self.milepost is not None:
+            base = f"{self.route or 'route'} milepost {self.milepost:.2f}"
+        elif self.has_point:
+            base = f"{self.latitude:.5f}, {self.longitude:.5f}"
+        else:
+            base = "not resolved to a point"
+        out = f"{base} (from {self.method})"
+        if self.agrees_with_fiche is False and self.fiche_milepost is not None:
+            out += (f"; DISAGREES with the coded milepost "
+                    f"{self.fiche_milepost:.2f}")
+        elif self.agrees_with_fiche:
+            out += "; agrees with the coded milepost"
+        return out
+
+    @property
+    def has_point(self) -> bool:
+        return self.latitude is not None and self.longitude is not None
+
+
+# --------------------------------------------------------------------------- #
+# the features report (route inventory)
+# --------------------------------------------------------------------------- #
+@dataclass
+class FeatureInventory:
+    """Mileposts of features along routes, from the NCDOT features report.
+
+    ``features[route][feature_name] = milepost`` and, when the report carries
+    geometry, ``shape[route] = [(milepost, lat, lon), ...]`` in milepost order.
+    """
+    features: dict = field(default_factory=dict)
+    shape: dict = field(default_factory=dict)
+
+    @classmethod
+    def from_csv(cls, path: str) -> "FeatureInventory":
+        """Load ``route,feature,milepost[,latitude,longitude]`` rows."""
+        inv = cls()
+        with open(path, newline="", encoding="utf-8-sig") as fh:
+            for row in csv.DictReader(fh):
+                key = {k.strip().lower(): (v or "").strip()
+                       for k, v in row.items() if k}
+                route = normalize_route(key.get("route", ""))
+                name = key.get("feature", "")
+                try:
+                    mp = float(key.get("milepost", ""))
+                except ValueError:
+                    continue
+                if not route:
+                    continue
+                if name:
+                    inv.features.setdefault(route, {})[normalize_route(name)] = mp
+                lat, lon = key.get("latitude", ""), key.get("longitude", "")
+                if lat and lon:
+                    try:
+                        inv.shape.setdefault(route, []).append(
+                            (mp, float(lat), float(lon)))
+                    except ValueError:
+                        pass
+        for pts in inv.shape.values():
+            pts.sort()
+        return inv
+
+    def milepost_of(self, route: str, feature: str) -> float | None:
+        return self.features.get(normalize_route(route), {}).get(
+            normalize_route(feature))
+
+
+_ROUTE_CLEAN_RE = re.compile(r"[^A-Z0-9]+")
+
+
+def normalize_route(name: str) -> str:
+    """'SR 1132', 'sr-1132', 'SR1132 (Plank Rd)' -> 'SR1132'.
+
+    Route names arrive from three sources (the report, the fiche and the
+    features report) with different spacing, punctuation and trailing common
+    names, so they are compared in a canonical form.
+    """
+    if not name:
+        return ""
+    text = name.upper().split("(")[0]
+    return _ROUTE_CLEAN_RE.sub("", text)
+
+
+# --------------------------------------------------------------------------- #
+# geometry helpers
+# --------------------------------------------------------------------------- #
+def haversine_mi(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    r_mi = 3958.7613
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp, dl = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r_mi * math.asin(math.sqrt(a))
+
+
+def interpolate_milepost(points, lat: float, lon: float):
+    """Milepost of the point on a route polyline nearest ``(lat, lon)``.
+
+    ``points`` are ``(milepost, lat, lon)`` in milepost order. Each segment is
+    treated as a straight line in local scale, the point is projected onto it,
+    and the milepost is interpolated by the projection's position along the
+    segment. Returns ``(milepost, offset_miles)``; the offset is how far the
+    crash sits from the route, which is what says whether the match is
+    believable.
+    """
+    if not points:
+        return None, None
+    if len(points) == 1:
+        mp, plat, plon = points[0]
+        return mp, haversine_mi(lat, lon, plat, plon)
+    best = (None, None, float("inf"))
+    cos_lat = math.cos(math.radians(lat)) or 1e-9
+    for (mp1, la1, lo1), (mp2, la2, lo2) in zip(points, points[1:]):
+        # local planar coordinates in miles
+        ax, ay = (lo1 - lon) * 69.172 * cos_lat, (la1 - lat) * 69.0547
+        bx, by = (lo2 - lon) * 69.172 * cos_lat, (la2 - lat) * 69.0547
+        dx, dy = bx - ax, by - ay
+        seg2 = dx * dx + dy * dy
+        t = 0.0 if seg2 <= 1e-12 else max(0.0, min(1.0,
+                                                   -(ax * dx + ay * dy) / seg2))
+        px, py = ax + t * dx, ay + t * dy
+        dist = math.hypot(px, py)
+        if dist < best[2]:
+            best = (mp1 + (mp2 - mp1) * t, t, dist)
+    return best[0], best[2]
+
+
+# --------------------------------------------------------------------------- #
+# resolution
+# --------------------------------------------------------------------------- #
+def resolve(loc: ReportLocation, inventory: FeatureInventory | None = None,
+            fiche_milepost: float | None = None,
+            tolerance: float = MP_TOLERANCE,
+            max_offset_mi: float = 0.25) -> ResolvedLocation:
+    """Best available location for one report; never guesses a milepost."""
+    inv = inventory or FeatureInventory()
+    route = normalize_route(loc.on_road)
+    res = ResolvedLocation(route=loc.on_road.strip(), fiche_milepost=fiche_milepost)
+
+    # 1. coordinates, interpolated onto the route when geometry is available
+    if loc.has_coordinates:
+        res.latitude, res.longitude = loc.latitude, loc.longitude
+        res.method, res.confidence = "coordinates", "medium"
+        pts = inv.shape.get(route) or []
+        mp, offset = interpolate_milepost(pts, loc.latitude, loc.longitude)
+        if mp is not None:
+            if offset is not None and offset > max_offset_mi:
+                res.notes.append(
+                    f"coordinates sit {offset:.2f} mi off {loc.on_road}; "
+                    "point may belong to another route")
+                res.confidence = "low"
+            else:
+                res.milepost = round(mp, 2)
+                res.confidence = "high"
+                res.notes.append(
+                    f"milepost interpolated from route geometry"
+                    + (f", {offset*5280:.0f} ft off centreline"
+                       if offset is not None else ""))
+        else:
+            res.notes.append("no route geometry available to convert the "
+                             "coordinates to a milepost")
+    # 2. distance from an intersecting route, signed by the road named "toward"
+    if res.milepost is None and loc.dist_from_intersection is not None \
+            and loc.from_road:
+        mp_from = inv.milepost_of(route, loc.from_road)
+        mp_toward = inv.milepost_of(route, loc.toward_road) \
+            if loc.toward_road else None
+        if mp_from is None:
+            res.notes.append(
+                f"{loc.from_road} is not in the features report for "
+                f"{loc.on_road}; distance cannot be converted to a milepost")
+        else:
+            d = loc.dist_from_intersection
+            if loc.at_intersection or d == 0:
+                res.milepost, res.method, res.confidence = (
+                    round(mp_from, 2), "features", "high")
+                res.notes.append(f"at the {loc.from_road} intersection")
+            elif mp_toward is not None:
+                sign = 1.0 if mp_toward >= mp_from else -1.0
+                span = abs(mp_toward - mp_from)
+                mp = mp_from + sign * d
+                res.method = "features"
+                if d > span + tolerance:
+                    res.notes.append(
+                        f"{d:.2f} mi from {loc.from_road} overshoots "
+                        f"{loc.toward_road} ({span:.2f} mi away); distance and "
+                        "the named roads disagree")
+                    res.confidence = "low"
+                    res.milepost = round(mp, 2)
+                else:
+                    res.milepost, res.confidence = round(mp, 2), "high"
+                    res.notes.append(
+                        f"MP({loc.from_road})={mp_from:.2f} "
+                        f"{'+' if sign > 0 else '-'} {d:.2f} mi toward "
+                        f"{loc.toward_road}")
+            else:
+                res.notes.append(
+                    f"{loc.toward_road or 'the road toward'} is not in the "
+                    "features report, so the direction of increasing milepost "
+                    "is unknown; milepost not resolved")
+                res.method, res.confidence = "features", "low"
+    # 3. a street address, with no route milepost without a geocoder
+    if res.milepost is None and not res.has_point and loc.street:
+        res.method = "address"
+        res.notes.append(
+            f"street reference {loc.street!r}; needs a geocoder to place it on "
+            "a route")
+    # 4. municipality distance locates a town, never a milepost
+    if res.milepost is None and not res.has_point and not loc.street:
+        if loc.municipality:
+            res.method = "municipality"
+            where = "in" if loc.in_municipality else "near"
+            res.notes.append(
+                f"{where} {loc.municipality}"
+                + (f", {loc.dist_from_municipality:.2f} mi "
+                   f"{loc.dir_from_municipality}".rstrip()
+                   if loc.dist_from_municipality is not None else "")
+                + "; a municipality distance is not a milepost")
+        else:
+            res.notes.append("location block carries nothing resolvable")
+
+    if fiche_milepost is not None and res.milepost is not None:
+        res.agrees_with_fiche = abs(res.milepost - fiche_milepost) <= tolerance
+        if not res.agrees_with_fiche:
+            res.notes.append(
+                f"resolved MP {res.milepost:.2f} vs coded {fiche_milepost:.2f}: "
+                f"off by {abs(res.milepost - fiche_milepost):.2f} mi. In a "
+                "section analysis a coded milepost the report contradicts is "
+                "the RE case (docs/03)")
+    return res

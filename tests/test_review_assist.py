@@ -124,3 +124,30 @@ def test_refusal_needs_manual():
     r = assist(ROW, CTX, _pages(), mode="decide",
                client=FakeClient("", stop="refusal"), redacted=True)
     assert r.needs_manual and "refusal" in r.flags
+
+
+def test_new_mp_is_dropped_on_a_non_RE_status():
+    """New MP is the RE field; a milepost must not ride along on an IS row."""
+    text = json.dumps({
+        "where_occurred": "US 13 MP 8.10", "at_study_location": True,
+        "proposed_status": "IS", "new_mp": 8.1, "comment": "within the section",
+        "confidence": "high", "evidence": ["resolved from the features report"]})
+    ctx = StudyContext(analysis_type="section")
+    r = assist(ROW, ctx, _pages(), mode="decide",
+               client=FakeClient(text), redacted=True)
+    assert r.proposed_status == "IS" and r.new_mp is None
+    assert any("New MP" in f for f in r.flags)
+    assert r.as_determination().new_mp is None
+
+
+def test_new_mp_is_kept_on_RE():
+    text = json.dumps({
+        "where_occurred": "US 13 MP 8.10", "at_study_location": True,
+        "proposed_status": "RE", "new_mp": 8.1,
+        "comment": "remileposted from the features report",
+        "confidence": "high", "evidence": ["MP(SR 1132) + 0.80"]})
+    ctx = StudyContext(analysis_type="section")
+    r = assist(ROW, ctx, _pages(), mode="decide",
+               client=FakeClient(text), redacted=True)
+    assert r.proposed_status == "RE" and r.new_mp == 8.1
+    assert not r.validation_problems

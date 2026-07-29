@@ -210,6 +210,24 @@ def _line_has_street_address(tokens: list[str]) -> bool:
     return False
 
 
+def _street_span(line):
+    """Just the 'number ... suffix' words of an address, not the whole line.
+
+    Whole-line coverage was safe when the address block was the only place a
+    street could appear, but narratives name roads too ("came to rest off
+    MOUNT CARMEL CHURCH RD"), and blacking those lines destroys the account
+    the reviewer needs. The identity blocks are covered by form geometry now,
+    so this rule only has to remove the address itself.
+    """
+    tokens = [w.text for w in line]
+    for i, tok in enumerate(tokens):
+        if tok.isdigit() and not _CRASH_ID_RE.match(tok) and len(tok) <= 6:
+            for j in range(i + 1, min(i + 5, len(tokens))):
+                if tokens[j].upper().strip(".,") in _STREET_SUFFIXES:
+                    return line[i:j + 1]
+    return []
+
+
 def plan_redactions(words: list[Word], keep_zip: bool = True,
                     pad: int = 3) -> list[Redaction]:
     """Decide what to black out.
@@ -302,8 +320,9 @@ def plan_redactions(words: list[Word], keep_zip: bool = True,
                 address_continues_from = idx + 1
             continue
 
-        if _line_has_street_address(tokens):
-            planned.append((line, "street-address"))
+        span = _street_span(line)
+        if span:
+            planned.append((span, "street-address"))
             address_continues_from = idx + 1
             continue
 
@@ -464,19 +483,64 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
     """
     from PIL import ImageDraw
 
+    from . import form_geometry as fg
+
     report = RedactionReport()
     with tempfile.TemporaryDirectory(prefix="redact-") as tmp:
         pages = _load_input_pages(input_path, tmp, dpi)
         report.pages = len(pages)
-        out_pages = []
+
+        # Phase 1: read every page once, register the front pages against the
+        # DMV-349 layout and harvest the person names out of the identity
+        # zones BEFORE anything is covered. The names are what lets the
+        # narrative stay readable with the people taken out of it.
+        page_words: list[list] = []
+        page_reg: list[tuple[float, float] | None] = []
+        # A binder holds several reports. Names are scoped to the report they
+        # were harvested from, so one driver's surname cannot black out
+        # another crash's text; place names from any header or location block
+        # are never scrubbed at all.
+        page_names: list[set] = []
+        protected: set[str] = set()
+        current: set[str] | None = None
         for i, img in enumerate(pages):
             page_png = os.path.join(tmp, f"ocr-{i}.png")
             img.save(page_png)
             words = ocr_words(page_png, page=i)
+            page_words.append(words)
             if not words:
                 report.warnings.append(
                     f"page {i + 1}: no OCR text found; verify manually")
+            protected |= fg.location_vocabulary(words, img.height)
+            reg = None
+            if words and fg.is_front_page(words):
+                reg = fg.register(words, img.height)
+                current = fg.harvest_names(words, img.width, img.height, reg)
+            page_reg.append(reg)
+            page_names.append(current or set())
+        page_names = [n - protected for n in page_names]
+        harvested = len(set().union(*page_names)) if page_names else 0
+        if harvested:
+            report.by_reason["harvested-names"] = harvested
+
+        out_pages = []
+        for i, img in enumerate(pages):
+            words = page_words[i]
             boxes = plan_redactions(words, keep_zip=keep_zip)
+            # geometry zones: cover the identity blocks by position, whatever
+            # OCR made of their captions
+            if page_reg[i] is not None:
+                for z, rect in fg.zone_rects(img.width, img.height,
+                                             page_reg[i]):
+                    boxes.append(Redaction(page=i, left=rect[0], top=rect[1],
+                                           right=rect[2], bottom=rect[3],
+                                           reason=f"zone:{z.name}"))
+            # scrub harvested names anywhere they appear, narrative included
+            for w in fg.scrub_targets(words, page_names[i]):
+                boxes.append(Redaction(
+                    page=i, left=max(0, w.left - 2), top=max(0, w.top - 2),
+                    right=w.right + 2, bottom=w.bottom + 2,
+                    reason="name-in-text"))
             draw = ImageDraw.Draw(img)
             for b in boxes:
                 draw.rectangle([b.left, b.top, b.right, b.bottom],
@@ -598,8 +662,9 @@ def _residual_groups(words: list[Word], keep_zip: bool):
     for line in _visual_rows(words):
         tokens = [w.text for w in line]
         norm = [_norm(t) for t in tokens]
-        if _line_has_street_address(tokens):
-            yield line, "street-address survived"
+        span = _street_span(line)
+        if span:
+            yield span, "street-address survived"
             continue
         if _looks_like_city_line(tokens) and not keep_zip:
             yield line, "city/state/zip survived"

@@ -69,3 +69,36 @@ def test_scrub_leaves_the_account_intact():
     narrative = [_w("TRAVELING", .05, .60), _w("EAST", .15, .60),
                  _w("ON", .20, .60), _w("US", .24, .60), _w("13", .28, .60)]
     assert scrub_targets(narrative, {"MERIWETHER"}) == []
+
+
+def test_zip_kept_inside_a_covered_zone():
+    """A ZIP locates the crash without identifying anyone, so it survives even
+    when the block around it is blacked out."""
+    from safety_eval.form_geometry import rect_minus, zip_words
+    row = [_w("City", .06, .47), _w("PIKEVILLE", .12, .47),
+           _w("State", .30, .47), _w("NC", .35, .47),
+           _w("Zip", .40, .47), _w("27863", .44, .47)]
+    zips = zip_words(row)
+    assert [w.text for w in zips] == ["27863"]
+    zone = (int(.05 * W), int(.43 * H), W, int(.505 * H))
+    holes = [(w.left, w.top, w.right, w.bottom) for w in zips]
+    pieces = rect_minus(zone, holes)
+    z = zips[0]
+    cx, cy = (z.left + z.right) // 2, (z.top + z.bottom) // 2
+    assert not any(p[0] <= cx <= p[2] and p[1] <= cy <= p[3] for p in pieces)
+    # the city beside it is still covered
+    city = row[1]
+    ccx, ccy = city.left + city.width // 2, city.top + city.height // 2
+    assert any(p[0] <= ccx <= p[2] and p[1] <= ccy <= p[3] for p in pieces)
+
+
+def test_bare_nine_digit_run_is_not_treated_as_a_zip():
+    """The form prints "D.L. State NC" beside the licence number, so a
+    "digits next to a state" rule would preserve licence numbers. Only the
+    unambiguous ZIP forms are kept."""
+    from safety_eval.form_geometry import zip_words
+    assert zip_words([_w("NC", .35, .47), _w("278639186", .44, .47)]) == []
+    assert zip_words([_w("D.L.", .06, .36), _w("278639186", .12, .36)]) == []
+    assert [w.text for w in zip_words([_w("27863", .44, .47)])] == ["27863"]
+    assert [w.text for w in zip_words([_w("27863-9186", .44, .47)])] == \
+        ["27863-9186"]

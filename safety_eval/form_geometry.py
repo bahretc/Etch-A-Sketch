@@ -149,6 +149,64 @@ def _in_rect(w, rect) -> bool:
     return rect[0] <= cx <= rect[2] and rect[1] <= cy <= rect[3]
 
 
+_ZIP5_RE = re.compile(r"^\d{5}(?:-\d{4})?$")
+_ZIP9_RE = re.compile(r"^\d{9}$")
+_STATES = {
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID",
+    "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS",
+    "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK",
+    "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV",
+    "WI", "WY", "DC",
+}
+
+
+def zip_words(words, rect=None, row_tol: int | None = None) -> list:
+    """ZIP tokens (optionally inside ``rect``), which are deliberately KEPT.
+
+    A ZIP locates the crash without identifying anyone, so it survives even
+    when the block around it is covered. Only the unambiguous forms qualify:
+    five digits, or five plus four with the hyphen.
+
+    A bare nine digit run is NOT treated as a hyphenless ZIP+4. It reads the
+    same as a driver licence number, and this form prints "D.L. State NC"
+    right beside the licence, so any "digits next to a state abbreviation"
+    rule preserves licence numbers as if they were ZIPs. Leaving a hyphenless
+    ZIP+4 covered loses a little geography; the other way round leaks PII.
+    """
+    pool = [w for w in words if rect is None or _in_rect(w, rect)]
+    return [w for w in pool
+            if _ZIP5_RE.match(w.text.strip().strip(".,;:"))]
+
+
+def rect_minus(rect, holes, pad: int = 2) -> list[tuple[int, int, int, int]]:
+    """``rect`` split into sub-rectangles that avoid every hole.
+
+    Used so a covered zone still shows its ZIP: the band containing the ZIP is
+    emitted as a piece to its left and a piece to its right.
+    """
+    x0, y0, x1, y1 = rect
+    holes = sorted((h for h in holes if h[1] < y1 and h[3] > y0),
+                   key=lambda h: h[1])
+    if not holes:
+        return [rect] if x1 > x0 and y1 > y0 else []
+    out: list[tuple[int, int, int, int]] = []
+    cursor = y0
+    for hx0, hy0, hx1, hy1 in holes:
+        top, bottom = max(y0, hy0 - pad), min(y1, hy1 + pad)
+        if top > cursor:
+            out.append((x0, cursor, x1, top))
+        left = max(x0, hx0 - pad)
+        if left > x0:
+            out.append((x0, top, left, bottom))
+        right = min(x1, hx1 + pad)
+        if right < x1:
+            out.append((right, top, x1, bottom))
+        cursor = max(cursor, bottom)
+    if cursor < y1:
+        out.append((x0, cursor, x1, y1))
+    return [r for r in out if r[2] > r[0] and r[3] > r[1]]
+
+
 def harvest_names(words, width: int, height: int,
                   reg: tuple[float, float]) -> set[str]:
     """Person-name tokens sitting in the identity zones.

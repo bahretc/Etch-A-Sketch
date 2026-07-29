@@ -530,11 +530,22 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
             # geometry zones: cover the identity blocks by position, whatever
             # OCR made of their captions
             if page_reg[i] is not None:
+                # ZIPs are kept even inside a covered zone (they locate the
+                # crash without identifying anyone), so each zone is split
+                # around the ZIP tokens that fall in it.
+                # ZIP holes are found once per page, not per zone: an
+                # address row can straddle a zone boundary, and a ZIP must
+                # survive whichever zone happens to cover it
+                zip_holes = [(w.left, w.top, w.right, w.bottom)
+                             for w in fg.zip_words(words)] if keep_zip else []
                 for z, rect in fg.zone_rects(img.width, img.height,
                                              page_reg[i]):
-                    boxes.append(Redaction(page=i, left=rect[0], top=rect[1],
-                                           right=rect[2], bottom=rect[3],
-                                           reason=f"zone:{z.name}"))
+                    holes = zip_holes
+                    for piece in fg.rect_minus(rect, holes):
+                        boxes.append(Redaction(
+                            page=i, left=piece[0], top=piece[1],
+                            right=piece[2], bottom=piece[3],
+                            reason=f"zone:{z.name}"))
             # scrub harvested names anywhere they appear, narrative included
             for w in fg.scrub_targets(words, page_names[i]):
                 boxes.append(Redaction(

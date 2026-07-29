@@ -23,6 +23,8 @@ Target stack: Python 3.11+, working directly with the real NCDOT Excel templates
 - docs/07-app-spec.md - architecture, modules, and build order
 - docs/08-target-crash-guidance.md - the official countermeasure to target-crash mapping table
 - docs/09-teaas-code-tables.md - T-code lookup, route code prefixes, fiche field conventions
+- docs/10-evaluation-archive.md - archive layout, manifest schema, the frozen train/verify split
+- docs/11-review-assist.md - the LLM review assist: decide vs prepare, redaction dependency, measured behaviour
 
 ## Hard rules (do not violate)
 

@@ -81,6 +81,18 @@ DMV349_FRONT: tuple[Zone, ...] = (
     Zone("bottom-names", 0.05, 0.930, 1.00, 1.000, harvest=True),
 )
 
+#: The ZIP value boxes of the driver and owner blocks, per unit column
+#: (template coordinates, measured on the Rev. 1/2009 form and confirmed on
+#: two different reports). Position is what makes a hyphenless ZIP+4 safe to
+#: keep: a nine digit run HERE is a ZIP, while a nine digit run in the D.L.
+#: box is a licence number and stays covered.
+DMV349_ZIP_FIELDS: tuple[Zone, ...] = (
+    Zone("zip-unit1-driver", 0.392, 0.300, 0.482, 0.317),
+    Zone("zip-unit2-driver", 0.830, 0.300, 0.925, 0.317),
+    Zone("zip-unit1-owner", 0.392, 0.485, 0.482, 0.502),
+    Zone("zip-unit2-owner", 0.830, 0.485, 0.925, 0.502),
+)
+
 _CAPTIONISH = {
     "name", "names", "address", "addresses", "city", "state", "zip", "driver",
     "owner", "first", "middle", "last", "same", "as", "plate", "vin", "dob",
@@ -176,6 +188,25 @@ def zip_words(words, rect=None, row_tol: int | None = None) -> list:
     pool = [w for w in words if rect is None or _in_rect(w, rect)]
     return [w for w in pool
             if _ZIP5_RE.match(w.text.strip().strip(".,;:"))]
+
+
+def zip_field_words(words, width: int, height: int,
+                    reg: tuple[float, float]) -> list:
+    """Digits sitting in a ZIP value box of the form.
+
+    This is the positional counterpart to :func:`zip_words`: inside a ZIP
+    field, a nine digit run is a hyphenless ZIP+4 and is kept, because a
+    licence number of the same shape lives in a different box entirely. Only
+    the digit tokens are returned, never the rectangle, so a mis-registered
+    page can expose nothing but numbers it actually found there.
+    """
+    out = []
+    for _z, rect in zone_rects(width, height, reg, DMV349_ZIP_FIELDS):
+        for w in words:
+            t = w.text.strip().strip(".,;:")
+            if _in_rect(w, rect) and (_ZIP5_RE.match(t) or _ZIP9_RE.match(t)):
+                out.append(w)
+    return out
 
 
 def rect_minus(rect, holes, pad: int = 2) -> list[tuple[int, int, int, int]]:

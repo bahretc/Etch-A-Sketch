@@ -102,3 +102,21 @@ def test_bare_nine_digit_run_is_not_treated_as_a_zip():
     assert [w.text for w in zip_words([_w("27863", .44, .47)])] == ["27863"]
     assert [w.text for w in zip_words([_w("27863-9186", .44, .47)])] == \
         ["27863-9186"]
+
+
+def test_zip_field_keeps_hyphenless_zip_plus_four():
+    """Position decides: nine digits in the owner ZIP box is a ZIP+4."""
+    from safety_eval.form_geometry import zip_field_words
+    zip_box = [_w("278639186", .40, .493)]          # owner ZIP field
+    assert [w.text for w in zip_field_words(zip_box, W, H, (1.0, 0.0))] == \
+        ["278639186"]
+
+
+def test_zip_field_does_not_keep_a_licence_or_crash_id():
+    """The same nine digits elsewhere on the form stay covered."""
+    from safety_eval.form_geometry import zip_field_words
+    licence = [_w("278639186", .12, .345)]          # D.L. box
+    header_crash_id = [_w("106361943", .85, .058)]  # header box
+    footer_crash_id = [_w("106361943", .90, .986)]
+    for words in (licence, header_crash_id, footer_crash_id):
+        assert zip_field_words(words, W, H, (1.0, 0.0)) == []

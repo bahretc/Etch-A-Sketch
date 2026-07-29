@@ -536,8 +536,12 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
                 # ZIP holes are found once per page, not per zone: an
                 # address row can straddle a zone boundary, and a ZIP must
                 # survive whichever zone happens to cover it
+                zip_keep = (fg.zip_words(words)
+                            + fg.zip_field_words(words, img.width, img.height,
+                                                 page_reg[i])) if keep_zip \
+                    else []
                 zip_holes = [(w.left, w.top, w.right, w.bottom)
-                             for w in fg.zip_words(words)] if keep_zip else []
+                             for w in zip_keep]
                 for z, rect in fg.zone_rects(img.width, img.height,
                                              page_reg[i]):
                     holes = zip_holes

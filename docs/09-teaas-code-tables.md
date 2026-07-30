@@ -19,3 +19,25 @@ First digit(s) of the 8-digit road code indicate route class: 1 interstate, 2 US
 - Y-Line: the intersection influence distance of the fiche pull, typically 150 ft.
 - Severity S codes: K, A, B, C, O (PDO); blank sometimes appears and must be resolved from the report.
 - Dir notation in review sheets: movement pair vehicle 1 / vehicle 2 (NBL/EBT = northbound left vs eastbound through).
+
+## Import file formats
+
+Milepost import (`Before_Import.txt`, `After_Import.txt`), one line per crash:
+
+    <crash id>|<TAB><milepost to 3 dp><CR><LF>
+
+CRLF after every line including the last. Verified byte for byte against both
+files in examples/04-15-39049, which hold exactly the crashes on that
+evaluation's Before and After sheets at their Final MP: the reviewer's New MP
+where an RE was recorded, otherwise the coded fiche milepost. Rows are ordered
+by crash date, which the sheets and the TEAAS ID exports are not; the order has
+no effect on the import but matching it keeps generated files diffable against
+real ones. Written by `safety_eval.teaas.write_period_imports`.
+
+Feature-inclusion import is understood to be `<text>|<milepost>`, CRLF, with the
+feature text capped at 20 characters and rejected rather than truncated beyond
+it. This one is **not verified** against a real file; there is no example in the
+archive. Check it against a live import before relying on it.
+
+The 5-column Crash ID List (`Before_ID.txt`, `After_ID.txt`) is a TEAAS export,
+not an import, and is read rather than written.

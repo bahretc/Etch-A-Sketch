@@ -88,6 +88,10 @@ safety-eval ledger --workbook eval.xlsx --crash-id 105274289 \
 # recount before delivering (docs/03 QC habits); exit 2 on any mismatch
 safety-eval qc --workbook eval.xlsx --treatment dual
 
+# TEAAS milepost import files from the reviewed Before/After sheets;
+# exit 1 if any in-study crash had to be HELD for want of a milepost
+safety-eval teaas-import --workbook eval.xlsx --outdir out/
+
 # the app: upload -> redact -> review -> build, in a browser
 pip install -e '.[ui]' && streamlit run safety_eval/app.py
 
@@ -119,7 +123,7 @@ assumptions email — it is the auditable record of study scope. See
 | Stage | Module | What it does |
 |---|---|---|
 | Parse | `fiche_parser.py` | CSV + TEAAS-text/PDF → `Crash` records |
-| TEAAS exports | `teaas.py` | 5-column Crash ID List parser (numeric SVRTY → KABCO) |
+| TEAAS exports and imports | `teaas.py` | 5-column Crash ID List parser (numeric SVRTY → KABCO); milepost import reader and writer (`crash_id\|<tab>milepost`, CRLF), byte-verified by rebuilding the real `Before_Import.txt` / `After_Import.txt` of 04-15-39049 from that evaluation's workbook. In-study crashes with no milepost go to a HELD list rather than into an import; a crash ID carrying two different mileposts is refused |
 | OCR | `ocr.py` | Lazy, pluggable PDF→text (pdfplumber → pypdf → tesseract) |
 | Classify | `classify.py` | In-study (by milepost), study period, target crash types |
 | Periods | `periods.py` | Date Range Calculator (before / construction / after) |

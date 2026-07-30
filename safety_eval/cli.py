@@ -477,6 +477,24 @@ def _cmd_assumptions(args) -> int:
     return 0
 
 
+def _cmd_teaas_import(args) -> int:
+    from .teaas import crashes_from_workbook, write_period_imports
+
+    crashes = crashes_from_workbook(args.workbook)
+    if not crashes:
+        print(f"No Before/After crash rows found in {args.workbook}")
+        return 2
+    written = write_period_imports(args.outdir, crashes, prefix=args.prefix)
+    for label in ("before", "after"):
+        path, n = written[label]
+        print(f"{n:>5} crashes -> {path}")
+    if "held" in written:
+        path, n = written["held"]
+        print(f"{n:>5} HELD (no milepost, not imported) -> {path}")
+        return 1
+    return 0
+
+
 def _cmd_doctor(args) -> int:
     print("OCR / PDF backends:")
     for name, ok in available_backends().items():
@@ -824,6 +842,18 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Evaluation Order Number to pull with --master.")
     ae.add_argument("--outdir", default=".")
     ae.set_defaults(func=_cmd_assumptions)
+
+    ti = sub.add_parser(
+        "teaas-import",
+        help="Write the TEAAS milepost import files (Before_Import.txt / "
+             "After_Import.txt) from a Section workbook's reviewed Before and "
+             "After sheets. In-study crashes with no milepost go to a HELD "
+             "list instead of the import.")
+    ti.add_argument("--workbook", required=True)
+    ti.add_argument("--outdir", default=".")
+    ti.add_argument("--prefix", default="",
+                    help="Filename prefix, e.g. '04-15-39049_'.")
+    ti.set_defaults(func=_cmd_teaas_import)
 
     d = sub.add_parser("doctor", help="Report available optional backends.")
     d.set_defaults(func=_cmd_doctor)

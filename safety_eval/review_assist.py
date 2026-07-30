@@ -272,6 +272,23 @@ def _parse(data: dict, row, ctx: StudyContext, mode: str) -> AssistResult:
             res.validation_problems = validate_determination(det, ctx.analysis_type)
             if res.validation_problems:
                 res.needs_manual = True
+        # Section analyses are milepost-dependent (docs/03). Without a resolved
+        # milepost, and with none coded on the fiche, IS and RE have nothing to
+        # stand on: the crash cannot be placed inside or outside the section.
+        # NIS and DEL can still be justified by the diagram alone (wrong road,
+        # not a study crash), so they are left as proposals.
+        if ctx.analysis_type == "section":
+            rl = getattr(ctx, "resolved_location", None)
+            have_mp = (getattr(rl, "milepost", None) is not None
+                       or ctx.fiche_milepost is not None)
+            base = (res.proposed_status or "").split("-")[0]
+            if not have_mp and base in ("IS", "RE"):
+                res.needs_manual = True
+                res.flags.append(
+                    f"{base} proposed for a milepost-dependent section study "
+                    "with no resolved or coded milepost; the crash cannot be "
+                    "placed in the section. Engineer must resolve the location "
+                    "first (features report or coordinates).")
         if res.confidence == "low":
             res.needs_manual = True
     else:

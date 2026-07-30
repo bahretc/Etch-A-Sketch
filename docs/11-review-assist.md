@@ -94,35 +94,26 @@ location independently.
 
 ## Still to build
 
-- **Reading the location block by geometry.** `location.py` resolves a
-  `ReportLocation`, but nothing yet fills one from the page; the fields were
-  supplied by hand for the runs above. The zone map in `form_geometry.py` is
-  where those boxes belong, alongside the ZIP fields already measured there.
-- ~~A real features report.~~ **Done.** Every assignment folder carries the
-  TEAAS Features Reports for its routes (136 of them across 58 archived
-  evaluations), and `FeatureInventory.from_features_report` parses that format
-  directly; `from_csv` remains for hand-built inventories. The manifest now
-  classifies them under `files.features`, which it previously ignored.
+- **A features report per route, loaded from the assignment folder.** They are
+  already there (136 files across 58 folders) and the manifest now indexes
+  them, but nothing selects the right one automatically for a given crash.
+- **A geocoder.** `GazetteerGeocoder` reads an address point file already on
+  disk; an online locator can be dropped in behind the same `Geocoder`
+  protocol. Without either, a street reference is carried through unplaced.
+- **Confidence that means something.** It is the model's own word for now, and
+  it has been wrong; the gates are what hold.
 
-  Checked against the real US 13 (Greene) report: SR 1132 is at MP 1.993 and
-  SR 1142 at MP 2.983, so the crash used in the runs above, "0.80 mi from
-  SR 1132 toward SR 1142", is at **MP 2.79**. Not 4.20. The parsed span
-  between the two also matches the report's own distance-to-next column
-  (0.990), which is an independent check on the parse.
-- **Address geocoding.** A street reference is carried through with no
-  milepost; placing it on a route needs a geocoder.
+## What the pipeline does end to end (verified on a real report)
 
-## A feature name is not unique
+    page image
+      -> form_geometry: identity zones covered, location block read by position
+      -> location.read_location_block: on US 13, from SR 1132 toward SR 1142,
+         0.80 mi; municipality Snow Hill 4.20 mi (a town distance, not a milepost)
+      -> location.resolve + the folder's FeaturesReport_US13.pdf
+         (SR 1132 at MP 1.993, SR 1142 at MP 2.983)
+      -> US 13 milepost 2.79, shown as MP(SR 1132) + 0.80 toward SR 1142
+      -> review_assist: the milepost is given, never inferred
 
-The same trap docs/03 records for cross streets ("two US 17 / Deppe Loop
-junctions 1.3 miles apart") exists inside the features report. On the real
-US 13, NC 58 meets the route at MP 7.383 **and** 8.553, CHASE at 7.941 and
-8.086, US 258 at 9.736 and 16.191, and Snow Hill's municipal limits appear at
-both ends of the town. A parser that keeps the first match resolves "0.5 mi
-from NC 58" to a confidently wrong milepost.
-
-`mileposts_of` therefore returns every milepost a name appears at, and
-`milepost_of` returns one only when the name is unique. The road the crash lies
-TOWARD usually settles it, because the crash must sit between the two: pairs
-whose separation cannot cover the stated distance are discarded. When more than
-one pair still fits, the location is left unresolved rather than guessed.
+Nothing in that chain is hand-filled, and the "4.20" the first run mistook for
+a milepost is extracted, labelled a municipality distance, and never used as
+one.

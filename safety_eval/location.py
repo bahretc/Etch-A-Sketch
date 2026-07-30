@@ -307,6 +307,70 @@ def interpolate_milepost(points, lat: float, lon: float):
 
 
 # --------------------------------------------------------------------------- #
+# geocoding a street reference
+# --------------------------------------------------------------------------- #
+class Geocoder:
+    """Turns a street reference into a point.
+
+    A protocol, not an implementation: NCDOT work runs on machines with no
+    outbound access, and an address guessed from a name is worse than no
+    address at all. Supply whatever the office already trusts (the ArcGIS
+    locator, a county address point layer) by implementing ``geocode``.
+    """
+
+    def geocode(self, street: str, municipality: str = "",
+                county: str = "", state: str = "NC"):
+        """Return ``(lat, lon)`` or None."""
+        raise NotImplementedError
+
+
+class GazetteerGeocoder(Geocoder):
+    """Offline lookup from an address point file already on disk.
+
+    ``address,latitude,longitude[,municipality,county]``. Matching is on the
+    normalized street text, narrowed by municipality and county when the file
+    carries them, so "MAIN ST" in two towns does not collide.
+    """
+
+    def __init__(self, rows=None):
+        self._rows = rows or {}
+
+    @classmethod
+    def from_csv(cls, path: str) -> "GazetteerGeocoder":
+        rows: dict = {}
+        with open(path, newline="", encoding="utf-8-sig") as fh:
+            for row in csv.DictReader(fh):
+                r = {k.strip().lower(): (v or "").strip()
+                     for k, v in row.items() if k}
+                try:
+                    pt = (float(r.get("latitude", "")), float(r.get("longitude", "")))
+                except ValueError:
+                    continue
+                key = (_addr_key(r.get("address", "")),
+                       _addr_key(r.get("municipality", "")),
+                       _addr_key(r.get("county", "")))
+                rows[key] = pt
+        return cls(rows)
+
+    def geocode(self, street: str, municipality: str = "",
+                county: str = "", state: str = "NC"):
+        a = _addr_key(street)
+        if not a:
+            return None
+        for key in ((a, _addr_key(municipality), _addr_key(county)),
+                    (a, _addr_key(municipality), ""),
+                    (a, "", _addr_key(county)),
+                    (a, "", "")):
+            if key in self._rows:
+                return self._rows[key]
+        return None
+
+
+def _addr_key(text: str) -> str:
+    return re.sub(r"[^A-Z0-9]+", " ", (text or "").upper()).strip()
+
+
+# --------------------------------------------------------------------------- #
 # resolution
 # --------------------------------------------------------------------------- #
 def _disambiguate(from_candidates, toward_candidates, distance, tolerance):
@@ -347,7 +411,8 @@ def _disambiguate(from_candidates, toward_candidates, distance, tolerance):
 def resolve(loc: ReportLocation, inventory: FeatureInventory | None = None,
             fiche_milepost: float | None = None,
             tolerance: float = MP_TOLERANCE,
-            max_offset_mi: float = 0.25) -> ResolvedLocation:
+            max_offset_mi: float = 0.25,
+            geocoder: "Geocoder | None" = None) -> ResolvedLocation:
     """Best available location for one report; never guesses a milepost."""
     inv = inventory or FeatureInventory()
     route = normalize_route(loc.on_road)
@@ -424,12 +489,39 @@ def resolve(loc: ReportLocation, inventory: FeatureInventory | None = None,
                     "features report, so the direction of increasing milepost "
                     "is unknown; milepost not resolved")
                 res.method, res.confidence = "features", "low"
-    # 3. a street address, with no route milepost without a geocoder
+    # 3. a street address: geocoded when a locator is supplied, and then put
+    #    through the same interpolation the report's own coordinates use
     if res.milepost is None and not res.has_point and loc.street:
         res.method = "address"
-        res.notes.append(
-            f"street reference {loc.street!r}; needs a geocoder to place it on "
-            "a route")
+        point = None
+        if geocoder is not None:
+            try:
+                point = geocoder.geocode(loc.street, loc.municipality,
+                                         loc.county)
+            except Exception as exc:                # noqa: BLE001 - report it
+                res.notes.append(f"geocoder failed: {exc}")
+        if point is None:
+            res.notes.append(
+                f"street reference {loc.street!r}; no geocoder result, so it "
+                "is not placed on a route")
+        else:
+            res.latitude, res.longitude = point
+            res.confidence = "medium"
+            res.notes.append(f"{loc.street!r} geocoded")
+            mp, offset = interpolate_milepost(inv.shape.get(route) or [],
+                                              *point)
+            if mp is None:
+                res.notes.append("no route geometry to convert the geocoded "
+                                 "point to a milepost")
+            elif offset is not None and offset > max_offset_mi:
+                res.notes.append(
+                    f"geocoded point sits {offset:.2f} mi off {loc.on_road}; "
+                    "not converted to a milepost")
+                res.confidence = "low"
+            else:
+                res.milepost, res.confidence = round(mp, 2), "medium"
+                res.notes.append("milepost interpolated from the geocoded "
+                                 "point (weaker than report coordinates)")
     # 4. municipality distance locates a town, never a milepost
     if res.milepost is None and not res.has_point and not loc.street:
         if loc.municipality:
@@ -453,3 +545,149 @@ def resolve(loc: ReportLocation, inventory: FeatureInventory | None = None,
                 "section analysis a coded milepost the report contradicts is "
                 "the RE case (docs/03)")
     return res
+
+
+# --------------------------------------------------------------------------- #
+# reading the location block off the page
+# --------------------------------------------------------------------------- #
+#: x bands of the location block, as fractions of page width (measured on the
+#: Rev. 1/2009 form and confirmed on two reports).
+_LB_ROUTE_X = (0.070, 0.245)        # "on <route>" and "from <route>"
+_LB_TOWARD_X = (0.475, 0.735)       # "toward <route>"
+_LB_PLACE_X = (0.240, 0.600)        # municipality name
+_LB_DIST_X = (0.600, 0.735)         # both "N Miles" boxes
+_LB_COORD_X = (0.815, 0.995)        # Latitude / Longitude value lines
+
+_NUM_RE = re.compile(r"^\d{1,3}\.\d{1,2}$")
+#: a route designator and its number, tolerating the caption running into the
+#: value ("onUS 13") and the lost space ("SR1132")
+_ROUTE_IN_TEXT = re.compile(
+    r"(?:^|[^A-Za-z]|ON|FROM|ROM|TOWARDS?)(US|NC|SR|I|SC|VA|TN|GA)"
+    r"[\s-]*(\d{1,5})\b")
+_LEAD_RE = re.compile(r"^(?:on|from|rom|toward|towards|##|#)\b[\s.]*", re.I)
+_ROUTE_TOKEN_RE = re.compile(r"^(?:US|NC|SR|I|SC|VA|TN|GA)$", re.I)
+
+
+def _route_number(text: str) -> str:
+    """'onUS 13' -> 'US 13'; '' when the text names no numbered route."""
+    raw = (text or "").strip()
+    # OCR runs the caption straight into the value ("onUS 13"), which leaves a
+    # letter in front of the designator and defeats a plain word boundary
+    probe = re.sub(r"^(?:ON|FROM|ROM|TOWARDS?)(?=[A-Z])", " ", raw.upper())
+    m = _ROUTE_IN_TEXT.search(probe)
+    return f"{m.group(1)} {m.group(2)}" if m else ""
+
+
+def _clean_route(text: str) -> str:
+    """'onUS 13' -> 'US 13'; 'rom SR1132' -> 'SR 1132'; '0 US 13' -> 'US 13'.
+
+    A numbered route is pulled out by pattern, which drops whatever caption or
+    stray mark OCR attached to it. Text with no route number is a street name
+    and is returned with only the caption words removed.
+    """
+    numbered = _route_number(text)
+    if numbered:
+        return numbered
+    t = _LEAD_RE.sub("", (text or "").strip())
+    return " ".join(t.split())
+
+
+def read_location_block(words, width: int, height: int) -> ReportLocation:
+    """Extract the DMV-349 location block by position.
+
+    Rows are anchored on the form's own printed captions rather than on fixed
+    vertical boxes: the two distance fields sit at the same x and only a few
+    thousandths of page height apart, so "outside municipality" and
+    "(0 ft-Intersection)" are what tell them apart. Anything OCR cannot read is
+    left as None; nothing here infers a value.
+    """
+    from .redact import _visual_rows
+
+    loc = ReportLocation()
+    rows = [r for r in _visual_rows(words)
+            if 0.10 <= (r[0].top + r[0].height / 2) / max(height, 1) <= 0.30]
+
+    def xs(w):
+        return w.left / width, (w.left + w.width) / width
+
+    def in_band(w, band):
+        cx = (w.left + w.width / 2) / width
+        return band[0] <= cx <= band[1]
+
+    def joined(row, band):
+        return " ".join(w.text for w in row if in_band(w, band)).strip()
+
+    def number(row):
+        for w in row:
+            if in_band(w, _LB_DIST_X) and _NUM_RE.match(w.text.strip()):
+                return float(w.text.strip())
+        return None
+
+    def has(row, *needles):
+        blob = " ".join(w.text for w in row).lower().replace(" ", "")
+        return any(n in blob for n in needles)
+
+    def is_routey(row):
+        """A row that names a NUMBERED route on the left: the street-name
+        fallback would otherwise match any caption text in the band."""
+        return bool(_route_number(joined(row, _LB_ROUTE_X)))
+
+    row_a = next((r for r in rows if has(r, "municipality")
+                  and not has(r, "intersection")), None)
+    row_c = next((r for r in rows if has(r, "toward")), None)
+    # row B is the remaining row that names a route on the left: the
+    # "(0 ft-Intersection)" caption often lands on its own OCR line, so it
+    # cannot be used to find the row that carries the value
+    row_b = next((r for r in rows
+                  if r is not row_a and r is not row_c and is_routey(r)), None)
+
+    for row in rows:
+        if row is row_a:
+            place = joined(row, _LB_PLACE_X)
+            place = re.sub(r"^(?:near|in)\b[\s.]*", "", place, flags=re.I)
+            place = re.sub(r"\b(?:municipality|or)\b", "", place,
+                           flags=re.I).strip(" .,")
+            if place:
+                loc.municipality = place
+            loc.in_municipality = has(row, "xin", "[x]in")
+            loc.dist_from_municipality = number(row)
+        # row B: "on <route> ... <D2> Miles ... (0 ft-Intersection)"
+        elif row is row_b:
+            route = _clean_route(joined(row, _LB_ROUTE_X))
+            if route:
+                loc.on_road = route
+            loc.dist_from_intersection = number(row)
+            if loc.dist_from_intersection in (0.0, None) and has(row, "(0"):
+                loc.at_intersection = loc.dist_from_intersection == 0.0
+        # row C: "## from <route>   toward <route>"
+        elif row is row_c:
+            frm = _clean_route(joined(row, _LB_ROUTE_X))
+            if frm:
+                loc.from_road = frm
+            tw = joined(row, _LB_TOWARD_X)
+            tw = _clean_route(re.sub(r"^.*?toward[s]?\b", "", tw, flags=re.I)
+                              or tw)
+            if tw:
+                loc.toward_road = tw
+        # coordinates: the caption sits left of its value line
+        if has(row, "latitude") or has(row, "longitude"):
+            val = joined(row, _LB_COORD_X)
+            m = re.search(r"-?\d{1,3}\.\d{3,}", val)
+            if m:
+                if has(row, "latitude"):
+                    loc.latitude = float(m.group())
+                else:
+                    loc.longitude = float(m.group())
+
+    if not loc.on_road:
+        # OCR sometimes merges the municipality row into the route row, so the
+        # route was consumed as row A. The road the crash is ON is still the
+        # first numbered route in the left band above the from/toward row.
+        for row in rows:
+            if row is row_c:
+                break
+            route = _route_number(joined(row, _LB_ROUTE_X))
+            if route:
+                loc.on_road = route
+                break
+    return loc

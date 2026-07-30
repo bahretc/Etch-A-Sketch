@@ -231,3 +231,135 @@ def test_milepost_of_returns_none_when_the_name_is_not_unique():
     inv.features["US13"] = {"NC58": [7.383, 8.553]}
     assert inv.milepost_of("US 13", "NC 58") is None
     assert inv.mileposts_of("US 13", "NC 58") == [7.383, 8.553]
+
+
+class _FakeGeocoder:
+    def __init__(self, point): self.point, self.calls = point, []
+    def geocode(self, street, municipality="", county="", state="NC"):
+        self.calls.append((street, municipality, county)); return self.point
+
+
+def _inv_with_shape():
+    inv = _inv()
+    inv.shape["US13"] = [(3.40, 35.40, -77.60), (5.10, 35.42, -77.60)]
+    return inv
+
+
+def test_address_is_geocoded_and_interpolated():
+    inv = _inv_with_shape()
+    lat = 35.40 + (35.42 - 35.40) * (0.80 / 1.70)
+    g = _FakeGeocoder((lat, -77.60))
+    loc = ReportLocation(on_road="US 13", street="MOUNT CARMEL CHURCH RD",
+                         municipality="Snow Hill", county="Greene")
+    res = resolve(loc, inv, geocoder=g)
+    assert res.method == "address"
+    assert res.milepost == pytest.approx(4.20, abs=0.02)
+    assert res.confidence == "medium"          # weaker than report coordinates
+    assert g.calls == [("MOUNT CARMEL CHURCH RD", "Snow Hill", "Greene")]
+
+
+def test_geocoded_point_far_from_the_route_is_not_converted():
+    g = _FakeGeocoder((35.41, -77.70))
+    loc = ReportLocation(on_road="US 13", street="SOME RD")
+    res = resolve(loc, _inv_with_shape(), geocoder=g)
+    assert res.milepost is None and res.confidence == "low"
+    assert res.latitude is not None            # the point is still reported
+
+
+def test_no_geocoder_leaves_the_address_unplaced():
+    loc = ReportLocation(on_road="US 13", street="SOME RD")
+    res = resolve(loc, _inv_with_shape())
+    assert res.method == "address" and res.milepost is None
+    assert any("no geocoder result" in n for n in res.notes)
+
+
+def test_geocoder_failure_is_reported_not_raised():
+    class Boom:
+        def geocode(self, *a, **k): raise RuntimeError("locator offline")
+    res = resolve(ReportLocation(on_road="US 13", street="SOME RD"),
+                  _inv_with_shape(), geocoder=Boom())
+    assert res.milepost is None
+    assert any("geocoder failed" in n for n in res.notes)
+
+
+def test_gazetteer_matches_on_street_and_narrows_by_municipality(tmp_path):
+    from safety_eval.location import GazetteerGeocoder
+    p = tmp_path / "addr.csv"
+    p.write_text("address,latitude,longitude,municipality,county\n"
+                 "MAIN ST,35.10,-77.10,Snow Hill,Greene\n"
+                 "MAIN ST,36.20,-78.20,Wendell,Wake\n", encoding="utf-8")
+    g = GazetteerGeocoder.from_csv(str(p))
+    assert g.geocode("Main St", "Snow Hill", "Greene") == (35.10, -77.10)
+    assert g.geocode("main  st", "Wendell", "Wake") == (36.20, -78.20)
+    assert g.geocode("Nowhere Rd", "Snow Hill", "Greene") is None
+
+
+# --------------------------------------------------------------------------- #
+# reading the location block off the page
+# --------------------------------------------------------------------------- #
+def _w(text, xf, yf, W=1000, H=2000):
+    from safety_eval.redact import Word
+    return Word(text=text, left=int(xf * W), top=int(yf * H),
+                width=max(8, int(0.009 * W * len(text))), height=14, page=1)
+
+
+def _read(words):
+    from safety_eval.location import read_location_block
+    return read_location_block(words, 1000, 2000)
+
+
+def test_location_block_reads_the_three_rows():
+    words = (
+        [_w("occurred", .19, .136), _w("Near", .23, .136), _w("SNOW", .26, .136),
+         _w("HILL", .31, .136), _w("or", .62, .136), _w("04.20", .647, .136),
+         _w("Miles", .735, .136), _w("outside", .82, .136),
+         _w("municipality", .86, .136)]
+        + [_w("onUS", .094, .154), _w("13", .132, .154),
+           _w("00.80", .647, .154), _w("Miles", .735, .154),
+           _w("(0", .763, .154), _w("ft-Intersection)", .772, .154)]
+        + [_w("rom", .117, .186), _w("SR1132", .142, .186),
+           _w("toward", .483, .186), _w("SR", .513, .186), _w("1142", .538, .186)]
+    )
+    loc = _read(words)
+    assert loc.on_road == "US 13"
+    assert loc.from_road == "SR 1132"          # 'rom SR1132' -> spaced
+    assert loc.toward_road == "SR 1142"
+    assert loc.municipality == "SNOW HILL"
+    assert loc.dist_from_municipality == pytest.approx(4.20)
+    assert loc.dist_from_intersection == pytest.approx(0.80)
+
+
+def test_the_two_distance_fields_are_not_swapped():
+    """Both sit at the same x; only their captions tell them apart."""
+    words = ([_w("Near", .23, .136), _w("TOWN", .26, .136),
+              _w("9.99", .647, .136), _w("outside", .82, .136),
+              _w("municipality", .86, .136)]
+             + [_w("onUS", .094, .154), _w("13", .132, .154),
+                _w("1.11", .647, .154), _w("ft-Intersection)", .772, .154)])
+    loc = _read(words)
+    assert loc.dist_from_municipality == pytest.approx(9.99)
+    assert loc.dist_from_intersection == pytest.approx(1.11)
+
+
+def test_unreadable_fields_stay_none_rather_than_guessed():
+    loc = _read([_w("onUS", .094, .154), _w("13", .132, .154),
+                 _w("ft-Intersection)", .772, .154)])
+    assert loc.on_road == "US 13"
+    assert loc.dist_from_intersection is None
+    assert loc.municipality == "" and loc.latitude is None
+
+
+def test_coordinates_are_read_from_their_value_lines():
+    words = [_w("Latitude", .775, .175), _w("35.60429", .84, .175),
+             _w("Longitude", .775, .189), _w("-77.10702", .84, .189)]
+    loc = _read(words)
+    assert loc.latitude == pytest.approx(35.60429)
+    assert loc.longitude == pytest.approx(-77.10702)
+
+
+def test_street_name_survives_when_the_road_is_not_a_numbered_route():
+    from safety_eval.location import _clean_route
+    assert _clean_route("MOUNT CARMEL CHURCH RD") == "MOUNT CARMEL CHURCH RD"
+    assert _clean_route("onUS 13") == "US 13"
+    assert _clean_route("0 US 13") == "US 13"
+    assert _clean_route("rom SR1132") == "SR 1132"

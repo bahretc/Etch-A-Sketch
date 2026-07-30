@@ -151,3 +151,46 @@ def test_new_mp_is_kept_on_RE():
                client=FakeClient(text), redacted=True)
     assert r.proposed_status == "RE" and r.new_mp == 8.1
     assert not r.validation_problems
+
+
+def _decide(status, **ctx_kw):
+    text = json.dumps({
+        "where_occurred": "US 13 somewhere", "at_study_location": True,
+        "proposed_status": status, "comment": "c", "confidence": "high",
+        "evidence": ["e"]})
+    ctx = StudyContext(analysis_type="section", **ctx_kw)
+    return assist(ROW, ctx, _pages(), mode="decide",
+                  client=FakeClient(text), redacted=True)
+
+
+class _Resolved:
+    def __init__(self, mp): self.milepost, self.notes = mp, []
+    def summary(self): return f"milepost {self.milepost}"
+
+
+def test_section_IS_without_a_milepost_needs_manual():
+    """A section study is milepost-dependent; IS with no milepost is unjustified."""
+    r = _decide("IS")
+    assert r.needs_manual
+    assert any("milepost-dependent" in f for f in r.flags)
+
+
+def test_section_RE_without_a_milepost_needs_manual():
+    r = _decide("RE")
+    assert r.needs_manual and any("milepost-dependent" in f for f in r.flags)
+
+
+def test_section_NIS_without_a_milepost_is_left_alone():
+    """NIS can rest on the diagram alone (wrong road, no study feature)."""
+    r = _decide("NIS")
+    assert not any("milepost-dependent" in f for f in r.flags)
+
+
+def test_section_IS_with_a_resolved_milepost_is_fine():
+    r = _decide("IS", resolved_location=_Resolved(8.10))
+    assert not any("milepost-dependent" in f for f in r.flags)
+
+
+def test_section_IS_with_only_a_coded_milepost_is_fine():
+    r = _decide("IS", fiche_milepost=8.10)
+    assert not any("milepost-dependent" in f for f in r.flags)

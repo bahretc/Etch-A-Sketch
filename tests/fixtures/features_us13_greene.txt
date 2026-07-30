@@ -1,0 +1,67 @@
+North Carolina Department of Transportation Traffic Engineering Accident Analysis System Features Report
+
+MP No
+
+Inventoried
+
+Begin
+
+End County
+
+Route ID
+
+Milepost
+
+Milepost
+
+GREENE 20000013 0.0
+
+18.381
+
+Beyond Feature
+
+Distance
+
+Direction
+
+Route ID Feature Name/Type Special Type
+
+to Next
+
+to Next Loop
+
+Limits
+
+0.000 BC000096 CL-WAYNE 0.123 North and East
+
+0.123 40001138 SR 1138 At grade intersection, 3 legs 0.738 North and East
+
+0.861 50040410 ESTUARY At grade intersection, 3 legs 0.059 North and East
+
+1.603 40001139 SR 1139 At grade intersection, 3 legs 0.000 South and East
+
+1.993 40001132 SR 1132 At grade intersection, 4 legs 0.000 South and East
+
+1.993 40001210 SR 1210 At grade intersection, 4 legs 0.000 South and East
+
+1.993 50027955 SHINE At grade intersection, 4 legs 0.990 South and East
+
+2.983 40001142 SR 1142 At grade intersection, 3 legs 0.000 South and East
+
+2.983 50007975 DAVIS At grade intersection, 3 legs 0.265 South and East
+
+3.248 50046530 RANDOLPH CREECH At grade intersection, 3 legs 0.025 South and East
+
+7.383 30000058 NC 58 At grade intersection, 3 legs 0.322 North and East Y
+
+7.705 390004 Structure Culvert 0.236
+
+8.212 BM000505 ML-SNOW HILL 0.133 South and East Y
+
+8.553 28000258 US 258TRK At grade intersection, 3 legs 0.000 South and East
+
+13.904 50020707 MOUNT HERMAN CH At grade intersection, 3 legs 0.199 North and East
+
+18.381 BC000074 CL-PITT 0.000 North and East
+
+07/15/2026 Page 1 of 3

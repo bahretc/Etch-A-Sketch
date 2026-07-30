@@ -121,6 +121,7 @@ class FeatureInventory:
     """
     features: dict = field(default_factory=dict)
     shape: dict = field(default_factory=dict)
+    route_names: dict = field(default_factory=dict)   # canonical -> as printed
 
     @classmethod
     def from_csv(cls, path: str) -> "FeatureInventory":
@@ -151,12 +152,83 @@ class FeatureInventory:
             pts.sort()
         return inv
 
+    @classmethod
+    def from_features_report(cls, text: str, route: str | None = None
+                             ) -> "FeatureInventory":
+        """Parse a TEAAS "Features Report" (the NCDOT route inventory).
+
+        One report covers one county/route and lists every feature along it::
+
+            GREENE 20000013 0.0            18.381
+            1.993 40001132 SR 1132 At grade intersection, 4 legs 0.000 South and East
+            2.983 40001142 SR 1142 At grade intersection, 3 legs 0.000 South and East
+
+        Columns are milepost, route id, feature name, feature type, distance to
+        the next feature, direction, and a loop flag. Features share a milepost
+        when several legs meet there, and named streets, county lines
+        (``CL-``), municipal limits (``ML-``) and structures appear alongside
+        numbered routes; all of them are indexed, because a crash is located
+        from whatever the report names.
+        """
+        inv = cls()
+        route_name = route or _route_from_header(text)
+        key = normalize_route(route_name)
+        if not key:
+            return inv
+        for line in text.splitlines():
+            parsed = _parse_feature_row(line)
+            if parsed is None:
+                continue
+            mp, name = parsed
+            existing = inv.features.setdefault(key, {})
+            existing.setdefault(normalize_route(name), mp)
+            inv.route_names.setdefault(key, route_name.strip())
+        return inv
+
     def milepost_of(self, route: str, feature: str) -> float | None:
         return self.features.get(normalize_route(route), {}).get(
             normalize_route(feature))
 
 
 _ROUTE_CLEAN_RE = re.compile(r"[^A-Z0-9]+")
+#: a features-report data row: milepost, route id, then the feature
+_FEATURE_ROW_RE = re.compile(r"^\s*(\d+\.\d{1,3})\s+([A-Z0-9]{4,})\s+(.+?)\s*$")
+#: feature type phrases that terminate the name
+_FEATURE_TYPE_RE = re.compile(
+    r"\b(At grade intersection.*|Structure\b.*|Interchange.*|Ramp\b.*)$", re.I)
+#: the report header names the county and the route id it covers
+_HEADER_RE = re.compile(r"^\s*([A-Z][A-Z .\'-]+?)\s+(\d{8})\s+\d+\.\d+", re.M)
+#: route id prefixes (docs/09): 2 = US, 3 = NC, 4 = SR
+_ID_PREFIX = {"2": "US", "3": "NC", "4": "SR"}
+
+
+def _route_from_header(text: str) -> str:
+    """'GREENE 20000013 0.0 18.381' -> 'US 13'."""
+    m = _HEADER_RE.search(text)
+    if not m:
+        return ""
+    rid = m.group(2)
+    prefix = _ID_PREFIX.get(rid[0])
+    if not prefix:
+        return ""
+    number = rid[1:].lstrip("0") or "0"
+    return f"{prefix} {number}"
+
+
+def _parse_feature_row(line: str):
+    """One data row -> (milepost, feature name), or None."""
+    m = _FEATURE_ROW_RE.match(line)
+    if not m:
+        return None
+    mp = float(m.group(1))
+    rest = m.group(3)
+    t = _FEATURE_TYPE_RE.search(rest)
+    name = (rest[:t.start()] if t else rest).strip()
+    if not t:
+        # county lines, municipal limits: "CL-WAYNE 0.123 North and East"
+        name = re.split(r"\s+\d+\.\d{1,3}\s", name)[0].strip()
+    name = re.sub(r"\s+(North|South)\s+and\s+(East|West).*$", "", name).strip()
+    return (mp, name) if name else None
 
 
 def normalize_route(name: str) -> str:

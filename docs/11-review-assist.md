@@ -98,9 +98,16 @@ location independently.
   `ReportLocation`, but nothing yet fills one from the page; the fields were
   supplied by hand for the runs above. The zone map in `form_geometry.py` is
   where those boxes belong, alongside the ZIP fields already measured there.
-- **A real features report.** `FeatureInventory.from_csv` reads
-  `route,feature,milepost[,latitude,longitude]`; the runs above used a
-  synthetic inventory. Without the NCDOT report no real milepost can be
-  resolved, and the assist correctly refuses instead of approximating.
+- ~~A real features report.~~ **Done.** Every assignment folder carries the
+  TEAAS Features Reports for its routes (136 of them across 58 archived
+  evaluations), and `FeatureInventory.from_features_report` parses that format
+  directly; `from_csv` remains for hand-built inventories. The manifest now
+  classifies them under `files.features`, which it previously ignored.
+
+  Checked against the real US 13 (Greene) report: SR 1132 is at MP 1.993 and
+  SR 1142 at MP 2.983, so the crash used in the runs above, "0.80 mi from
+  SR 1132 toward SR 1142", is at **MP 2.79**. Not 4.20. The parsed span
+  between the two also matches the report's own distance-to-next column
+  (0.990), which is an independent check on the parse.
 - **Address geocoding.** A street reference is carried through with no
   milepost; placing it on a route needs a geocoder.

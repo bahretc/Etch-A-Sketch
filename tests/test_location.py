@@ -129,3 +129,66 @@ def test_route_names_normalize_across_sources():
 def test_interpolate_handles_a_single_point():
     mp, off = interpolate_milepost([(2.0, 35.4, -77.6)], 35.4, -77.6)
     assert mp == 2.0 and off == pytest.approx(0.0, abs=1e-6)
+
+
+# --------------------------------------------------------------------------- #
+# the real NCDOT features report
+# --------------------------------------------------------------------------- #
+import os
+
+FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures",
+                       "features_us13_greene.txt")
+
+
+def _real_inventory():
+    from safety_eval.location import FeatureInventory
+    return FeatureInventory.from_features_report(open(FIXTURE).read())
+
+
+def test_features_report_header_names_the_route():
+    from safety_eval.location import _route_from_header
+    assert _route_from_header(open(FIXTURE).read()) == "US 13"
+
+
+def test_features_report_mileposts_parse():
+    inv = _real_inventory()
+    assert inv.milepost_of("US 13", "SR 1132") == pytest.approx(1.993)
+    assert inv.milepost_of("US 13", "SR 1142") == pytest.approx(2.983)
+    assert inv.milepost_of("US 13", "NC 58") == pytest.approx(7.383)
+
+
+def test_features_report_indexes_more_than_numbered_routes():
+    """Named streets, county lines and municipal limits locate crashes too."""
+    inv = _real_inventory()
+    assert inv.milepost_of("US 13", "SHINE") == pytest.approx(1.993)
+    assert inv.milepost_of("US 13", "RANDOLPH CREECH") == pytest.approx(3.248)
+    assert inv.milepost_of("US 13", "ML-SNOW HILL") == pytest.approx(8.212)
+    assert inv.milepost_of("US 13", "CL-PITT") == pytest.approx(18.381)
+
+
+def test_features_report_keeps_the_first_milepost_of_a_shared_node():
+    """SR 1132, SR 1210 and SHINE all meet at 1.993."""
+    inv = _real_inventory()
+    for f in ("SR 1132", "SR 1210", "SHINE"):
+        assert inv.milepost_of("US 13", f) == pytest.approx(1.993)
+
+
+def test_real_crash_resolves_against_the_real_report():
+    """0.80 mi from SR 1132 toward SR 1142 is MP 2.79, not the 4.20 that a
+    drafting layer once read off the municipality-distance field."""
+    inv = _real_inventory()
+    loc = ReportLocation(on_road="US 13", from_road="SR 1132",
+                         toward_road="SR 1142", dist_from_intersection=0.80,
+                         municipality="Snow Hill", in_municipality=False,
+                         dist_from_municipality=4.20, county="Greene")
+    res = resolve(loc, inv)
+    assert res.milepost == pytest.approx(2.79, abs=0.01)
+    assert res.method == "features" and res.confidence == "high"
+    assert res.milepost != pytest.approx(4.20, abs=0.01)
+
+
+def test_report_span_agrees_with_the_distance_to_next_column():
+    """SR 1132 -> SR 1142 is 0.990 in the report; the mileposts must agree."""
+    inv = _real_inventory()
+    span = inv.milepost_of("US 13", "SR 1142") - inv.milepost_of("US 13", "SR 1132")
+    assert span == pytest.approx(0.990, abs=0.001)

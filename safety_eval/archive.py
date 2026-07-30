@@ -201,6 +201,12 @@ def build_meta(wo: str, inv: dict, emails_dir: str,
                           r"import.*\.txt$"),
         "reports": _pick(files, r"complete ?eval.*\.pdf$", r"web\.pdf$",
                          r"evaluation.*\.pdf$"),
+        # TEAAS Features Reports: the route inventory that turns a report's
+        # "N miles from <route>" into a milepost (location.py). Named either
+        # way round: FeaturesReport_US13.pdf or US13_FeaturesReport.pdf.
+        "features": _pick(files, r"features ?report.*\.pdf$",
+                          r"features ?import ?list.*\.txt$",
+                          r"features.*\.pdf$"),
     }
     if not files:
         meta.flags.append("empty-folder")
@@ -210,6 +216,8 @@ def build_meta(wo: str, inv: dict, emails_dir: str,
         meta.flags.append("no-assignment-email")
     if not meta.files["reports"]:
         meta.flags.append("no-report-pdf")
+    if not meta.files["features"]:
+        meta.flags.append("no-features-report")
 
     # classification from the workbook filename first (ground truth of what
     # was delivered), the email second

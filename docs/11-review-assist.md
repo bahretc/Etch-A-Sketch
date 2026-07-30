@@ -90,8 +90,9 @@ comment `milepost cannot be confirmed without features report`.
 would want: the crash is a run-off-road-right, so it is **not** in the
 frontal-impact target set for an AWSC study and **not** a centerline crossing
 for a centerline rumble strip study (docs/03 correctability); and the report's
-Latitude/Longitude boxes are blank, so nothing on the form confirms the
-location independently.
+Latitude/Longitude boxes are blank, so nothing on that form confirmed the
+location independently. Blank boxes turned out to be the exception rather than
+the rule; see "What the coordinates are actually like" below.
 
 ## Limits worth knowing
 
@@ -164,8 +165,58 @@ coordinates.
 So **RE cannot be detected from the fiche.** It needs the report. That is not a
 gap in the resolver, it is the reason the assist reads the redacted report at
 all, and it is why the report's Latitude/Longitude boxes matter more than they
-first appear: they are the one independent milepost on the page, and on the
-reports examined so far they were blank.
+first appear: they are the one independent milepost on the page.
+
+## What the coordinates are actually like (2026-07, preliminary)
+
+Two claims above were written off two reports and are wrong at the population
+level. Correcting both.
+
+**The Latitude/Longitude boxes are usually filled.** The DetailedFiche carries
+`Municipality, On Road, Miles, Dir From, From Road, Toward Road, Milepost Road,
+MP, MA, Crash ID, Date, T, C, F, L, S, Latitude, Longitude, Source`, and the
+`Source` column names where each coordinate came from. The dominant value is
+`DMV349CLEANED`, meaning NCDOT harvests the report's own boxes and cleans them,
+with `DMV349` raw and a minority from research feeds (`ITRE_CMV`, `HSRC_PED`,
+`HSRC_BIKE`, `ITRE_SEVEREINJURY`). Roughly two thirds of rows carry
+coordinates; blanks cluster on municipal and non-mileposted (MP 999.999) rows
+and on older crashes, which is the wrong half for a before period.
+
+**But they may not be precise enough to find a remilepost.** Measured
+model-free on I-40 rows from the Buncombe and McDowell DetailedFiche: for pairs
+of crashes close together in coded milepost, compare the straight-line distance
+between their coordinates against the difference in their mileposts. A freeway
+is locally straight, so the gap is coordinate error and coded-milepost error
+combined, with no route geometry fitted and no features report needed.
+
+| source of the coordinates | pairs | median gap | 90th pct | max | under 634 ft |
+|---|---|---|---|---|---|
+| research feeds (Buncombe) | 28 | 1584 ft | 6631 ft | 7870 ft | 8/28 |
+| `DMV349` / `DMV349CLEANED` (McDowell) | 6 | 877 ft | 1425 ft | 1597 ft | 1/6 |
+
+Both medians are larger than the **634 ft** median correction the engineer
+actually makes (measured on 04-15-39049), which is the number that has to be
+beaten. Two Buncombe crashes coded at the identical milepost 9.200 sit 7870 ft
+apart on the ground; two coded 32 ft apart sit 2130 ft apart.
+
+`location.coordinate_consistency` is this measurement, so it can be re-run on
+the full files as one call.
+
+Read this as a caution, not a result. n is 25 rows transcribed out of a search
+preview of the head of each file, so it is neither large nor a random sample,
+and the gap does not separate a noisy coordinate from a genuinely wrong
+milepost, which is the very thing being looked for. What it does establish is
+that the coordinate path is not the easy win it looks like, and that
+`Source` matters: report-derived coordinates were roughly twice as consistent
+as research-feed ones, so any use of them should filter on it. An earlier pass
+that fitted a route through the crash points themselves gave much worse numbers
+still, but that measured the route fit rather than the coordinates and should
+be ignored; its own scale check came out at 4899 ft per milepost.
+
+Before any of this is built on, run it on the full files:
+`DetailedFicheBuncombe.csv`, `DetailedFicheMcDowell.csv` and the 13-18-210
+(SS-4913CX) workbook, which together carry coordinates, features reports and
+the engineer's own RE calls on the same route.
 
 ## Still to build
 

@@ -743,3 +743,73 @@ def read_location_block(words, width: int, height: int) -> ReportLocation:
                 loc.on_road = route
                 break
     return loc
+
+
+# ---------------------------------------------------------------------------
+# fiche coordinate quality
+# ---------------------------------------------------------------------------
+
+def coordinate_consistency(rows, max_dmp: float = 1.5,
+                           min_dmp: float = 0.0) -> dict:
+    """How far the DetailedFiche coordinates and coded mileposts disagree.
+
+    ``rows`` is an iterable of ``(coded_mp, latitude, longitude, source)``, all
+    on one route.  For each pair of crashes within ``max_dmp`` miles of each
+    other by coded milepost, the straight-line distance between their
+    coordinates is compared against the difference in their mileposts.  Over a
+    short baseline a road is locally straight, so the two should agree; the gap
+    is coordinate error and coded-milepost error combined.
+
+    This deliberately fits no route geometry and needs no features report.  An
+    earlier attempt that fitted a route through the crash points themselves
+    measured the quality of that fit rather than the coordinates (docs/11).
+
+    Results are bucketed by the fiche's ``Source`` column, because coordinates
+    taken off the report (``DMV349``, ``DMV349CLEANED``) and coordinates from
+    research feeds (``ITRE_*``, ``HSRC_*``) are not the same thing.
+
+    Returns ``{bucket: {"n", "median_ft", "p90_ft", "max_ft", "gaps_ft"}}``.
+    The number to beat is the size of a real remilepost, whose median on
+    04-15-39049 was 634 ft: a method whose own noise is larger than the
+    correction it is looking for cannot find that correction.
+    """
+    usable = [(float(mp), float(lat), float(lon), str(src or ""))
+              for mp, lat, lon, src in rows
+              if mp is not None and lat is not None and lon is not None
+              and float(mp) < 999]
+
+    buckets: dict[str, list[float]] = {}
+    for i, a in enumerate(usable):
+        for b in usable[i + 1:]:
+            dmp = abs(a[0] - b[0])
+            if not (min_dmp <= dmp <= max_dmp):
+                continue
+            ground_ft = haversine_mi(a[1], a[2], b[1], b[2]) * 5280.0
+            gap = abs(ground_ft - dmp * 5280.0)
+            key = ("report" if a[3].startswith("DMV349") and b[3].startswith("DMV349")
+                   else "other")
+            buckets.setdefault(key, []).append(gap)
+
+    out = {}
+    for key, gaps in buckets.items():
+        gaps.sort()
+        out[key] = {
+            "n": len(gaps),
+            "median_ft": _quantile(gaps, 0.5),
+            "p90_ft": _quantile(gaps, 0.9),
+            "max_ft": gaps[-1],
+            "gaps_ft": gaps,
+        }
+    return out
+
+
+def _quantile(sorted_values, q: float) -> float:
+    """Linear-interpolated quantile, so an even-length median is the true one."""
+    if not sorted_values:
+        raise ValueError("no values")
+    if len(sorted_values) == 1:
+        return sorted_values[0]
+    pos = q * (len(sorted_values) - 1)
+    lo = int(pos)
+    hi = min(lo + 1, len(sorted_values) - 1)
+    return sorted_values[lo] + (pos - lo) * (sorted_values[hi] - sorted_values[lo])

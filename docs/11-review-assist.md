@@ -127,6 +127,46 @@ resolved before the assist is called, and the resolution is printed beside the
 proposal. Without them the run says so, resolves no milepost, and the assist is
 told not to infer one.
 
+## Measured against 1,503 real determinations (04-15-39049)
+
+The archived SS section evaluation on SR 1003 carries 2,315 reviewed rows with
+the engineer's own calls: 1,968 NIS, 215 IS, 102 RE (every one with a New MP),
+21 ADD, 9 DEL. Its 1,503 SR 1003 rows were resolved from the fiche's own
+location fields against that folder's SR 1003 features report.
+
+**The resolver reproduces the coded milepost.** 1,351 of 1,503 rows resolved,
+median error 0.003 mi, 98 to 99 percent inside 0.06 mi. That validates the
+features-report parsing, the route-name matching, the from/toward sign rule and
+the arithmetic at a scale no hand check reaches. The 152 that did not resolve
+are mostly a from-road absent from that route's features report, which is
+itself worth seeing.
+
+**But disagreement does NOT find RE rows, and that was worth proving.** The
+hypothesis was that where the resolver and the coded milepost disagree, the
+engineer would have remileposted. It does not hold:
+
+| determination | n | median abs difference | within 0.06 mi |
+|---|---|---|---|
+| IS | 181 | 0.004 | 99.4% |
+| NIS | 1067 | 0.003 | 98.5% |
+| **RE** | **99** | **0.001** | **97.0%** |
+
+RE rows agree with the coded milepost as closely as everything else. On those
+same rows the resolver lands within 0.06 mi of the engineer's corrected New MP
+only **7 percent** of the time, median error 0.121 mi.
+
+The reason is structural: TEAAS derives the coded milepost from the same
+from-road and distance the resolver uses, so the resolver reproduces TEAAS,
+including where TEAAS is wrong. The engineer's correction comes from something
+the fiche does not contain, which is the DMV-349 diagram, narrative and
+coordinates.
+
+So **RE cannot be detected from the fiche.** It needs the report. That is not a
+gap in the resolver, it is the reason the assist reads the redacted report at
+all, and it is why the report's Latitude/Longitude boxes matter more than they
+first appear: they are the one independent milepost on the page, and on the
+reports examined so far they were blank.
+
 ## Still to build
 
 - **A geocoder.** `GazetteerGeocoder` reads an address point file already on

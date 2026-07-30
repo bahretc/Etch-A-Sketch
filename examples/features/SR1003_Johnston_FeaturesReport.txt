@@ -1,0 +1,124 @@
+JOHNSTON 40001003 0.0
+18.941
+0.000 29000070 US 70BUS At grade intersection, 4 legs 0.000 North and East
+0.000 50018945 MARKET At grade intersection, 4 legs 0.092 North and East
+0.092 50003702 BRIDGE At grade intersection, 4 legs 0.092 North and East
+0.184 50005317 CASWELL At grade intersection, 4 legs 0.092 North and East
+0.276 50013019 HANCOCK At grade intersection, 4 legs 0.094 North and East
+0.370 50021532 NORTH At grade intersection, 3 legs 0.027 South and East
+0.397 50004182 BUFFALO At grade intersection, 3 legs 0.201 North and East
+0.598 40001921 SR 1921 At grade intersection, 4 legs 0.000 North and East
+0.598 50014496 HOSPITAL At grade intersection, 4 legs 0.101 North and East
+1.185 50014200 HOLLAND At grade intersection, 3 legs 0.116 North and East
+1.301 50009990 EVERETT At grade intersection, 4 legs 0.000 North and East
+1.301 50023468 PARKWAY At grade intersection, 4 legs 0.307 North and East
+1.608 BM000502 ML-SMITHFIELD 0.006 North and East
+1.614 40001923 SR 1923 At grade intersection, 3 legs 0.000 North and East
+1.614 50003216 BOOKER DAIRY At grade intersection, 3 legs 0.000 North and East
+1.614 50042253 DURWOOD STEPHENSON At grade intersection, 3 legs 0.163 North and East
+1.777 50028797 SPIREA At grade intersection, 4 legs 0.000 North and East
+1.777 50029478 STURGEON At grade intersection, 4 legs 0.192 North and East
+1.969 50023826 PEPPERBUSH At grade intersection, 4 legs 0.000 North and East
+1.969 50029478 STURGEON At grade intersection, 4 legs 0.317 North and East
+2.286 50016074 KELLY At grade intersection, 3 legs 0.354 North and East
+2.640 50003437 BRADFORD At grade intersection, 3 legs 0.066 North and East
+2.706 40001975 SR 1975 At grade intersection, 3 legs 0.000 North and East
+2.706 50009188 EASON At grade intersection, 3 legs 0.630 North and East
+3.336 20000070 US 70 Interchange 0.000 North and East
+3.349 20600070 US 70 WB COUPLET At grade intersection, 3 legs 0.165 North and East
+3.514 40002576 SR 2576 At grade intersection, 3 legs 0.054 North and East
+3.568 40001900 SR 1900 At grade intersection, 4 legs 0.000 North and East
+3.568 50021435 NOBLE At grade intersection, 4 legs 0.028 North and East
+3.617 BM000491 ML-SELMA 0.290 North and East
+3.907 40001929 SR 1929 At grade intersection, 4 legs 0.000 North and East
+3.907 50021718 OAK At grade intersection, 4 legs 0.343 North and East
+4.250 40001928 SR 1928 At grade intersection, 3 legs 0.000 North and East
+4.250 50026030 RIVER At grade intersection, 3 legs 0.205 North and East
+4.455 BM000491 ML-SELMA 0.142 North and East
+4.597 40001934 SR 1934 At grade intersection, 3 legs 0.000 North and West
+4.597 50021960 OLD BEULAH At grade intersection, 3 legs 0.098 North and West
+4.695 50019407 MCCORMICK At grade intersection, 3 legs 1.621 North and West
+6.316 40001939 SR 1939 At grade intersection, 3 legs 0.000 North and West
+6.316 50017907 LIVE OAK CHURCH At grade intersection, 3 legs 0.215 North and West
+6.531 50050749 MCKALI At grade intersection, 3 legs 0.577 North and West
+7.108 50018631 MADISON At grade intersection, 3 legs 0.597 North and West
+7.705 40001940 SR 1940 At grade intersection, 3 legs 0.000 North and West
+7.705 50029545 SULLIVAN At grade intersection, 3 legs 0.203 North and West
+7.908 40002812 SR 2812 At grade intersection, 3 legs 0.000 North and East
+7.908 50007380 CRESTLINE At grade intersection, 3 legs 1.059 North and West
+8.967 40001938 SR 1938 At grade intersection, 3 legs 0.000 North and West
+8.967 50039368 LITTLE DIVINE At grade intersection, 3 legs 0.061 North and West
+9.028 40001908 SR 1908 At grade intersection, 3 legs 0.000 North and West
+9.028 50010521 FIRE DEPARTMENT At grade intersection, 3 legs 0.181 North and West
+9.209 50026044 RIVERDALE At grade intersection, 3 legs 0.119 North and West
+9.328 40002230 SR 2230 At grade intersection, 3 legs 0.000 North and West
+9.328 50024541 POND At grade intersection, 3 legs 0.183 North and West
+9.511 40001941 SR 1941 At grade intersection, 3 legs 0.000 North and West
+9.511 50004498 BYRD At grade intersection, 3 legs 0.089 North and West
+9.600 40001905 SR 1905 At grade intersection, 3 legs 0.000 North and West
+9.600 50050750 CLARK POND At grade intersection, 3 legs 1.036 North and West
+10.636 50027179 SARA At grade intersection, 3 legs 0.087 North and West
+10.723 50009851 ERIKA At grade intersection, 3 legs 0.000 North and West
+10.723 50013900 HIDDEN ACRES At grade intersection, 3 legs 0.211 North and West
+10.934 50039409 RAINBOW CANYON At grade intersection, 3 legs 0.052 North and West
+10.986 40002040 SR 2040 At grade intersection, 3 legs 0.000 North and West
+10.986 50028682 SOUTHWICK At grade intersection, 3 legs 0.099 North and West
+11.085 40002040 SR 2040 At grade intersection, 4 legs 0.000 North and West
+11.085 40002267 SR 2267 At grade intersection, 4 legs 0.000 North and West
+11.085 50010906 FORT At grade intersection, 4 legs 0.000 North and West
+11.085 50028682 SOUTHWICK At grade intersection, 4 legs 0.500 North and West
+11.585 50010723 FLOWER At grade intersection, 4 legs 0.264 North and West
+11.849 30000042 NC 42 At grade intersection, 4 legs 0.010 North and West
+11.859 30600042 NC 42 WB COUPLET At grade intersection, 4 legs 0.077 North and West
+11.936 50050651 FLOWERS COMMERCE At grade intersection, 3 legs 0.079 North and West
+12.015 50050650 FLOWERS CROSSROADS At grade intersection, 3 legs 0.089 North and West
+12.104 50024239 PINEVILLE At grade intersection, 3 legs 0.140 North and West
+12.244 40001735 SR 1735 At grade intersection, 4 legs 0.000 North and West
+12.244 50010723 FLOWER At grade intersection, 4 legs 0.196 North and West
+12.440 50049932 JORDAN NARRON At grade intersection, 4 legs 0.067 North and West
+12.507 50003480 BRAMBLE At grade intersection, 3 legs 0.232 North and West
+12.739 50021181 NEUSE RIVER At grade intersection, 4 legs 0.000 North and West
+12.739 50048558 RIVER DELL TOWNES At grade intersection, 4 legs 0.325 North and West
+13.064 40002659 SR 2659 At grade intersection, 3 legs 0.000 North and West
+13.064 50021598 NORWOOD At grade intersection, 3 legs 0.072 North and West
+13.136 BM000721 ML-ARCHER LODGE 0.046 North and West
+13.182 40002609 SR 2609 At grade intersection, 3 legs 0.000 North and West
+13.182 50016192 KENTUCKY At grade intersection, 3 legs 0.256 North and West
+13.438 50025232 RAINTREE At grade intersection, 3 legs 0.165 North and West
+13.603 40001776 SR 1776 At grade intersection, 3 legs 0.000 North and West
+13.603 50025859 RICHMOND At grade intersection, 3 legs 0.165 North and West
+13.768 40002684 SR 2684 At grade intersection, 4 legs 0.000 North and West
+13.768 40003559 SR 3559 At grade intersection, 4 legs 0.000 North and West
+13.768 50014038 HILLDALE At grade intersection, 4 legs 0.000 North and West
+13.768 50050751 MCPOOLE At grade intersection, 4 legs 0.125 North and West
+13.893 40002632 SR 2632 At grade intersection, 3 legs 0.000 North and West
+13.893 50033250 WINDFALL At grade intersection, 3 legs 0.158 North and West
+14.051 50036415 WHEAT FIELD At grade intersection, 3 legs 0.130 North and West
+14.181 40001791 SR 1791 At grade intersection, 3 legs 0.000 North and West
+14.181 50008148 DEERFIELD At grade intersection, 3 legs 0.196 North and West
+14.377 50050752 SANIDINE At grade intersection, 3 legs 0.564 North and West
+14.941 40001700 SR 1700 At grade intersection, 4 legs 0.000 North and West
+14.941 50007150 COVERED BRIDGE At grade intersection, 4 legs 0.085 North and West
+15.026 40001701 SR 1701 At grade intersection, 3 legs 0.000 North and West
+15.026 50032464 WENDELL At grade intersection, 3 legs 0.128 North and West
+15.154 40001702 SR 1702 At grade intersection, 4 legs 0.000 North and West
+15.154 50037351 ARCHER LODGE At grade intersection, 4 legs 0.711 North and West
+15.865 50035658 RUFUS At grade intersection, 3 legs 0.360 North and West
+16.225 50023236 PACES At grade intersection, 3 legs 0.340 North and West
+16.565 40001770 SR 1770 At grade intersection, 3 legs 0.000 North and West
+16.565 50010677 FLETCHER At grade intersection, 3 legs 0.314 North and West
+16.879 BM000721 ML-ARCHER LODGE 0.139 North and West
+17.018 40003290 SR 3290 At grade intersection, 3 legs 0.000 North and West
+17.018 50050753 DEMILT At grade intersection, 3 legs 0.186 North and West
+17.204 40003523 SR 3523 At grade intersection, 3 legs 0.000 North and West
+17.204 50019882 MERRITT At grade intersection, 3 legs 0.487 North and West
+17.691 40001716 SR 1716 At grade intersection, 3 legs 0.000 North and West
+17.691 50016884 LAKE WENDELL At grade intersection, 3 legs 0.120 North and West
+17.811 40002637 SR 2637 At grade intersection, 3 legs 0.000 North and West
+17.811 40002638 SR 2638 At grade intersection, 3 legs 0.000 North and West
+18.423 40001717 SR 1717 At grade intersection, 4 legs 0.000 North and East
+18.423 50018651 MAGGIE At grade intersection, 4 legs 0.000 North and East
+18.423 50031162 TURNIPSEED At grade intersection, 4 legs 0.458 North and East
+18.881 40001718 SR 1718 At grade intersection, 3 legs 0.000 North and West
+18.881 50050754 SCOTTS MILL At grade intersection, 3 legs 0.060 North and West
+18.941 BC000092 CL-WAKE 0.000 North and West

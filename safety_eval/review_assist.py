@@ -111,7 +111,7 @@ intersection analysis.
 mile or more apart. When a diagram superficially matches, confirm with the \
 report's front-page coordinates.
 - Animal crashes are ignored in this review (no report review needed).
-- NOTHING on the DMV-349 is a milepost. "N Miles outside municipality" is a distance from a town and "N Miles from <route>" is a distance from an intersecting route; converting either into a milepost requires the features report, which is done for you before you are called. If a resolved milepost is not given below, say the milepost cannot be confirmed and do NOT infer one from any number on the report.
+- NOTHING on the DMV-349 is a milepost. "N Miles outside municipality" is a distance from a town and "N Miles from <route>" is a distance from an intersecting route. Do NOT convert either into a milepost yourself.\n- The milepost the study was built on is the one CODED ON THE FICHE, and it is given to you below. Use it. The report is being checked against it.\n- A resolved milepost, when given, is an INDEPENDENT reading of the same location, worked out from the features report or the report's coordinates. Its job is to confirm or contradict the coded one. If it contradicts the coded milepost in a section analysis, that is the RE case, and the corrected milepost is the resolved one.\n- When no resolved milepost is given, you can still judge IS, NIS, ADD and DEL from the coded milepost and what the report shows; you simply cannot establish RE, because there is nothing to correct the coded milepost TO. Say that rather than inventing a milepost.
 - Comments are brief and plain: no em dashes, and do not restate a value the \
 row already shows. Acceptable patterns: "no intersection in diagram", ">150'", \
 "at [road]", "per coords".
@@ -193,9 +193,12 @@ def _context_block(row, ctx: StudyContext) -> str:
         for note in getattr(rl, "notes", [])[:4]:
             lines.append(f"  - {note}")
     else:
-        lines.append("Resolved crash location: NOT AVAILABLE. No features "
-                     "report was supplied, so no milepost has been "
-                     "established. Do not infer one.")
+        lines.append(
+            "Resolved crash location: NOT AVAILABLE. No features report was "
+            "supplied, so the coded milepost below has not been independently "
+            "checked. Judge from it and from the report; RE cannot be "
+            "established without a milepost to correct it to, and no milepost "
+            "may be inferred from a distance field.")
     if ctx.fiche_milepost is not None:
         lines.append(f"Milepost coded on the fiche: {ctx.fiche_milepost:.2f} "
                      "(this is what the study was built on; the report is "
@@ -286,9 +289,17 @@ def _parse(data: dict, row, ctx: StudyContext, mode: str) -> AssistResult:
                 res.needs_manual = True
                 res.flags.append(
                     f"{base} proposed for a milepost-dependent section study "
-                    "with no resolved or coded milepost; the crash cannot be "
-                    "placed in the section. Engineer must resolve the location "
-                    "first (features report or coordinates).")
+                    "with no resolved and no coded milepost; the crash cannot "
+                    "be placed in the section at all.")
+            elif base == "RE" and getattr(rl, "milepost", None) is None:
+                # RE says the coded milepost is wrong, so it needs a corrected
+                # one, and that can only come from the features report or the
+                # report's own coordinates, never from the fiche it disputes.
+                res.needs_manual = True
+                res.flags.append(
+                    "RE proposed with no independently resolved milepost to "
+                    "correct the coded one to; supply the features report for "
+                    "this route, or confirm the corrected milepost by hand.")
         if res.confidence == "low":
             res.needs_manual = True
     else:

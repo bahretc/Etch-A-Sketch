@@ -194,3 +194,24 @@ def test_section_IS_with_a_resolved_milepost_is_fine():
 def test_section_IS_with_only_a_coded_milepost_is_fine():
     r = _decide("IS", fiche_milepost=8.10)
     assert not any("milepost-dependent" in f for f in r.flags)
+
+
+def test_RE_needs_an_independently_resolved_milepost():
+    """RE disputes the coded milepost, so the correction cannot come from the
+    fiche it disputes; it needs the features report or the report's coords."""
+    r = _decide("RE", fiche_milepost=8.10)
+    assert r.needs_manual
+    assert any("correct the coded one to" in f for f in r.flags)
+
+
+def test_RE_with_a_resolved_milepost_is_fine():
+    r = _decide("RE", fiche_milepost=8.10, resolved_location=_Resolved(2.79))
+    assert not any("correct the coded one to" in f for f in r.flags)
+
+
+def test_IS_on_the_coded_milepost_alone_is_allowed():
+    """The fiche always carries a milepost; a features report is for checking
+    it, not for placing the crash."""
+    r = _decide("IS", fiche_milepost=8.10)
+    assert not any("milepost-dependent" in f for f in r.flags)
+    assert not any("correct the coded one to" in f for f in r.flags)

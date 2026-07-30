@@ -39,19 +39,33 @@ The GPS pre-screen distance passed in `StudyContext.prescreen_ft` comes from
 the DetailedFiche, never from the report. Taking coordinates off the report
 would make the screen circular: the report is the thing being checked.
 
-## The milepost must be resolved, never inferred
+## Where the milepost comes from
 
-Nothing on the DMV-349 is a milepost. The location block gives a distance from
-a municipality and a distance from an intersecting route; converting either one
-needs the features report. `location.py` does that conversion and the assist is
-handed the answer, because a first run showed what happens otherwise: with no
-resolved location supplied, the model read the "04.20 Miles outside
-municipality" field as milepost 4.20 and reported **high confidence**.
+The fiche carries a coded milepost for every crash: that is the milepost the
+study was built on, and it is what places the crash. Nothing has to be derived
+to do an ordinary IS or NIS call.
 
-That was a design fault, not a model quirk. The prompt now states the rule and
-carries `StudyContext.resolved_location`; when no features report is available
-it says so and forbids inferring one. The fiche milepost is passed as the value
-being **checked**, not restated.
+What nothing on the DMV-349 carries is a milepost of its own. The location
+block gives a distance from a municipality and a distance from an intersecting
+route, and an early run showed what happens when a drafting layer is left to
+make something of them: with no resolved location supplied, the model read
+"04.20 Miles outside municipality" as milepost 4.20 and called it high
+confidence. The real answer for that crash was 2.79.
+
+So the features report is not what places a crash. It is what lets the coded
+milepost be **checked**, by working the same location out independently:
+MP(from_road) +/- the distance on the form, or the report's own coordinates
+interpolated along the route. That check is the whole point, because a coded
+milepost the report contradicts is the **RE** case (docs/03).
+
+Which means, precisely:
+
+- with the fiche milepost alone, IS / NIS / ADD / DEL are all judgeable from
+  the coded location and what the report shows;
+- **RE needs the features report** (or coordinates), because RE disputes the
+  coded milepost and the correction cannot come from the fiche it disputes.
+  Proposing RE with nothing to correct it to sets `needs_manual`;
+- a milepost is never inferred from a distance field, in either direction.
 
 ## Measured on a real report (2026-07)
 

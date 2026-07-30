@@ -111,3 +111,18 @@ location independently.
   (0.990), which is an independent check on the parse.
 - **Address geocoding.** A street reference is carried through with no
   milepost; placing it on a route needs a geocoder.
+
+## A feature name is not unique
+
+The same trap docs/03 records for cross streets ("two US 17 / Deppe Loop
+junctions 1.3 miles apart") exists inside the features report. On the real
+US 13, NC 58 meets the route at MP 7.383 **and** 8.553, CHASE at 7.941 and
+8.086, US 258 at 9.736 and 16.191, and Snow Hill's municipal limits appear at
+both ends of the town. A parser that keeps the first match resolves "0.5 mi
+from NC 58" to a confidently wrong milepost.
+
+`mileposts_of` therefore returns every milepost a name appears at, and
+`milepost_of` returns one only when the name is unique. The road the crash lies
+TOWARD usually settles it, because the crash must sit between the two: pairs
+whose separation cannot cover the stated distance are discarded. When more than
+one pair still fits, the location is left unresolved rather than guessed.

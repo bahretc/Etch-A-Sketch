@@ -192,3 +192,42 @@ def test_report_span_agrees_with_the_distance_to_next_column():
     inv = _real_inventory()
     span = inv.milepost_of("US 13", "SR 1142") - inv.milepost_of("US 13", "SR 1132")
     assert span == pytest.approx(0.990, abs=0.001)
+
+
+def test_repeated_feature_names_are_kept_not_collapsed():
+    """NC 58 meets US 13 twice in the real report; both mileposts survive."""
+    inv = _real_inventory()
+    assert inv.mileposts_of("US 13", "NC 58") == [pytest.approx(7.383)]
+    # the fixture carries one NC 58; the ambiguity API is exercised below
+
+
+def test_ambiguous_feature_is_disambiguated_by_the_road_named_toward():
+    from safety_eval.location import FeatureInventory
+    inv = FeatureInventory()
+    # NC 58 twice, as on the real US 13
+    inv.features["US13"] = {"NC58": [7.383, 8.553], "SR1104": [8.433]}
+    loc = ReportLocation(on_road="US 13", from_road="NC 58",
+                         toward_road="SR 1104", dist_from_intersection=0.12)
+    res = resolve(loc, inv)
+    # only the 8.553 NC 58 is within 0.12 mi of SR 1104 at 8.433
+    assert res.milepost == pytest.approx(8.43, abs=0.02)
+    assert res.confidence == "high"
+
+
+def test_ambiguous_feature_with_no_way_to_choose_refuses():
+    from safety_eval.location import FeatureInventory
+    inv = FeatureInventory()
+    inv.features["US13"] = {"NC58": [7.383, 8.553]}
+    loc = ReportLocation(on_road="US 13", from_road="NC 58",
+                         dist_from_intersection=0.50)
+    res = resolve(loc, inv)
+    assert res.milepost is None
+    assert any("appears at 2 mileposts" in n for n in res.notes)
+
+
+def test_milepost_of_returns_none_when_the_name_is_not_unique():
+    from safety_eval.location import FeatureInventory
+    inv = FeatureInventory()
+    inv.features["US13"] = {"NC58": [7.383, 8.553]}
+    assert inv.milepost_of("US 13", "NC 58") is None
+    assert inv.mileposts_of("US 13", "NC 58") == [7.383, 8.553]

@@ -140,7 +140,8 @@ class FeatureInventory:
                 if not route:
                     continue
                 if name:
-                    inv.features.setdefault(route, {})[normalize_route(name)] = mp
+                    inv.features.setdefault(route, {}).setdefault(
+                        normalize_route(name), []).append(mp)
                 lat, lon = key.get("latitude", ""), key.get("longitude", "")
                 if lat and lon:
                     try:
@@ -181,13 +182,31 @@ class FeatureInventory:
                 continue
             mp, name = parsed
             existing = inv.features.setdefault(key, {})
-            existing.setdefault(normalize_route(name), mp)
+            existing.setdefault(normalize_route(name), []).append(mp)
             inv.route_names.setdefault(key, route_name.strip())
         return inv
 
-    def milepost_of(self, route: str, feature: str) -> float | None:
-        return self.features.get(normalize_route(route), {}).get(
+    def mileposts_of(self, route: str, feature: str) -> list:
+        """Every milepost this feature appears at, ascending.
+
+        A name is not unique along a route: the real US 13 report has NC 58 at
+        MP 7.383 and again at 8.553, CHASE at 7.941 and 8.086, and Snow Hill's
+        municipal limits at both ends of the town. This is the features-report
+        form of the trap docs/03 records for cross streets, so every milepost
+        is kept and the caller decides.
+        """
+        got = self.features.get(normalize_route(route), {}).get(
             normalize_route(feature))
+        if got is None:
+            return []
+        if isinstance(got, (int, float)):     # hand-built inventories
+            return [float(got)]
+        return sorted(set(got))
+
+    def milepost_of(self, route: str, feature: str) -> float | None:
+        """The feature's milepost, or None when the name is not unique."""
+        mps = self.mileposts_of(route, feature)
+        return mps[0] if len(mps) == 1 else None
 
 
 _ROUTE_CLEAN_RE = re.compile(r"[^A-Z0-9]+")
@@ -290,6 +309,41 @@ def interpolate_milepost(points, lat: float, lon: float):
 # --------------------------------------------------------------------------- #
 # resolution
 # --------------------------------------------------------------------------- #
+def _disambiguate(from_candidates, toward_candidates, distance, tolerance):
+    """Pick the (from, toward) pair the stated distance can actually fit.
+
+    A feature name repeated along a route is only ambiguous until the road the
+    crash lies TOWARD is considered: the crash must sit between the two, so the
+    pair whose separation covers the distance is the one meant. Pairs that
+    cannot fit are discarded, and a tie leaves both as None rather than
+    guessing.
+    """
+    if not from_candidates:
+        return None, None
+    # Unambiguous names need no disambiguation, and must NOT be filtered by
+    # the distance: resolve() reports a distance that overshoots the named
+    # road as the inconsistency it is, which is more useful than silence.
+    if len(from_candidates) == 1 and len(toward_candidates) <= 1:
+        return (from_candidates[0],
+                toward_candidates[0] if toward_candidates else None)
+    if not toward_candidates:
+        return (from_candidates[0], None) if len(from_candidates) == 1 \
+            else (None, None)
+    d = distance or 0.0
+    viable = [(f, t) for f in from_candidates for t in toward_candidates
+              if abs(t - f) + tolerance >= d and f != t]
+    if len(viable) == 1:
+        return viable[0]
+    if viable:
+        # several fit: prefer the closest pair, but only when it is a clear
+        # winner, otherwise refuse
+        viable.sort(key=lambda ft: abs(ft[1] - ft[0]))
+        if len(viable) == 1 or abs(viable[0][1] - viable[0][0]) < \
+                abs(viable[1][1] - viable[1][0]) - tolerance:
+            return viable[0]
+    return None, None
+
+
 def resolve(loc: ReportLocation, inventory: FeatureInventory | None = None,
             fiche_milepost: float | None = None,
             tolerance: float = MP_TOLERANCE,
@@ -324,9 +378,18 @@ def resolve(loc: ReportLocation, inventory: FeatureInventory | None = None,
     # 2. distance from an intersecting route, signed by the road named "toward"
     if res.milepost is None and loc.dist_from_intersection is not None \
             and loc.from_road:
-        mp_from = inv.milepost_of(route, loc.from_road)
-        mp_toward = inv.milepost_of(route, loc.toward_road) \
-            if loc.toward_road else None
+        from_candidates = inv.mileposts_of(route, loc.from_road)
+        toward_candidates = inv.mileposts_of(route, loc.toward_road) \
+            if loc.toward_road else []
+        mp_from, mp_toward = _disambiguate(
+            from_candidates, toward_candidates,
+            loc.dist_from_intersection, tolerance)
+        if mp_from is None and len(from_candidates) > 1:
+            res.notes.append(
+                f"{loc.from_road} appears at {len(from_candidates)} mileposts "
+                f"on {loc.on_road} ({', '.join(f'{m:.2f}' for m in from_candidates)})"
+                " and the report does not say which; milepost not resolved")
+            res.method, res.confidence = "features", "low"
         if mp_from is None:
             res.notes.append(
                 f"{loc.from_road} is not in the features report for "

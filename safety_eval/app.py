@@ -181,6 +181,13 @@ def _review_queue_tab(st) -> None:
                                  help="Used with coordinates to sort the "
                                       "queue by distance.")
         mp_rng = st.text_input("Study milepost range lo:hi (optional)")
+        features_up = st.file_uploader(
+            "Features report(s) for this evaluation",
+            type=["pdf", "txt", "csv"], accept_multiple_files=True,
+            help="The TEAAS Features Report for each study route, provided "
+                 "per analysis. Without them no milepost can be resolved from "
+                 "the report's distances, and the assist is told not to infer "
+                 "one.")
 
     if not (wb_path and os.path.exists(wb_path)):
         if wb_path:
@@ -207,6 +214,20 @@ def _review_queue_tab(st) -> None:
                 "Possible misread binder header IDs (fix with "
                 "`safety-eval binder-index --known-ids ...` and reload): "
                 + ", ".join(f"{a} -> {b}" for a, b in sorted(suggestions.items())))
+
+    inventory = None
+    if features_up:
+        from .location import FeatureInventory
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = [_save_upload(f, tmp) for f in features_up]
+            try:
+                inventory = FeatureInventory.from_files(paths)
+            except Exception as exc:          # noqa: BLE001 - show, don't die
+                st.error(f"Could not read the features report(s): {exc}")
+        if inventory is not None:
+            st.caption("Features reports loaded for routes: "
+                       + ", ".join(sorted(inventory.features)))
+    st.session_state["rq_features"] = inventory
 
     coords = rq.parse_coordinates(coords_path) if coords_path else None
     point = None
@@ -281,6 +302,21 @@ def _review_queue_tab(st) -> None:
                 help="Decide: propose the determination from the redacted "
                      "report. Prepare: assemble the evidence and leave the call "
                      "to you. Runs on the redacted pages only; never auto-applied.")
+            resolved = None
+            if report_pages:
+                from .location import read_location_block, resolve
+                from .redact import ocr_words
+                with tempfile.TemporaryDirectory() as tmp:
+                    ppath = os.path.join(tmp, "loc.png")
+                    report_pages[0].save(ppath)
+                    words = ocr_words(ppath, page=1)
+                loc = read_location_block(words, report_pages[0].width,
+                                          report_pages[0].height)
+                resolved = resolve(loc, st.session_state.get("rq_features"),
+                                   fiche_milepost=row.mp)
+                st.caption("Resolved location: " + resolved.summary())
+                for note in resolved.notes[:3]:
+                    st.caption("· " + note)
             akey = f"rq_assist_res_{row.crash_id}"
             if assist_mode != "Off" and st.button("Run AI assist",
                                                   key=f"rq_run_{row.crash_id}"):
@@ -290,7 +326,9 @@ def _review_queue_tab(st) -> None:
                     from . import review_assist as ra
                     ctx = ra.StudyContext(analysis_type=analysis_type,
                                           study_point=point, mp_range=mp_range,
-                                          prescreen_ft=item.dist_ft)
+                                          prescreen_ft=item.dist_ft,
+                                          resolved_location=resolved,
+                                          fiche_milepost=row.mp)
                     with st.spinner("Reviewing the redacted report..."):
                         try:
                             st.session_state[akey] = ra.assist(

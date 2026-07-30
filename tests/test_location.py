@@ -363,3 +363,26 @@ def test_street_name_survives_when_the_road_is_not_a_numbered_route():
     assert _clean_route("onUS 13") == "US 13"
     assert _clean_route("0 US 13") == "US 13"
     assert _clean_route("rom SR1132") == "SR 1132"
+
+
+def test_from_files_merges_several_reports(tmp_path):
+    """A study names more than one route, so the reports merge into one
+    inventory."""
+    from safety_eval.location import FeatureInventory
+    a = tmp_path / "us13.txt"; a.write_text(
+        "GREENE 20000013 0.0\n"
+        "1.993 40001132 SR 1132 At grade intersection, 4 legs 0.000 South and East\n",
+        encoding="utf-8")
+    b = tmp_path / "nc58.csv"; b.write_text(
+        "route,feature,milepost\nNC 58,SR 1300,4.25\n", encoding="utf-8")
+    inv = FeatureInventory.from_files([str(a), str(b)])
+    assert inv.milepost_of("US 13", "SR 1132") == pytest.approx(1.993)
+    assert inv.milepost_of("NC 58", "SR 1300") == pytest.approx(4.25)
+
+
+def test_from_files_accepts_a_single_path(tmp_path):
+    from safety_eval.location import FeatureInventory
+    p = tmp_path / "r.csv"; p.write_text("route,feature,milepost\nUS 13,SR 1132,2.0\n",
+                                         encoding="utf-8")
+    inv = FeatureInventory.from_files(str(p))
+    assert inv.milepost_of("US 13", "SR 1132") == pytest.approx(2.0)

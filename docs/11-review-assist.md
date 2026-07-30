@@ -92,11 +92,29 @@ location independently.
 - Names scrubbed out of a narrative occasionally take an ordinary word with
   them when it matches a harvested name.
 
+## The features report is an input to the evaluation
+
+It is supplied per analysis, the way the fiche and the assignment are, not
+discovered from a folder: the engineer knows which routes the study covers and
+which report belongs to it, and picking one by filename would be guessing at
+the very step the milepost depends on.
+
+    safety-eval review-assist --features FeaturesReport_US13.pdf \
+                              FeaturesReport_NC58.pdf ...
+
+`FeatureInventory.from_files` takes the TEAAS Features Report as a PDF, a text
+dump, or a `route,feature,milepost` CSV, and merges several into one inventory,
+because a study names more than one route: the road the crash is on, and the
+roads it is measured from and toward. The Streamlit review tab has the same
+uploader.
+
+Given them, each crash's location block is read off its own redacted page and
+resolved before the assist is called, and the resolution is printed beside the
+proposal. Without them the run says so, resolves no milepost, and the assist is
+told not to infer one.
+
 ## Still to build
 
-- **A features report per route, loaded from the assignment folder.** They are
-  already there (136 files across 58 folders) and the manifest now indexes
-  them, but nothing selects the right one automatically for a given crash.
 - **A geocoder.** `GazetteerGeocoder` reads an address point file already on
   disk; an online locator can be dropped in behind the same `Geocoder`
   protocol. Without either, a street reference is carried through unplaced.

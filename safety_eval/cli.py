@@ -509,6 +509,15 @@ def _cmd_review_assist(args) -> int:
         mp_range = (lo, hi)
     queue = rq.build_queue(review, binder_index=idx, coords=coords,
                            study_point=point, mp_range=mp_range)
+    from .location import FeatureInventory, read_location_block, resolve
+    inventory = None
+    if args.features:
+        inventory = FeatureInventory.from_files(args.features)
+        print(f"  features reports: {len(args.features)} file(s), routes "
+              f"{sorted(inventory.features)}")
+    else:
+        print("  no features report supplied (--features): mileposts will not "
+              "be resolved and the assist is told so")
     ctx = ra.StudyContext(name=args.study_name, analysis_type=args.analysis_type,
                           study_point=point, mp_range=mp_range,
                           target_definition=args.target)
@@ -524,10 +533,28 @@ def _cmd_review_assist(args) -> int:
             pages = (render_crash_pages(idx, row.crash_id, dpi=idx.dpi)
                      if item.has_report else [])
             ctx.prescreen_ft = item.dist_ft
+            # The location block survives redaction by design, so it is read
+            # off the same redacted page the assist sees, and resolved against
+            # the features reports supplied for this evaluation.
+            ctx.fiche_milepost = row.mp
+            ctx.resolved_location = None
+            if pages:
+                from .redact import ocr_words
+                import tempfile as _tf
+                with _tf.TemporaryDirectory() as _t:
+                    _p = os.path.join(_t, "loc.png")
+                    pages[0].save(_p)
+                    words = ocr_words(_p, page=1)
+                loc = read_location_block(words, pages[0].width, pages[0].height)
+                ctx.resolved_location = resolve(loc, inventory,
+                                                fiche_milepost=row.mp)
             res = ra.assist(row, ctx, pages, mode=args.mode, client=client,
                             redacted=True, model=args.model)
             fh.write(json.dumps(vars(res)) + "\n")
             n += 1
+            rl = ctx.resolved_location
+            if rl is not None:
+                print(f"    location: {rl.summary()}")
             label = res.proposed_status or ("prepared" if res.mode == "prepare"
                                             else "-")
             flags = " ".join(res.flags) or ""
@@ -740,6 +767,12 @@ def build_parser() -> argparse.ArgumentParser:
                     "(never the report's own coordinates).")
     rv.add_argument("--study-point", dest="study_point", help="lat,lon.")
     rv.add_argument("--mp-range", dest="mp_range", help="lo:hi (sections).")
+    rv.add_argument("--features", nargs="+", metavar="FILE",
+                    help="Features report(s) for this evaluation, one per "
+                         "study route (TEAAS Features Report .pdf, a text "
+                         "dump, or a route,feature,milepost .csv). Supplied "
+                         "per analysis; without them no milepost is resolved "
+                         "and the assist is told not to infer one.")
     rv.add_argument("--target", default="",
                     help="Target-crash definition text for context.")
     rv.add_argument("--study-name", dest="study_name", default="")

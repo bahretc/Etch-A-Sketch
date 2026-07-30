@@ -39,7 +39,10 @@ from __future__ import annotations
 
 import csv
 import math
+import os
 import re
+import shutil
+import subprocess
 from dataclasses import dataclass, field
 
 #: Compass directions as unit vectors, for interpreting "0.80 Miles N".
@@ -203,6 +206,39 @@ class FeatureInventory:
             return [float(got)]
         return sorted(set(got))
 
+    @classmethod
+    def from_files(cls, paths) -> "FeatureInventory":
+        """Load the features reports supplied for this evaluation.
+
+        The engineer provides them per analysis, one per study route, in
+        whatever form they were exported: the TEAAS Features Report as a PDF
+        or a text dump, or a ``route,feature,milepost`` CSV. Several are merged
+        into one inventory, because a study names more than one route (the road
+        the crash is on, and the roads it is measured from and toward).
+        """
+        if isinstance(paths, (str, os.PathLike)):
+            paths = [paths]
+        merged = cls()
+        for path in paths:
+            path = str(path)
+            low = path.lower()
+            if low.endswith(".csv"):
+                part = cls.from_csv(path)
+            else:
+                text = (_pdf_text(path) if low.endswith(".pdf")
+                        else open(path, encoding="utf-8", errors="replace").read())
+                part = cls.from_features_report(text)
+            for route, feats in part.features.items():
+                dest = merged.features.setdefault(route, {})
+                for name, mps in feats.items():
+                    dest.setdefault(name, []).extend(mps)
+            for route, pts in part.shape.items():
+                merged.shape.setdefault(route, []).extend(pts)
+            merged.route_names.update(part.route_names)
+        for pts in merged.shape.values():
+            pts.sort()
+        return merged
+
     def milepost_of(self, route: str, feature: str) -> float | None:
         """The feature's milepost, or None when the name is not unique."""
         mps = self.mileposts_of(route, feature)
@@ -261,6 +297,22 @@ def normalize_route(name: str) -> str:
         return ""
     text = name.upper().split("(")[0]
     return _ROUTE_CLEAN_RE.sub("", text)
+
+
+def _pdf_text(path: str) -> str:
+    """Text of a features-report PDF (poppler; the reports have a text layer)."""
+    exe = shutil.which("pdftotext")
+    if exe:
+        out = subprocess.run([exe, "-layout", path, "-"], capture_output=True,
+                             text=True, timeout=120)
+        if out.returncode == 0 and out.stdout.strip():
+            return out.stdout
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:                      # noqa: BLE001 - explain
+        raise RuntimeError(
+            f"cannot read {path}: install poppler (pdftotext) or pypdf") from exc
+    return "\n".join((pg.extract_text() or "") for pg in PdfReader(path).pages)
 
 
 # --------------------------------------------------------------------------- #

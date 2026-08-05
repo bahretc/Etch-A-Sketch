@@ -94,6 +94,33 @@ Latitude/Longitude boxes are blank, so nothing on that form confirmed the
 location independently. Blank boxes turned out to be the exception rather than
 the rule; see "What the coordinates are actually like" below.
 
+## The request itself is checked against the live API
+
+The offline suite injects a fake client, so it proves the parsing and the
+docs/03 guards and says nothing about whether the Messages API still accepts
+what we build. `tests/test_review_assist_live.py` sends one real request and is
+skipped unless `ANTHROPIC_API_KEY` is set. It uses a blank synthetic page, so
+no report imagery leaves the machine.
+
+It pins the structured-output shape (`output_config.format` with a
+`json_schema` carrying `required` and `additionalProperties: false`, both of
+which strict mode needs), that the model ID is a current one, and that the
+response is not truncated.
+
+That last one is not hypothetical. `max_tokens` caps thinking **plus** the
+answer, and a truncated response loses the whole JSON object rather than its
+tail. Measured on one page of coded fields and a short narrative: 200 output
+tokens on `claude-opus-4-8`, which returned no thinking block, and 460 on
+`claude-opus-5`, which thinks by default. A real report with a full diagram
+goes higher. `max_tokens` is only billed for what is generated, so the default
+is now 4000: headroom is free, truncation is not.
+
+The default model is still `claude-opus-4-8`. `claude-opus-5` is a drop-in at
+the same price and the live check passes on it, but the assist has no measured
+baseline on either, so switching would trade a known-unmeasured component for
+an unknown-unmeasured one. Worth doing alongside the labelled-sample
+measurement, not before it.
+
 ## Limits worth knowing
 
 - **A status can still be unjustified.** In the no-features-report run the

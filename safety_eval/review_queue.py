@@ -22,6 +22,7 @@ construction (one determination call per crash, each audited).
 """
 from __future__ import annotations
 
+import csv
 import json
 import math
 import os
@@ -285,6 +286,27 @@ def parse_coordinates(source: str,
     one named DetailedFiche) or a delimited text file (pipe, comma, or
     tab).  Rows with blank or zero coordinates are skipped.
     """
+    for header, rows in _fiche_tables(source, sheet):
+        found = _coord_rows(header, rows)
+        if found:
+            return found
+    return {}
+
+
+def _fiche_tables(source: str, sheet: str | None = None) -> list:
+    """Candidate ``(header, rows)`` tables in a DetailedFiche.
+
+    Accepts the fiche workbook (.xlsx/.xlsm; ``sheet`` defaults to the first
+    sheet whose header carries Latitude, preferring one named DetailedFiche)
+    or delimited text (comma, pipe or tab).  More than one candidate may come
+    back; the caller keeps the first that yields anything.
+
+    Text goes through the csv module rather than ``str.split``.  The real
+    export quotes every field, and splitting on the delimiter leaves the quote
+    characters attached, after which no crash ID is a digit string and no
+    coordinate parses as a float.  That silently produced an empty result.
+    """
+    out = []
     if source.lower().endswith((".xlsx", ".xlsm")):
         import openpyxl
 
@@ -298,36 +320,89 @@ def parse_coordinates(source: str,
             else:
                 names = [sheet]
             for name in names:
-                ws = wb[name]
-                it = ws.iter_rows(values_only=True)
+                it = wb[name].iter_rows(values_only=True)
                 for header in it:
                     if header and any("LATITUDE" in str(v or "").upper()
                                       for v in header):
-                        found = _coord_rows(header, it)
-                        if found:
-                            return found
+                        out.append((list(header), [list(r) for r in it]))
                         break
-            return {}
         finally:
             wb.close()
+        return out
 
     text = source
     if "\n" not in source and len(source) < 400:
-        with open(source, encoding="utf-8", errors="replace") as fh:
+        with open(source, encoding="utf-8-sig", errors="replace") as fh:
             text = fh.read()
     lines = [ln for ln in text.splitlines() if ln.strip()]
     for i, line in enumerate(lines):
         up = line.upper()
         if "LATITUDE" not in up or "CRASH" not in up:
             continue
-        for delim in ("|", "\t", ","):
-            if delim in line:
-                header = line.split(delim)
-                rows = (ln.split(delim) for ln in lines[i + 1:])
-                found = _coord_rows(header, rows)
-                if found:
-                    return found
-    return {}
+        delim = max((",", "|", "\t"), key=line.count)
+        if line.count(delim) == 0:
+            continue
+        table = list(csv.reader(lines[i:], delimiter=delim))
+        if len(table) > 1:
+            out.append((table[0], table[1:]))
+    return out
+
+
+def read_detailed_fiche(source: str, sheet: str | None = None) -> list[tuple]:
+    """``(coded_mp, latitude, longitude, source)`` per crash on a DetailedFiche.
+
+    The shape :func:`safety_eval.location.coordinate_consistency` takes, so
+    checking a real fiche's coordinate quality is::
+
+        coordinate_consistency(read_detailed_fiche("DetailedFicheMcDowell.csv"))
+
+    ``source`` here is the fiche's own Source column (``DMV349``,
+    ``DMV349CLEANED``, ``ITRE_CMV``, ``HSRC_PED`` and so on), which says where
+    the coordinate came from and matters: report-derived and research-feed
+    coordinates are not equally good (docs/11).  Rows without a coordinate are
+    dropped; rows without a milepost are kept as ``None`` so the caller can see
+    how many there are.
+    """
+    for header, rows in _fiche_tables(source, sheet):
+        cols: dict[str, int] = {}
+        for i, cell in enumerate(header):
+            p = str(cell or "").strip().upper()
+            if p == "MP" or "MILEPOST" == p:
+                cols.setdefault("mp", i)
+            elif "LATITUDE" in p or p == "LAT":
+                cols.setdefault("lat", i)
+            elif "LONGITUDE" in p or p in ("LONG", "LON"):
+                cols.setdefault("lon", i)
+            elif p == "SOURCE":
+                cols.setdefault("src", i)
+        if "lat" not in cols or "lon" not in cols:
+            continue
+
+        out: list[tuple] = []
+        for row in rows:
+            try:
+                lat = float(str(row[cols["lat"]]).strip())
+                lon = float(str(row[cols["lon"]]).strip())
+            except (TypeError, IndexError, ValueError):
+                continue
+            if not (lat or lon):
+                continue
+            mp = None
+            if "mp" in cols:
+                try:
+                    mp = float(str(row[cols["mp"]]).strip())
+                except (TypeError, IndexError, ValueError):
+                    mp = None
+            src = ""
+            if "src" in cols:
+                try:
+                    src = str(row[cols["src"]] or "").strip()
+                except IndexError:
+                    src = ""
+            out.append((mp, lat, lon, src))
+        if out:
+            return out
+    return []
 
 
 # --------------------------------------------------------------------------- #

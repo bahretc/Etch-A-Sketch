@@ -199,8 +199,23 @@ actually makes (measured on 04-15-39049), which is the number that has to be
 beaten. Two Buncombe crashes coded at the identical milepost 9.200 sit 7870 ft
 apart on the ground; two coded 32 ft apart sit 2130 ft apart.
 
-`location.coordinate_consistency` is this measurement, so it can be re-run on
-the full files as one call.
+The measurement re-runs on a real fiche as::
+
+    from safety_eval.location import coordinate_consistency
+    from safety_eval.review_queue import read_detailed_fiche
+
+    coordinate_consistency(read_detailed_fiche("DetailedFicheMcDowell.csv"))
+
+Building that path turned up a bug worth knowing about separately from any of
+this. `parse_coordinates`, which feeds the GPS pre-screen that docs/03 makes
+the first step of a fiche review, split delimited text on the delimiter. The
+real DetailedFiche export quotes every field, so the quote characters stayed
+attached, no crash ID passed `isdigit()`, no coordinate passed `float()`, and
+the function returned an empty dict. Not an error, just no coordinates, so the
+queue would have fallen back to milepost ordering and looked like it was
+working. The `.xlsx` fiche workbook was unaffected, which is why the tests
+never caught it: openpyxl hands back typed values. Both readers now go through
+the csv module.
 
 Read this as a caution, not a result. n is 25 rows transcribed out of a search
 preview of the head of each file, so it is neither large nor a random sample,

@@ -115,6 +115,81 @@ def test_parse_coordinates_detailedfiche_xlsx(tmp_path):
     assert rq.parse_coordinates(path, sheet="DetailedFiche") == coords
 
 
+#: The real DetailedFiche CSV export quotes every field, including numbers.
+QUOTED_FICHE = (
+    '"Municipality","On Road","Miles","Dir From","From Road","Toward Road",'
+    '"Milepost Road","MP","MA","Crash ID","Date","T","C","F","L","S",'
+    '"Latitude","Longitude","Source"\n'
+    '"INDIAN TRAIL","US 74","0.047","W","SR 1367","SR 1008","US 74","2.438",'
+    '"Y","107572056","2023-12-18","23","1","0","1","O","35.07","-80.65",'
+    '"DMV349"\n'
+    '"MONROE","US 74","0.13","E","WALKUP","SUTHERLAND","US 74","12.064","",'
+    '"108059229","2025-03-24","17","1","0","4","B","","",""\n')
+
+
+def test_parse_coordinates_reads_the_quoted_csv_export(tmp_path):
+    """Splitting on the delimiter left the quotes on and returned nothing.
+
+    Every crash ID then failed isdigit() and every coordinate failed float(),
+    so the GPS pre-screen silently found no coordinates at all on the actual
+    export format.
+    """
+    path = tmp_path / "DetailedFiche.csv"
+    path.write_text(QUOTED_FICHE)
+    assert rq.parse_coordinates(str(path)) == {"107572056": (35.07, -80.65)}
+
+
+def test_read_detailed_fiche_shape(tmp_path):
+    """The tuples location.coordinate_consistency consumes."""
+    path = tmp_path / "DetailedFiche.csv"
+    path.write_text(QUOTED_FICHE)
+    rows = rq.read_detailed_fiche(str(path))
+    assert rows == [(2.438, 35.07, -80.65, "DMV349")]   # blank-coord row dropped
+
+
+def test_read_detailed_fiche_keeps_the_source_column(tmp_path):
+    """Source says whether a coordinate came off the report or a research
+    feed, and those are not equally good (docs/11)."""
+    path = tmp_path / "f.csv"
+    path.write_text(QUOTED_FICHE.replace('"DMV349"\n', '"ITRE_CMV"\n'))
+    assert rq.read_detailed_fiche(str(path))[0][3] == "ITRE_CMV"
+
+
+def test_read_detailed_fiche_feeds_coordinate_consistency(tmp_path):
+    """The one-call path docs/11 promises, end to end."""
+    from safety_eval.location import coordinate_consistency
+
+    rows = [
+        '"R","I 40","0","","A","B","I 40","%.3f","","10740000%d","2024-01-0%d",'
+        '"19","1","0","1","O","%.6f","-82.0","DMV349CLEANED"' % (
+            10.0 + i * 0.2, i, i + 1, 35.60 + i * 0.0055)
+        for i in range(4)]
+    path = tmp_path / "f.csv"
+    path.write_text(QUOTED_FICHE.splitlines()[0] + "\n" + "\n".join(rows) + "\n")
+
+    out = coordinate_consistency(rq.read_detailed_fiche(str(path)))
+    assert out["report"]["n"] == 6          # every pair, all within 1.5 mi
+    assert out["report"]["median_ft"] > 0
+
+
+def test_read_detailed_fiche_on_the_xlsx_workbook(tmp_path):
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.create_sheet("DetailedFiche")
+    ws.append(["Municipality", "On Road", "Miles", "Dir From", "From Road",
+               "Toward Road", "Milepost Road", "MP", "MA", "Crash ID",
+               "Date", "T", "C", "F", "L", "S",
+               "Latitude", "Longitude", "Source"])
+    ws.append(["RURAL", "SR 2453", 0.23, "SE", "SR 2444", "SR 2602", "SR 2453",
+               4.049, "Y", "108481213", "2026-04-12", 19, 1, 0, 1, "K",
+               35.445443, -80.61504, "DMV349"])
+    path = str(tmp_path / "fiche.xlsx")
+    wb.save(path)
+    assert rq.read_detailed_fiche(path) == [
+        (4.049, 35.445443, -80.61504, "DMV349")]
+
+
 def test_haversine_reasonable():
     # one degree of latitude is about 364,000 ft
     d = rq.haversine_ft(35.0, -78.0, 36.0, -78.0)

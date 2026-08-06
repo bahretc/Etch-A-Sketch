@@ -153,14 +153,16 @@ def test_new_mp_is_kept_on_RE():
     assert not r.validation_problems
 
 
-def _decide(status, **ctx_kw):
-    text = json.dumps({
+def _decide(status, new_mp=None, **ctx_kw):
+    payload = {
         "where_occurred": "US 13 somewhere", "at_study_location": True,
         "proposed_status": status, "comment": "c", "confidence": "high",
-        "evidence": ["e"]})
+        "evidence": ["e"]}
+    if new_mp is not None:
+        payload["new_mp"] = new_mp
     ctx = StudyContext(analysis_type="section", **ctx_kw)
     return assist(ROW, ctx, _pages(), mode="decide",
-                  client=FakeClient(text), redacted=True)
+                  client=FakeClient(json.dumps(payload)), redacted=True)
 
 
 class _Resolved:
@@ -196,17 +198,48 @@ def test_section_IS_with_only_a_coded_milepost_is_fine():
     assert not any("milepost-dependent" in f for f in r.flags)
 
 
-def test_RE_needs_an_independently_resolved_milepost():
-    """RE disputes the coded milepost, so the correction cannot come from the
-    fiche it disputes; it needs the features report or the report's coords."""
+def test_RE_survives_without_a_corrected_milepost():
+    """The status is a location call; the milepost is a separate lookup.
+
+    Suppressing RE because the corrected number is missing is what produced
+    0 of 16 on the real binder: the reports carry a municipality distance
+    instead of a from-road distance, so nothing resolves, so the assist was
+    told it could not establish RE and never proposed it once. The engineer
+    makes this call off the diagram and looks the milepost up afterwards.
+    """
     r = _decide("RE", fiche_milepost=8.10)
-    assert r.needs_manual
-    assert any("correct the coded one to" in f for f in r.flags)
+    assert r.proposed_status == "RE"          # not downgraded, not suppressed
+    assert r.needs_manual                     # but not deliverable as it stands
+    assert any("look the New MP up" in f for f in r.flags)
+
+
+def test_RE_without_a_resolved_milepost_is_not_deliverable():
+    """docs/03: every delivered RE row carries a New MP. The proposal may not."""
+    r = _decide("RE", fiche_milepost=8.10)
+    assert any("New MP" in p for p in r.validation_problems)
+
+
+def test_a_New_MP_with_nothing_behind_it_is_dropped():
+    """Nothing on the DMV-349 is a milepost (docs/09).
+
+    With no resolved milepost supplied, a number can only have been worked out
+    from a distance field, which is how "04.20 Miles outside municipality"
+    once became MP 4.20. The location call survives; the invented number does
+    not, and the drop is validated afterwards so the row reports as incomplete.
+    """
+    r = _decide("RE", new_mp=4.20, fiche_milepost=8.10)
+    assert r.proposed_status == "RE" and r.new_mp is None
+    assert any("dropped New MP 4.20" in f for f in r.flags)
+    assert any("New MP" in p for p in r.validation_problems)
+    assert r.as_determination().new_mp is None
 
 
 def test_RE_with_a_resolved_milepost_is_fine():
-    r = _decide("RE", fiche_milepost=8.10, resolved_location=_Resolved(2.79))
-    assert not any("correct the coded one to" in f for f in r.flags)
+    r = _decide("RE", new_mp=2.79, fiche_milepost=8.10,
+                resolved_location=_Resolved(2.79))
+    assert r.new_mp == 2.79
+    assert not any("look the New MP up" in f for f in r.flags)
+    assert not r.validation_problems
 
 
 def test_IS_on_the_coded_milepost_alone_is_allowed():
@@ -214,4 +247,4 @@ def test_IS_on_the_coded_milepost_alone_is_allowed():
     it, not for placing the crash."""
     r = _decide("IS", fiche_milepost=8.10)
     assert not any("milepost-dependent" in f for f in r.flags)
-    assert not any("correct the coded one to" in f for f in r.flags)
+    assert not any("look the New MP up" in f for f in r.flags)

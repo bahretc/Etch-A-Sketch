@@ -196,10 +196,37 @@ That is a qualitative judgement from the diagram and narrative, not an
 arithmetic derivation, and the design admits only the arithmetic kind.
 
 So RE is not blocked by the model, the redaction, or the study limits. It is
-blocked by a rule written to stop one failure (a fabricated milepost) that also
-stops the legitimate case. The fix is not to drop the guard: it is to let RE be
-proposed on cited report evidence with `needs_manual` set and the corrected
-milepost left to the engineer, instead of refusing the status outright.
+blocked by a rule written here to stop one failure (a fabricated milepost) that
+also stops the legitimate case.
+
+**Fixed (2026-08).** The rule collapsed two judgements that are made separately:
+
+| judgement | answered by | 
+| --- | --- |
+| the coded milepost is wrong | the report: diagram, narrative, cross street, address |
+| the corrected milepost is 16.94 | a lookup: features report, route geometry, coordinates |
+
+Failing the second does not forbid the first, so the guard moved off the status
+and onto the number, where the original hazard actually lives:
+
+* `_RULES` now says RE is a statement about where the crash happened, propose it
+  whenever the report puts the crash somewhere other than the coded milepost,
+  and cite what puts it there. A null New MP on a proposed RE is correct.
+* `_parse` drops any New MP on an RE row when no resolved milepost was supplied,
+  because with nothing to read it off, the number can only have come from a
+  distance field. The flag names the dropped value.
+* Validation runs **last**, after the guards have had their say, so an RE that
+  lost its milepost comes back carrying *"RE requires the corrected milepost in
+  New MP"* and `needs_manual`. The proposal reaches the engineer; the incomplete
+  row cannot reach a workbook.
+
+Net effect: the assist can now say "this one is misplaced, here is why, go look
+the milepost up", which is the thing the engineer wanted from it. What it still
+cannot do is invent the milepost, which is the thing it must not do.
+
+Not yet re-measured. The 32% above was taken with the old rule and stands until
+a run with a key repeats it; RE moving off 0 of 16 is the specific thing to
+check, and it is a prediction, not a result.
 
 ### Study limits: read them, do not infer them
 

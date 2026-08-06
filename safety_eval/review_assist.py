@@ -119,7 +119,25 @@ intersection analysis.
 mile or more apart. When a diagram superficially matches, confirm with the \
 report's front-page coordinates.
 - Animal crashes are ignored in this review (no report review needed).
-- NOTHING on the DMV-349 is a milepost. "N Miles outside municipality" is a distance from a town and "N Miles from <route>" is a distance from an intersecting route. Do NOT convert either into a milepost yourself.\n- The milepost the study was built on is the one CODED ON THE FICHE, and it is given to you below. Use it. The report is being checked against it.\n- A resolved milepost, when given, is an INDEPENDENT reading of the same location, worked out from the features report or the report's coordinates. Its job is to confirm or contradict the coded one. If it contradicts the coded milepost in a section analysis, that is the RE case, and the corrected milepost is the resolved one.\n- When no resolved milepost is given, you can still judge IS, NIS, ADD and DEL from the coded milepost and what the report shows; you simply cannot establish RE, because there is nothing to correct the coded milepost TO. Say that rather than inventing a milepost.
+- NOTHING on the DMV-349 is a milepost. "N Miles outside municipality" is a \
+distance from a town and "N Miles from <route>" is a distance from an \
+intersecting route. Do NOT convert either into a milepost yourself.
+- The milepost the study was built on is the one CODED ON THE FICHE, and it is \
+given to you below. Use it. The report is being checked against it.
+- A resolved milepost, when given, is an INDEPENDENT reading of the same \
+location, worked out from the features report or the report's coordinates. Its \
+job is to confirm or contradict the coded one.
+- RE is a statement about WHERE THE CRASH HAPPENED, not a piece of arithmetic. \
+Propose it whenever the report puts the crash somewhere other than the coded \
+milepost, and say in the evidence what puts it there: the intersection drawn in \
+the diagram, the address in the narrative, the coordinates, the officer's \
+description. You do NOT need the corrected milepost in hand to make that call.
+- The corrected milepost is a separate question with a separate answer. Fill in \
+new_mp only when a resolved milepost is given above, or when the corrected \
+location can be read straight off the features report. Otherwise leave new_mp \
+null, set needs_manual, and say in the comment what the engineer should look the \
+milepost up against. A null New MP on a proposed RE is expected and correct. A \
+New MP you worked out from a distance field is not, ever.
 - Comments are brief and plain: no em dashes, and do not restate a value the \
 row already shows. Acceptable patterns: "no intersection in diagram", ">150'", \
 "at [road]", "per coords".
@@ -204,9 +222,11 @@ def _context_block(row, ctx: StudyContext) -> str:
         lines.append(
             "Resolved crash location: NOT AVAILABLE. No features report was "
             "supplied, so the coded milepost below has not been independently "
-            "checked. Judge from it and from the report; RE cannot be "
-            "established without a milepost to correct it to, and no milepost "
-            "may be inferred from a distance field.")
+            "checked. You can still tell from the report whether the crash "
+            "happened where the coded milepost puts it. If it did not, that is "
+            "RE: propose it, cite what the report shows, and leave new_mp null "
+            "for the engineer to look up. Do not infer a milepost from a "
+            "distance field.")
     if ctx.fiche_milepost is not None:
         lines.append(f"Milepost coded on the fiche: {ctx.fiche_milepost:.2f} "
                      "(this is what the study was built on; the report is "
@@ -279,11 +299,6 @@ def _parse(data: dict, row, ctx: StudyContext, mode: str) -> AssistResult:
         res.confidence = data.get("confidence", "")
         res.evidence = list(data.get("evidence", []))
         res.needs_manual = bool(data.get("needs_manual", False))
-        det = res.as_determination()
-        if det is not None:
-            res.validation_problems = validate_determination(det, ctx.analysis_type)
-            if res.validation_problems:
-                res.needs_manual = True
         # Section analyses are milepost-dependent (docs/03). Without a resolved
         # milepost, and with none coded on the fiche, IS and RE have nothing to
         # stand on: the crash cannot be placed inside or outside the section.
@@ -301,14 +316,33 @@ def _parse(data: dict, row, ctx: StudyContext, mode: str) -> AssistResult:
                     "with no resolved and no coded milepost; the crash cannot "
                     "be placed in the section at all.")
             elif base == "RE" and getattr(rl, "milepost", None) is None:
-                # RE says the coded milepost is wrong, so it needs a corrected
-                # one, and that can only come from the features report or the
-                # report's own coordinates, never from the fiche it disputes.
+                # RE is a location call, and the report can support it on its
+                # own: the diagram, the narrative, a named cross street. The
+                # corrected milepost is a separate lookup against the features
+                # report, and nothing on the DMV-349 is a milepost (docs/09).
+                # So the status survives and the number does not. A New MP here
+                # could only have come from a distance field, which is how
+                # "04.20 Miles outside municipality" once became MP 4.20.
+                if res.new_mp is not None:
+                    res.flags.append(
+                        f"dropped New MP {res.new_mp:.2f}: no resolved milepost "
+                        "was supplied, so it was not read off the features "
+                        "report, and nothing on the DMV-349 is a milepost.")
+                    res.new_mp = None
                 res.needs_manual = True
                 res.flags.append(
-                    "RE proposed with no independently resolved milepost to "
-                    "correct the coded one to; supply the features report for "
-                    "this route, or confirm the corrected milepost by hand.")
+                    "RE proposed without a corrected milepost. The location "
+                    "call stands on the report; look the New MP up against the "
+                    "features report for this route before the row is written.")
+        # Validated last, so it judges the fields as they will actually be used:
+        # the guards above can drop a fabricated New MP, and an RE that has lost
+        # its milepost has to come back as "not deliverable yet" rather than as
+        # a clean row (docs/03: every delivered RE row carries a New MP).
+        det = res.as_determination()
+        if det is not None:
+            res.validation_problems = validate_determination(det, ctx.analysis_type)
+            if res.validation_problems:
+                res.needs_manual = True
         if res.confidence == "low":
             res.needs_manual = True
     else:

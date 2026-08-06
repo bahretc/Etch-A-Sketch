@@ -59,3 +59,71 @@ def test_pages_are_distinct(tmp_path):
         with Image.open(out) as im:
             seen.append(sum(1 for px in im.convert("L").tobytes() if px < 128))
     assert len(set(seen)) == 3, seen
+
+
+# ---------------------------------------------------------------------------
+# render_crash_pages must not have its own weaker redactor
+# ---------------------------------------------------------------------------
+
+def test_render_crash_pages_uses_the_hardened_redactor(monkeypatch, tmp_path):
+    """It used to apply a single plan_redactions pass of its own.
+
+    The multi-pass, multi-scale convergence, the cross-page name harvest and
+    the DMV-349 field geometry all live in redact.redact_file, and the private
+    copy here never got them. Measured on a real 47-report binder, the private
+    copy left residual PII on 28 of them. This pins that the shared path is
+    what runs.
+    """
+    from safety_eval import binder as B
+
+    idx = B.BinderIndex(pages_by_crash={"105451449": [B.PageRef("b.tif", 1)]})
+    called = {}
+
+    def fake_redact_file(src, dst, keep_zip=True, dpi=200, **kw):
+        called["redact_file"] = True
+        Image.new("RGB", (100, 130), "white").save(dst)
+        return None
+
+    monkeypatch.setattr(B, "_render_page",
+                        lambda *a, **k: str(_png(tmp_path, "raw.png")))
+    monkeypatch.setattr("safety_eval.redact.redact_file", fake_redact_file)
+    monkeypatch.setattr("safety_eval.redact.verify_redaction",
+                        lambda paths, keep_zip=True: called.setdefault("verified", True))
+    monkeypatch.setattr(B, "pdf_to_images",
+                        lambda pdf, wd, dpi: [str(_png(tmp_path, "out.png"))])
+
+    B.render_crash_pages(idx, "105451449", dpi=200)
+    assert called.get("redact_file"), "did not go through redact.redact_file"
+    assert called.get("verified"), "did not verify before returning"
+
+
+def test_render_crash_pages_fails_closed(monkeypatch, tmp_path):
+    """A caller that gets pages back knows they are clean; otherwise it raises."""
+    from safety_eval import binder as B
+    from safety_eval.redact import RedactionIncomplete
+
+    idx = B.BinderIndex(pages_by_crash={"105451449": [B.PageRef("b.tif", 1)]})
+    monkeypatch.setattr(B, "_render_page",
+                        lambda *a, **k: str(_png(tmp_path, "raw.png")))
+    monkeypatch.setattr("safety_eval.redact.redact_file",
+                        lambda src, dst, **kw: Image.new("RGB", (100, 130)).save(dst))
+    monkeypatch.setattr(B, "pdf_to_images",
+                        lambda pdf, wd, dpi: [str(_png(tmp_path, "out.png"))])
+
+    def boom(paths, keep_zip=True):
+        raise RedactionIncomplete("1 finding still legible")
+    monkeypatch.setattr("safety_eval.redact.verify_redaction", boom)
+
+    with pytest.raises(RedactionIncomplete):
+        B.render_crash_pages(idx, "105451449", dpi=200)
+
+
+def test_render_crash_pages_empty_for_unknown_crash():
+    from safety_eval import binder as B
+    assert B.render_crash_pages(B.BinderIndex(), "999999999") == []
+
+
+def _png(tmp_path, name):
+    p = tmp_path / name
+    Image.new("RGB", (100, 130), "white").save(p)
+    return p

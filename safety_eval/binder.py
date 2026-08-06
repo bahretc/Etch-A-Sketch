@@ -30,7 +30,7 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
-from .redact import _require, ocr_words, plan_redactions
+from .redact import _require, ocr_words, pdf_to_images, plan_redactions
 
 # Crash IDs on the fiche and TEAAS exports are 9-digit numbers.  The header
 # crop also contains dates (slashes), the patrol-area code (letters) and DMV
@@ -293,29 +293,52 @@ def apply_reconciliation(index: BinderIndex,
 # redacted retrieval
 # --------------------------------------------------------------------------- #
 def render_crash_pages(index: BinderIndex, crash_id: str, dpi: int = 150,
-                       keep_zip: bool = True) -> list:
+                       keep_zip: bool = True, verify: bool = True) -> list:
     """Render a crash's pages as REDACTED PIL images (front page first).
 
-    Every page goes through the docs/07 redaction pass before it is
-    returned; callers never see names, addresses, DOB, phone or DL numbers.
+    This is the path that feeds `review_assist`, so it runs the SAME hardened
+    redaction as `redact.redact_file` rather than a private copy: multi-pass
+    multi-scale convergence, cross-page name harvesting, and DMV-349 field
+    geometry. It used to apply a single `plan_redactions` pass, which the
+    hardening in `redact_file` never reached; measured on a real 47-report
+    binder, that left residual PII on 28 of them (43 street addresses, 7 phone
+    numbers, 2 dates beside a DOB caption).
+
+    With ``verify`` set, the redacted pages are re-read and
+    ``RedactionIncomplete`` is raised if anything legible survives. Failing
+    closed is the point: a caller that gets pages back knows they are clean,
+    and a caller that gets an exception must not fall back to raw imagery.
     """
-    from PIL import Image, ImageDraw
+    from PIL import Image, ImageSequence
+
+    from .redact import redact_file, verify_redaction
 
     refs = index.pages_for(crash_id)
-    out = []
+    if not refs:
+        return []
+
     with tempfile.TemporaryDirectory(prefix="binder-get-") as tmp:
-        for ref in refs:
-            img_path = _render_page(ref.file, ref.page, dpi, tmp)
-            img = Image.open(img_path).convert("RGB")
-            os.unlink(img_path)
-            page_png = os.path.join(tmp, "ocr.png")
-            img.save(page_png)
-            words = ocr_words(page_png, page=0)
-            for b in plan_redactions(words, keep_zip=keep_zip):
-                ImageDraw.Draw(img).rectangle(
-                    [b.left, b.top, b.right, b.bottom], fill="black")
-            out.append(img)
-    return out
+        # Stage this crash's raw pages as one document so the redactor can
+        # harvest names across them; a name printed on page 1 is what lets it
+        # be scrubbed out of the narrative on page 2.
+        raw = [Image.open(_render_page(r.file, r.page, dpi, tmp)).convert("RGB")
+               for r in refs]
+        staged = os.path.join(tmp, f"{crash_id}-raw.tiff")
+        raw[0].save(staged, save_all=True, append_images=raw[1:])
+        for im in raw:
+            im.close()
+
+        redacted_pdf = os.path.join(tmp, f"{crash_id}-redacted.pdf")
+        redact_file(staged, redacted_pdf, keep_zip=keep_zip, dpi=dpi)
+        os.unlink(staged)                      # raw imagery does not linger
+
+        pages, paths = [], []
+        for i, p in enumerate(pdf_to_images(redacted_pdf, tmp, dpi)):
+            pages.append(Image.open(p).convert("RGB"))
+            paths.append(p)
+        if verify:
+            verify_redaction(paths, keep_zip=keep_zip)
+        return [p.copy() for p in pages]
 
 
 def export_crash_pdf(index: BinderIndex, crash_id: str, output: str,

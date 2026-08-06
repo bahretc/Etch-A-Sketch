@@ -228,21 +228,40 @@ def _street_span(line):
     return []
 
 
-def plan_redactions(words: list[Word], keep_zip: bool = True,
-                    pad: int = 3) -> list[Redaction]:
+def _inside(word: Word, rects) -> bool:
+    """Is a word's centre inside any of these pixel rectangles?"""
+    cx = (word.left + word.right) / 2
+    cy = (word.top + word.bottom) / 2
+    return any(x0 <= cx <= x1 and y0 <= cy <= y1 for x0, y0, x1, y1 in rects)
+
+
+def plan_redactions(words: list[Word], keep_zip: bool = True, pad: int = 3,
+                    identity_rects=None) -> list[Redaction]:
     """Decide what to black out.
 
-    Rules (conservative: over-redact rather than leak):
+    What this is FOR: the identifying information of the people involved in
+    the crash, and nothing else. The diagram, the narrative, the On Road /
+    From Road / Toward Road fields, the coded grid and the location block are
+    evidence, and blacking any of them out destroys the thing the review is
+    for. ZIP codes stay by request.
+
+    Rules:
 
     * A line containing a PII field label: everything AFTER the label on that
       line, plus the entire NEXT line when the label line holds no value
       (DMV-349 boxes put the caption above the handwritten/typed value).
-    * A line that looks like a street address (number followed by a street
-      suffix) is redacted wholly.
-    * Standalone phone numbers and dates following a DOB label.
+    * The persons-table band under its caption, which is all names and
+      addresses by construction.
+    * Street-address, phone and VIN PATTERNS only where the people's data
+      lives: inside ``identity_rects`` (from ``form_geometry.zone_rects``).
+      These fired page-wide once, which blacked out addresses in the narrative
+      and location block -- exactly the artifact an engineer uses to
+      re-milepost a crash ("placed at address"). An uncaptioned street name
+      outside the identity block is a road, not a person.
     * ZIP-looking tokens are carved OUT of any planned box when ``keep_zip``.
     * 9-digit crash IDs are never redacted.
     """
+    zones = list(identity_rects or ())
     lines = _visual_rows(words)
     planned: list[tuple[list[Word], str]] = []
     redact_next_line_of: dict[tuple, str] = {}
@@ -320,13 +339,18 @@ def plan_redactions(words: list[Word], keep_zip: bool = True,
                 address_continues_from = idx + 1
             continue
 
+        # Pattern rules are a backstop for a caption the OCR lost, so they run
+        # only where the people's data is. Outside the identity zones a
+        # "number + street suffix" is the crash location, not an occupant.
         span = _street_span(line)
-        if span:
+        if span and zones and all(_inside(w, zones) for w in span):
             planned.append((span, "street-address"))
             address_continues_from = idx + 1
             continue
 
         for w in line:
+            if zones and not _inside(w, zones):
+                continue
             if _PHONE_RE.match(w.text.strip()):
                 planned.append(([w], "phone"))
             elif _VIN_RE.match(w.text.strip()) and \
@@ -524,9 +548,18 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
             report.by_reason["harvested-names"] = harvested
 
         out_pages = []
+        page_zone_rects: list[list] = []
         for i, img in enumerate(pages):
             words = page_words[i]
-            boxes = plan_redactions(words, keep_zip=keep_zip)
+            # Where the occupants' data sits on THIS page. The address, phone
+            # and VIN pattern rules are scoped to it, so the narrative, the
+            # location block and the coded grid are never touched by them.
+            ident = ([r for _, r in fg.zone_rects(img.width, img.height,
+                                                  page_reg[i])]
+                     if page_reg[i] is not None else [])
+            page_zone_rects.append(ident)
+            boxes = plan_redactions(words, keep_zip=keep_zip,
+                                    identity_rects=ident)
             # geometry zones: cover the identity blocks by position, whatever
             # OCR made of their captions
             if page_reg[i] is not None:
@@ -572,8 +605,15 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
                          max(1, int(img.height * scale))))
                     rp = os.path.join(tmp, f"recheck-{i}-{extra}-{scale}.png")
                     probe.save(rp)
+                    # the probe is resampled, so the identity zones must be
+                    # too, or the scope would drift off the boxes it guards
+                    zs = ([(int(x0 * scale), int(y0 * scale),
+                            int(x1 * scale), int(y1 * scale))
+                           for x0, y0, x1, y1 in ident]
+                          if scale != 1.0 else ident)
                     for b in _groups_to_boxes(
-                            _residual_groups(ocr_words(rp, page=i), keep_zip),
+                            _residual_groups(ocr_words(rp, page=i), keep_zip,
+                                             zs),
                             keep_zip):
                         again.append(b if scale == 1.0 else Redaction(
                             page=b.page, left=int(b.left / scale),
@@ -610,7 +650,13 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
             except (subprocess.SubprocessError, RuntimeError, OSError):
                 break
             renders = sorted(glob.glob(os.path.join(probe_dir, "v*.png")))
-            found = residual_pii(renders, keep_zip=keep_zip)
+            # the shipped PDF is rasterized at _VERIFY_DPI, so rescale the
+            # zones from the working dpi to keep the same scope
+            k = _VERIFY_DPI / float(dpi or _VERIFY_DPI)
+            probe_zones = [[(int(x0 * k), int(y0 * k), int(x1 * k), int(y1 * k))
+                            for x0, y0, x1, y1 in z] for z in page_zone_rects]
+            found = residual_pii(renders, keep_zip=keep_zip,
+                                 identity_rects=probe_zones)
             if not found:
                 break
             for f in found:
@@ -649,8 +695,8 @@ class ResidualFinding:
     bottom: int
 
 
-def residual_pii(image_paths: list[str], keep_zip: bool = True
-                 ) -> list[ResidualFinding]:
+def residual_pii(image_paths: list[str], keep_zip: bool = True,
+                 identity_rects=None) -> list[ResidualFinding]:
     """Re-OCR redacted page images and report PII that is still legible.
 
     Redaction is OCR-driven, so a caption the OCR misses leaves its value in
@@ -658,11 +704,20 @@ def residual_pii(image_paths: list[str], keep_zip: bool = True
     caption). This is the check that catches that class of miss before a page
     reaches a human or a model. Findings carry coordinates and a reason only,
     never the offending text.
+
+    The verifier shares the planner's scope, or it would report the crash
+    location in the narrative as a leak and block a page that is correctly
+    redacted. ``identity_rects`` is per page; pass None for a page whose
+    layout could not be registered.
     """
     out: list[ResidualFinding] = []
     for page_no, path in enumerate(image_paths, 1):
         words = ocr_words(path, page=page_no)
-        for group, reason in _residual_groups(words, keep_zip):
+        rects = None
+        if identity_rects:
+            rects = (identity_rects[page_no - 1]
+                     if page_no - 1 < len(identity_rects) else None)
+        for group, reason in _residual_groups(words, keep_zip, rects):
             left = min(w.left for w in group)
             top = min(w.top for w in group)
             right = max(w.left + w.width for w in group)
@@ -672,19 +727,27 @@ def residual_pii(image_paths: list[str], keep_zip: bool = True
     return out
 
 
-def _residual_groups(words: list[Word], keep_zip: bool):
-    """Lines of a redacted page that still look like PII."""
+def _residual_groups(words: list[Word], keep_zip: bool, identity_rects=None):
+    """Lines of a redacted page that still look like PII.
+
+    Scoped exactly like ``plan_redactions``: a street address or phone number
+    only counts as residual PII where the occupants' data lives. A street name
+    in the narrative is the crash location.
+    """
+    zones = list(identity_rects or ())
     for line in _visual_rows(words):
         tokens = [w.text for w in line]
         norm = [_norm(t) for t in tokens]
         span = _street_span(line)
-        if span:
+        if span and zones and all(_inside(w, zones) for w in span):
             yield span, "street-address survived"
             continue
         if _looks_like_city_line(tokens) and not keep_zip:
             yield line, "city/state/zip survived"
             continue
         for w in line:
+            if zones and not _inside(w, zones):
+                continue
             t = w.text.strip()
             if _PHONE_RE.match(t):
                 yield [w], "phone survived"

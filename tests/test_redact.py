@@ -69,10 +69,11 @@ def test_zip_redacted_when_disabled():
 
 
 def test_street_address_without_label():
+    """Inside the occupants' block, an uncaptioned address is still covered."""
     words = [W("4407", 10, 10, line=(0, 0, 1)),
              W("Buffalo", 80, 10, line=(0, 0, 1)),
              W("Rd", 160, 10, line=(0, 0, 1))]
-    boxes = plan_redactions(words)
+    boxes = plan_redactions(words, identity_rects=[(0, 0, 10_000, 200)])
     assert boxes and boxes[0].reason == "street-address"
 
 
@@ -130,6 +131,12 @@ def test_end_to_end_redaction(tmp_path):
     assert "105904161" in text        # crash id survives
 
 
+#: An identity zone covering the whole toy page, for tests that exercise the
+#: address/phone/VIN pattern rules. Those rules are scoped to the occupants'
+#: boxes; see test_narrative_address_is_not_redacted for why.
+WHOLE_PAGE = [(0, 0, 10_000, 10_000)]
+
+
 def test_city_line_under_street_address_redacted_keeping_zip():
     words = [W("4407", 10, 10, line=(0, 0, 1)),
              W("Buffalo", 80, 10, line=(0, 0, 1)),
@@ -137,7 +144,7 @@ def test_city_line_under_street_address_redacted_keeping_zip():
              W("Wendell", 10, 40, w=80, line=(0, 0, 2)),
              W("NC", 100, 40, w=30, line=(0, 0, 2)),
              W("27591", 160, 40, line=(0, 0, 2))]
-    boxes = plan_redactions(words)
+    boxes = plan_redactions(words, identity_rects=WHOLE_PAGE)
     reasons = {b.reason for b in boxes}
     assert "street-address" in reasons
     assert "address-continuation" in reasons
@@ -145,3 +152,47 @@ def test_city_line_under_street_address_redacted_keeping_zip():
     for b in boxes:
         if b.reason == "address-continuation":
             assert b.right < 160
+
+
+def test_narrative_address_is_not_redacted():
+    """The redactor covers the PEOPLE, not the crash location.
+
+    An engineer re-mileposts by seeing where the report actually places the
+    crash, and their own note for that is "placed at address". Blacking a
+    street address in the narrative or location block removes the evidence the
+    review exists to weigh. Measured cost of getting this wrong: the assist
+    proposed RE on 0 of 16 real RE rows (docs/11).
+    """
+    words = [W("Vehicle", 10, 300, w=70, line=(0, 0, 9)),
+             W("1", 90, 300, line=(0, 0, 9)),
+             W("struck", 110, 300, w=60, line=(0, 0, 9)),
+             W("pole", 180, 300, w=40, line=(0, 0, 9)),
+             W("at", 230, 300, w=20, line=(0, 0, 9)),
+             W("4407", 260, 300, line=(0, 0, 9)),
+             W("Buffalo", 320, 300, w=70, line=(0, 0, 9)),
+             W("Rd", 400, 300, line=(0, 0, 9))]
+    identity = [(0, 0, 10_000, 200)]           # header block only
+    boxes = plan_redactions(words, identity_rects=identity)
+    assert not boxes, [b.reason for b in boxes]
+
+
+def test_pattern_rules_do_not_fire_without_zones():
+    """No registration means no known identity block, so no pattern guessing.
+
+    Captioned PII is still covered by the label rules and the persons-table
+    band, which key on the form's own captions.
+    """
+    words = [W("4407", 10, 10, line=(0, 0, 1)),
+             W("Buffalo", 80, 10, line=(0, 0, 1)),
+             W("Rd", 170, 10, line=(0, 0, 1))]
+    assert plan_redactions(words) == []
+
+
+def test_verifier_shares_the_planner_scope():
+    """Otherwise it reports the crash location as a leak and blocks the page."""
+    from safety_eval.redact import _residual_groups
+    words = [W("4407", 260, 300, line=(0, 0, 9)),
+             W("Buffalo", 320, 300, w=70, line=(0, 0, 9)),
+             W("Rd", 400, 300, line=(0, 0, 9))]
+    assert list(_residual_groups(words, True, [(0, 0, 10_000, 200)])) == []
+    assert list(_residual_groups(words, True, WHOLE_PAGE))

@@ -194,71 +194,68 @@ gap in the resolver, it is the reason the assist reads the redacted report at
 all, and it is why the report's Latitude/Longitude boxes matter more than they
 first appear: they are the one independent milepost on the page.
 
-## What the coordinates are actually like (2026-07, preliminary)
+## What the coordinates are actually like (measured on 14,122 rows)
 
-Two claims above were written off two reports and are wrong at the population
-level. Correcting both.
+Run on the full `DetailedFicheBuncombe.csv` (10,243 rows) and
+`DetailedFicheMcDowell.csv` (3,879 rows). An earlier version of this section
+used 25 rows scraped from a Drive search preview and got two things wrong; both
+are corrected here. A preview is the **head** of a file, not a sample of it.
 
-**The Latitude/Longitude boxes are usually filled.** The DetailedFiche carries
-`Municipality, On Road, Miles, Dir From, From Road, Toward Road, Milepost Road,
-MP, MA, Crash ID, Date, T, C, F, L, S, Latitude, Longitude, Source`, and the
-`Source` column names where each coordinate came from. The dominant value is
-`DMV349CLEANED`, meaning NCDOT harvests the report's own boxes and cleans them,
-with `DMV349` raw and a minority from research feeds (`ITRE_CMV`, `HSRC_PED`,
-`HSRC_BIKE`, `ITRE_SEVEREINJURY`). Roughly two thirds of rows carry
-coordinates; blanks cluster on municipal and non-mileposted (MP 999.999) rows
-and on older crashes, which is the wrong half for a before period.
+**Coordinates are far scarcer than the preview suggested.** Not "roughly two
+thirds" but **35% of Buncombe rows and 18% of McDowell rows**. And the largest
+single source is not the report at all:
 
-**But they may not be precise enough to find a remilepost.** Measured
-model-free on I-40 rows from the Buncombe and McDowell DetailedFiche: for pairs
-of crashes close together in coded milepost, compare the straight-line distance
-between their coordinates against the difference in their mileposts. A freeway
-is locally straight, so the gap is coordinate error and coded-milepost error
-combined, with no route geometry fitted and no features report needed.
+| source | what it is | Buncombe | McDowell |
+|---|---|---|---|
+| `CITYOFASHEVILLE_ADDRESSBASED` | municipal address geocoding | 2,701 | 0 |
+| `DMV349CLEANED` | the report's boxes, cleaned | 577 | 600 |
+| `DMV349` | the report's boxes, raw | 99 | 52 |
+| `ITRE_*`, `HSRC_*`, `NCDOT_TSU` | research feeds | ~180 | ~35 |
 
-| source of the coordinates | pairs | median gap | 90th pct | max | under 634 ft |
+**5.4% of raw `DMV349` coordinates are corrupt** (8 of 149) - outside North
+Carolina entirely. The failures are a longitude carrying the latitude's value
+(`-35.58545`) and a longitude with its sign dropped (`82.42702`).
+`DMV349CLEANED` had none, so the cleaning step is doing real work.
+`location.in_nc` rejects these and `coordinate_consistency` counts them instead
+of dropping them silently.
+
+**Two method defects, both mine, found and fixed before reporting.** NCDOT
+mileposts restart at county lines, so "I 40 MP 15" exists in both counties
+about 40 miles apart; pooling them produced a 2,600 mile "disagreement". And
+the corrupt coordinates above skewed every percentile. Corrected, comparing
+only within one route in one county:
+
+| route | source | pairs | median gap | 90th pct | under 634 ft |
 |---|---|---|---|---|---|
-| research feeds (Buncombe) | 28 | 1584 ft | 6631 ft | 7870 ft | 8/28 |
-| `DMV349` / `DMV349CLEANED` (McDowell) | 6 | 877 ft | 1425 ft | 1597 ft | 1/6 |
+| I 40 (Bun) | `CITYOFASHEVILLE_ADDRESSBASED` | 259,067 | 3,109 ft | 24,704 ft | 14% |
+| I 40 (Bun) | `DMV349CLEANED` | 13,618 | 2,064 ft | 6,672 ft | 18% |
+| I 40 (McD) | `DMV349CLEANED` | 12,130 | 2,217 ft | 7,768 ft | 17% |
+| US 70 (Bun) | `DMV349CLEANED` | 3,238 | 583 ft | 7,930 ft | 52% |
+| US 70 (McD) | `DMV349CLEANED` | 1,378 | 455 ft | 2,472 ft | 59% |
+| US 70 (Bun) | `CITYOFASHEVILLE_ADDRESSBASED` | 140,492 | 467 ft | 41,045 ft | 59% |
+| NC 81 (Bun) | `CITYOFASHEVILLE_ADDRESSBASED` | 1,225 | 358 ft | 9,489 ft | 67% |
 
-Both medians are larger than the **634 ft** median correction the engineer
-actually makes (measured on 04-15-39049), which is the number that has to be
-beaten. Two Buncombe crashes coded at the identical milepost 9.200 sit 7870 ft
-apart on the ground; two coded 32 ft apart sit 2130 ft apart.
+**The answer is route-class dependent, which 25 rows could not have shown.** On
+freeways the disagreement runs 2,000 to 3,100 ft and only 14 to 18 percent of
+pairs agree within 634 ft: coordinates cannot see a remilepost there. On
+surface and secondary routes it drops to 358 to 583 ft with 52 to 67 percent
+inside the threshold, which is borderline usable. 04-15-39049 was SR 1003, a
+secondary route, so the case that matters most is the marginal one rather than
+the hopeless one.
 
-The measurement re-runs on a real fiche as::
+**What the gap is not.** It is not pure coordinate error. It is coordinate
+error plus coded-milepost error plus the genuine spread of crashes sharing one
+coded reference point, which at a freeway interchange is hundreds of feet of
+real ground. That is why freeways look worst. Treat it as an upper bound on
+coordinate imprecision. The conclusion survives that caveat, because the
+question is not what causes the spread but whether a 634 ft correction can be
+told apart from it, and on freeways it plainly cannot.
 
-    from safety_eval.location import coordinate_consistency
-    from safety_eval.review_queue import read_detailed_fiche
-
-    coordinate_consistency(read_detailed_fiche("DetailedFicheMcDowell.csv"))
-
-Building that path turned up a bug worth knowing about separately from any of
-this. `parse_coordinates`, which feeds the GPS pre-screen that docs/03 makes
-the first step of a fiche review, split delimited text on the delimiter. The
-real DetailedFiche export quotes every field, so the quote characters stayed
-attached, no crash ID passed `isdigit()`, no coordinate passed `float()`, and
-the function returned an empty dict. Not an error, just no coordinates, so the
-queue would have fallen back to milepost ordering and looked like it was
-working. The `.xlsx` fiche workbook was unaffected, which is why the tests
-never caught it: openpyxl hands back typed values. Both readers now go through
-the csv module.
-
-Read this as a caution, not a result. n is 25 rows transcribed out of a search
-preview of the head of each file, so it is neither large nor a random sample,
-and the gap does not separate a noisy coordinate from a genuinely wrong
-milepost, which is the very thing being looked for. What it does establish is
-that the coordinate path is not the easy win it looks like, and that
-`Source` matters: report-derived coordinates were roughly twice as consistent
-as research-feed ones, so any use of them should filter on it. An earlier pass
-that fitted a route through the crash points themselves gave much worse numbers
-still, but that measured the route fit rather than the coordinates and should
-be ignored; its own scale check came out at 4899 ft per milepost.
-
-Before any of this is built on, run it on the full files:
-`DetailedFicheBuncombe.csv`, `DetailedFicheMcDowell.csv` and the 13-18-210
-(SS-4913CX) workbook, which together carry coordinates, features reports and
-the engineer's own RE calls on the same route.
+**Where this leaves RE.** Fiche arithmetic cannot find it (7 percent, measured
+above). Coordinates cannot find it on freeways, and might on secondary routes
+for the fifth or so of crashes that carry a coordinate at all. Neither is a
+detector. RE stays a diagram-and-narrative judgment, which is the case for
+having the assist read the redacted report.
 
 ## Still to build
 

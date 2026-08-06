@@ -749,34 +749,64 @@ def read_location_block(words, width: int, height: int) -> ReportLocation:
 # fiche coordinate quality
 # ---------------------------------------------------------------------------
 
+#: Generous bounding box for North Carolina.  A fiche coordinate outside it is
+#: corrupt, not merely inaccurate: the observed failures are a longitude
+#: carrying the latitude's value ("-35.58545") and a longitude with its sign
+#: dropped ("82.42702").  5.4% of raw ``DMV349`` coordinates across the
+#: Buncombe and McDowell fiches were outside it; ``DMV349CLEANED`` had none,
+#: which is the cleaning step earning its name.
+NC_BBOX = (33.7, 36.7, -84.4, -75.4)          # lat_min, lat_max, lon_min, lon_max
+
+
+def in_nc(lat: float, lon: float) -> bool:
+    """Is this a plausible North Carolina coordinate at all?"""
+    return NC_BBOX[0] <= lat <= NC_BBOX[1] and NC_BBOX[2] <= lon <= NC_BBOX[3]
+
+
 def coordinate_consistency(rows, max_dmp: float = 1.5,
                            min_dmp: float = 0.0) -> dict:
     """How far the DetailedFiche coordinates and coded mileposts disagree.
 
-    ``rows`` is an iterable of ``(coded_mp, latitude, longitude, source)``, all
-    on one route.  For each pair of crashes within ``max_dmp`` miles of each
-    other by coded milepost, the straight-line distance between their
-    coordinates is compared against the difference in their mileposts.  Over a
-    short baseline a road is locally straight, so the two should agree; the gap
-    is coordinate error and coded-milepost error combined.
+    ``rows`` is an iterable of ``(coded_mp, latitude, longitude, source)``.
+
+    **All rows must be one route in one county.**  NCDOT mileposts restart at
+    county lines, so "I 40 MP 15" exists in both Buncombe and McDowell about
+    40 miles apart; pooling two counties compares crashes that share a
+    milepost and nothing else, and produces nonsense (a first run of this
+    measurement reported a 2,600 mile disagreement that way).
+
+    For each pair of crashes within ``max_dmp`` miles of each other by coded
+    milepost, the straight-line distance between their coordinates is compared
+    against the difference in their mileposts.  Over a short baseline a road is
+    locally straight, so the two should agree.
+
+    What the gap is NOT is pure coordinate error.  It is coordinate error plus
+    coded-milepost error plus the genuine spread of crashes sharing one coded
+    reference point, which at a freeway interchange is hundreds of feet of real
+    ground.  So it is an upper bound on coordinate imprecision.  That is still
+    the number that matters for finding an RE: a correction of 634 ft cannot be
+    told apart from noise if the noise is this size, whatever produces it.
 
     This deliberately fits no route geometry and needs no features report.  An
     earlier attempt that fitted a route through the crash points themselves
     measured the quality of that fit rather than the coordinates (docs/11).
 
-    Results are bucketed by the fiche's ``Source`` column, because coordinates
-    taken off the report (``DMV349``, ``DMV349CLEANED``) and coordinates from
-    research feeds (``ITRE_*``, ``HSRC_*``) are not the same thing.
+    Results are bucketed by the fiche's ``Source`` column, because report-
+    derived (``DMV349``, ``DMV349CLEANED``), address-geocoded
+    (``*_ADDRESSBASED``) and research-feed (``ITRE_*``, ``HSRC_*``)
+    coordinates are not the same thing.
 
-    Returns ``{bucket: {"n", "median_ft", "p90_ft", "max_ft", "gaps_ft"}}``.
-    The number to beat is the size of a real remilepost, whose median on
-    04-15-39049 was 634 ft: a method whose own noise is larger than the
-    correction it is looking for cannot find that correction.
+    Returns ``{bucket: {"n", "median_ft", "p90_ft", "max_ft", "gaps_ft"}}``
+    plus a ``"_dropped"`` key counting rows rejected as out-of-state.
     """
-    usable = [(float(mp), float(lat), float(lon), str(src or ""))
-              for mp, lat, lon, src in rows
-              if mp is not None and lat is not None and lon is not None
-              and float(mp) < 999]
+    usable, dropped = [], 0
+    for mp, lat, lon, src in rows:
+        if mp is None or lat is None or lon is None or float(mp) >= 999:
+            continue
+        if not in_nc(float(lat), float(lon)):
+            dropped += 1
+            continue
+        usable.append((float(mp), float(lat), float(lon), str(src or "")))
 
     buckets: dict[str, list[float]] = {}
     for i, a in enumerate(usable):
@@ -800,6 +830,7 @@ def coordinate_consistency(rows, max_dmp: float = 1.5,
             "max_ft": gaps[-1],
             "gaps_ft": gaps,
         }
+    out["_dropped"] = dropped
     return out
 
 

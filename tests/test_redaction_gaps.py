@@ -55,14 +55,21 @@ def test_verifier_flags_surviving_street_address(tmp_path):
     page whose address survived."""
     from safety_eval.redact import _residual_groups
     words = _line(["1074", "MOUNT", "CARMEL", "RD"], 50)
-    found = list(_residual_groups(words, keep_zip=True))
+    ident = [(0, 0, 10_000, 10_000)]        # this line sits in the ID block
+    found = list(_residual_groups(words, keep_zip=True, identity_rects=ident))
     assert found and "street-address" in found[0][1]
+
+    # the same text in the narrative is the crash location, not an occupant,
+    # and flagging it would block a correctly redacted page
+    assert list(_residual_groups(words, keep_zip=True,
+                                 identity_rects=[(0, 0, 10_000, 10)])) == []
 
 
 def test_verify_redaction_raises_message_has_no_pii():
     from safety_eval.redact import _residual_groups
     words = _line(["55", "ELM", "ST"], 40)
-    groups = list(_residual_groups(words, keep_zip=True))
+    groups = list(_residual_groups(words, keep_zip=True,
+                                   identity_rects=[(0, 0, 10_000, 10_000)]))
     assert groups
     # the finding records a reason, never the text
     reason = groups[0][1]

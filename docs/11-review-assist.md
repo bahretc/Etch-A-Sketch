@@ -121,6 +121,65 @@ baseline on either, so switching would trade a known-unmeasured component for
 an unknown-unmeasured one. Worth doing alongside the labelled-sample
 measurement, not before it.
 
+## Measured against 45 real determinations (2026-08)
+
+The first measurement of the assist itself. 48 crashes were pre-registered in
+`examples/samples/assist_eval_sample.csv` before any report was fetched; 47
+arrived as a 120-page TEAAS binder; 45 survived redaction (two were refused by
+the verifier and excluded rather than downgraded). `decide` ran on each with
+the coded fiche fields and the study definition, and never saw the engineer's
+call.
+
+**Overall agreement: 14 of 45, 31%.**
+
+| engineer | IS | RE | ADD | DEL | NIS | accuracy |
+|---|---|---|---|---|---|---|
+| IS (14) | **11** | 0 | 0 | 3 | 0 | 79% |
+| RE (16) | 12 | **0** | 0 | 4 | 0 | **0%** |
+| ADD (5) | 0 | 0 | **0** | 3 | 2 | 0% |
+| DEL (3) | 1 | 0 | 0 | **2** | 0 | 67% |
+| NIS (7) | 0 | 0 | 0 | 6 | **1** | 14% |
+
+**RE was never proposed once.** On 12 of the 16 RE rows the assist returned IS,
+which means it accepted the coded milepost the engineer had corrected. This is
+the same conclusion the fiche arithmetic (7%) and the coordinate work reached
+by other routes, now measured on the assist directly: nothing available to it
+detects that a coded milepost is wrong. The engineer's own comments say how
+they did it, and it is not something in the coded data: "ROR right, NB, placed
+at address", "placed in curve".
+
+**The gate does not catch the errors.** `needs_manual` fired on only 22% of the
+sample, and **22 of the 31 disagreements would pass unflagged**, 12 of them at
+"high" confidence. Confidence is not correctness, restated with a number: the
+assist is confidently wrong about half the time and says so about a fifth of
+the time.
+
+**NIS is being reported as DEL.** Six of seven NIS rows came back DEL. Both
+mean "not in this study", but DEL means struck from an evaluation it was
+already in, and they are not interchangeable in a deliverable (docs/03).
+
+Read this as a floor, not a verdict. It is one evaluation, one route, n=45, and
+the IS column here comes from a corridor review rather than the 0.12 mile
+treatment section, so IS-versus-NIS accuracy is partly an artifact of where the
+section boundary was set. Two things are not artifacts: RE at 0% does not
+depend on the boundary at all, and neither does the rate of confident
+disagreement.
+
+### The first run of this measured the harness, not the assist
+
+Scored at first with the section set to the project's treatment limits
+(MP 17.691 to 17.811), agreement was 7%. That was wrong: the reviewed
+determinations cover SR 1003 from MP 15.154 to 18.911, a 3.76 mile corridor,
+and the 0.12 mile treatment section is a slice of it. Under the narrow
+definition an IS crash at MP 15.3 really is outside the section, so the assist
+was answering a different question correctly. The tell was in the data: all 29
+reviewed NIS rows sit on the side streets (SR 1716, SR 2638) while 191 of 215
+IS rows are on SR 1003 inside the corridor.
+
+Two lessons, both already paid for: the study limits are an input the
+measurement has to get right, and a result far worse than chance is a signal to
+audit the harness before believing it.
+
 ## Limits worth knowing
 
 - **A status can still be unjustified.** In the no-features-report run the

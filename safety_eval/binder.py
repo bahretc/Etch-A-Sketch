@@ -104,18 +104,50 @@ class BinderIndex:
 # --------------------------------------------------------------------------- #
 # building the index
 # --------------------------------------------------------------------------- #
-def _page_count(pdf_path: str) -> int:
+#: TEAAS binders arrive as multi-page Group 4 bilevel TIFF as often as PDF.
+#: A letter page scanned at 1699 px wide is 200 dpi, which is what the header
+#: OCR and the redaction pass are tuned for.
+_TIFF_EXT = (".tif", ".tiff")
+_TIFF_NATIVE_DPI = 200
+
+
+def _is_tiff(path: str) -> bool:
+    return path.lower().endswith(_TIFF_EXT)
+
+
+def _page_count(path: str) -> int:
+    if _is_tiff(path):
+        from PIL import Image, ImageSequence
+        with Image.open(path) as im:
+            return sum(1 for _ in ImageSequence.Iterator(im))
     from pypdf import PdfReader
-    return len(PdfReader(pdf_path).pages)
+    return len(PdfReader(path).pages)
 
 
-def _render_page(pdf_path: str, page: int, dpi: int, workdir: str) -> str:
+def _render_page(path: str, page: int, dpi: int, workdir: str) -> str:
     """Rasterize a single 1-based page to PNG; returns the image path."""
+    out = os.path.join(workdir, f"pg-{os.getpid()}-{page}.png")
+
+    if _is_tiff(path):
+        # A TIFF's pixels are already fixed, so "dpi" here means resample the
+        # native raster to that scale rather than rasterize at it.
+        from PIL import Image
+        with Image.open(path) as im:
+            im.seek(page - 1)
+            frame = im.convert("L")
+            if dpi and dpi != _TIFF_NATIVE_DPI:
+                scale = dpi / _TIFF_NATIVE_DPI
+                frame = frame.resize(
+                    (max(1, round(frame.width * scale)),
+                     max(1, round(frame.height * scale))), Image.LANCZOS)
+            frame.save(out)
+        return out
+
     pdftoppm = _require("pdftoppm")
     prefix = os.path.join(workdir, f"pg-{os.getpid()}-{page}")
     subprocess.run(
         [pdftoppm, "-png", "-r", str(dpi), "-f", str(page), "-l", str(page),
-         pdf_path, prefix],
+         path, prefix],
         check=True, capture_output=True, timeout=120)
     outs = [f for f in os.listdir(workdir)
             if f.startswith(os.path.basename(prefix)) and f.endswith(".png")]

@@ -165,6 +165,52 @@ section boundary was set. Two things are not artifacts: RE at 0% does not
 depend on the boundary at all, and neither does the rate of confident
 disagreement.
 
+### Why RE is 0%, all the way down (2026-08, second re-run)
+
+Two corrections later the number did not move: 31% with addresses redacted,
+**32%** with the redaction scoped correctly and the study limits confirmed from
+the source. RE stayed 0 of 16. The redaction fix was still right on its own
+terms (all 47 reports now verify clean, where 2 had been blocked by a narrative
+address flagged as a leak) and the model does now read the address: one comment
+cites "a private drive at 14550 Buffalo Rd". It just does not change the call.
+
+The reason is a chain, and every link is a design decision here:
+
+1. On these reports the location block carries a **municipality** distance and
+   no from-road distance. Read off a real page: `on_road='SR 1003'`,
+   `municipality='ARCHERS LODGE' 0.8 mi`, `from_road=''`,
+   `dist_from_intersection=None`.
+2. `location.resolve` therefore cannot derive a milepost, and says so:
+   *"a municipality distance is not a milepost"*. That refusal is the guard
+   added after the model read "04.20 Miles outside municipality" as MP 4.20.
+3. No independent milepost means `resolved_location.milepost` is None.
+4. `_RULES` then tells the model, in as many words, that it *cannot establish
+   RE* because there is nothing to correct the coded milepost to.
+5. So it never proposes RE. Every RE row came back "coded MP within study
+   limits", which is the instruction being followed.
+
+**The guard forbids the reasoning the engineer actually uses.** Their own notes
+are "placed at address" and "placed in curve": they compare where the report
+shows the crash against where the coded milepost points, and call it wrong.
+That is a qualitative judgement from the diagram and narrative, not an
+arithmetic derivation, and the design admits only the arithmetic kind.
+
+So RE is not blocked by the model, the redaction, or the study limits. It is
+blocked by a rule written to stop one failure (a fabricated milepost) that also
+stops the legitimate case. The fix is not to drop the guard: it is to let RE be
+proposed on cited report evidence with `needs_manual` set and the corrected
+milepost left to the engineer, instead of refusing the status outright.
+
+### Study limits: read them, do not infer them
+
+The corridor was inferred from the labels twice. It is stated outright in
+`InitialStudy.pdf`, the TEAAS Strip Analysis Report that ships with the
+evaluation: *"SR 1003 (Buffalo Road) from SR 1702 (Archer Lodge Road) to the
+Wake County Line"*, study 41000075911. The features report gives SR 1702 at
+MP 15.154 and `CL-WAKE` at MP 18.941, and the 327 crashes in the initial study
+span exactly that. The inferred upper bound (18.911, the last labelled crash)
+was 0.03 mi short.
+
 ### The first run of this measured the harness, not the assist
 
 Scored at first with the section set to the project's treatment limits

@@ -105,3 +105,12 @@ RTSR, U-Turn, Head-on). Urban uses a 2-year recency window, rural a 3-year one:
 | I-4 | %2yr>=25% AND night>=12 AND %night>=40% | %3yr>=20% AND night>=10 AND %night>=46% |
 
 **These are the 2024 warrants. NCDOT has 2026 updates not yet in hand.**
+
+## Values still awaiting a source
+
+| constant | value | status |
+|---|---|---|
+| every warrant threshold | 2024 Overview | swap when the 2026 values arrive |
+| `MIN_SECTION_MI` | 0.10 mi | **placeholder, engineer's call.** Not from any NCDOT document. It exists to stop `scan_sections` returning a degenerate answer: ten crashes in 0.02 mi is 500 per mile and clears every rate minimum, which is arithmetic rather than engineering. Replace if NCDOT publishes a minimum section length. |
+| `strict` (minimums are `>`, not `>=`) | True | from the workbook; the Overview's prose reads as `>=` |
+| ROR includes Overturn/Rollover | yes | Overview lists it, the workbook omits it |

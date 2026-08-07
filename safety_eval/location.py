@@ -170,13 +170,17 @@ class FeatureInventory:
         Two vertex conventions are accepted, because ArcGIS exports both:
 
         * ``[lon, lat, z, m]`` or ``[lon, lat, m]``  - the measure rides on the
-          vertex, which is the useful case and needs no interpolation.
-        * ``[lon, lat]`` with per-feature ``BeginMP``/``EndMP`` properties - the
-          measure is spread evenly along the feature by vertex count, which is
-          an approximation and is only used when there is no vertex measure.
+          vertex, which needs no interpolation at all.
+        * ``[lon, lat]`` with per-feature begin/end milepost properties, which
+          is what ``NCDOT_StateMaintainedRoadsQtr`` gives (``BeginMp1`` /
+          ``EndMp1``). The measure is spread along the segment by **cumulative
+          chord length**, not by vertex index: NCDOT places vertices densely on
+          curves and sparsely on tangents, so counting them stretches the
+          mileposts toward every bend. Distance is what a milepost measures.
 
-        ``route`` overrides the route named in the properties, for a
-        single-route export. Returns ``{route: vertex count}``.
+        Route identity comes from ``RouteName`` ("SR-1003") when present, else
+        from decoding ``RouteID`` ("40001003051"). ``route`` overrides both, for
+        a single-route export. Returns ``{route: vertex count}``.
         """
         data = source
         if isinstance(source, str):
@@ -189,9 +193,13 @@ class FeatureInventory:
         for feat in feats:
             props = {str(k).strip().lower(): v
                      for k, v in (feat.get("properties") or {}).items()}
-            name = route or props.get((route_field or "").lower()) or \
-                props.get("routeid") or props.get("route") or \
-                props.get("rte_id") or props.get("routename") or ""
+            # A numeric RouteID is decoded; anything else is taken as written,
+            # so a hand-built export that puts "SR 1003" in a RouteID column
+            # still lands on the right route.
+            rid = props.get("routeid") or props.get("rte_id")
+            name = (route or props.get((route_field or "").lower())
+                    or props.get("routename") or props.get("route")
+                    or decode_route_id(rid)[0] or rid or "")
             key = normalize_route(str(name))
             if not key:
                 continue
@@ -202,19 +210,29 @@ class FeatureInventory:
             elif geom.get("type") != "MultiLineString":
                 continue
             lo = _as_float(props.get((mp_field or "").lower()),
-                           props.get("beginmp"), props.get("begin_mp"),
-                           props.get("from_mp"), props.get("mp_begin"))
-            hi = _as_float(props.get("endmp"), props.get("end_mp"),
-                           props.get("to_mp"), props.get("mp_end"))
+                           props.get("beginmp1"), props.get("beginmp"),
+                           props.get("begin_mp"), props.get("from_mp"),
+                           props.get("mp_begin"), props.get("bmp"))
+            hi = _as_float(props.get("endmp1"), props.get("endmp"),
+                           props.get("end_mp"), props.get("to_mp"),
+                           props.get("mp_end"), props.get("emp"))
             for part in parts:
-                n = len(part)
-                for i, v in enumerate(part):
-                    if len(v) < 2:
-                        continue
+                pts = [v for v in part if len(v) >= 2]
+                if not pts:
+                    continue
+                # cumulative chord length, so the milepost tracks distance
+                run = [0.0]
+                for (lo1, la1), (lo2, la2) in zip(
+                        ((v[0], v[1]) for v in pts),
+                        ((v[0], v[1]) for v in pts[1:])):
+                    run.append(run[-1] + haversine_mi(la1, lo1, la2, lo2))
+                total = run[-1]
+                for i, v in enumerate(pts):
                     lon, lat = float(v[0]), float(v[1])
                     mp = float(v[-1]) if len(v) >= 3 else None
                     if mp is None and lo is not None and hi is not None:
-                        mp = lo if n < 2 else lo + (hi - lo) * i / (n - 1)
+                        mp = (lo if total <= 0
+                              else lo + (hi - lo) * run[i] / total)
                     if mp is None:
                         continue
                     self.shape.setdefault(key, []).append((mp, lat, lon))
@@ -322,6 +340,41 @@ _FEATURE_TYPE_RE = re.compile(
 _HEADER_RE = re.compile(r"^\s*([A-Z][A-Z .\'-]+?)\s+(\d{8})\s+\d+\.\d+", re.M)
 #: route id prefixes (docs/09): 2 = US, 3 = NC, 4 = SR
 _ID_PREFIX = {"2": "US", "3": "NC", "4": "SR"}
+
+
+#: Route class, first digit of the 8-digit road code (docs/09).
+_ROUTE_CLASS = {"1": "I", "2": "US", "3": "NC", "4": "SR"}
+
+#: Route qualifier, second digit. 0 is the plain route; the rest are the
+#: banners docs/09 records (29000064 = US 64BUS, 22000064 = US 64BYP).
+_ROUTE_QUALIFIER = {"0": "", "1": "ALT", "2": "BYP", "6": "", "9": "BUS"}
+
+
+def decode_route_id(route_id) -> tuple:
+    """``"40001003051"`` -> ``("SR 1003", 51)``: route name and county number.
+
+    NCDOT's Roads and Highways RouteID is the 8-digit road code of docs/09 plus
+    a 3-digit county number, and the county part is NCDOT's own alphabetical
+    numbering, NOT the FIPS code. Verified against two real records: 093 is
+    Warren (the NC-58 sample plots at 36.21 N in Warren, FIPS 093 would be
+    Hoke, 200 miles away) and 083 is Scotland (US-74 BUS at Laurinburg).
+    Johnston, which the SR 1003 evaluation runs in, is 51.
+
+    Returns ``("", None)`` for anything that is not an 11 or 8 digit code, so a
+    caller can fall back to a RouteName field.
+    """
+    text = str(route_id or "").strip()
+    if not text.isdigit() or len(text) not in (8, 11):
+        return "", None
+    cls = _ROUTE_CLASS.get(text[0])
+    if cls is None:
+        return "", None                       # 5 = local street, has no number
+    number = text[2:8].lstrip("0")
+    if not number:
+        return "", None
+    name = f"{cls} {number}{_ROUTE_QUALIFIER.get(text[1], '')}"
+    county = int(text[8:]) if len(text) == 11 else None
+    return name, county
 
 
 def _as_float(*candidates):

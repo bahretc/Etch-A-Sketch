@@ -90,3 +90,79 @@ def test_loaded_geometry_resolves_a_coordinate_to_a_milepost():
     mp, offset = interpolate_milepost(inv.shape["SR1003"], 35.6000, -78.2979)
     assert mp == pytest.approx(17.751, abs=0.005)
     assert offset * 5280 < 5
+
+
+# ---------------------------------------------------------------------------
+# NCDOT_StateMaintainedRoadsQtr (the real schema, confirmed 2026-08)
+# ---------------------------------------------------------------------------
+
+def test_route_id_decodes_to_route_and_ncdot_county_number():
+    """RouteID is the docs/09 road code plus NCDOT's county number.
+
+    The county part is NCDOT's alphabetical numbering, not FIPS. Verified on
+    two real records: 093 is Warren (the NC-58 record plots at 36.21 N; FIPS
+    093 is Hoke, 200 miles southwest) and 083 is Scotland (US-74 BUS at
+    Laurinburg). Johnston, which the SR 1003 evaluation runs in, is 51.
+    """
+    from safety_eval.location import decode_route_id
+    assert decode_route_id("40001003051") == ("SR 1003", 51)
+    assert decode_route_id("30000058093") == ("NC 58", 93)
+    assert decode_route_id("29000074083") == ("US 74BUS", 83)   # qualifier 9
+    assert decode_route_id("40001003") == ("SR 1003", None)     # 8-digit form
+
+
+def test_route_id_declines_what_it_cannot_decode():
+    from safety_eval.location import decode_route_id
+    assert decode_route_id("50099562093") == ("", None)   # class 5, local street
+    assert decode_route_id(None) == ("", None)
+    assert decode_route_id("SR 1003") == ("", None)
+
+
+def test_begin_end_mp_is_spread_by_distance_not_vertex_count():
+    """NCDOT crowds vertices onto curves; counting them stretches mileposts.
+
+    Real geometry from RouteID 30000058093, first four vertices and the last
+    two: the opening hops are tens of feet and the closing ones are hundreds.
+    Spreading by index would hand all six the same 371 ft.
+    """
+    inv = FeatureInventory()
+    inv.load_route_shape(_gj([{
+        "properties": {"RouteID": "30000058093", "RouteName": "NC-58",
+                       "BeginMp1": 0, "EndMp1": 0.351111},
+        "geometry": {"type": "LineString", "coordinates": [
+            [-78.103073, 36.209055], [-78.102932, 36.209241],
+            [-78.102898, 36.209291], [-78.102870, 36.209334],
+            [-78.100555, 36.211882], [-78.099052, 36.212555]]}}]))
+    pts = inv.shape["NC58"]
+    mps = [p[0] for p in pts]
+    assert mps[0] == 0 and mps[-1] == pytest.approx(0.351111)
+    assert mps == sorted(mps)
+    # the defining property: milepost advances in proportion to distance, so
+    # every segment shares one scale factor. Vertex-index spreading would give
+    # each of the six an identical 0.0702 mi regardless of how far apart it is.
+    from safety_eval.location import haversine_mi
+    scales = [(mps[i + 1] - mps[i])
+              / haversine_mi(pts[i][1], pts[i][2], pts[i + 1][1], pts[i + 1][2])
+              for i in range(len(pts) - 1)]
+    assert max(scales) == pytest.approx(min(scales), rel=1e-6)
+    hops = [mps[i + 1] - mps[i] for i in range(len(mps) - 1)]
+    assert max(hops) > 5 * min(hops)          # they are genuinely uneven
+
+
+def test_route_name_is_preferred_over_the_route_id():
+    inv = FeatureInventory()
+    inv.load_route_shape(_gj([{
+        "properties": {"RouteID": "30000058093", "RouteName": "NC-58",
+                       "BeginMp1": 0, "EndMp1": 1.0},
+        "geometry": {"type": "LineString",
+                     "coordinates": [[-78.10, 36.20], [-78.09, 36.20]]}}]))
+    assert set(inv.shape) == {"NC58"}
+
+
+def test_route_id_is_used_when_no_route_name_is_present():
+    inv = FeatureInventory()
+    inv.load_route_shape(_gj([{
+        "properties": {"RouteID": "40001003051", "BeginMp1": 15.0, "EndMp1": 15.5},
+        "geometry": {"type": "LineString",
+                     "coordinates": [[-78.30, 35.60], [-78.29, 35.60]]}}]))
+    assert set(inv.shape) == {"SR1003"}

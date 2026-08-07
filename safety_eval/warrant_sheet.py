@@ -39,8 +39,13 @@ FILL_HEAD = PatternFill("solid", fgColor="D9D9D9")
 _CALC = len(COLUMNS) + 2
 
 
-def _highlight(ws, last_row: int) -> None:
-    """Wet C, dark L and ROR Types, over the whole table."""
+def _highlight(ws, last_row: int, multilane: bool = False) -> None:
+    """Wet C, dark L and ROR Types, over the whole table.
+
+    SSSD is highlighted only when ``multilane`` is on, matching the warrant:
+    highlighting a type that does not count would overstate the ROR share to
+    anyone reading the sheet.
+    """
     if last_row < 2:
         return
     for name, codes in (("C", WET_CODES), ("L", DARK_CODES)):
@@ -53,7 +58,8 @@ def _highlight(ws, last_row: int) -> None:
     letter = get_column_letter(_COL["Type"])
     rng = f"{letter}2:{letter}{last_row}"
     style = DifferentialStyle(fill=FILL_WARRANT)
-    for i, name in enumerate(sorted(ROR_TYPES | MULTILANE_ROR_TYPES)):
+    names = ROR_TYPES | MULTILANE_ROR_TYPES if multilane else ROR_TYPES
+    for i, name in enumerate(sorted(names)):
         rule = Rule(type="containsText", operator="containsText", text=name,
                     dxf=style, priority=i + 1)
         rule.formula = [f'NOT(ISERROR(SEARCH("{name}",{letter}2)))']
@@ -93,7 +99,7 @@ def add_warrant_sheet(wb, rows, length_mi: float, facility: str = "freeway",
                 if name == "Date":
                     cell.number_format = DATE_FORMAT
     last = len(ordered) + 1
-    _highlight(ws, last)
+    _highlight(ws, last, multilane)
     ws.freeze_panes = "A2"
 
     crashes = [Crash(crash_id=str(r.get("crash_id", "")),

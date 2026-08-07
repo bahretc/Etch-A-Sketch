@@ -48,10 +48,13 @@ EXCLUDED_TYPES = {"animal"}
 WET_CODES = {2, 3}
 DARK_CODES = {4, 5, 6}
 
-#: Sideswipe Same Direction counts as run-off-road on a MULTI-LANE facility
-#: only. The workbook lists it as "Sideswipe Same* (use SSSD)" with the note
-#: "*multi-lane only", and leaves its abbreviation cell blank until the
-#: engineer decides. Not in the 2024 Overview's prose list at all.
+#: Sideswipe SAME direction, OFF by default. The Overview's ROR list has
+#: Sideswipe OPPOSITE Direction (SSOD) and not this. The workbook adds a row
+#: "Sideswipe Same* (use SSSD)" with the note "*multi-lane only" AND LEAVES ITS
+#: ABBREVIATION CELL (AB9) BLANK, inside the MATCH range $AB$2:$AB$10. A blank
+#: key matches nothing, so SSSD does not count until an engineer types it in.
+#: Hence multilane=False everywhere by default; passing True is that opt-in.
+#: On study 41000079305 the difference is F-2 at 82.1% against 89.7%.
 MULTILANE_ROR_TYPES = {"SSSD"}
 
 #: Crash types that are intersection crashes, for the N-4 base. The workbook

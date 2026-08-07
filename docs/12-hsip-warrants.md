@@ -77,10 +77,13 @@ prose on four counts. The workbook wins.
 - **The minimums are strictly greater than**: `=IF(U6>min,...)`. Exactly 30
   crashes does not clear a minimum of 30. `strict=False` gives the `>=` reading
   the prose suggests.
-- **SSSD counts as ROR on a multi-lane facility**, listed as
-  "Sideswipe Same* (use SSSD)" with "*multi-lane only". It is not in the
-  Overview's prose list at all. On study 41000079305 it moves F-2 from 82.1%
-  to 89.7%.
+- **SSSD is OFF by default.** The Overview's ROR list has Sideswipe
+  **Opposite** Direction (SSOD), not Sideswipe Same. The workbook adds a row
+  `Sideswipe Same* (use SSSD)` with the note `*multi-lane only` **and leaves
+  its abbreviation cell AB9 blank**, inside the MATCH range `$AB$2:$AB$10`.
+  A blank key matches nothing, so SSSD does not count until an engineer types
+  it in. `multilane=True` is that opt-in and nothing else. On study
+  41000079305 the difference is F-2 at 82.1% against 89.7%.
 - **N-4's base is derived from crash TYPE**, not a flag: total minus Angle,
   LTDR, LTSR, RTDR, RTSR, U-Turn and the Y-line variant.
 

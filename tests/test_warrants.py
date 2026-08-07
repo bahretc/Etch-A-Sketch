@@ -88,10 +88,12 @@ def test_wet_is_C_2_or_3_and_dark_is_L_4_5_or_6():
     assert not Crash("1", "ROR-L", 1, 3).is_dark
 
 
-def test_SSSD_is_run_off_road_on_a_multilane_facility_only():
-    """The workbook lists "Sideswipe Same* (use SSSD)" with "*multi-lane only",
-    and it is not in the 2024 Overview's prose list at all. On study
-    41000079305 it moves F-2 from 82.1% to 89.7%."""
+def test_SSOD_counts_and_SSSD_does_not_unless_opted_in():
+    """The Overview lists Sideswipe OPPOSITE Direction. Sideswipe Same is a
+    workbook addition whose abbreviation cell (AB9) is left BLANK inside the
+    MATCH range, so it matches nothing until an engineer types it in."""
+    assert "SSOD" in ROR_TYPES and "SSSD" not in ROR_TYPES
+    assert Crash("1", "SSOD").is_ror()          # always counts
     assert not Crash("1", "SSSD").is_ror()
     assert Crash("1", "SSSD").is_ror(multilane=True)
     assert Crash("1", "ROR-L").is_ror() and Crash("1", "ROR-L").is_ror(True)

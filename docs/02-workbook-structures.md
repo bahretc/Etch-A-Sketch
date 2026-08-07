@@ -107,6 +107,14 @@ match moves a crash six miles. And **a crash on a cross street is placed where
 that street meets the study route**, not by its own milepost: NC 9 crashes are
 at US 74 MP 14.455, NC 108 crashes at 10.125.
 
+**The TEAAS import list is ADD and RE only.** IS crashes already carry the
+right milepost in TEAAS, so importing them changes nothing; ADD brings a crash
+in at a milepost it did not have, and RE corrects one that was wrong. RE is
+section analyses only (docs/03). Format is `<crash id>|<TAB><milepost>` with
+CRLF line endings, crash-ID ordered. Trailing zeros are stripped in some real
+files (`0.56`) and padded to three places in others (`0.560`); both have been
+observed, so match whichever the receiving workflow uses.
+
 **The ID sheet's column layout is a record of how the export was pasted.** The
 header `CRASH ID|ON RD CD|SVRTY|DATE|TYPE|` was split on pipes **and spaces**,
 so its 5 fields land in 8 header cells (H:O) over 6 data cells (H:M), the date

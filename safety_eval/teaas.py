@@ -132,8 +132,25 @@ def parse_crash_id_list(source: str, cfg: Config | None = None) -> list[Crash]:
 # writers
 # ---------------------------------------------------------------------------
 
-def _fmt_mp(value: float, places: int = 3) -> str:
-    return f"{float(value):.{places}f}"
+#: Statuses whose milepost the import is FOR. IS crashes already carry the
+#: right milepost in TEAAS, so importing them changes nothing; ADD brings a
+#: crash in at a milepost it did not have, and RE corrects one that was wrong
+#: (engineer, 2026-08; RE is section analyses only, docs/03).
+IMPORT_STATUSES = ("ADD", "RE")
+
+
+def _fmt_mp(value: float, places: int = 3, strip_zeros: bool = False) -> str:
+    """A milepost as the import file writes it.
+
+    Both forms have been seen in real import files: padded to three places, and
+    with trailing zeros stripped ("0.56", not "0.560"). Strip only when
+    matching a file that does, since the padded form is what the archive
+    imports this module was verified against use.
+    """
+    text = f"{float(value):.{places}f}"
+    if strip_zeros and "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return text
 
 
 def _write_lines(path: str, lines: list[str]) -> None:

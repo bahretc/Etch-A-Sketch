@@ -14,6 +14,31 @@ Evaluation Filtered Fiche sheets (corrected 2026-07, per the engineer; this supe
 
 In-study statuses for binning purposes are IS, ADD, and RE. All determinations about which reports to review are made in the Filtered Fiche; the Binned Crashes sheet only sorts the evaluation's crashes into period bins using those determinations. The review standard below applies to all vocabularies.
 
+### The vocabulary is two branches, not a flat five-way choice (engineer, 2026-08)
+
+Which statuses are even available to a crash is fixed **before** the report is opened, by one fact: **was the crash in the Initial Study?** That is membership in the initial crash list, not a judgement, and it must never be inferred from the coded milepost. On the real SR 1003 sample, crashes coded on a cross street at MP 1.44 were in the study; approximating the flag from the milepost mislabelled 5 of 47 rows.
+
+**In the Initial Study.** The crash starts as **IS**. Review answers two questions:
+
+| | meaning |
+|---|---|
+| **IS** | it belongs, and the coded milepost is right |
+| **RE** | it belongs, but the coded milepost is wrong; the corrected one goes in New MP (section analyses only) |
+| **DEL** | it is not in the study area, so it is deleted from the study |
+
+**Not in the Initial Study.** The crash is a candidate, marked `?` during manual review to flag which reports to pull. Review answers one question:
+
+| | meaning |
+|---|---|
+| **ADD** | the report shows it is in the study area after all, so it is added |
+| **NIS** | the report shows it is not; filed under the "NOT IN STUDY - REPORT REVIEWED" banner |
+
+**The moves run one way only.** IS may become RE; **RE never becomes IS**. DEL and NIS both read as "not in this study" and are **never** interchangeable in either direction, because they start from opposite branches, and the same holds for ADD against RE. A status from the wrong branch is a data error, and `validate_determination` rejects it when the caller supplies `in_initial_study`.
+
+**Reviewed NIS is written plain `NIS`**, not `NIS-R`; the "NOT IN STUDY - REPORT REVIEWED" banner carries the reviewed distinction, which is what the completed workbooks do. `-R` would also collide with the split-section suffix grammar (`IS-2`, `RE-2`).
+
+Measured cost of not having this rule: on the 47-report SR 1003 sample the assist made 15 off-branch calls, 12 of them wrong, and enforcing the branch recovers 8 crashes outright (30% to 47% exact agreement). See docs/11.
+
 ## IS / NIS / ADD / ? determination (intersection studies)
 
 - **IS** (in study): crash occurred at or within 150 feet of the study intersection. IS crashes marked for review must be confirmed against the DMV-349 report (diagram + narrative), not taken from the coded milepost alone.

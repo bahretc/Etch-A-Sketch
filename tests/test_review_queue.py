@@ -308,3 +308,51 @@ def test_audit_trail_appends_and_reads_back(tmp_path):
     with open(path) as fh:
         for line in fh:
             json.loads(line)
+
+
+# ---------------------------------------------------------------------------
+# the two-branch vocabulary (docs/03, engineer 2026-08)
+# ---------------------------------------------------------------------------
+
+def test_branch_vocab_splits_on_initial_study_membership():
+    assert rq.branch_vocab("section", True) == ("IS", "RE", "DEL")
+    assert rq.branch_vocab("section", False) == ("ADD", "NIS")
+    # RE is section-only, so it drops out of the in-study branch here
+    assert rq.branch_vocab("intersection", True) == ("IS", "DEL")
+    assert rq.branch_vocab("intersection", False) == ("ADD", "NIS")
+
+
+def test_unknown_membership_leaves_the_whole_vocabulary_open():
+    assert rq.branch_vocab("section", None) == ("IS", "RE", "ADD", "DEL", "NIS")
+
+
+@pytest.mark.parametrize("status,in_study", [
+    ("RE", False),    # RE belongs to the in-study branch
+    ("ADD", True),    # ADD is for candidates, not for crashes already in
+    ("NIS", True),    # a crash already in the study is DEL'd, never NIS'd
+    ("DEL", False),   # a candidate that does not belong is NIS, never DEL'd
+])
+def test_off_branch_statuses_are_rejected(status, in_study):
+    det = rq.Determination(crash_id="1", status=status, comment="c",
+                        new_mp=8.1 if status == "RE" else None)
+    problems = rq.validate_determination(det, "section", in_initial_study=in_study)
+    assert any("not available to a crash that" in p for p in problems)
+
+
+@pytest.mark.parametrize("status,in_study", [
+    ("IS", True), ("RE", True), ("DEL", True), ("ADD", False), ("NIS", False)])
+def test_on_branch_statuses_pass(status, in_study):
+    det = rq.Determination(crash_id="1", status=status, comment="c",
+                        new_mp=8.1 if status == "RE" else None)
+    assert not rq.validate_determination(det, "section", in_initial_study=in_study)
+
+
+def test_the_one_way_moves_the_engineer_named():
+    """IS->RE yes, RE->IS no; DEL/NIS and ADD/RE never swap (docs/03)."""
+    started_in = rq.branch_vocab("section", True)
+    started_out = rq.branch_vocab("section", False)
+    assert "RE" in started_in and "IS" in started_in     # IS may become RE
+    assert "IS" not in started_out                       # RE never becomes IS
+    assert "DEL" in started_in and "DEL" not in started_out
+    assert "NIS" in started_out and "NIS" not in started_in
+    assert "ADD" in started_out and "ADD" not in started_in

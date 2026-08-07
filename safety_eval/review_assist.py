@@ -31,7 +31,8 @@ import io
 import json
 from dataclasses import dataclass, field
 
-from .review_queue import STATUS_VOCAB, Determination, validate_determination
+from .review_queue import (STATUS_VOCAB, Determination, branch_vocab,
+                           validate_determination)
 
 #: cap per-page raster before sending to the model (longest side, px) and the
 #: number of pages, so a supplemental-heavy report stays a sane request.
@@ -65,6 +66,13 @@ class StudyContext:
     #: to work a milepost out of a distance field, which it must not do.
     resolved_location: object | None = None
     fiche_milepost: float | None = None         # what the study was built on
+    #: Was this crash in the Initial Study? This is not a judgement and must not
+    #: be inferred from the coded milepost: crashes coded on a cross street at
+    #: MP 1.44 were in the study, and approximating the flag from the milepost
+    #: mislabelled 5 of 47 on the real sample. It is membership in the initial
+    #: crash list, which the caller already has. None means unknown, and the
+    #: full vocabulary stays open.
+    in_initial_study: bool | None = None
 
 
 @dataclass
@@ -105,16 +113,28 @@ class AssistResult:
 # --------------------------------------------------------------------------- #
 _RULES = """\
 NCDOT crash-review rules you must follow exactly (docs/03); do not improvise:
+- The vocabulary is NOT a flat five-way choice. It is two branches, and which \
+branch applies was fixed before you saw the crash, by one fact: was the crash \
+in the Initial Study? You are told below which branch you are in. Never answer \
+outside it.
+- IN the Initial Study, the crash starts as IS and the only questions are \
+whether the coded milepost is right and whether it belongs at all:
+    IS  = it belongs and the coded milepost is right.
+    RE  = it belongs but the coded milepost is wrong (section analyses only; \
+the corrected milepost goes in New MP).
+    DEL = it does not belong in the study area, so it is deleted from it.
+- NOT in the Initial Study, the crash is a candidate and the only question is \
+whether it belongs:
+    ADD = the report shows it IS in the study area, so it is added.
+    NIS = the report shows it is not, filed under "NOT IN STUDY - REPORT \
+REVIEWED".
+- So the moves run one way only. IS can become RE; RE never becomes IS. DEL and \
+NIS both read as "not in this study" and are NEVER interchangeable, because \
+they start from opposite branches. Nor are ADD and RE.
 - Intersection IS = the crash occurred AT or within the study buffer (default \
 150 ft) of the study intersection, confirmed by the DMV-349 diagram and \
-narrative, not the coded milepost alone.
-- NIS = confirmed not at and not within the buffer.
-- ADD = coded elsewhere but the report shows it actually occurred at the study \
-intersection; it should be added to the study.
-- Section analyses only: RE = the crash belongs but the coded milepost is \
-wrong; the corrected milepost goes in New MP. RE is invalid for an \
-intersection analysis.
-- DEL = removed from the evaluation.
+narrative, not the coded milepost alone. NIS = confirmed not at and not within \
+the buffer.
 - Coded location can be deceptive: identically named cross streets exist a \
 mile or more apart. When a diagram superficially matches, confirm with the \
 report's front-page coordinates.
@@ -155,8 +175,11 @@ _PREPARE_SYS = _RULES + "\n\nMode: PREPARE. Do NOT choose a status. Lay out " \
     "plausible statuses in candidate_statuses without picking one."
 
 
-def _decide_schema(analysis_type: str) -> dict:
-    vocab = list(STATUS_VOCAB.get(analysis_type, STATUS_VOCAB["intersection"]))
+def _decide_schema(analysis_type: str, in_initial_study: bool | None = None) -> dict:
+    # The enum is narrowed to the crash's branch, so an off-branch status is not
+    # discouraged, it is unrepresentable. On the real sample 15 of 47 calls were
+    # off-branch and 12 of those were wrong.
+    vocab = list(branch_vocab(analysis_type, in_initial_study))
     return {
         "type": "object",
         "properties": {
@@ -234,8 +257,21 @@ def _context_block(row, ctx: StudyContext) -> str:
     if ctx.prescreen_ft is not None:
         lines.append(f"GPS pre-screen distance (from the DetailedFiche, not the "
                      f"report): {ctx.prescreen_ft:.0f} ft")
-    lines.append("Status vocabulary you may use: "
-                 + ", ".join(STATUS_VOCAB.get(ctx.analysis_type, ())))
+    if ctx.in_initial_study is None:
+        lines.append("In the Initial Study: UNKNOWN. The caller did not say, so "
+                     "the full vocabulary is open and you must reason about "
+                     "which branch applies before choosing.")
+    else:
+        lines.append(
+            "In the Initial Study: "
+            + ("YES. This crash is already in the study, so the question is "
+               "whether the coded milepost is right and whether it belongs."
+               if ctx.in_initial_study else
+               "NO. This crash is a candidate, so the only question is whether "
+               "the report puts it in the study area."))
+    lines.append("Status vocabulary you may use, and nothing else: "
+                 + ", ".join(branch_vocab(ctx.analysis_type,
+                                          ctx.in_initial_study)))
     return "\n".join(lines)
 
 
@@ -263,7 +299,8 @@ def build_request(row, ctx: StudyContext, pages, mode: str,
     if mode not in MODES:
         raise ValueError(f"mode must be one of {MODES}, got {mode!r}")
     system = _DECIDE_SYS if mode == "decide" else _PREPARE_SYS
-    schema = _decide_schema(ctx.analysis_type) if mode == "decide" else _PREPARE_SCHEMA
+    schema = (_decide_schema(ctx.analysis_type, ctx.in_initial_study)
+              if mode == "decide" else _PREPARE_SCHEMA)
     text = ("Coded fiche fields:\n"
             + json.dumps(_coded_view(row), indent=1)
             + "\n\n" + _context_block(row, ctx)
@@ -340,7 +377,9 @@ def _parse(data: dict, row, ctx: StudyContext, mode: str) -> AssistResult:
         # a clean row (docs/03: every delivered RE row carries a New MP).
         det = res.as_determination()
         if det is not None:
-            res.validation_problems = validate_determination(det, ctx.analysis_type)
+            res.validation_problems = validate_determination(
+                det, ctx.analysis_type,
+                in_initial_study=ctx.in_initial_study)
             if res.validation_problems:
                 res.needs_manual = True
         if res.confidence == "low":

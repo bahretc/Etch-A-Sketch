@@ -40,6 +40,39 @@ STATUS_VOCAB = {
     "section": ("IS", "RE", "ADD", "DEL", "NIS"),
 }
 
+#: The determination vocabulary is not a flat five-way choice. It is two
+#: branches, and which branch applies is fixed before review by one fact: was
+#: the crash in the Initial Study?
+#:
+#:   in the Initial Study   -> IS   (stays, milepost confirmed)
+#:                             RE   (belongs, coded milepost wrong; section only)
+#:                             DEL  (does not belong; struck from the study)
+#:   not in the Initial Study -> ADD  (belongs after all; added)
+#:                               NIS  (does not belong; "NOT IN STUDY - REPORT
+#:                                     REVIEWED")
+#:
+#: So the moves run one way only. IS may become RE; RE never becomes IS. DEL and
+#: NIS both mean "not in this study" and are never interchangeable, because they
+#: start from opposite branches, and the same goes for ADD against RE.
+#:
+#: Membership is a property of the input crash list, never inferred from the
+#: coded milepost: crashes coded on a cross street at MP 1.44 were in the study,
+#: and inferring the flag from the milepost mislabelled 5 of 47 real rows.
+IN_STUDY_BRANCH = ("IS", "RE", "DEL")
+NOT_IN_STUDY_BRANCH = ("ADD", "NIS")
+
+
+def branch_vocab(analysis_type: str, in_initial_study: bool | None):
+    """The statuses actually available to one crash, narrowest first.
+
+    ``None`` means membership is unknown, and the full vocabulary stays open.
+    """
+    vocab = STATUS_VOCAB.get(analysis_type, STATUS_VOCAB["intersection"])
+    if in_initial_study is None:
+        return tuple(vocab)
+    branch = IN_STUDY_BRANCH if in_initial_study else NOT_IN_STUDY_BRANCH
+    return tuple(s for s in vocab if s in branch)
+
 #: Statuses that may carry a second-section suffix ("IS-2", "RE-2", ...) in
 #: split-section evaluations (observed throughout the completed SS-6002M
 #: Filtered Fiche).
@@ -187,7 +220,8 @@ def split_status(status: str) -> tuple[str, str | None]:
 
 
 def validate_determination(det: Determination, analysis_type: str,
-                           reviewed: bool = True) -> list[str]:
+                           reviewed: bool = True,
+                           in_initial_study: bool | None = None) -> list[str]:
     """Return the list of rule violations (empty when acceptable).
 
     Encodes docs/03 exactly:
@@ -212,6 +246,14 @@ def validate_determination(det: Determination, analysis_type: str,
             problems.append(
                 f"Status {det.status!r} is not in the {analysis_type} "
                 f"vocabulary {vocab}.")
+    if in_initial_study is not None and base in vocab:
+        allowed = branch_vocab(analysis_type, in_initial_study)
+        if base not in allowed:
+            where = ("was in the Initial Study" if in_initial_study
+                     else "was not in the Initial Study")
+            problems.append(
+                f"Status {det.status!r} is not available to a crash that "
+                f"{where}; that branch allows {', '.join(allowed)} (docs/03).")
     if base == "RE" and det.new_mp is None:
         problems.append("RE requires the corrected milepost in New MP "
                         "(every RE row carries one, docs/03).")

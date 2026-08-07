@@ -37,7 +37,14 @@ real ones. Written by `safety_eval.teaas.write_period_imports`.
 Feature-inclusion import is understood to be `<text>|<milepost>`, CRLF, with the
 feature text capped at 20 characters and rejected rather than truncated beyond
 it. This one is **not verified** against a real file; there is no example in the
-archive. Check it against a live import before relying on it.
+archive. Check it against a live import before relying on it. Written by
+`safety_eval.teaas.write_feature_list`. Note it takes no route: the file is
+imported against a route already selected in TEAAS, unlike the crash import
+where the crash ID carries its own route.
+
+Used on study 41000079305 to add MILE MARKER 166 (a Features Report entry the
+fiche needed under an explicit name) and the PC/PI/PT of the two curves the
+crash clusters sit in.
 
 The 5-column Crash ID List (`Before_ID.txt`, `After_ID.txt`) is a TEAAS export,
 not an import, and is read rather than written.

@@ -90,6 +90,8 @@ class Crash:
     road_condition: int | None = None      # C
     light_condition: int | None = None     # L
     at_intersection: bool = False          # unused; N-4 uses the type
+    severity: str = ""                     # KABCO, for the EPDO weighting
+    date: object = None                    # datetime.date, for the recency tests
 
     @property
     def is_animal(self) -> bool:
@@ -219,4 +221,164 @@ def format_screen(s: SectionScreen) -> str:
         lines.append(f"  {w.warrant}  {w.description}")
         lines.append(f"        {w.count}/{w.total} = {w.share:.1%} "
                      f"(needs {w.threshold:.0%})  {flag}")
+    return "\n".join(lines)
+
+
+# --------------------------------------------------------------------------- #
+# intersection warrants (workbook sheets IU / IR)
+# --------------------------------------------------------------------------- #
+#: EPDO weights by KABCO severity (CLAUDE.md; workbook $W$2:$X$6).
+EPDO = {"K": 76.8, "A": 76.8, "B": 8.4, "C": 8.4, "O": 1.0}
+
+#: Frontal Impact crash types. These are also the intersection crash types the
+#: section N-4 base subtracts, plus Head-on.
+FI_TYPES = {"angle", "LTDR", "LTSR", "RTDR", "RTSR", "U-Turn", "head-on",
+            "Head-on", "Angle", "LTDR, Y-line"}
+
+#: Urban looks back 2 years for its recency test, rural 3.
+RECENCY_YEARS = {"urban": 2, "rural": 3}
+
+#: Every intersection warrant, as (context, description). The test itself is
+#: in :func:`screen_intersection` because several combine three quantities.
+INTERSECTION_WARRANTS = {
+    "I-1u": ("urban", "Frontal Impact"),
+    "I-2u": ("urban", "Recent Crashes"),
+    "I-3u": ("urban", "Severity"),
+    "I-4u": ("urban", "Night Location"),
+    "I-1r": ("rural", "Frontal Impact"),
+    "I-2r": ("rural", "Recent Crashes"),
+    "I-3r": ("rural", "Severity"),
+    "I-4r": ("rural", "Night Location"),
+    "I-3": ("both", "Chronic K and A Frontal Impact"),
+}
+
+
+@dataclass
+class IntersectionScreen:
+    context: str
+    total: int
+    fi: int
+    fi_share: float
+    fi_severity: float
+    total_severity: float
+    recent_1yr: int
+    recent_1yr_share: float
+    recent_n: int
+    recent_n_share: float
+    recency_years: int
+    night: int
+    night_share: float
+    ka_fi_5yr: int
+    warrants: list = field(default_factory=list)
+
+    @property
+    def met(self) -> list:
+        return [w for w in self.warrants if w.met]
+
+
+def _epdo(severity) -> float | None:
+    return EPDO.get(str(severity or "").strip().upper())
+
+
+def _mean(values) -> float:
+    vals = [v for v in values if v is not None]
+    return round(sum(vals) / len(vals), 2) if vals else 0.0
+
+
+def screen_intersection(crashes, context: str = "urban", end_date=None
+                        ) -> IntersectionScreen:
+    """Run the intersection warrants for one location.
+
+    ``context`` is "urban" or "rural"; they differ in every threshold and in
+    the length of the recency window (2 years against 3).
+
+    ``end_date`` is the analysis end date, which the recency tests count back
+    from. Without it the most recent crash date is used, which is what an
+    engineer means by "the last year" when no cutoff was stated.
+    """
+    if context not in RECENCY_YEARS:
+        raise ValueError('context must be "urban" or "rural"')
+    kept = [c for c in crashes if not c.is_animal]
+    total = len(kept)
+    if not total:
+        raise ValueError("no crashes to screen")
+
+    dates = [c.date for c in kept if c.date is not None]
+    end = end_date or (max(dates) if dates else None)
+
+    fi = [c for c in kept if c.crash_type in FI_TYPES]
+    fi_share = len(fi) / total
+    fi_sev = _mean(_epdo(c.severity) for c in fi)
+    tot_sev = _mean(_epdo(c.severity) for c in kept)
+
+    def within(years):
+        if end is None:
+            return 0
+        cut = end.replace(year=end.year - years)
+        return sum(1 for c in kept if c.date is not None and cut <= c.date <= end)
+
+    years = RECENCY_YEARS[context]
+    r1, rn = within(1), within(years)
+    night = sum(1 for c in kept if c.is_dark)
+    # K and A frontal-impact crashes in the last 5 years: the workbook counts
+    # rows where the EPDO-FI column equals 76.8, which is K or A on an FI type.
+    ka = 0
+    if end is not None:
+        cut5 = end.replace(year=end.year - 5)
+        ka = sum(1 for c in fi
+                 if c.date is not None and cut5 <= c.date <= end
+                 and _epdo(c.severity) == 76.8)
+
+    s = IntersectionScreen(
+        context=context, total=total, fi=len(fi), fi_share=fi_share,
+        fi_severity=fi_sev, total_severity=tot_sev,
+        recent_1yr=r1, recent_1yr_share=r1 / total,
+        recent_n=rn, recent_n_share=rn / total, recency_years=years,
+        night=night, night_share=night / total, ka_fi_5yr=ka)
+
+    def add(name, met, count, base, threshold, desc):
+        s.warrants.append(WarrantResult(warrant=name, description=desc,
+                                        threshold=threshold, count=count,
+                                        total=base, met=met))
+
+    if context == "urban":
+        add("I-1u", s.recent_n_share >= 0.25 and (
+                (s.fi >= 12 and s.fi_share >= 0.55)
+                or (s.total >= 35 and s.fi_share >= 0.35 and s.fi_severity >= 6)),
+            s.fi, s.total, 0.55, "Frontal Impact")
+        add("I-2u", s.total >= 25 and s.recent_1yr_share >= 0.38,
+            s.recent_1yr, s.total, 0.38, "Recent Crashes")
+        add("I-3u", s.total >= 25 and s.total_severity >= 6
+            and s.recent_n_share >= 0.40, s.recent_n, s.total, 0.40, "Severity")
+        add("I-4u", s.recent_n_share >= 0.25 and s.night >= 12
+            and s.night_share >= 0.40, s.night, s.total, 0.40, "Night Location")
+    else:
+        add("I-1r", s.recent_n_share >= 0.20 and s.fi >= 9
+            and s.fi_share >= 0.60, s.fi, s.total, 0.60, "Frontal Impact")
+        add("I-2r", s.total >= 20 and s.recent_1yr_share >= 0.32,
+            s.recent_1yr, s.total, 0.32, "Recent Crashes")
+        add("I-3r", s.total >= 20 and s.total_severity >= 9
+            and s.recent_n_share >= 0.30, s.recent_n, s.total, 0.30, "Severity")
+        add("I-4r", s.recent_n_share >= 0.20 and s.night >= 10
+            and s.night_share >= 0.46, s.night, s.total, 0.46, "Night Location")
+    # I-3 applies in both contexts and is a count, not a share.
+    add("I-3", s.ka_fi_5yr >= 3, s.ka_fi_5yr, 3, 0.0,
+        "Chronic K and A Frontal Impact")
+    return s
+
+
+def format_intersection(s: IntersectionScreen) -> str:
+    lines = [
+        f"Context: {s.context}   Total crashes: {s.total}",
+        f"Frontal Impact: {s.fi} ({s.fi_share:.1%}), severity {s.fi_severity}",
+        f"Total severity: {s.total_severity}",
+        f"Last 1 year: {s.recent_1yr} ({s.recent_1yr_share:.1%})",
+        f"Last {s.recency_years} years: {s.recent_n} ({s.recent_n_share:.1%})",
+        f"Night: {s.night} ({s.night_share:.1%})",
+        f"K and A frontal-impact crashes, last 5 years: {s.ka_fi_5yr}",
+        "",
+    ]
+    for w in s.warrants:
+        lines.append(f"  {w.warrant:<5} {w.description:<32} "
+                     f"{'MET' if w.met else 'not met'}")
     return "\n".join(lines)

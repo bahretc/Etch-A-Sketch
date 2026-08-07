@@ -149,3 +149,109 @@ def test_study_types_resolve_by_key_label_or_instance():
     assert st.get(st.get("hsip")) is st.get("hsip")
     with pytest.raises(ValueError):
         st.get("package")
+
+
+# ---------------------------------------------------------------------------
+# intersection warrants (workbook sheets IU / IR)
+# ---------------------------------------------------------------------------
+import datetime as _dt
+
+from safety_eval.warrants import (EPDO, FI_TYPES, RECENCY_YEARS,
+                                  screen_intersection)
+
+END = _dt.datetime(2023, 2, 28)
+
+
+def icrashes(n, t="angle", sev="O", days_ago=30, c=1, l=1):
+    return [Crash(str(i), t, c, l, severity=sev,
+                  date=END - _dt.timedelta(days=days_ago)) for i in range(n)]
+
+
+def w(name, s):
+    return next(x for x in s.warrants if x.warrant == name)
+
+
+def test_epdo_weights_are_the_ncdot_values():
+    assert EPDO == {"K": 76.8, "A": 76.8, "B": 8.4, "C": 8.4, "O": 1.0}
+
+
+def test_urban_looks_back_two_years_and_rural_three():
+    assert RECENCY_YEARS == {"urban": 2, "rural": 3}
+    s = screen_intersection(icrashes(30), "urban", END)
+    assert s.recency_years == 2
+    assert screen_intersection(icrashes(30), "rural", END).recency_years == 3
+
+
+def test_frontal_impact_types():
+    for t in ("angle", "LTDR", "LTSR", "RTDR", "RTSR", "U-Turn", "head-on"):
+        assert t in FI_TYPES
+    assert "ROR-L" not in FI_TYPES and "FO" not in FI_TYPES
+
+
+def test_I3_is_a_count_of_K_and_A_frontal_impacts_not_a_share():
+    """Three or more K/A frontal-impact crashes in the last 5 years."""
+    s = screen_intersection(icrashes(3, sev="K") + icrashes(30), "urban", END)
+    assert w("I-3", s).met and w("I-3", s).count == 3
+    s2 = screen_intersection(icrashes(2, sev="K") + icrashes(30), "urban", END)
+    assert not w("I-3", s2).met
+
+
+def test_I3_ignores_K_and_A_on_a_non_frontal_impact_type():
+    """The workbook counts the EPDO-FI column, which is blank off an FI type."""
+    s = screen_intersection(icrashes(5, t="ROR-L", sev="K") + icrashes(30),
+                            "urban", END)
+    assert w("I-3", s).count == 0 and not w("I-3", s).met
+
+
+def test_I3_is_reported_in_both_contexts():
+    for ctx in ("urban", "rural"):
+        names = {x.warrant for x in screen_intersection(icrashes(30), ctx, END).warrants}
+        assert "I-3" in names
+
+
+def test_urban_and_rural_report_only_their_own_warrants():
+    u = {x.warrant for x in screen_intersection(icrashes(30), "urban", END).warrants}
+    r = {x.warrant for x in screen_intersection(icrashes(30), "rural", END).warrants}
+    assert u == {"I-1u", "I-2u", "I-3u", "I-4u", "I-3"}
+    assert r == {"I-1r", "I-2r", "I-3r", "I-4r", "I-3"}
+
+
+def test_I1u_has_two_alternative_paths():
+    """%2yr>=25% AND either (FI>=12 AND %FI>=55%) or
+    (Total>=35 AND %FI>=35% AND FI severity>=6)."""
+    # path one: 20 FI of 30, all recent
+    assert w("I-1u", screen_intersection(
+        icrashes(20) + icrashes(10, t="ROR-L"), "urban", END)).met
+    # path two: 40 total, 15 FI (37.5%), FI severity 76.8 from K
+    s = screen_intersection(icrashes(15, sev="K") + icrashes(25, t="ROR-L"),
+                            "urban", END)
+    assert s.fi_share == pytest.approx(0.375) and s.fi_severity >= 6
+    assert w("I-1u", s).met
+
+
+def test_rural_I1_is_a_single_stricter_path():
+    """%3yr>=20% AND FI>=9 AND %FI>=60%: no severity alternative."""
+    assert w("I-1r", screen_intersection(
+        icrashes(20) + icrashes(10, t="ROR-L"), "rural", END)).met      # 66.7%
+    assert not w("I-1r", screen_intersection(
+        icrashes(10) + icrashes(20, t="ROR-L"), "rural", END)).met      # 33.3%
+
+
+def test_night_uses_the_warrant_light_codes():
+    """L 4, 5 and 6 all count."""
+    for l in (4, 5, 6):
+        s = screen_intersection(icrashes(30, l=l), "urban", END)
+        assert s.night == 30
+    assert screen_intersection(icrashes(30, l=3), "urban", END).night == 0
+
+
+def test_animal_crashes_are_excluded_here_too():
+    s = screen_intersection(icrashes(30) + icrashes(20, t="animal"), "urban", END)
+    assert s.total == 30
+
+
+def test_bad_context_and_empty_input_are_refused():
+    with pytest.raises(ValueError):
+        screen_intersection(icrashes(10), "suburban", END)
+    with pytest.raises(ValueError):
+        screen_intersection([], "urban", END)

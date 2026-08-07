@@ -222,6 +222,10 @@ def _insert_banner(ws, rows) -> int:
         last_q = 1 + sum(1 for k, _, _ in rows if k[0] == STATUS_ORDER["IS"])
     ws.insert_rows(last_q + 1, amount=2)
     banner = last_q + 2
+    # insert_rows copies the style of the row above, so the blank row would
+    # inherit the green/blue/yellow fill from the From/Toward cells over it.
+    for c in range(1, ws.max_column + 1):
+        ws.cell(row=last_q + 1, column=c).fill = PatternFill()
     ws.cell(row=banner, column=1, value=BANNER_TEXT)
     for c in range(1, ws.max_column + 1):
         cell = ws.cell(row=banner, column=c)

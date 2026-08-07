@@ -42,14 +42,19 @@ import subprocess
 
 from openpyxl.styles import Font, PatternFill
 
-from .fiche_workbook import autofit_columns, format_dates
+from . import study_type as _st
+from .fiche_workbook import (T_CODES, autofit_columns,
+                             format_dates)
 
 #: Inside the limits, north/east of them, south/west of them.
 FILL_IN = PatternFill("solid", fgColor="C6EFCE")
 FILL_NE = PatternFill("solid", fgColor="BDD7EE")
 FILL_SW = PatternFill("solid", fgColor="FFEB9C")
 
-STATUS_ORDER = {"IS": 0, "?": 1, "NIS": 2}
+STATUS_ORDER = {"IS": 0, "?": 1, "ADD": 1, "RE": 1, "DEL": 2, "NIS": 3}
+
+#: The decoded Type of an animal crash (docs/09 T code 17).
+ANIMAL_TYPE = "animal"
 
 #: The banner that opens the unreviewed block, and its grey. A6A6A6 is Excel's
 #: "White, Background 1, Darker 35%", which is what the delivered workbook uses
@@ -156,12 +161,20 @@ def needs_review(from_road, toward_road, on_road, features, lo, hi,
 
 
 def screen_sheet(ws, features: dict, lo: float, hi: float, initial_ids,
-                 route: str = "US 74", col=None) -> dict:
-    """Fill IS?, colour the From/Toward cells, and sort. Returns a tally."""
+                 route: str = "US 74", col=None, study="evaluation") -> dict:
+    """Fill IS?, colour the From/Toward cells, and sort. Returns a tally.
+
+    ``study`` is the study type (``study_type``). On an HSIP package the animal
+    crashes come out as DEL before anything else is decided, which is the
+    working practice and is stronger than the 2024 Overview's rule of merely
+    dropping them from the warrant arithmetic.
+    """
+    kind = _st.get(study)
     col = col or {"on": 2, "from": 5, "toward": 6, "mproad": 7, "mp": 8,
-                  "is": 9, "id": 12}
+                  "is": 9, "id": 12, "t": 14}
+    col.setdefault("t", 14)
     initial = {int(c) for c in initial_ids}
-    tally = {"IS": 0, "?": 0, "NIS": 0}
+    tally = {"IS": 0, "?": 0, "NIS": 0, "DEL": 0}
 
     rows = []
     for r in range(2, ws.max_row + 1):
@@ -171,8 +184,13 @@ def screen_sheet(ws, features: dict, lo: float, hi: float, initial_ids,
         on = ws.cell(row=r, column=col["on"]).value
         fr = ws.cell(row=r, column=col["from"]).value
         tw = ws.cell(row=r, column=col["toward"]).value
-        status = ("IS" if cid in initial
-                  else needs_review(fr, tw, on, features, lo, hi, route))
+        t = ws.cell(row=r, column=col["t"]).value
+        if kind.deletes_animals and T_CODES.get(t) == ANIMAL_TYPE:
+            status = "DEL"          # out of the study, not merely set aside
+        elif cid in initial:
+            status = "IS"
+        else:
+            status = needs_review(fr, tw, on, features, lo, hi, route)
         tally[status] += 1
         buckets = {}
         if not normalize_feature(on) or normalize_feature(on) == route.upper():

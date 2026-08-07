@@ -25,17 +25,28 @@ def test_the_ror_set_is_all_eight_types_the_overview_lists():
 
 def test_animal_crashes_leave_the_analysis_entirely():
     """Not just the numerator: the total, the rate and every share."""
-    s = screen_section(crashes(30) + crashes(20, "animal"), 1.0, "freeway")
-    assert s.total == 30 and s.animal_excluded == 20
-    assert s.rate == pytest.approx(30.0)
-    assert f("F-2", s).total == 30
+    s = screen_section(crashes(31) + crashes(20, "animal"), 1.0, "freeway")
+    assert s.total == 31 and s.animal_excluded == 20
+    assert s.rate == pytest.approx(31.0)
+    assert f("F-2", s).total == 31
 
 
 def test_both_minimums_must_be_met_not_either():
-    """30 crashes over 2 miles is 15 per mile: enough crashes, too long."""
-    assert screen_section(crashes(30), 1.0, "freeway").meets_minimums
-    assert not screen_section(crashes(30), 2.0, "freeway").meets_minimums
+    """31 crashes over 2 miles is 15.5 per mile: enough crashes, too long."""
+    assert screen_section(crashes(31), 1.0, "freeway").meets_minimums
+    assert not screen_section(crashes(31), 2.0, "freeway").meets_minimums
     assert not screen_section(crashes(29), 0.5, "freeway").meets_minimums
+
+
+def test_the_minimums_are_strictly_greater_than():
+    """The workbook tests U6>min, not >=. Exactly 30 does not clear 30.
+
+    The Overview's prose ("a minimum number ... are met") reads as >=, so
+    strict=False is offered, but strict is what NCDOT actually runs.
+    """
+    assert not screen_section(crashes(30), 1.0, "freeway").meets_minimums
+    assert screen_section(crashes(30), 1.0, "freeway", strict=False).meets_minimums
+    assert screen_section(crashes(31), 1.0, "freeway").meets_minimums
 
 
 def test_a_warrant_cannot_pass_when_the_minimums_fail():
@@ -48,14 +59,15 @@ def test_a_warrant_cannot_pass_when_the_minimums_fail():
 
 @pytest.mark.parametrize("facility,mins", sorted(FACILITY_MINIMUMS.items()))
 def test_every_facility_type_carries_the_published_minimums(facility, mins):
-    s = screen_section(crashes(mins[0]), mins[0] / mins[1], facility)
+    total, rate = mins
+    s = screen_section(crashes(total + 1), total / (rate + 1), facility)
     assert (s.min_total, s.min_rate) == mins
-    assert s.meets_minimums                      # exactly at both thresholds
+    assert s.meets_minimums
 
 
 def test_freeway_thresholds():
     """F-1 48% ROR-wet, F-2 80% ROR, F-3 55% wet, F-4 52% dark."""
-    base = crashes(20, "ROR-L", c=2, l=5) + crashes(20, "SSSD", c=1, l=1)
+    base = crashes(20, "ROR-L", c=2, l=5) + crashes(20, "RE", c=1, l=1)
     s = screen_section(base, 1.0, "freeway")
     assert f("F-1", s).threshold == 0.48 and f("F-1", s).share == 0.5
     assert f("F-2", s).threshold == 0.80 and f("F-2", s).share == 0.5
@@ -65,20 +77,35 @@ def test_freeway_thresholds():
     assert not f("F-3", s).met and not f("F-4", s).met
 
 
-def test_wet_is_C_2_and_dark_is_L_4_or_5():
-    """From the engineer's own conditional formatting: C between 1.1 and 2.9
-    selects 2; L between 3.1 and 5.9 selects 4 and 5."""
-    assert Crash("1", "ROR-L", 2, 1).is_wet
+def test_wet_is_C_2_or_3_and_dark_is_L_4_5_or_6():
+    """From the warrants workbook: COUNTIFS(C,">=2",C,"<=3") and
+    COUNTIFS(L,">=4",L,"<=6"). Both are WIDER than the working sheet's
+    conditional formatting, so a cell can be unhighlighted and still count."""
+    assert Crash("1", "ROR-L", 2, 1).is_wet and Crash("1", "ROR-L", 3, 1).is_wet
     assert not Crash("1", "ROR-L", 1, 1).is_wet
-    assert Crash("1", "ROR-L", 1, 4).is_dark and Crash("1", "ROR-L", 1, 5).is_dark
+    for l in (4, 5, 6):
+        assert Crash("1", "ROR-L", 1, l).is_dark
     assert not Crash("1", "ROR-L", 1, 3).is_dark
 
 
+def test_SSSD_is_run_off_road_on_a_multilane_facility_only():
+    """The workbook lists "Sideswipe Same* (use SSSD)" with "*multi-lane only",
+    and it is not in the 2024 Overview's prose list at all. On study
+    41000079305 it moves F-2 from 82.1% to 89.7%."""
+    assert not Crash("1", "SSSD").is_ror()
+    assert Crash("1", "SSSD").is_ror(multilane=True)
+    assert Crash("1", "ROR-L").is_ror() and Crash("1", "ROR-L").is_ror(True)
+
+
 def test_N4_measures_against_non_intersection_crashes_only():
-    """The one warrant whose base is not the total."""
+    """The one warrant whose base is not the total.
+
+    The workbook derives non-intersection crashes as total minus the
+    intersection crash TYPES (Angle, LTDR, LTSR, RTDR, RTSR, U-Turn), not from
+    a flag.
+    """
     rows = ([Crash(str(i), "ROR-L", 1, 5) for i in range(10)]
-            + [Crash(f"x{i}", "ROR-L", 1, 5, at_intersection=True)
-               for i in range(15)])
+            + [Crash(f"x{i}", "angle", 1, 5) for i in range(15)])
     s = screen_section(rows, 0.5, "us")
     assert f("N-4", s).total == 10          # not 25
     assert f("N-4", s).count == 10
@@ -94,3 +121,31 @@ def test_bad_inputs_are_refused():
         screen_section(crashes(30), 1.0, "interstate")
     with pytest.raises(ValueError):
         screen_section(crashes(30), 0.0, "freeway")
+
+
+# ---------------------------------------------------------------------------
+# study types (engineer, 2026-08)
+# ---------------------------------------------------------------------------
+def test_the_three_study_types_and_what_branches():
+    from safety_eval import study_type as st
+    assert [k for k, _ in st.choices()] == ["hsip", "evaluation", "fatal"]
+    assert st.get("hsip").runs_warrants and st.get("hsip").deletes_animals
+    assert not st.get("evaluation").runs_warrants
+    assert not st.get("fatal").runs_warrants
+
+
+def test_only_hsip_deletes_animal_crashes():
+    """An evaluation measures a built treatment and must account for every
+    crash in the section, deer included. An HSIP package deletes them."""
+    from safety_eval import study_type as st
+    assert st.get("hsip").deletes_animals
+    assert not st.get("evaluation").deletes_animals
+    assert not st.get("fatal").deletes_animals
+
+
+def test_study_types_resolve_by_key_label_or_instance():
+    from safety_eval import study_type as st
+    assert st.get("hsip") is st.get("HSIP Package Analysis")
+    assert st.get(st.get("hsip")) is st.get("hsip")
+    with pytest.raises(ValueError):
+        st.get("package")

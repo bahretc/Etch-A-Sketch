@@ -63,3 +63,42 @@ Three rules, and they exist to make the warrant inputs visible while reviewing:
 so the highlighting stops there. Running it through the DEL block (or into the
 NIS block) highlights crashes that are not in the analysis and is a real source
 of miscounting.
+
+
+## Corrections from the warrants workbook (Fiche_HSIP_Warrants.xlsm)
+
+The workbook is what NCDOT actually runs, and it differs from the Overview's
+prose on four counts. The workbook wins.
+
+- **Wet is C in {2, 3}**, not {2}. `COUNTIFS(C,">=2",C,"<=3")`.
+- **Dark is L in {4, 5, 6}**, not {4, 5}. `COUNTIFS(L,">=4",L,"<=6")`.
+  Both are WIDER than the working sheet's conditional formatting, so a cell
+  can be unhighlighted and still count toward a warrant.
+- **The minimums are strictly greater than**: `=IF(U6>min,...)`. Exactly 30
+  crashes does not clear a minimum of 30. `strict=False` gives the `>=` reading
+  the prose suggests.
+- **SSSD counts as ROR on a multi-lane facility**, listed as
+  "Sideswipe Same* (use SSSD)" with "*multi-lane only". It is not in the
+  Overview's prose list at all. On study 41000079305 it moves F-2 from 82.1%
+  to 89.7%.
+- **N-4's base is derived from crash TYPE**, not a flag: total minus Angle,
+  LTDR, LTSR, RTDR, RTSR, U-Turn and the Y-line variant.
+
+The workbook's ROR list omits **Overturn/Rollover**, which the Overview does
+list. Kept, on the Overview's authority; worth confirming.
+
+## Still to build: intersection warrants
+
+The workbook carries them on sheets IU (urban) and IR (rural), keyed on EPDO
+(K/A 76.8, B/C 8.4, PDO 1) and Frontal Impact types (Angle, LTDR, LTSR, RTDR,
+RTSR, U-Turn, Head-on). Urban uses a 2-year recency window, rural a 3-year one:
+
+| | urban | rural |
+|---|---|---|
+| I-1 | %2yr>=25% AND ((FI>=12 AND %FI>=55%) OR (Total>=35 AND %FI>=35% AND FI severity>=6)) | %3yr>=20% AND FI>=9 AND %FI>=60% |
+| I-2 | Total>=25 AND %1yr>=38% | Total>=20 AND %1yr>=32% |
+| I-3 | Total>=25 AND severity>=6 AND %2yr>=40% | Total>=20 AND severity>=9 AND %3yr>=30% |
+| I-3 (both) | K and A frontal-impact crashes in last 5 years >= 3 | same |
+| I-4 | %2yr>=25% AND night>=12 AND %night>=40% | %3yr>=20% AND night>=10 AND %night>=46% |
+
+**These are the 2024 warrants. NCDOT has 2026 updates not yet in hand.**

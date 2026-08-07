@@ -477,6 +477,11 @@ def _cmd_assumptions(args) -> int:
     return 0
 
 
+def _study_choices():
+    from .study_type import choices
+    return choices()
+
+
 def _cmd_fiche_workbook(args) -> int:
     """Assemble the study workbook from the four TEAAS exports."""
     from .fiche_workbook import build_fiche_workbook
@@ -486,9 +491,10 @@ def _cmd_fiche_workbook(args) -> int:
         out, fiche_csv=args.fiche, initial_study_csv=args.initial_study,
         initial_id_txt=args.initial_ids, detailed_fiche_csv=args.detailed,
         study=args.study)
+    from .study_type import get
     for sheet, n in counts.items():
         print(f"{n:>6} rows -> {sheet}")
-    print(f"wrote {out}")
+    print(f"wrote {out}   ({get(args.study_type)})")
     return 0
 
 
@@ -883,6 +889,11 @@ def build_parser() -> argparse.ArgumentParser:
     fw.add_argument("--initial-ids", help="Pipe-delimited TEAAS ID export.")
     fw.add_argument("--detailed", help="Detailed Fiche CSV (carries lat/lon).")
     fw.add_argument("--out", help="Output path (default <study>_Fiche.xlsx).")
+    fw.add_argument("--study-type", default="evaluation",
+                    choices=[k for k, _ in _study_choices()],
+                    help="Fatal Crash Analysis, HSIP Package Analysis, or "
+                         "Evaluation. HSIP deletes animal crashes and runs the "
+                         "warrant screen (docs/12).")
     fw.set_defaults(func=_cmd_fiche_workbook)
 
     d = sub.add_parser("doctor", help="Report available optional backends.")

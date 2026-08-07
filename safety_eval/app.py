@@ -35,10 +35,30 @@ def _save_upload(uploaded, workdir: str) -> str | None:
 def main() -> None:
     import streamlit as st
 
-    st.set_page_config(page_title="NCDOT Safety Evaluations", layout="wide")
-    st.title("NCDOT HSIP Safety Evaluations")
+    from .study_type import STUDY_TYPES, choices
+
+    st.set_page_config(page_title="NCDOT Safety Studies", layout="wide")
+    st.title("NCDOT Safety Studies")
+
+    # The study type is chosen once, at set-up, and governs the run. The fiche
+    # and crash-review core is the same for all three; only the warrant screen
+    # and the animal-crash rule branch (docs/12).
+    keys = [k for k, _ in choices()]
+    with st.sidebar:
+        st.subheader("Study set-up")
+        study_key = st.selectbox(
+            "Study type", keys,
+            format_func=lambda k: STUDY_TYPES[k].label)
+        kind = STUDY_TYPES[study_key]
+        st.caption(kind.description)
+        if kind.deletes_animals:
+            st.caption("Animal crashes will be set to DEL.")
+        if kind.runs_warrants:
+            st.caption("The HSIP warrant screen will run (docs/12).")
+    st.session_state["study_type"] = study_key
+
     tab_build, tab_redact, tab_review = st.tabs(
-        ["Build Evaluation", "Redact Crash Reports", "Review Queue"])
+        ["Build Study", "Redact Crash Reports", "Review Queue"])
 
     with tab_build:
         st.caption("Populate a real NCDOT Evaluation Workbook template from "

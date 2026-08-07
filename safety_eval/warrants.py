@@ -38,11 +38,27 @@ ROR_TYPES = {"ROR-R", "ROR-L", "ROR-T", "FO", "overturn", "SSOD", "PMV",
 #: Excluded from the section analysis entirely (Overview, Section Warrants).
 EXCLUDED_TYPES = {"animal"}
 
-#: Road-condition code meaning a wet surface, and light codes meaning dark.
-#: Taken from the engineer's own conditional formatting on the working sheet:
-#: C between 1.1 and 2.9 selects 2; L between 3.1 and 5.9 selects 4 and 5.
-WET_CODES = {2}
-DARK_CODES = {4, 5}
+#: Wet road condition and dark light condition, in fiche C and L codes.
+#: From the warrants workbook, which is authoritative over the reading I first
+#: took off the working sheet's conditional formatting:
+#:   wet   COUNTIFS(C, ">=2", C, "<=3")   -> 2 AND 3, not 2 alone
+#:   dark  COUNTIFS(L, ">=4", L, "<=6")   -> 4, 5 AND 6, not 4 and 5
+#: The conditional formatting on the working sheet is narrower than the warrant
+#: on both counts, so a cell can be unhighlighted and still count.
+WET_CODES = {2, 3}
+DARK_CODES = {4, 5, 6}
+
+#: Sideswipe Same Direction counts as run-off-road on a MULTI-LANE facility
+#: only. The workbook lists it as "Sideswipe Same* (use SSSD)" with the note
+#: "*multi-lane only", and leaves its abbreviation cell blank until the
+#: engineer decides. Not in the 2024 Overview's prose list at all.
+MULTILANE_ROR_TYPES = {"SSSD"}
+
+#: Crash types that are intersection crashes, for the N-4 base. The workbook
+#: derives non-intersection crashes as total minus these, rather than from a
+#: flag: Angle, LTDR, LTSR, RTDR, RTSR, U-Turn and the Y-line variant.
+INTERSECTION_TYPES = {"angle", "LTDR", "LTSR", "RTDR", "RTSR", "U-Turn",
+                      "LTDR, Y-line"}
 
 #: (minimum total crashes, minimum crashes per mile) by facility type.
 FACILITY_MINIMUMS = {
@@ -73,15 +89,20 @@ class Crash:
     crash_type: str = ""          # decoded Type, e.g. "ROR-L"
     road_condition: int | None = None      # C
     light_condition: int | None = None     # L
-    at_intersection: bool = False          # for N-4 only
+    at_intersection: bool = False          # unused; N-4 uses the type
 
     @property
     def is_animal(self) -> bool:
         return self.crash_type in EXCLUDED_TYPES
 
+    def is_ror(self, multilane: bool = False) -> bool:
+        if self.crash_type in ROR_TYPES:
+            return True
+        return multilane and self.crash_type in MULTILANE_ROR_TYPES
+
     @property
-    def is_ror(self) -> bool:
-        return self.crash_type in ROR_TYPES
+    def at_intersection_type(self) -> bool:
+        return self.crash_type in INTERSECTION_TYPES
 
     @property
     def is_wet(self) -> bool:
@@ -126,6 +147,7 @@ class SectionScreen:
 
 
 def screen_section(crashes, length_mi: float, facility: str = "freeway",
+                   multilane: bool = False, strict: bool = True
                    ) -> SectionScreen:
     """Run the section warrants for one location.
 
@@ -142,7 +164,11 @@ def screen_section(crashes, length_mi: float, facility: str = "freeway",
     total = len(kept)
     rate = total / length_mi
     min_total, min_rate = FACILITY_MINIMUMS[facility]
-    meets = total >= min_total and rate >= min_rate
+    # The workbook tests STRICTLY greater than: 30 crashes does not clear a
+    # minimum of 30. The Overview's prose ("a minimum number ... are met")
+    # reads as >=. strict=True follows the workbook, which is what NCDOT runs.
+    meets = ((total > min_total and rate > min_rate) if strict
+             else (total >= min_total and rate >= min_rate))
 
     klass = "freeway" if facility == "freeway" else "nonfreeway"
     out = []
@@ -150,10 +176,10 @@ def screen_section(crashes, length_mi: float, facility: str = "freeway",
         if fac != klass:
             continue
         if name in ("F-1", "N-1"):
-            n = sum(1 for c in kept if c.is_ror and c.is_wet)
+            n = sum(1 for c in kept if c.is_ror(multilane) and c.is_wet)
             base = total
         elif name in ("F-2", "N-2"):
-            n = sum(1 for c in kept if c.is_ror)
+            n = sum(1 for c in kept if c.is_ror(multilane))
             base = total
         elif name in ("F-3", "N-3"):
             n = sum(1 for c in kept if c.is_wet)
@@ -164,8 +190,8 @@ def screen_section(crashes, length_mi: float, facility: str = "freeway",
         else:                                   # N-4
             # The only warrant whose base is not the total: non-intersection
             # crashes, and whose numerator is ROR crashes in the dark.
-            ni = [c for c in kept if not c.at_intersection]
-            n, base = sum(1 for c in ni if c.is_ror and c.is_dark), len(ni)
+            ni = [c for c in kept if not c.at_intersection_type]
+            n, base = sum(1 for c in ni if c.is_ror(multilane) and c.is_dark), len(ni)
         share = n / base if base else 0.0
         out.append(WarrantResult(
             warrant=name, description=desc, threshold=threshold, count=n,

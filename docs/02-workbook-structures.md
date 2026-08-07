@@ -78,6 +78,27 @@ Fiche**, and these rules come off it (`examples/SS-6002AD`):
   date a date. The lookups depend on it. Identifiers with a leading zero
   (county code `075`) stay text.
 
+**Screening: which reports to pull.** `safety_eval/fiche_screen.py`. Initial
+Study crashes are `IS`. For the rest, each From/Toward cell resolves to a
+milepost on the study route through the Features Report and is coloured: green
+inside the limits, blue north/east, yellow south/west. Then:
+
+- **a green cell**, or **two different colours** -> `?`, pull the report. Blue
+  against yellow is the case worth naming: the roads sit on opposite sides, so
+  whatever lies between them crosses the study.
+- **the same colour on both sides** -> `NIS`.
+
+Not filtered by the coded milepost, deliberately. The fiche also gives a
+distance from the named road, but that distance is the officer's, and checking
+it is exactly what the report review is for; a milepost derived from the number
+under review cannot be used to skip the review.
+
+Two traps. **US 74 has two mile-marker series** (marker 62 at MP 3.638, marker
+162 at 9.696, because numbering restarts at the I 26 junction), so a loose
+match moves a crash six miles. And **a crash on a cross street is placed where
+that street meets the study route**, not by its own milepost: NC 9 crashes are
+at US 74 MP 14.455, NC 108 crashes at 10.125.
+
 **The ID sheet's column layout is a record of how the export was pasted.** The
 header `CRASH ID|ON RD CD|SVRTY|DATE|TYPE|` was split on pipes **and spaces**,
 so its 5 fields land in 8 header cells (H:O) over 6 data cells (H:M), the date

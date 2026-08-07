@@ -11,16 +11,12 @@ is measured FROM and the road it is measured TOWARD. Each resolves to a
 milepost on the study route through the Features Report, and the two together
 bracket where the crash can be:
 
-* one of them inside the study limits, AND the coded milepost within ``band``
-  of those limits -> the crash could be in the study, so the report gets
-  pulled: **?**
-* otherwise **NIS**, no report needed
+* either cell green, or the two cells a different colour -> the crash can fall
+  inside the limits, so the report gets pulled: **?**
+* both cells the same colour -> **NIS**, no report needed
 
-Naming a study feature is not on its own enough, because the fiche also gives
-the DISTANCE from it. Crash 108416549 is measured 5.000 miles east of NC 9: it
-names a feature inside the limits and sits five miles clear of them. ``band``
-is how much milepost error the review is willing to entertain, and it is the
-engineer's call rather than a fact; 0.5 mi is the default.
+Blue against yellow is the case worth naming: the two roads sit on opposite
+sides of the study, so whatever lies between them crosses it.
 
 Colour records the same judgement cell by cell, so a reviewer can see why:
 
@@ -115,37 +111,43 @@ def classify(name, features: dict, lo: float, hi: float):
 
 
 def needs_review(from_road, toward_road, on_road, features, lo, hi,
-                 route="US 74", coded_mp=None, band=0.5) -> str:
+                 route="US 74") -> str:
     """"?" if a report is worth pulling for this crash, else "NIS".
 
-    ``band`` is how far outside the limits a coded milepost may sit and still
-    be worth checking. A green cell alone is not enough: crash 108416549 is
-    measured 5.000 miles east of NC 9, so it names a study feature and is
-    nowhere near the study. The band is the milepost error the review is
-    willing to entertain, and it is the engineer's call, not a fact.
+    The rule is the colour, and nothing else (engineer, 2026-08):
+
+    * **a green cell** - the crash is measured off a feature inside the study
+      limits, so it may well be in the study.
+    * **two different colours** - blue against yellow means the pair brackets
+      the limits, so the crash can fall between them and land inside.
+    * the same colour on both sides -> NIS. Both endpoints lie the same way, so
+      nothing between them reaches the study.
+
+    Deliberately NOT filtered by the coded milepost. The fiche also gives a
+    distance, and crash 108018739 is measured 6.000 miles west of MILE 167,
+    putting its coded milepost four miles clear of the limits. But that
+    distance is the officer's, and checking whether it is right is precisely
+    what the report review is FOR, so a milepost derived from it cannot be used
+    to skip the review.
     """
     on = normalize_feature(on_road)
     if on and on != route.upper():
         # A cross-street crash sits where that street meets the study route.
         bucket, _ = classify(on_road, features, lo, hi)
         return "?" if bucket == "in" else "NIS"
-    marks = [classify(r, features, lo, hi) for r in (from_road, toward_road)]
-    near = (coded_mp is None or coded_mp == 999.999
-            or lo - band <= coded_mp <= hi + band)
-    if any(bucket == "in" for bucket, _ in marks) and near:
-        return "?"          # names a study feature AND is coded near the limits
-    # A bracket that merely straddles the limits is NOT enough. Crash 108018739
-    # is measured 6.000 miles west of MILE 167, which puts it at MP 8.655; its
-    # other endpoint, MILE 163, sits below the limits, so the pair straddles
-    # them while the crash itself is four miles clear. The Miles field already
-    # pinned it, and the coded milepost agrees.
-    if not any(mp is not None for _, mp in marks):
-        return "?"          # nothing resolved, so nothing rules it out
+    buckets = [classify(r, features, lo, hi)[0] for r in (from_road, toward_road)]
+    if "in" in buckets:
+        return "?"                          # green
+    known = [b for b in buckets if b]
+    if len(known) == 2 and known[0] != known[1]:
+        return "?"                          # blue against yellow
+    if len(known) < 2:
+        return "?"                          # unresolved: nothing rules it out
     return "NIS"
 
 
 def screen_sheet(ws, features: dict, lo: float, hi: float, initial_ids,
-                 route: str = "US 74", col=None, band: float = 0.5) -> dict:
+                 route: str = "US 74", col=None) -> dict:
     """Fill IS?, colour the From/Toward cells, and sort. Returns a tally."""
     col = col or {"on": 2, "from": 5, "toward": 6, "mproad": 7, "mp": 8,
                   "is": 9, "id": 12}
@@ -161,9 +163,7 @@ def screen_sheet(ws, features: dict, lo: float, hi: float, initial_ids,
         fr = ws.cell(row=r, column=col["from"]).value
         tw = ws.cell(row=r, column=col["toward"]).value
         status = ("IS" if cid in initial
-                  else needs_review(fr, tw, on, features, lo, hi, route,
-                                    coded_mp=_mp_key(ws.cell(row=r, column=col["mp"]).value),
-                                    band=band))
+                  else needs_review(fr, tw, on, features, lo, hi, route))
         tally[status] += 1
         buckets = {}
         if not normalize_feature(on) or normalize_feature(on) == route.upper():

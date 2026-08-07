@@ -224,9 +224,68 @@ Net effect: the assist can now say "this one is misplaced, here is why, go look
 the milepost up", which is the thing the engineer wanted from it. What it still
 cannot do is invent the milepost, which is the thing it must not do.
 
-Not yet re-measured. The 32% above was taken with the old rule and stands until
-a run with a key repeats it; RE moving off 0 of 16 is the specific thing to
-check, and it is a prediction, not a result.
+### Re-measured under the fixed rule (2026-08, third re-run, n=47)
+
+Same 47 reports, same corridor, same harness, all 47 redacted clean with zero
+residual. Only the rule changed.
+
+The fix does what it was built to do, and it does not move the number.
+
+| | old rule | fixed rule |
+|---|---|---|
+| exact agreement | 32% | **30%** (14 of 47) |
+| RE proposed | 0 | **5** |
+| RE recall | 0 of 16 | 1 of 16 |
+| in-study vs not | 72% | 74% |
+| `needs_manual` | 30% | 30% |
+
+30 against 32 is one crash at n=47. Nothing moved. What the re-run bought is
+not accuracy, it is **visibility**: with the status unblocked, the model's
+actual reasoning reaches the output, and three things are now legible that the
+old rule was hiding.
+
+**1. Most of the disagreement is vocabulary, not judgement.** Twenty-one of the
+33 disagreements get *does this crash belong in the study* right and pick the
+wrong word for it: RE→IS 11, NIS→DEL 5, ADD→RE 2, ADD→IS 1, IS→RE 1, DEL→NIS 1.
+On the belongs-or-not question the assist runs at **74%**, and that is the
+honest statement of what it can currently do. Exact-match at 30% is measuring
+vocabulary on top of it.
+
+**2. The dominant RE pattern is one corridor judgement, not sixteen report
+judgements.** Eight of the 16 RE rows are a single cluster: seven coded at
+17.691 and one at 17.685, every one of them moved to 17.811. MP 17.691 is the
+SR 1716 / Lake Wendell intersection; **17.811 is SR 2637 / SR 2638, the next
+intersection, 0.12 mi along**. (The features report's fifth column is distance
+to the next feature, not an offset for the current one: MERRITT 17.204 + 0.487
+= 17.691, LAKE WENDELL 17.691 + 0.120 = 17.811. It does not state the
+correction; it only says the two intersections are adjacent.)
+
+The engineer moved a batch of crashes from one intersection to the one next
+door. The assist said "belongs in the study" on all eight and IS on seven,
+which is defensible for each report taken alone and wrong about the batch. **A
+per-report reviewer cannot see a per-corridor correction.** That is
+architectural, not a prompt defect: the unit of work is wrong. What evidence
+moved those eight is the single most useful thing a worked transcript would
+tell us, and this run does not answer it.
+
+**3. ADD has no rule, and it shows.** ADD scored 0 of 5, and all five ADD rows
+are coded 999.999 or off the study route entirely. That *is* the working
+definition, and docs/03 never says so, so the model cannot apply it. It got the
+substance right anyway on three of them, in its own words: *"crash at SR 1716 /
+SR 1003 intersection within study limits; coded on SR 1716 with placeholder mp
+1000.00"*. That is ADD, described exactly, and labelled RE. Teaching the
+distinction (RE = already on the study route at a wrong milepost; ADD = coded
+off the study and belongs in it) is the cheapest available correction.
+
+**The guard behaves.** All five RE proposals carried `needs_manual`, the
+"look the New MP up" flag, and a null New MP. Not one fabricated milepost.
+
+**`resolve` contributed nothing: 0 independent mileposts on 47 reports.** These
+location blocks give a municipality distance, and the resolver additionally
+cannot use a named cross street unless a distance from it is also present, so
+`at_intersection` is dead as a signal (it is only ever set from
+`distance == 0`). Every determination here was made without an independent
+milepost.
 
 ### Study limits: read them, do not infer them
 

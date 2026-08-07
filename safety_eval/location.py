@@ -358,7 +358,11 @@ def decode_route_id(route_id) -> tuple:
     numbering, NOT the FIPS code. Verified against two real records: 093 is
     Warren (the NC-58 sample plots at 36.21 N in Warren, FIPS 093 would be
     Hoke, 200 miles away) and 083 is Scotland (US-74 BUS at Laurinburg).
-    Johnston, which the SR 1003 evaluation runs in, is 51.
+
+    Do not count the alphabet to get it. **The county number is the County Code
+    printed on the fiche header**, so it can be read straight off the study:
+    study 41000079305 shows "POLK","75", and Polk is 75. Johnston, which the
+    SR 1003 evaluation runs in, is 51.
 
     Returns ``("", None)`` for anything that is not an 11 or 8 digit code, so a
     caller can fall back to a RouteName field.

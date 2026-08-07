@@ -38,6 +38,7 @@ report contradicts is exactly the RE determination (docs/03).
 from __future__ import annotations
 
 import csv
+import json
 import math
 import os
 import re
@@ -156,6 +157,72 @@ class FeatureInventory:
             pts.sort()
         return inv
 
+    def load_route_shape(self, source, route: str | None = None,
+                         mp_field: str | None = None,
+                         route_field: str | None = None) -> dict:
+        """Add M-aware route geometry from a GeoJSON LineString / MultiLineString.
+
+        This is the NCDOT LRS export: route centrelines whose vertices carry a
+        milepost measure. It is the input ``interpolate_milepost`` has always
+        wanted and never had, and without it the coordinate path cannot fire at
+        all (measured: 0 resolved mileposts on 47 real reports).
+
+        Two vertex conventions are accepted, because ArcGIS exports both:
+
+        * ``[lon, lat, z, m]`` or ``[lon, lat, m]``  - the measure rides on the
+          vertex, which is the useful case and needs no interpolation.
+        * ``[lon, lat]`` with per-feature ``BeginMP``/``EndMP`` properties - the
+          measure is spread evenly along the feature by vertex count, which is
+          an approximation and is only used when there is no vertex measure.
+
+        ``route`` overrides the route named in the properties, for a
+        single-route export. Returns ``{route: vertex count}``.
+        """
+        data = source
+        if isinstance(source, str):
+            with open(source, encoding="utf-8-sig") as fh:
+                data = json.load(fh)
+        elif hasattr(source, "read"):
+            data = json.load(source)
+        feats = data.get("features", []) if isinstance(data, dict) else list(data)
+        added: dict = {}
+        for feat in feats:
+            props = {str(k).strip().lower(): v
+                     for k, v in (feat.get("properties") or {}).items()}
+            name = route or props.get((route_field or "").lower()) or \
+                props.get("routeid") or props.get("route") or \
+                props.get("rte_id") or props.get("routename") or ""
+            key = normalize_route(str(name))
+            if not key:
+                continue
+            geom = feat.get("geometry") or {}
+            parts = geom.get("coordinates") or []
+            if geom.get("type") == "LineString":
+                parts = [parts]
+            elif geom.get("type") != "MultiLineString":
+                continue
+            lo = _as_float(props.get((mp_field or "").lower()),
+                           props.get("beginmp"), props.get("begin_mp"),
+                           props.get("from_mp"), props.get("mp_begin"))
+            hi = _as_float(props.get("endmp"), props.get("end_mp"),
+                           props.get("to_mp"), props.get("mp_end"))
+            for part in parts:
+                n = len(part)
+                for i, v in enumerate(part):
+                    if len(v) < 2:
+                        continue
+                    lon, lat = float(v[0]), float(v[1])
+                    mp = float(v[-1]) if len(v) >= 3 else None
+                    if mp is None and lo is not None and hi is not None:
+                        mp = lo if n < 2 else lo + (hi - lo) * i / (n - 1)
+                    if mp is None:
+                        continue
+                    self.shape.setdefault(key, []).append((mp, lat, lon))
+                    added[key] = added.get(key, 0) + 1
+        for pts in self.shape.values():
+            pts.sort()
+        return added
+
     @classmethod
     def from_features_report(cls, text: str, route: str | None = None
                              ) -> "FeatureInventory":
@@ -255,6 +322,18 @@ _FEATURE_TYPE_RE = re.compile(
 _HEADER_RE = re.compile(r"^\s*([A-Z][A-Z .\'-]+?)\s+(\d{8})\s+\d+\.\d+", re.M)
 #: route id prefixes (docs/09): 2 = US, 3 = NC, 4 = SR
 _ID_PREFIX = {"2": "US", "3": "NC", "4": "SR"}
+
+
+def _as_float(*candidates):
+    """First candidate that parses as a float, or None."""
+    for c in candidates:
+        if c is None or c == "":
+            continue
+        try:
+            return float(c)
+        except (TypeError, ValueError):
+            continue
+    return None
 
 
 def _route_from_header(text: str) -> str:

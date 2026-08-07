@@ -477,6 +477,20 @@ def _cmd_assumptions(args) -> int:
     return 0
 
 
+def _cmd_fiche_workbook(args) -> int:
+    """Assemble the study workbook from the four TEAAS exports."""
+    from .fiche_workbook import build_fiche_workbook
+
+    out = args.out or f"{args.study}_Fiche.xlsx"
+    counts = build_fiche_workbook(
+        out, fiche_csv=args.fiche, initial_study_csv=args.initial_study,
+        initial_id_txt=args.initial_ids, detailed_fiche_csv=args.detailed)
+    for sheet, n in counts.items():
+        print(f"{n:>6} rows -> {sheet}")
+    print(f"wrote {out}")
+    return 0
+
+
 def _cmd_teaas_import(args) -> int:
     from .teaas import crashes_from_workbook, write_period_imports
 
@@ -854,6 +868,21 @@ def build_parser() -> argparse.ArgumentParser:
     ti.add_argument("--prefix", default="",
                     help="Filename prefix, e.g. '04-15-39049_'.")
     ti.set_defaults(func=_cmd_teaas_import)
+
+    fw = sub.add_parser(
+        "fiche-workbook",
+        help="Assemble the study fiche workbook from the TEAAS exports: the "
+             "Fiche Report becomes the Original Fiche sheet, the pipe-"
+             "delimited ID export and the fiche crash IDs are cross-"
+             "referenced on the ID sheet, and the Strip Analysis Report and "
+             "Detailed Fiche come in as their own sheets.")
+    fw.add_argument("--study", required=True, help="Study number, e.g. 41000079305.")
+    fw.add_argument("--fiche", required=True, help="Fiche Report CSV.")
+    fw.add_argument("--initial-study", help="Strip/Intersection Analysis Report CSV.")
+    fw.add_argument("--initial-ids", help="Pipe-delimited TEAAS ID export.")
+    fw.add_argument("--detailed", help="Detailed Fiche CSV (carries lat/lon).")
+    fw.add_argument("--out", help="Output path (default <study>_Fiche.xlsx).")
+    fw.set_defaults(func=_cmd_fiche_workbook)
 
     d = sub.add_parser("doctor", help="Report available optional backends.")
     d.set_defaults(func=_cmd_doctor)

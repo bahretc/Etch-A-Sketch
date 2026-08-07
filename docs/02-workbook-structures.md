@@ -20,6 +20,53 @@ Header block: County, County Code, Division, Municipality, Municipality Code, Be
 
 Crash rows: Muni. Code | On Road | Miles | Dir From | From Road | Toward Road | Milepost Road | MP | MA | Crash ID | Date | T | C | F | L | S. MP 999.999 means not mileposted (crash referenced to an address or PVA driveway in On Road, e.g. "*LCL 1226 E DIXIE DR" or "PVA 737 W DIXIE DR"). Page footers ("Page 1 of 224") appear between blocks in raw pulls and must be stripped on ingest.
 
+### Assembling the study fiche workbook (step 1 of a review)
+
+Four TEAAS exports become one workbook before any determination is made.
+`safety_eval/fiche_workbook.py`, or:
+
+```
+safety-eval fiche-workbook --study 41000079305 \
+  --fiche OriginalFiche.csv --initial-study InitialStudy.csv \
+  --initial-ids InitialID.txt --detailed DetailedFiche.csv
+```
+
+Order of operations:
+
+1. Copy the Fiche Report CSV to `<study>_Fiche.csv`. The study number names
+   everything downstream.
+2. Convert it to `<study>_Fiche.xlsx`, sheet **Original Fiche**.
+3. Sheet **ID**: column A takes every fiche crash ID in fiche order; the
+   pipe-delimited ID export is pasted at column H; column B repeats its crash
+   IDs; column D flags whether each is in the fiche; column C (`IS?`) is left
+   blank for the engineer.
+4. Sheet **Initial Study**: the Strip (or Intersection) Analysis Report CSV.
+5. Sheet **DetailedFiche**: the Detailed Fiche CSV, which is the only export
+   carrying Latitude/Longitude/Source. It routinely covers fewer roads than the
+   Original Fiche; that is expected and not an error.
+
+**Fiche formatting rules, read off the delivered workbooks and not from
+tidiness.** Verified against `examples/SS-6002AD` and `examples/04-15-39049`:
+
+- The fiche sheet is a **verbatim paste**. Page footers ("Page 1 of 13") and
+  the repeated `Muni. Code` header blocks are **kept** (SS-6002AD has them at
+  rows 12, 46, 78, ...). The "strip on ingest" rule above governs *parsing*;
+  this sheet is the raw pull and must match what the engineer pulled.
+- Cells are typed as Excel types a paste: crash ID as a number, milepost as a
+  float, date as a date. The ID sheet's cross-reference depends on it, since a
+  text `"107206325"` never matches a numeric one. The exception is any
+  identifier with a leading zero (county code `075`), which stays text.
+- The crash header row is **one column short of its data rows**, because
+  "Miles / Dir From" is one header spanning two data columns. That comes from
+  TEAAS. Do not correct it.
+- Visual formatting is almost nothing: wrap on the multi-line header cells,
+  column A about 18.9 wide. No bold, fill, freeze pane, or autofilter.
+
+**The ID sheet's column layout is a record of how the export was pasted.** The
+header `CRASH ID|ON RD CD|SVRTY|DATE|TYPE|` was split on pipes **and spaces**,
+so its 5 fields land in 8 header cells (H:O) over 6 data cells (H:M), the date
+field having become a date cell and a time cell. Reproduced exactly.
+
 ### Filtered Fiche
 
 The working review sheet. Same base columns plus: IS? | Type | Dir | Comment | Latitude | Longitude | Dist to Signal (ft), and a color key column at far right.

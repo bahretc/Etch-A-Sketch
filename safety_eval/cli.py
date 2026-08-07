@@ -498,9 +498,37 @@ def _cmd_fiche_workbook(args) -> int:
     return 0
 
 
+def _cmd_check_branches(args) -> int:
+    """Refuse to pass while a status contradicts Initial Study membership."""
+    from .fiche_workbook import parse_initial_ids
+    from .qc import check_branch_vocabulary
+
+    _, raw = parse_initial_ids(args.initial_ids)
+    problems = check_branch_vocabulary(args.workbook, args.sheet,
+                                       [r[0] for r in raw])
+    if not problems:
+        print("No branch violations.")
+        return 0
+    print(f"{len(problems)} branch violation(s):")
+    for p in problems:
+        print(f"  row {p['row']:>4}  {p['crash_id']}  {p['status']:<4} "
+              f"{p['problem']}")
+    return 2
+
+
 def _cmd_teaas_import(args) -> int:
     from .teaas import crashes_from_workbook, write_period_imports
 
+    if getattr(args, "initial_ids", None):
+        from .fiche_workbook import parse_initial_ids
+        from .qc import check_branch_vocabulary
+        _, raw = parse_initial_ids(args.initial_ids)
+        bad = check_branch_vocabulary(args.workbook, args.sheet or "",
+                                      [r[0] for r in raw])
+        if bad:
+            print(f"Refusing to write: {len(bad)} branch violation(s). "
+                  "Run check-branches.")
+            return 2
     crashes = crashes_from_workbook(args.workbook)
     if not crashes:
         print(f"No Before/After crash rows found in {args.workbook}")
@@ -864,6 +892,18 @@ def build_parser() -> argparse.ArgumentParser:
     ae.add_argument("--outdir", default=".")
     ae.set_defaults(func=_cmd_assumptions)
 
+    tw = sub.add_parser(
+        "check-branches",
+        help="Gate: flag statuses that contradict Initial Study membership "
+             "(docs/03). An initial-study crash that does not belong is DEL, "
+             "never NIS. Exits non-zero if any violation is found, so it can "
+             "guard the import list.")
+    tw.add_argument("--workbook", required=True)
+    tw.add_argument("--sheet", required=True)
+    tw.add_argument("--initial-ids", required=True,
+                    help="Pipe-delimited TEAAS ID export.")
+    tw.set_defaults(func=_cmd_check_branches)
+
     ti = sub.add_parser(
         "teaas-import",
         help="Write the TEAAS milepost import files (Before_Import.txt / "
@@ -872,6 +912,11 @@ def build_parser() -> argparse.ArgumentParser:
              "list instead of the import.")
     ti.add_argument("--workbook", required=True)
     ti.add_argument("--outdir", default=".")
+    ti.add_argument("--initial-ids",
+                    help="Pipe-delimited TEAAS ID export. When given, the "
+                         "branch gate runs first and refuses to write while "
+                         "any status contradicts Initial Study membership.")
+    ti.add_argument("--sheet", help="Sheet for the branch gate.")
     ti.add_argument("--prefix", default="",
                     help="Filename prefix, e.g. '04-15-39049_'.")
     ti.set_defaults(func=_cmd_teaas_import)

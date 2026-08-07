@@ -255,3 +255,59 @@ def test_bad_context_and_empty_input_are_refused():
         screen_intersection(icrashes(10), "suburban", END)
     with pytest.raises(ValueError):
         screen_intersection([], "urban", END)
+
+
+# ---------------------------------------------------------------------------
+# the Warrant sheet
+# ---------------------------------------------------------------------------
+def _wsheet(tmp_path, rows, **kw):
+    import openpyxl
+
+    from safety_eval.warrant_sheet import add_warrant_sheet
+    wb = openpyxl.Workbook()
+    ws, screen = add_warrant_sheet(wb, rows, kw.pop("length_mi", 1.0), **kw)
+    return ws, screen
+
+
+def _row(cid, mp, typ="ROR-L", c=1, l=1, s="O", t=2):
+    return dict(mp=mp, crash_id=cid, t=t, c=c, f=0, l=l, s=s, type=typ)
+
+
+def test_the_warrant_sheet_lists_only_the_analysis_crashes(tmp_path):
+    """Which is the point: the highlight covers the whole table, so its extent
+    can never drift out of step with the determinations."""
+    ws, _ = _wsheet(tmp_path, [_row(1, 13.1), _row(2, 12.9), _row(3, 13.5)])
+    # max_row counts the summary block to the right, so measure the table.
+    table = [r for r in range(2, ws.max_row + 1)
+             if ws.cell(row=r, column=3).value is not None]
+    assert table == [2, 3, 4]                    # 3 crashes, no more
+    assert [ws.cell(row=r, column=2).value for r in (2, 3, 4)] == [12.9, 13.1, 13.5]
+    assert ws.cell(row=2, column=1).value == 1   # renumbered by milepost
+
+
+def test_the_highlight_covers_every_row_and_matches_the_warrant(tmp_path):
+    ws, _ = _wsheet(tmp_path, [_row(i, 13.0 + i / 100) for i in range(5)])
+    rules = {str(rng.sqref): [r for r in rs]
+             for rng, rs in ws.conditional_formatting._cf_rules.items()}
+    assert "F2:F6" in rules and "H2:H6" in rules      # C and L, whole table
+    assert rules["F2:F6"][0].formula == ["1.1", "3.9"]   # wet C in {2,3}
+    assert rules["H2:H6"][0].formula == ["3.1", "6.9"]   # dark L in {4,5,6}
+
+
+def test_the_summary_reports_the_screen(tmp_path):
+    rows = [_row(i, 13.0 + i / 200, c=2, l=5) for i in range(40)]
+    ws, screen = _wsheet(tmp_path, rows, length_mi=1.0, facility="freeway")
+    assert screen.total == 40
+    labels = {ws.cell(row=r, column=14).value for r in range(1, 20)}
+    assert "Total" in labels and "Crashes/Mile" in labels
+    assert any(str(v).startswith("F-2") for v in labels)
+
+
+def test_the_sheet_is_rebuilt_not_duplicated(tmp_path):
+    import openpyxl
+
+    from safety_eval.warrant_sheet import SHEET_WARRANT, add_warrant_sheet
+    wb = openpyxl.Workbook()
+    for _ in range(3):
+        add_warrant_sheet(wb, [_row(1, 13.0)], 1.0)
+    assert wb.sheetnames.count(SHEET_WARRANT) == 1

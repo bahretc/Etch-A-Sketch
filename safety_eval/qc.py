@@ -245,3 +245,47 @@ def recount(workbook_path: str, treatment: str | None = None,
     rep.warnings.extend(
         scan_quoted_counts(workbook_path, results_sheets, legit))
     return rep
+
+
+# --------------------------------------------------------------------------- #
+# the two-branch vocabulary (docs/03)
+# --------------------------------------------------------------------------- #
+def check_branch_vocabulary(workbook_path: str, sheet: str, initial_ids,
+                            status_col: int = 9, id_col: int = 12) -> list:
+    """Statuses that contradict Initial Study membership (docs/03).
+
+    Which statuses a crash may take is fixed before review by one fact: was it
+    in the Initial Study? In it, the crash is IS, RE or DEL. Not in it, ADD or
+    NIS. So an initial-study crash that turns out not to belong is **DEL**, and
+    marking it NIS is a data error even though both read as "not in this study".
+
+    This is the check that catches the mistake AFTER the engineer has reviewed,
+    which is where it happens: the screen never emits an off-branch status, but
+    an edit can.
+    """
+    import openpyxl
+
+    from .review_queue import branch_vocab
+
+    initial = {int(c) for c in initial_ids}
+    ws = openpyxl.load_workbook(workbook_path, data_only=True)[sheet]
+    problems = []
+    for r in range(2, ws.max_row + 1):
+        status = ws.cell(row=r, column=status_col).value
+        cid = ws.cell(row=r, column=id_col).value
+        if not status or cid is None:
+            continue
+        base = str(status).split("-")[0].strip()
+        if base == "?":
+            continue                      # not yet decided
+        was_in = int(cid) in initial
+        allowed = branch_vocab("section", was_in)
+        if base not in allowed:
+            where = ("was in the Initial Study" if was_in
+                     else "was not in the Initial Study")
+            problems.append({
+                "row": r, "crash_id": int(cid), "status": base,
+                "problem": f"{base} is not available to a crash that {where}; "
+                           f"that branch allows {', '.join(allowed)}",
+                "expected": list(allowed)})
+    return problems

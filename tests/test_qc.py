@@ -111,3 +111,48 @@ def test_quoted_count_ignores_target_labels(tmp_path):
     path = _build(tmp_path, results_text="Target-1 Crashes")
     assert scan_quoted_counts(path, ("1 page results - 1 Target",),
                               {2}) == []
+
+
+def test_branch_vocabulary_catches_an_initial_study_crash_marked_NIS(tmp_path):
+    """An initial-study crash that does not belong is DEL, never NIS.
+
+    Both read as "not in this study", and they are not interchangeable: they
+    start from opposite branches (docs/03). Found four of these on a real
+    reviewed sheet, three of which the engineer spotted and one they had not.
+    """
+    import openpyxl
+
+    from safety_eval.qc import check_branch_vocabulary
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "F"
+    ws.cell(row=1, column=9, value="IS?")
+    ws.cell(row=1, column=12, value="Crash ID")
+    rows = [("IS", 111), ("DEL", 222), ("NIS", 333),     # 333 is in the study
+            ("NIS", 444), ("ADD", 555), ("RE", 666)]     # 555 is not; 666 is
+    for i, (st, cid) in enumerate(rows, start=2):
+        ws.cell(row=i, column=9, value=st)
+        ws.cell(row=i, column=12, value=cid)
+    path = str(tmp_path / "f.xlsx")
+    wb.save(path)
+
+    problems = check_branch_vocabulary(path, "F", [111, 222, 333, 666])
+    flagged = {p["crash_id"]: p["status"] for p in problems}
+    assert flagged == {333: "NIS"}                 # the only violation
+    assert problems[0]["expected"] == ["IS", "RE", "DEL"]
+
+
+def test_branch_vocabulary_leaves_undecided_rows_alone(tmp_path):
+    import openpyxl
+
+    from safety_eval.qc import check_branch_vocabulary
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "F"
+    ws.cell(row=2, column=9, value="?")
+    ws.cell(row=2, column=12, value=111)
+    path = str(tmp_path / "f.xlsx")
+    wb.save(path)
+    assert check_branch_vocabulary(path, "F", [111]) == []

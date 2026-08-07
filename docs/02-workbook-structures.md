@@ -35,32 +35,48 @@ Order of operations:
 
 1. Copy the Fiche Report CSV to `<study>_Fiche.csv`. The study number names
    everything downstream.
-2. Convert it to `<study>_Fiche.xlsx`, sheet **Original Fiche**.
+2. Convert it to `<study>_Fiche.xlsx`, sheet **`<study>_Fiche`**, formatted
+   per the rules below.
 3. Sheet **ID**: column A takes every fiche crash ID in fiche order; the
    pipe-delimited ID export is pasted at column H; column B repeats its crash
    IDs; column D flags whether each is in the fiche; column C (`IS?`) is left
    blank for the engineer.
 4. Sheet **Initial Study**: the Strip (or Intersection) Analysis Report CSV.
-5. Sheet **DetailedFiche**: the Detailed Fiche CSV, which is the only export
-   carrying Latitude/Longitude/Source. It routinely covers fewer roads than the
-   Original Fiche; that is expected and not an error.
+5. Sheet **DetailedFiche**: the Detailed Fiche CSV, the only export carrying
+   Latitude/Longitude/Source. It routinely covers fewer roads than the fiche;
+   that is expected and not an error.
+6. Sheet **Index**: the T-code map, which the Type column looks up against.
 
-**Fiche formatting rules, read off the delivered workbooks and not from
-tidiness.** Verified against `examples/SS-6002AD` and `examples/04-15-39049`:
+**Fiche formatting rules.** The `<study>_Fiche` sheet is the **working sheet**,
+not a raw paste. The delivered *Original Fiche* sheets are verbatim pastes and
+are a red herring; the sheet an engineer actually works is the **Filtered
+Fiche**, and these rules come off it (`examples/SS-6002AD`):
 
-- The fiche sheet is a **verbatim paste**. Page footers ("Page 1 of 13") and
-  the repeated `Muni. Code` header blocks are **kept** (SS-6002AD has them at
-  rows 12, 46, 78, ...). The "strip on ingest" rule above governs *parsing*;
-  this sheet is the raw pull and must match what the engineer pulled.
-- Cells are typed as Excel types a paste: crash ID as a number, milepost as a
-  float, date as a date. The ID sheet's cross-reference depends on it, since a
-  text `"107206325"` never matches a numeric one. The exception is any
-  identifier with a leading zero (county code `075`), which stays text.
-- The crash header row is **one column short of its data rows**, because
-  "Miles / Dir From" is one header spanning two data columns. That comes from
-  TEAAS. Do not correct it.
-- Visual formatting is almost nothing: wrap on the multi-line header cells,
-  column A about 18.9 wide. No bold, fill, freeze pane, or autofilter.
+- **Column setup.** The raw fiche row carries 16 fields under a 15-cell header,
+  because "Miles / Dir From" is one header spanning two data columns. Split
+  into `Miles` and `Dir From`, and insert `IS?` and `New MP` after `MP`, so the
+  labels line up with the data.
+- **Rows removed:** title block, County/Division header block, Road Name / Road
+  Code table, every "Page 1 of 13" footer, every repeated `Muni. Code` header
+  block, and the trailing legend. One row per crash, nothing else.
+- **Sorted by milepost** ascending; MP 999.999 (never mileposted) lands at the
+  end on its own value.
+- **Type** = `VLOOKUP(T, Index!$A$1:$B$26, 2, FALSE)` against the T-code map,
+  which ships as the `Index` sheet.
+- **Dir** is the movement pair, built from the two vehicle directions the
+  Initial Study records on the `Unit` lines under each crash: MATCH the crash ID
+  in column B, step down one row for vehicle 1 and two for vehicle 2, read
+  column K. The `NOT(ISNUMBER(...))` guard on vehicle 2 is what stops a
+  single-vehicle crash from picking up the *next* crash's row. The pair is then
+  shaped by type: RE is BT/BT, LTSR and LTDR are BL/BT, RTSR and RTDR are BR/BT.
+  Helper columns Y/Z/AA hold vehicle 1, vehicle 2, and the assembled pair.
+- **Latitude / Longitude** = INDEX/MATCH into the `DetailedFiche` sheet on crash
+  ID.
+- Every formula is `IFERROR`-wrapped. Most fiche crashes are not in the initial
+  study, and a sheet of #N/A is not workable.
+- Cells are typed as Excel types a paste: crash ID a number, milepost a float,
+  date a date. The lookups depend on it. Identifiers with a leading zero
+  (county code `075`) stay text.
 
 **The ID sheet's column layout is a record of how the export was pasted.** The
 header `CRASH ID|ON RD CD|SVRTY|DATE|TYPE|` was split on pipes **and spaces**,

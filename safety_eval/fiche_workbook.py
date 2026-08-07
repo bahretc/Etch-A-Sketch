@@ -4,22 +4,34 @@ This is the first step of a review, before any determination is made. Four
 TEAAS exports arrive as CSV or pipe-delimited text and become one workbook the
 engineer works in.
 
-What "fiche formatting" actually means, read off the delivered workbooks rather
-than assumed (``examples/SS-6002AD`` and ``examples/04-15-39049``):
+The ``<study>_Fiche`` sheet is the **working sheet**, not a raw paste. The
+delivered *Original Fiche* sheets are verbatim pastes, which is a red herring:
+the sheet an engineer actually works is the formatted one, and its rules were
+read off the delivered *Filtered Fiche* (``examples/SS-6002AD``):
 
-* The fiche sheet is a **verbatim paste**. Page footers ("Page 1 of 13") and
-  the repeated ``Muni. Code`` header blocks are KEPT, not stripped. docs/02
-  says to strip them on ingest and that is right for *parsing*, but the sheet
-  the engineer reads is the raw pull, and every delivered workbook has the
-  footers still in it (SS-6002AD: rows 12, 46, 78, ... ).
-* Cells are typed the way Excel types a paste: a crash ID lands as a number, a
-  milepost as a float, a date as a date. Nothing is left as text that Excel
-  would have converted, because the ID sheet's lookups depend on it.
-* The crash header row is one column SHORT of its data rows, because
-  "Miles / Dir From" is one header over two data columns. That misalignment is
-  in the TEAAS export and is preserved; do not try to correct it.
-* Visual formatting is almost nothing: wrap on the multi-line header cells,
-  column A around 19 wide. No bold, no fill, no freeze, no autofilter.
+* **Column setup.** The raw fiche row has 16 fields under a 15-cell header,
+  because "Miles / Dir From" is one header spanning two data columns. Those are
+  split into ``Miles`` and ``Dir From``, and ``IS?`` / ``New MP`` are inserted
+  after ``MP``, so the labels finally line up with the data.
+* **Rows removed.** Title block, County/Division header block, Road Name / Road
+  Code table, every "Page 1 of 13" footer, every repeated ``Muni. Code`` header
+  block, and the trailing legend. One row per crash, nothing else.
+* **Sorted by milepost** ascending. MP 999.999 (never mileposted) sorts to the
+  end on its own value.
+* **Type** is ``VLOOKUP(T, Index!$A$1:$B$26, 2, FALSE)`` against the T-code map.
+* **Dir** is the movement pair, built from the two vehicle directions the
+  Initial Study records on the "Unit" lines under each crash: MATCH the crash
+  ID in column B, step down one row for vehicle 1 and two for vehicle 2, read
+  column K. The ``NOT(ISNUMBER(...))`` guard on vehicle 2 is what stops a
+  single-vehicle crash from picking up the *next* crash's row. The pair is then
+  shaped by crash type: RE is BT/BT, LTSR and LTDR are BL/BT, RTSR and RTDR are
+  BR/BT.
+* **Latitude / Longitude** are INDEX/MATCH into the DetailedFiche sheet on
+  crash ID. Every formula is wrapped in IFERROR, because most fiche crashes are
+  not in the initial study and would otherwise show #N/A across the sheet.
+* Cells are typed as Excel types a paste: crash ID a number, milepost a float,
+  date a date. The lookups depend on it, since text "107206325" never matches a
+  numeric one.
 
 The ID sheet is the cross-reference between the two crash lists, and its odd
 column layout is a record of how the export was pasted. The pipe-delimited ID
@@ -37,14 +49,42 @@ import re
 from datetime import datetime
 
 from openpyxl import Workbook
-from openpyxl.styles import Alignment
+from openpyxl.styles import Alignment, Font
 
-#: Sheet names, following the delivered intersection workbook, which is the
-#: only example carrying all four of these sheets.
-SHEET_FICHE = "Original Fiche"
+#: Sheet names. The fiche sheet is named for the study, e.g. "41000079305_Fiche".
 SHEET_ID = "ID"
 SHEET_INITIAL = "Initial Study"
 SHEET_DETAILED = "DetailedFiche"
+SHEET_INDEX = "Index"
+
+#: T code -> crash type abbreviation, read off the delivered Index sheet
+#: (SS-6002AD, A1:B26). The Type column is a VLOOKUP into this.
+T_CODES = {
+    0: "unknown", 1: "ROR-R", 2: "ROR-L", 3: "ROR-T", 4: "jackknife",
+    5: "overturn", 13: "other", 14: "pedestrian", 15: "cyclist", 16: "RR",
+    17: "animal", 18: "MO", 19: "FO", 20: "PMV", 21: "RE", 22: "RE-T",
+    23: "LTSR", 24: "LTDR", 25: "RTSR", 26: "RTDR", 27: "head-on",
+    28: "SSSD", 29: "SSOD", 30: "angle", 31: "backing", 32: "other",
+}
+
+#: The working sheet, column by column. A-H and K-R come straight off the fiche
+#: row; I/J/U are the engineer's to fill; S/T/V/W are formulas.
+FICHE_COLUMNS = [
+    "Muni.\nCode", "On Road", "Miles", "Dir\nFrom", "From Road", "Toward Road",
+    "Milepost Road", "MP", "IS?", "New MP", "MA", "Crash ID", "Date",
+    "T", "C", "F", "L", "S", "Type", "Dir", "Comment", "Latitude", "Longitude",
+]
+#: Raw fiche field index -> target column letter. The raw row carries 16 fields
+#: because "Miles / Dir From" is one header over two data columns; splitting
+#: them into C and D is the whole point of the column setup.
+_FIELD_TO_COL = {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8,
+                 8: 11, 9: 12, 10: 13, 11: 14, 12: 15, 13: 16, 14: 17, 15: 18}
+_COL_T, _COL_CRASH_ID = 14, 12                   # N, L
+_COL_TYPE, _COL_DIR, _COL_LAT, _COL_LON = 19, 20, 22, 23      # S, T, V, W
+_COL_V1, _COL_V2, _COL_PAIR = 25, 26, 27         # Y, Z, AA (X left blank)
+
+#: DetailedFiche column letters: Crash ID, Latitude, Longitude.
+_DF_ID, _DF_LAT, _DF_LON = "J", "Q", "R"
 
 #: The ID sheet header, spread one word per cell across H:O exactly as
 #: "CRASH ID|ON RD CD|SVRTY|DATE|TYPE|" lands when split on pipes and spaces.
@@ -160,17 +200,100 @@ def parse_initial_ids(source) -> tuple:
     return list(_ID_RAW_HEADER), rows
 
 
+def fiche_data_rows(rows) -> list:
+    """Only the crash rows, with everything else dropped.
+
+    Removed: the title block, the County/Division header block, the Road Name /
+    Road Code table, every "Page 1 of 13" footer, every repeated ``Muni. Code``
+    header block, and the trailing legend. What survives is one 16-field row per
+    crash. (The Original Fiche sheet in a delivered workbook keeps all of that
+    clutter because it is a raw paste; this is the working sheet, which does
+    not.)
+    """
+    out, started = [], False
+    for row in rows:
+        cells = [str(c or "").strip() for c in row]
+        flat = " ".join(cells)
+        if any(c.replace("\n", " ").strip().startswith("Muni.") for c in cells):
+            started = True                       # a header block, of any page
+            continue
+        if not started or "Page " in flat or flat.startswith("Legend"):
+            continue
+        if len(cells) < 16 or not cells[9].isdigit():
+            continue                             # not a crash row
+        out.append(cells[:16])
+    return out
+
+
+def _fiche_formulas(r: int) -> dict:
+    """The formula cells for one working row, keyed by column index.
+
+    Type is a VLOOKUP into the Index sheet. Dir is the movement pair, built
+    from the two vehicle directions the Initial Study records on the "Unit"
+    lines below each crash: MATCH the crash ID, step down one row for vehicle
+    1 and two for vehicle 2, and read the Dir column. The ISNUMBER guard on
+    vehicle 2 is what stops a single-vehicle crash from picking up the NEXT
+    crash's row. Every one is wrapped in IFERROR because most fiche crashes are
+    not in the initial study at all and would otherwise show #N/A.
+    """
+    iv = f"INDEX('{SHEET_INITIAL}'!K:K, MATCH(L{r}, '{SHEET_INITIAL}'!B:B, 0)"
+    return {
+        _COL_TYPE: f"=IFERROR(VLOOKUP(N{r},{SHEET_INDEX}!$A$1:$B$26,2,FALSE),\"\")",
+        _COL_DIR: f"=AA{r}",
+        _COL_LAT: f"=IFERROR(INDEX({SHEET_DETAILED}!{_DF_LAT}:{_DF_LAT},"
+                  f"MATCH(L{r},{SHEET_DETAILED}!{_DF_ID}:{_DF_ID},0)),\"\")",
+        _COL_LON: f"=IFERROR(INDEX({SHEET_DETAILED}!{_DF_LON}:{_DF_LON},"
+                  f"MATCH(L{r},{SHEET_DETAILED}!{_DF_ID}:{_DF_ID},0)),\"\")",
+        _COL_V1: f'=IFERROR(IF(AND({iv}+1)<>0,{iv}+1)<>""),{iv}+1),""),"")',
+        _COL_V2: f'=IFERROR(IF(AND({iv}+2)<>0,{iv}+2)<>"",'
+                 f'NOT(ISNUMBER({iv}+2)))),{iv}+2),"-"),"-")',
+        _COL_PAIR: f'=IF(S{r}="RE", Y{r} & "BT/" & IF(Z{r} <> "-", Z{r} & "BT", ""),'
+                   f' IF(OR(S{r}="LTDR", S{r}="LTSR"), Y{r} & "BL" & IF(Z{r} <> "-", "/" & Z{r} & "BT", ""),'
+                   f' IF(OR(S{r}="RTDR", S{r}="RTSR"), Y{r} & "BR" & IF(Z{r} <> "-", "/" & Z{r} & "BT", ""),'
+                   f' IF(Z{r} <> "-", Y{r} & "BT/" & Z{r} & "BT", Y{r} & "BT"))))',
+    }
+
+
+def _write_formatted_fiche(ws, data_rows) -> int:
+    """Header, then one row per crash sorted by milepost."""
+    for c, name in enumerate(FICHE_COLUMNS, start=1):
+        cell = ws.cell(row=1, column=c, value=name)
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(wrap_text=True, vertical="bottom")
+
+    def mp_key(cells):
+        try:
+            return (0, float(cells[7]))
+        except ValueError:
+            return (1, 0.0)                      # unparseable sorts last
+    # 999.999 means "never mileposted" and lands at the end on its own value.
+    for i, cells in enumerate(sorted(data_rows, key=mp_key), start=2):
+        for field, col in _FIELD_TO_COL.items():
+            v = coerce(cells[field])
+            if v is not None:
+                ws.cell(row=i, column=col, value=v)
+        for col, formula in _fiche_formulas(i).items():
+            ws.cell(row=i, column=col, value=formula)
+    ws.freeze_panes = "A2"
+    for col, width in (("A", 7), ("B", 11), ("E", 15), ("F", 15), ("G", 13),
+                       ("L", 11), ("M", 11), ("S", 10), ("T", 12), ("U", 26),
+                       ("V", 11), ("W", 11)):
+        ws.column_dimensions[col].width = width
+    return len(data_rows) + 1
+
+
 def build_fiche_workbook(out_path, fiche_csv, initial_study_csv=None,
-                         initial_id_txt=None, detailed_fiche_csv=None) -> dict:
+                         initial_id_txt=None, detailed_fiche_csv=None,
+                         study="") -> dict:
     """Write the study workbook. Returns a per-sheet row count."""
     wb = Workbook()
     counts = {}
+    sheet_fiche = f"{study}_Fiche" if study else "Fiche"
 
     ws = wb.active
-    ws.title = SHEET_FICHE
+    ws.title = sheet_fiche
     fiche_rows = _read_csv_rows(fiche_csv)
-    counts[SHEET_FICHE] = _write_rows(ws, fiche_rows)
-    ws.column_dimensions["A"].width = 18.9
+    counts[sheet_fiche] = _write_formatted_fiche(ws, fiche_data_rows(fiche_rows))
     ids = fiche_crash_ids(fiche_rows)
 
     idws = wb.create_sheet(SHEET_ID)
@@ -194,6 +317,12 @@ def build_fiche_workbook(out_path, fiche_csv, initial_study_csv=None,
             idws.cell(row=i, column=4,
                       value="YES" if cid in fiche_set else "NO")
     counts[SHEET_ID] = max(len(ids), len(initial_ids)) + 1
+
+    iw = wb.create_sheet(SHEET_INDEX)
+    for i, (code, name) in enumerate(sorted(T_CODES.items()), start=1):
+        iw.cell(row=i, column=1, value=code)
+        iw.cell(row=i, column=2, value=name)
+    counts[SHEET_INDEX] = len(T_CODES)
 
     if initial_study_csv is not None:
         counts[SHEET_INITIAL] = _write_rows(

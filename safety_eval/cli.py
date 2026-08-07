@@ -484,7 +484,8 @@ def _cmd_fiche_workbook(args) -> int:
     out = args.out or f"{args.study}_Fiche.xlsx"
     counts = build_fiche_workbook(
         out, fiche_csv=args.fiche, initial_study_csv=args.initial_study,
-        initial_id_txt=args.initial_ids, detailed_fiche_csv=args.detailed)
+        initial_id_txt=args.initial_ids, detailed_fiche_csv=args.detailed,
+        study=args.study)
     for sheet, n in counts.items():
         print(f"{n:>6} rows -> {sheet}")
     print(f"wrote {out}")

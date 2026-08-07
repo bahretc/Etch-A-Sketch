@@ -385,3 +385,80 @@ def format_intersection(s: IntersectionScreen) -> str:
         lines.append(f"  {w.warrant:<5} {w.description:<32} "
                      f"{'MET' if w.met else 'not met'}")
     return "\n".join(lines)
+
+
+# --------------------------------------------------------------------------- #
+# scanning for a section that warrants
+# --------------------------------------------------------------------------- #
+#: A section shorter than this is not a project, whatever its crash rate. Ten
+#: crashes in 0.02 mi is 500 per mile and clears every rate minimum trivially,
+#: which is arithmetic rather than engineering.
+MIN_SECTION_MI = 0.10
+
+
+@dataclass
+class Window:
+    lo: float
+    hi: float
+    screen: SectionScreen
+
+    @property
+    def length(self) -> float:
+        return self.hi - self.lo
+
+    @property
+    def names(self) -> list:
+        return [w.warrant for w in self.screen.met]
+
+
+def scan_sections(placed, facility: str = "freeway", multilane: bool = False,
+                  min_length: float = MIN_SECTION_MI, pad: float = 0.0,
+                  strict: bool = True) -> list:
+    """Every sub-section that meets a warrant, longest first.
+
+    ``placed`` are ``(milepost, Crash)`` pairs. Candidate boundaries are the
+    crash mileposts themselves, because a boundary anywhere between two
+    crashes gives the same crash set as the boundary at the crash: only the
+    length changes, and a shorter length can only help the rate. So the
+    tightest window around any crash set is the one bounded BY that set, and
+    scanning the crash mileposts finds every distinct answer.
+
+    ``pad`` widens each window at both ends, for the case where an engineer
+    wants the section to reach a feature rather than stop at the last crash.
+    """
+    # key on the milepost alone: crashes routinely share one, and a Crash is
+    # not orderable, so a plain tuple sort raises the moment two tie.
+    rows = sorted(((float(mp), c) for mp, c in placed if mp is not None),
+                  key=lambda t: t[0])
+    if not rows:
+        return []
+    bounds = sorted({mp for mp, _ in rows})
+    out = []
+    for i, lo in enumerate(bounds):
+        for hi in bounds[i:]:
+            length = hi - lo + 2 * pad
+            if length < min_length:
+                continue
+            inside = [c for mp, c in rows if lo <= mp <= hi]
+            if not inside:
+                continue
+            screen = screen_section(inside, length, facility,
+                                    multilane=multilane, strict=strict)
+            if screen.met:
+                out.append(Window(lo - pad, hi + pad, screen))
+    # Longest first: a longer section that still warrants is the better project.
+    out.sort(key=lambda w: (-w.length, -w.screen.total))
+    return out
+
+
+def best_windows(windows, limit: int = 10) -> list:
+    """Drop windows wholly contained in a longer one that meets the same set."""
+    kept = []
+    for w in windows:
+        if any(k.lo <= w.lo and w.hi <= k.hi and set(w.names) <= set(k.names)
+               for k in kept):
+            continue
+        kept.append(w)
+        if len(kept) >= limit:
+            break
+    return kept

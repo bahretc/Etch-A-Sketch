@@ -313,3 +313,55 @@ def test_the_sheet_is_rebuilt_not_duplicated(tmp_path):
     for _ in range(3):
         add_warrant_sheet(wb, [_row(1, 13.0)], 1.0)
     assert wb.sheetnames.count(SHEET_WARRANT) == 1
+
+
+# ---------------------------------------------------------------------------
+# scanning for a section that warrants
+# ---------------------------------------------------------------------------
+from safety_eval.warrants import MIN_SECTION_MI, best_windows, scan_sections
+
+
+def placed(n, lo=13.0, step=0.01, **kw):
+    return [(lo + i * step, Crash(str(i), kw.get("t", "ROR-L"),
+                                  kw.get("c", 1), kw.get("l", 1)))
+            for i in range(n)]
+
+
+def test_a_window_shorter_than_the_minimum_is_refused():
+    """Ten crashes in 0.02 mi is 500 per mile: arithmetic, not engineering."""
+    assert scan_sections(placed(10, step=0.002), "freeway") == []
+    assert MIN_SECTION_MI == 0.10
+
+
+def test_crashes_sharing_a_milepost_do_not_break_the_sort():
+    """Routine on a real corridor, and a Crash is not orderable."""
+    rows = [(13.0, Crash("1", "ROR-L")), (13.0, Crash("2", "ROR-L")),
+            (13.5, Crash("3", "ROR-L"))]
+    scan_sections(rows, "freeway")          # must not raise
+
+
+def test_the_scan_finds_the_windows_that_warrant():
+    wins = scan_sections(placed(40, step=0.01), "freeway")
+    assert wins, "40 ROR crashes over 0.39 mi warrants somewhere"
+    assert all("F-2" in w.names for w in wins)
+    assert all(w.length >= MIN_SECTION_MI for w in wins)
+    assert wins[0].length == max(w.length for w in wins)     # longest first
+
+
+def test_boundaries_are_the_crash_mileposts():
+    """A boundary between two crashes gives the same crash set as one at the
+    crash, and only a worse length, so scanning the mileposts is complete."""
+    mps = {w.lo for w in scan_sections(placed(40), "freeway")}
+    assert mps <= {13.0 + i * 0.01 for i in range(40)}
+
+
+def test_best_windows_drops_the_contained_duplicates():
+    wins = scan_sections(placed(40), "freeway")
+    best = best_windows(wins)
+    assert len(best) < len(wins)
+    assert best[0].length == wins[0].length          # keeps the longest
+
+
+def test_a_section_with_no_pattern_warrants_nothing():
+    """Enough crashes and enough rate, but they are rear-ends."""
+    assert scan_sections(placed(40, t="RE"), "freeway") == []

@@ -261,13 +261,15 @@ def _write_formatted_fiche(ws, data_rows) -> int:
         cell.font = Font(bold=True)
         cell.alignment = Alignment(wrap_text=True, vertical="bottom")
 
-    def mp_key(cells):
+    def sort_key(cells):
+        """Milepost Road, then Milepost, then From Road (G, H, E)."""
         try:
-            return (0, float(cells[7]))
+            mp = (0, float(cells[7]))
         except ValueError:
-            return (1, 0.0)                      # unparseable sorts last
+            mp = (1, 0.0)                        # unparseable sorts last
+        return (str(cells[6] or ""), mp, str(cells[4] or ""))
     # 999.999 means "never mileposted" and lands at the end on its own value.
-    for i, cells in enumerate(sorted(data_rows, key=mp_key), start=2):
+    for i, cells in enumerate(sorted(data_rows, key=sort_key), start=2):
         for field, col in _FIELD_TO_COL.items():
             v = coerce(cells[field])
             if v is not None:

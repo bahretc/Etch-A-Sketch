@@ -81,3 +81,78 @@ def test_the_two_mile_marker_series_are_kept_apart():
 
 def test_a_blank_on_road_is_treated_as_the_study_route():
     assert screen("*MILE 165", "*MILE 166", on="") == "?"
+
+
+# ---------------------------------------------------------------------------
+# presentation (engineer, 2026-08)
+# ---------------------------------------------------------------------------
+_HDR = ('"Muni.\nCode","On Road","Miles  /  Dir\nFrom","From Road",'
+        '"Toward Road","Milepost Road","MP","MA","Crash ID","Date",'
+        '"T","C","F","L","S"\n')
+#: one IS (in the ID export), one "?" (green), one NIS (both yellow).
+SCREEN_CSV = _HDR + (
+    '"0","US 74","0.500","E","*MILE 165 ","*MILE 166 ","US 74","12.719","",'
+    '"106686224","2021-09-03","19","1","0","1","O"\n'
+    '"0","US 74","0.100","W","*MILE 167 ","*MILE 166 ","US 74","14.615","",'
+    '"107401040","2023-07-13","23","1","19","1","O"\n'
+    '"0","US 74","0.500","E","*MILE 62 ","*MILE 163 ","US 74","4.138","",'
+    '"107127776","2022-10-30","19","2","2","5","O"\n')
+SCREEN_IDS = "CRASH ID|ON RD CD|SVRTY|DATE|TYPE|\n106686224|20000074|5|09/03/2021 10:47|19|\n"
+
+
+def _screened(tmp_path):
+    import openpyxl
+    from safety_eval.fiche_screen import screen_sheet
+    from safety_eval.fiche_workbook import build_fiche_workbook
+    out = tmp_path / "s.xlsx"
+    build_fiche_workbook(str(out), study="41000079305", fiche_csv=SCREEN_CSV,
+                         initial_id_txt=SCREEN_IDS)
+    wb = openpyxl.load_workbook(str(out))
+    ws = wb["41000079305_Fiche"]
+    screen_sheet(ws, FEATURES, LO, HI, ["106686224"], route="US 74")
+    return ws
+
+
+def test_the_banner_sits_two_rows_below_the_last_question(tmp_path):
+    """Blank row, then the banner. The delivered workbook does the same."""
+    from safety_eval.fiche_screen import BANNER_TEXT
+    ws = _screened(tmp_path)
+    banner = next(r for r in range(1, ws.max_row + 1)
+                  if ws.cell(row=r, column=1).value == BANNER_TEXT)
+    assert all(ws.cell(row=banner - 1, column=c).value is None
+               for c in range(1, ws.max_column + 1))          # blank row above
+    assert ws.cell(row=banner - 2, column=9).value == "?"     # last "?"
+    assert ws.cell(row=banner + 1, column=9).value == "NIS"   # NIS starts after
+
+
+def test_the_banner_is_grey_and_bold_across_the_row(tmp_path):
+    """A6A6A6 is what the delivered workbook uses (theme 0, tint -0.35)."""
+    from safety_eval.fiche_screen import BANNER_TEXT
+    ws = _screened(tmp_path)
+    banner = next(r for r in range(1, ws.max_row + 1)
+                  if ws.cell(row=r, column=1).value == BANNER_TEXT)
+    cell = ws.cell(row=banner, column=1)
+    assert str(cell.fill.fgColor.rgb).endswith("A6A6A6")
+    assert cell.font.bold is True
+    assert all(ws.cell(row=banner, column=c).fill.patternType
+               for c in range(1, ws.max_column + 1))
+
+
+def test_the_banner_text_does_not_set_a_column_width(tmp_path):
+    """It is a heading, not content; 34 characters must not widen column A."""
+    ws = _screened(tmp_path)
+    assert ws.column_dimensions["A"].width < 10
+
+
+def test_dates_lose_their_time(tmp_path):
+    ws = _screened(tmp_path)
+    assert ws.cell(row=2, column=13).number_format == "m/d/yyyy"
+
+
+def test_columns_are_narrow_but_capped(tmp_path):
+    from safety_eval.fiche_workbook import MAX_WIDTH
+    ws = _screened(tmp_path)
+    widths = {k: v.width for k, v in ws.column_dimensions.items() if v.width}
+    assert widths, "autofit ran"
+    assert all(w <= 30 for w in widths.values())
+    assert ws.column_dimensions["Q"].width < 6      # a one-letter code column

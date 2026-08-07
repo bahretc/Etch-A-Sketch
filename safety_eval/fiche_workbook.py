@@ -50,6 +50,7 @@ from datetime import datetime
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
+from openpyxl.utils import get_column_letter
 
 #: Sheet names. The fiche sheet is named for the study, e.g. "41000079305_Fiche".
 SHEET_ID = "ID"
@@ -277,10 +278,8 @@ def _write_formatted_fiche(ws, data_rows) -> int:
         for col, formula in _fiche_formulas(i).items():
             ws.cell(row=i, column=col, value=formula)
     ws.freeze_panes = "A2"
-    for col, width in (("A", 7), ("B", 11), ("E", 15), ("F", 15), ("G", 13),
-                       ("L", 11), ("M", 11), ("S", 10), ("T", 12), ("U", 26),
-                       ("V", 11), ("W", 11)):
-        ws.column_dimensions[col].width = width
+    format_dates(ws)
+    autofit_columns(ws)
     return len(data_rows) + 1
 
 
@@ -335,3 +334,70 @@ def build_fiche_workbook(out_path, fiche_csv, initial_study_csv=None,
 
     wb.save(out_path)
     return counts
+
+
+# --------------------------------------------------------------------------- #
+# presentation
+# --------------------------------------------------------------------------- #
+#: Widest a column is allowed to get. A road cell occasionally holds a full
+#: address ("*LCL 1226 E DIXIE DR") and one of those must not stretch the
+#: column past every ordinary road name in it.
+MAX_WIDTH = 16
+#: Columns worth more room, by header.
+WIDE = {"Comment": 30, "Date": 11, "Crash ID": 11}
+#: Formula cells have no cached value to measure, so their width comes from
+#: what the formula is known to produce: "animal", "SBL/NBT", "-82.12736".
+FORMULA_WIDTH = {"Type": 9, "Dir": 10, "Latitude": 10, "Longitude": 11}
+
+DATE_FORMAT = "m/d/yyyy"
+
+
+def _rendered(value, fmt: str) -> int:
+    if value is None:
+        return 0
+    if isinstance(value, datetime):
+        return 10 if fmt == DATE_FORMAT else len(str(value))
+    if hasattr(value, "hour") and not hasattr(value, "year"):
+        return 8                                     # a time
+    return max((len(part) for part in str(value).split("\n")), default=0)
+
+
+def autofit_columns(ws, max_width: int = MAX_WIDTH) -> dict:
+    """Narrow every column to its content, capped so one long cell cannot win.
+
+    Formula cells are sized from what the formula produces rather than from the
+    formula text, which is many times longer than any value it returns.
+    """
+    headers = {c: str(ws.cell(row=1, column=c).value or "")
+               for c in range(1, ws.max_column + 1)}
+    widths = {}
+    for c in range(1, ws.max_column + 1):
+        head = headers[c]
+        cap = WIDE.get(head, max_width)
+        best = _rendered(head, "")
+        for r in range(1, ws.max_row + 1):
+            cell = ws.cell(row=r, column=c)
+            v = cell.value
+            if isinstance(v, str) and v.startswith("="):
+                best = max(best, FORMULA_WIDTH.get(head, 10))
+            else:
+                best = max(best, _rendered(v, cell.number_format))
+        if best:
+            widths[get_column_letter(c)] = min(best + 1.5, cap)
+    for letter, w in widths.items():
+        ws.column_dimensions[letter].width = w
+    return widths
+
+
+def format_dates(ws, header: str = "Date", fmt: str = DATE_FORMAT) -> int:
+    """Date only, no time, on the named column."""
+    cols = [c for c in range(1, ws.max_column + 1)
+            if str(ws.cell(row=1, column=c).value or "").strip() == header]
+    n = 0
+    for c in cols:
+        for r in range(2, ws.max_row + 1):
+            cell = ws.cell(row=r, column=c)
+            if isinstance(cell.value, datetime):
+                cell.number_format = fmt
+                n += 1
+    return n

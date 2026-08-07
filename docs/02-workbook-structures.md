@@ -88,6 +88,14 @@ inside the limits, blue north/east, yellow south/west. Then:
   whatever lies between them crosses the study.
 - **the same colour on both sides** -> `NIS`.
 
+After sorting, a blank row then a **`NOT IN STUDY - REPORT NOT REVIEWED`**
+banner opens the NIS block: grey `A6A6A6` (Excel's "White, Background 1,
+Darker 35%", which is what the delivered workbook uses on this exact row) with
+bold black text across the row. Dates carry `m/d/yyyy`, no time. Columns are
+autofitted and capped at 16 so one long address in a road cell cannot stretch
+the column past every ordinary road name; the banner text is a heading and is
+measured out of the autofit.
+
 Not filtered by the coded milepost, deliberately. The fiche also gives a
 distance from the named road, but that distance is the officer's, and checking
 it is exactly what the report review is for; a milepost derived from the number

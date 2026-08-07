@@ -40,7 +40,9 @@ from __future__ import annotations
 import re
 import subprocess
 
-from openpyxl.styles import PatternFill
+from openpyxl.styles import Font, PatternFill
+
+from .fiche_workbook import autofit_columns, format_dates
 
 #: Inside the limits, north/east of them, south/west of them.
 FILL_IN = PatternFill("solid", fgColor="C6EFCE")
@@ -48,6 +50,13 @@ FILL_NE = PatternFill("solid", fgColor="BDD7EE")
 FILL_SW = PatternFill("solid", fgColor="FFEB9C")
 
 STATUS_ORDER = {"IS": 0, "?": 1, "NIS": 2}
+
+#: The banner that opens the unreviewed block, and its grey. A6A6A6 is Excel's
+#: "White, Background 1, Darker 35%", which is what the delivered workbook uses
+#: on this exact row (SS-6002AD Filtered Fiche row 41, theme 0 tint -0.35).
+#: Black bold on it stays legible.
+BANNER_TEXT = "NOT IN STUDY - REPORT NOT REVIEWED"
+FILL_BANNER = PatternFill("solid", fgColor="A6A6A6")
 
 _MP_RE = re.compile(r"\s*(\d+\.\d{3})\s+(\S+)\s+(.*)")
 
@@ -193,7 +202,37 @@ def screen_sheet(ws, features: dict, lo: float, hi: float, initial_ids,
             fill = fills.get(buckets.get(key))
             if fill is not None:
                 ws.cell(row=i, column=col[key]).fill = fill
+    format_dates(ws)
+    autofit_columns(ws)          # before the banner: its 34-character text is
+    _insert_banner(ws, rows)     # a heading, not content, and must not set a width
     return tally
+
+
+def _insert_banner(ws, rows) -> int:
+    """A blank row after the last "?", then the unreviewed banner.
+
+    The delivered workbook does the same: SS-6002AD Filtered Fiche has a blank
+    row above each of its banner rows.
+    """
+    last_q = None
+    for i, (key, _, _) in enumerate(rows, start=2):
+        if key[0] == STATUS_ORDER["?"]:
+            last_q = i
+    if last_q is None:                    # nothing to review, banner goes on top
+        last_q = 1 + sum(1 for k, _, _ in rows if k[0] == STATUS_ORDER["IS"])
+    ws.insert_rows(last_q + 1, amount=2)
+    banner = last_q + 2
+    ws.cell(row=banner, column=1, value=BANNER_TEXT)
+    for c in range(1, ws.max_column + 1):
+        cell = ws.cell(row=banner, column=c)
+        cell.fill = FILL_BANNER
+        cell.font = Font(bold=True)
+    # insert_rows does not repoint formulas, so the NIS block needs re-anchoring
+    for r in range(banner + 1, ws.max_row + 1):
+        for c in range(1, ws.max_column + 1):
+            cell = ws.cell(row=r, column=c)
+            cell.value = _reanchor(cell.value, r)
+    return banner
 
 
 def _mp_key(mp):

@@ -359,9 +359,57 @@ def test_the_summary_is_live_formulas_not_computed_values(tmp_path):
     assert got["ROR Crashes"].startswith("=SUMPRODUCT(COUNTIF(J2:J41,{")
     # Shares are ROUNDed to two places BEFORE the >= test (docs/12)...
     assert got["% ROR"].startswith("=ROUND(")
-    # ...and the Met? cells chain min tests and the rounded share together.
-    f2 = next(v for k, v in got.items() if str(k).startswith("F-2"))
-    assert f2.startswith("=IF(AND(") and ">=0.8)" in f2
+    # ...the minimums come off the on-sheet facility table...
+    assert got["Required Crashes"].startswith("=VLOOKUP(")
+    # ...and each warrant row is one live sentence chaining minimums and the
+    # rounded share against the threshold of the chosen facility.
+    sents = [str(ws.cell(row=r, column=1).value)
+             for r in range(2, ws.max_row + 1)
+             if str(ws.cell(row=r, column=1).value).startswith("=IF(")]
+    f2 = next(s for s in sents if '"F-2 Run Off Road (80%): "' in s)
+    assert '"Met","Not met"' in f2 and ">=IF(" in f2 and "0.8" in f2
+
+
+def test_the_facility_cell_is_a_dropdown_that_switches_the_warrants(tmp_path):
+    """A typed FREEWAY label does nothing. The facility is an input: a
+    dropdown whose choice drives the minimums (VLOOKUP into the on-sheet
+    table) and flips every warrant row between its F and N forms."""
+    rows = [_row(i, 13.0 + i / 200, c=2, l=5) for i in range(40)]
+    ws, _ = _wsheet(tmp_path, rows, length_mi=1.0, facility="freeway")
+    dvs = ws.data_validations.dataValidation
+    assert len(dvs) == 1
+    for label in ("Freeway", "US Route", "NC Route", "Secondary Road",
+                  "City Street"):
+        assert label in dvs[0].formula1
+    got = _summary(ws)
+    assert got["Facility"] == "Freeway"
+    sents = [str(ws.cell(row=r, column=1).value)
+             for r in range(2, ws.max_row + 1)
+             if str(ws.cell(row=r, column=1).value).startswith("=IF(")]
+    assert len(sents) == 4
+    assert all('"F-' in s and '"N-' in s and '="Freeway"' in s for s in sents)
+    # The minimums table the VLOOKUPs read is on the sheet, labels matching
+    # the dropdown exactly.
+    col_a = [ws.cell(row=r, column=1).value for r in range(1, ws.max_row + 1)]
+    t = col_a.index("Facility Minimums")
+    assert col_a[t + 2:t + 7] == ["Freeway", "US Route", "NC Route",
+                                  "Secondary Road", "City Street"]
+    assert ws.cell(row=t + 3, column=4).value == 30    # freeway 30 / 30
+
+
+def test_summary_labels_fit_before_the_value_column(tmp_path):
+    """Labels sit in column A and can only spill across B and C before the
+    value in D: roughly 21 characters of room. A longer label is clipped in
+    Excel, which is exactly the kind of thing that never shows up in code
+    review and looks broken the moment the file is opened."""
+    rows = [_row(i, 13.0 + i / 200, c=2, l=5) for i in range(40)]
+    ws, _ = _wsheet(tmp_path, rows, length_mi=1.0, facility="freeway")
+    for r in range(2, ws.max_row + 1):
+        a = ws.cell(row=r, column=1).value
+        d = ws.cell(row=r, column=4).value
+        if a is None or d is None or str(a).startswith("="):
+            continue
+        assert len(str(a)) <= 21, f"row {r}: label {a!r} would clip"
 
 
 def test_the_summary_has_no_animal_row(tmp_path):
@@ -373,15 +421,36 @@ def test_the_summary_has_no_animal_row(tmp_path):
                    for r in range(1, ws.max_row + 1))
 
 
-def test_the_summary_lists_the_subsections_that_warrant(tmp_path):
-    rows = [_row(i, 13.0 + i / 200, c=2, l=5) for i in range(40)]
-    ws, _ = _wsheet(tmp_path, rows, length_mi=1.0, facility="freeway")
+def _mixed_rows():
+    """40 crashes, all ROR: 4 wet, the first 18 at night. Exercises every
+    finding status at once on a freeway: F-2 met over the full section
+    (100% ROR), F-4 met only in a sub-section (18/40 = 45% overall but 58%
+    over the first 31 crashes), F-1 and F-3 out of reach anywhere (4 wet
+    crashes is 13% at best)."""
+    return [_row(i, 13.0 + i * 0.005,
+                 c=2 if i in (0, 5, 10, 15) else 1,
+                 l=5 if i < 18 else 1) for i in range(40)]
+
+
+def test_the_findings_are_one_conclusion_per_warrant(tmp_path):
+    """Not the raw window list: on a real corridor the windows overlap so
+    heavily the list reads as the same line six times. The reader's question
+    is per warrant, and each gets exactly one answer."""
+    ws, _ = _wsheet(tmp_path, _mixed_rows(), length_mi=1.0,
+                    facility="freeway")
     col_a = [str(ws.cell(row=r, column=1).value)
              for r in range(1, ws.max_row + 1)]
-    head = col_a.index("Sub-sections Meeting Warrants")
-    lines = [v for v in col_a[head + 1:] if v != "None"]
-    assert lines and all(v.startswith("MP 13.0") for v in lines)
-    assert any("meets" in v and "F-2" in v for v in lines)
+    head = col_a.index("Sub-section Findings (Freeway)")
+    lines = []
+    for v in col_a[head + 1:]:
+        if v == "None":                          # the blank row below
+            break
+        lines.append(v)
+    assert [line.split()[0] for line in lines] == ["F-1", "F-2", "F-3", "F-4"]
+    assert "met over the full section at 100%" in lines[1]
+    assert "not met in any sub-section" in lines[0] and "best" in lines[0]
+    assert "met only in a sub-section" in lines[3]
+    assert "widest" in lines[3] and "tightest" in lines[3]
 
 
 def test_the_sheet_is_rebuilt_not_duplicated(tmp_path):
@@ -457,6 +526,29 @@ def test_best_achievable_reports_the_ceiling_for_every_warrant():
     assert best["F-3"][0] == 0.0            # no wet crash anywhere: settled
     for name, (share, lo, hi, count, base, threshold) in best.items():
         assert lo < hi and 0 <= share <= 1 and count <= base
+
+
+def test_findings_give_one_answer_per_warrant():
+    """The scan's window list collapses to a per-warrant conclusion: met over
+    the section, met only in a sub-section (and then the widest and the
+    tightest), or out of reach anywhere (and then the ceiling)."""
+    from safety_eval.warrants import format_finding, subsection_findings
+    pl = [(13.0 + i * 0.005, Crash(str(i), "ROR-L",
+                                   2 if i in (0, 5, 10, 15) else 1,
+                                   5 if i < 18 else 1))
+          for i in range(40)]
+    s = screen_section([c for _, c in pl], 1.0, "freeway")
+    fs = subsection_findings(pl, s)
+    assert [x.warrant for x in fs] == ["F-1", "F-2", "F-3", "F-4"]
+    assert [x.status for x in fs] == ["none", "section", "none", "subsection"]
+    f4 = fs[3]
+    assert f4.widest.length >= f4.tightest.length
+    assert f4.tightest.length >= MIN_SECTION_MI
+    line = format_finding(f4)
+    assert line.startswith("F-4 Night Location (52%): met only in a")
+    assert "widest" in line and "tightest" in line
+    assert "the best is" in format_finding(fs[0])   # the F-1 ceiling, placed
+    assert format_finding(fs[1]).endswith("met over the full section at 100%.")
 
 
 def test_shares_are_rounded_to_whole_percents_before_the_test():

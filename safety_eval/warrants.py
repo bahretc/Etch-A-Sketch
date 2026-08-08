@@ -521,3 +521,79 @@ def best_achievable(placed, facility: str = "freeway", multilane: bool = False,
                     best[w.warrant] = (w.share, lo, hi, w.count, w.total,
                                        w.threshold)
     return best
+
+
+@dataclass(frozen=True)
+class Finding:
+    """One conclusion per warrant: the answer, not the window list."""
+    warrant: str
+    description: str
+    threshold: float
+    status: str                       # "section", "subsection", or "none"
+    section_share: float              # the share over the full study section
+    widest: Window | None = None      # for "subsection": the longest window
+    tightest: Window | None = None    # and the shortest
+    best_share: float | None = None   # for "none": the ceiling, when any
+    best_span: tuple | None = None    # window clears the minimums; (lo, hi)
+
+
+def _window_share(win: Window, code: str) -> float:
+    return next(w.share for w in win.screen.warrants if w.warrant == code)
+
+
+def subsection_findings(placed, section: SectionScreen,
+                        multilane: bool = False,
+                        min_length: float = MIN_SECTION_MI) -> list:
+    """One finding per warrant, which is what a reader actually asks.
+
+    The raw scan answers a different question: every span that warrants. On a
+    real corridor those spans overlap heavily and the list reads as the same
+    window six times. The per-warrant questions are: met over the whole
+    section? met only in a sub-section, and then which (the widest, because a
+    longer section that still warrants is the better project, and the
+    tightest, because it names the cluster)? or out of reach everywhere, and
+    then how close did any sub-section get?
+    """
+    windows = scan_sections(placed, section.facility, multilane=multilane,
+                            min_length=min_length)
+    ceiling = best_achievable(placed, section.facility, multilane=multilane,
+                              min_length=min_length)
+    out = []
+    for w in section.warrants:
+        meeting = [win for win in windows if w.warrant in win.names]
+        if w.met:
+            out.append(Finding(w.warrant, w.description, w.threshold,
+                               "section", w.share))
+        elif meeting:
+            out.append(Finding(w.warrant, w.description, w.threshold,
+                               "subsection", w.share,
+                               widest=max(meeting, key=lambda x: x.length),
+                               tightest=min(meeting, key=lambda x: x.length)))
+        else:
+            c = ceiling.get(w.warrant)
+            out.append(Finding(w.warrant, w.description, w.threshold, "none",
+                               w.share,
+                               best_share=c[0] if c else None,
+                               best_span=(c[1], c[2]) if c else None))
+    return out
+
+
+def format_finding(f: Finding) -> str:
+    """The finding as one plain sentence, docs/05 style."""
+    head = f"{f.warrant} {f.description} ({f.threshold:.0%})"
+    if f.status == "section":
+        return f"{head}: met over the full section at {f.section_share:.0%}."
+    if f.status == "subsection":
+        wide = (f"MP {f.widest.lo:.3f} to {f.widest.hi:.3f} at "
+                f"{_window_share(f.widest, f.warrant):.0%}")
+        if f.widest is f.tightest:
+            return f"{head}: met only in one sub-section, {wide}."
+        tight = (f"MP {f.tightest.lo:.3f} to {f.tightest.hi:.3f} at "
+                 f"{_window_share(f.tightest, f.warrant):.0%}")
+        return (f"{head}: met only in a sub-section; widest {wide}, "
+                f"tightest {tight}.")
+    if f.best_share is None:
+        return f"{head}: not met; no sub-section clears the facility minimums."
+    return (f"{head}: not met in any sub-section; the best is "
+            f"{f.best_share:.0%} between MP {f.best_span[0]:.3f} and "
+            f"{f.best_span[1]:.3f}.")

@@ -1,0 +1,17 @@
+# App theme. The primary colour is Okabe-Ito blue: distinguishable under
+# deuteranopia, protanopia and tritanopia, so state never rides on a hue a
+# reader cannot see. Verdicts are always words ("Met", "Yes") with colour as
+# a secondary channel only.
+[theme]
+base = "light"
+primaryColor = "#0072B2"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F4F6F9"
+textColor = "#171B26"
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false
+
+[server]
+maxUploadSize = 400

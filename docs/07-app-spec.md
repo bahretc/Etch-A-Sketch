@@ -70,3 +70,29 @@ EPDO/SI, AADT (intersection + strip), crash rate and critical rate, unit tests
 for the known examples (EPDO=372.2, AADT=19900, strip AADT=1700), and a
 Streamlit shell with a data import page. SQLite via a database module.
 ```
+
+## The shipped app (2026-08)
+
+`streamlit run streamlit_app.py` (the repo-root launcher; the package app
+cannot run as a bare script). The sidebar's study type governs the tabs:
+every type gets Fiche Workbook, Redact Crash Reports and Review Queue; an
+Evaluation adds Evaluation Workbook; an HSIP Package Analysis adds HSIP
+Warrants (section or intersection). Tabs a study type must not use are not
+rendered (docs/12). Theme: Okabe-Ito primary, no state carried by colour
+alone; verdicts are words.
+
+The HSIP flow in CLI form, end to end on a reviewed fiche workbook:
+
+    safety-eval fiche-workbook --study N --fiche F.csv --initial-ids I.txt \
+        --study-type hsip --features FR.pdf --lo 12.8 --hi 13.815 --route "US 74"
+    safety-eval check-branches --workbook N_Fiche.xlsx --sheet N_Fiche --initial-ids I.txt
+    safety-eval warrants --workbook N_Fiche.xlsx --facility freeway \
+        --lo 12.8 --hi 13.815 --override 107591377:l=5 \
+        --initial-ids I.txt --import-out N_Import.txt
+    safety-eval import-list / feature-list / assist-score
+
+`safety_eval/hsip.py` is the seam: it reads the ENGINEER'S determinations off
+the reviewed working sheet (typed Type cells beat the T-code lookup), applies
+recorded overrides (yellow on the Warrant sheet, original kept on the fiche),
+joins crash times off the ID sheet for the daylight QC, and refuses to run
+warrants for a study type that does not have them.

@@ -730,6 +730,14 @@ def _cmd_review_assist(args) -> int:
     ctx = ra.StudyContext(name=args.study_name, analysis_type=args.analysis_type,
                           study_point=point, mp_range=mp_range,
                           target_definition=args.target)
+    initial = None
+    if getattr(args, "initial_ids", None):
+        from .fiche_workbook import parse_initial_ids
+        _, raw = parse_initial_ids(args.initial_ids)
+        initial = {str(r[0]) for r in raw}
+        print(f"  initial study: {len(initial)} crashes; decide vocabulary "
+              "narrows to the branch (docs/03)")
+    only = {str(c) for c in args.only} if getattr(args, "only", None) else None
 
     import anthropic
     client = anthropic.Anthropic()
@@ -738,7 +746,11 @@ def _cmd_review_assist(args) -> int:
         for item in queue:
             if args.limit and n >= args.limit:
                 break
+            if only is not None and str(item.row.crash_id) not in only:
+                continue
             row = item.row
+            if initial is not None:
+                ctx.in_initial_study = str(row.crash_id) in initial
             pages = (render_crash_pages(idx, row.crash_id, dpi=idx.dpi)
                      if item.has_report else [])
             ctx.prescreen_ft = item.dist_ft
@@ -987,6 +999,12 @@ def build_parser() -> argparse.ArgumentParser:
     rv.add_argument("--study-name", dest="study_name", default="")
     rv.add_argument("--model", default="claude-opus-4-8")
     rv.add_argument("--limit", type=int)
+    rv.add_argument("--only", nargs="*",
+                    help="Crash IDs to assist (default: the whole queue).")
+    rv.add_argument("--initial-ids", dest="initial_ids",
+                    help="TEAAS ID export. Sets in_initial_study per crash, "
+                         "which narrows the decide vocabulary to its branch "
+                         "(docs/03): in the study IS/RE/DEL, out ADD/NIS.")
     rv.add_argument("--output", required=True, help="proposals.jsonl")
     rv.set_defaults(func=_cmd_review_assist)
 

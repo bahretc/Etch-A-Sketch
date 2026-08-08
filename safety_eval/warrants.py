@@ -233,7 +233,9 @@ def format_screen(s: SectionScreen) -> str:
     """A plain report, docs/05 style."""
     lines = [
         f"Facility: {s.facility}   Length: {s.length_mi:.3f} mi",
-        f"Total crashes: {s.total}   (animal crashes excluded: {s.animal_excluded})",
+        f"Total crashes: {s.total}"
+        + (f"   (animal crashes excluded: {s.animal_excluded})"
+           if s.animal_excluded else ""),
         f"Crashes per mile: {s.rate:.1f}",
         f"Minimums: {s.min_total} total and {s.min_rate} per mile -> "
         f"{'MET' if s.meets_minimums else 'NOT MET'}",

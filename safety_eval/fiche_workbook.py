@@ -362,20 +362,23 @@ def _rendered(value, fmt: str) -> int:
     return max((len(part) for part in str(value).split("\n")), default=0)
 
 
-def autofit_columns(ws, max_width: int = MAX_WIDTH) -> dict:
+def autofit_columns(ws, max_width: int = MAX_WIDTH, last_row=None) -> dict:
     """Narrow every column to its content, capped so one long cell cannot win.
 
     Formula cells are sized from what the formula produces rather than from the
     formula text, which is many times longer than any value it returns.
+    ``last_row`` limits the measurement, for sheets whose lower rows are a
+    summary block whose long labels must spill rather than set widths.
     """
     headers = {c: str(ws.cell(row=1, column=c).value or "")
                for c in range(1, ws.max_column + 1)}
+    stop = last_row or ws.max_row
     widths = {}
     for c in range(1, ws.max_column + 1):
         head = headers[c]
         cap = WIDE.get(head, max_width)
         best = _rendered(head, "")
-        for r in range(1, ws.max_row + 1):
+        for r in range(1, stop + 1):
             cell = ws.cell(row=r, column=c)
             v = cell.value
             if isinstance(v, str) and v.startswith("="):

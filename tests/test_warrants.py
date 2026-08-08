@@ -326,13 +326,62 @@ def test_an_override_cell_is_carved_out_of_the_conditional_formatting(tmp_path):
     assert str(ws.cell(row=3, column=8).fill.fgColor.rgb).endswith("FFFF00")
 
 
-def test_the_summary_reports_the_screen(tmp_path):
+def _summary(ws):
+    """``{label: value-cell content}`` for the block below the crash table."""
+    return {ws.cell(row=r, column=1).value: ws.cell(row=r, column=4).value
+            for r in range(2, ws.max_row + 1)
+            if ws.cell(row=r, column=1).value is not None}
+
+
+def test_the_summary_sits_below_the_table_not_beside_it(tmp_path):
+    """A side block collides with comment text spilling rightward; below the
+    table nothing collides and the sheet prints as one column."""
     rows = [_row(i, 13.0 + i / 200, c=2, l=5) for i in range(40)]
     ws, screen = _wsheet(tmp_path, rows, length_mi=1.0, facility="freeway")
     assert screen.total == 40
-    labels = {ws.cell(row=r, column=14).value for r in range(1, 20)}
-    assert "Total" in labels and "Crashes/Mile" in labels
-    assert any(str(v).startswith("F-2") for v in labels)
+    # Nothing to the right of the table on its own rows...
+    assert all(ws.cell(row=r, column=14).value is None
+               for r in range(1, 42))
+    # ...a clear gap, then the block starts in column A.
+    assert ws.cell(row=42, column=1).value is None
+    assert ws.cell(row=43, column=1).value == "Warrant Summary"
+
+
+def test_the_summary_is_live_formulas_not_computed_values(tmp_path):
+    """CLAUDE.md hard rule #4: a reviewer traces every number, and an engineer
+    who edits a code sees the warrant answer move."""
+    rows = [_row(i, 13.0 + i / 200, c=2, l=5) for i in range(40)]
+    ws, _ = _wsheet(tmp_path, rows, length_mi=1.0, facility="freeway")
+    got = _summary(ws)
+    assert got["Total Crashes"] == "=COUNT(C2:C41)"
+    assert got["Wet Crashes"] == '=COUNTIFS(F2:F41,">=2",F2:F41,"<=3")'
+    assert got["Night Crashes"] == '=COUNTIFS(H2:H41,">=4",H2:H41,"<=6")'
+    assert got["ROR Crashes"].startswith("=SUMPRODUCT(COUNTIF(J2:J41,{")
+    # Shares are ROUNDed to two places BEFORE the >= test (docs/12)...
+    assert got["% ROR"].startswith("=ROUND(")
+    # ...and the Met? cells chain min tests and the rounded share together.
+    f2 = next(v for k, v in got.items() if str(k).startswith("F-2"))
+    assert f2.startswith("=IF(AND(") and ">=0.8)" in f2
+
+
+def test_the_summary_has_no_animal_row(tmp_path):
+    """The table already holds post-DEL crashes, so an animal count of the
+    rows above it could only ever say zero: noise, not information."""
+    rows = [_row(i, 13.0 + i / 200) for i in range(5)]
+    ws, _ = _wsheet(tmp_path, rows, length_mi=1.0, facility="freeway")
+    assert not any("animal" in str(ws.cell(row=r, column=1).value).lower()
+                   for r in range(1, ws.max_row + 1))
+
+
+def test_the_summary_lists_the_subsections_that_warrant(tmp_path):
+    rows = [_row(i, 13.0 + i / 200, c=2, l=5) for i in range(40)]
+    ws, _ = _wsheet(tmp_path, rows, length_mi=1.0, facility="freeway")
+    col_a = [str(ws.cell(row=r, column=1).value)
+             for r in range(1, ws.max_row + 1)]
+    head = col_a.index("Sub-sections Meeting Warrants")
+    lines = [v for v in col_a[head + 1:] if v != "None"]
+    assert lines and all(v.startswith("MP 13.0") for v in lines)
+    assert any("meets" in v and "F-2" in v for v in lines)
 
 
 def test_the_sheet_is_rebuilt_not_duplicated(tmp_path):

@@ -23,7 +23,7 @@ from openpyxl.utils import get_column_letter
 
 from .fiche_workbook import DATE_FORMAT, autofit_columns
 from .warrants import (DARK_CODES, MULTILANE_ROR_TYPES, ROR_TYPES, WET_CODES,
-                       Crash, screen_section)
+                       Crash, best_windows, scan_sections, screen_section)
 
 SHEET_WARRANT = "Warrant"
 
@@ -47,8 +47,9 @@ FILL_HEAD = PatternFill("solid", fgColor="D9D9D9")
 #: from, which is exactly the bug this replaced.
 OVERRIDE_COLOUR = "FFFF00"
 
-#: Where the calculation block starts (one blank column after the table).
-_CALC = len(COLUMNS) + 2
+#: Value column for the summary block: Date, the widest table column, so
+#: numbers never render as ####.
+_VAL = _COL["Date"]
 
 
 def _ranges(letter: str, last_row: int, skip_rows) -> str:
@@ -148,43 +149,135 @@ def add_warrant_sheet(wb, rows, length_mi: float, facility: str = "freeway",
                      light_condition=r.get("l") if isinstance(r.get("l"), int) else None)
                for r in ordered]
     screen = screen_section(crashes, length_mi, facility, multilane=multilane)
-    _write_summary(ws, screen, facility, multilane, lo, hi)
-    autofit_columns(ws)
+    placed = [(r.get("mp"), c) for r, c in zip(ordered, crashes)]
+    windows = best_windows(scan_sections(placed, facility, multilane=multilane),
+                           limit=8)
+    _write_summary(ws, screen, facility, multilane, lo, hi, last, windows)
+    # Widths come from the crash table alone: the summary sits below it, and
+    # its long labels must spill across empty cells, not set column widths.
+    autofit_columns(ws, last_row=last)
     return ws, screen
 
 
-def _write_summary(ws, s, facility, multilane, lo, hi) -> None:
-    """The calculation block, to the right of the table (SN24 does the same)."""
-    c, v = _CALC, _CALC + 1
+def _array(names) -> str:
+    """An Excel array constant of quoted names, sorted for stable output."""
+    return "{" + ",".join(f'"{n}"' for n in sorted(names)) + "}"
 
-    def put(row, label, value, bold=False, pct=False):
-        a = ws.cell(row=row, column=c, value=label)
-        b = ws.cell(row=row, column=v, value=value)
-        if bold:
-            a.font = b.font = Font(bold=True)
-        if pct:
-            b.number_format = "0%"
 
-    put(1, "Facility Type", facility.upper(), bold=True)
+def _write_summary(ws, s, facility, multilane, lo, hi, last_row: int,
+                   windows) -> None:
+    """The calculation block, BELOW the crash table, in live Excel formulas.
+
+    Below rather than beside: comment text spills rightward and a side block
+    sits on top of it, slicing the comments and burying the numbers. Under the
+    table nothing collides, and the whole sheet prints and pastes as one
+    column.
+
+    Live formulas rather than Python-computed values is the project's hard
+    rule (CLAUDE.md #4): a reviewer must be able to trace every number, and an
+    engineer who edits a code must see the warrant answer move. The formulas
+    mirror NCDOT's own warrants workbook (COUNTIFS for wet and dark,
+    exact-match COUNTIF over the ROR list, shares ROUNDed to two places
+    BEFORE the >= test).
+    """
+    tab = f"2:{last_row}"                       # the crash table's data rows
+    C_ID, C_C, C_L, C_TY = "C", "F", "H", "J"
+    ror = _array(ROR_TYPES | (MULTILANE_ROR_TYPES if multilane else set()))
+    V = get_column_letter(_VAL)
+
+    r = last_row + 2
+    cells = {}
+
+    def title(text):
+        nonlocal r
+        cell = ws.cell(row=r, column=1, value=text)
+        cell.font = Font(bold=True)
+        for c in range(1, 7):
+            ws.cell(row=r, column=c).fill = FILL_HEAD
+        r += 1
+
+    def put(label, value, fmt=None, key=None):
+        nonlocal r
+        ws.cell(row=r, column=1, value=label)
+        cell = ws.cell(row=r, column=_VAL, value=value)
+        if fmt:
+            cell.number_format = fmt
+        if key:
+            cells[key] = f"{V}{r}"
+        r += 1
+
+    title("Warrant Summary")
+    put("Facility Type", facility.upper())
     if lo is not None:
-        put(2, "MP Begin", lo)
-        put(3, "MP End", hi)
-    put(4, "Length (miles)", round(s.length_mi, 3))
-    put(5, "Multi-lane (SSSD counts as ROR)", "Yes" if multilane else "No")
-    put(6, "Total", s.total)
-    put(7, "Animal crashes deleted", s.animal_excluded)
-    put(8, "Crashes/Mile", round(s.rate, 1))
-    put(9, f"Min # Crashes ({s.min_total}) Met?",
-        "Yes" if s.total > s.min_total else "No")
-    put(10, f"Min Crashes/Mile ({s.min_rate}) Met?",
-        "Yes" if s.rate > s.min_rate else "No")
+        put("MP Begin", lo, "0.000", key="lo")
+        put("MP End", hi, "0.000", key="hi")
+        put("Length (miles)", f"={cells['hi']}-{cells['lo']}", "0.000",
+            key="len")
+    else:
+        put("Length (miles)", round(s.length_mi, 3), "0.000", key="len")
+    if multilane:
+        put("Multi-lane (SSSD counts as ROR)", "Yes")
+    put("Total Crashes", f"=COUNT({C_ID}{tab.replace(':', f':{C_ID}')})",
+        key="total")
+    put("Crashes/Mile", f"=ROUND({cells['total']}/{cells['len']},1)", "0.0",
+        key="rate")
+    put(f"Min # Crashes ({s.min_total}) Met?",
+        f'=IF({cells["total"]}>{s.min_total},"Yes","No")', key="m1")
+    put(f"Min Crashes/Mile ({s.min_rate}) Met?",
+        f'=IF({cells["rate"]}>{s.min_rate},"Yes","No")', key="m2")
+    r += 1
 
-    row = 12
-    put(row, "Warrant", "Met?", bold=True)
-    for wr in s.warrants:
-        row += 1
-        ws.cell(row=row, column=c, value=f"{wr.warrant}  {wr.description}")
-        ws.cell(row=row, column=v, value="Yes" if wr.met else "No")
-        ws.cell(row=row, column=v + 1,
-                value=f"{wr.count}/{wr.total} = {wr.share:.0%} "
-                      f"(needs {wr.threshold:.0%})")
+    rng = lambda col: f"{col}2:{col}{last_row}"
+    put("ROR Crashes", f"=SUMPRODUCT(COUNTIF({rng(C_TY)},{ror}))", key="ror")
+    put("% ROR", f"=ROUND({cells['ror']}/{cells['total']},2)", "0%",
+        key="p_ror")
+    put("Wet Crashes",
+        f'=COUNTIFS({rng(C_C)},">=2",{rng(C_C)},"<=3")', key="wet")
+    put("% Wet", f"=ROUND({cells['wet']}/{cells['total']},2)", "0%",
+        key="p_wet")
+    put("Wet ROR Crashes",
+        f"=SUMPRODUCT(({rng(C_C)}>=2)*({rng(C_C)}<=3)"
+        f"*ISNUMBER(MATCH({rng(C_TY)},{ror},0)))", key="wetror")
+    put("% Wet ROR", f"=ROUND({cells['wetror']}/{cells['total']},2)", "0%",
+        key="p_wetror")
+    put("Night Crashes",
+        f'=COUNTIFS({rng(C_L)},">=4",{rng(C_L)},"<=6")', key="night")
+    put("% Night", f"=ROUND({cells['night']}/{cells['total']},2)", "0%",
+        key="p_night")
+    if any(w.warrant == "N-4" for w in s.warrants):
+        from .warrants import INTERSECTION_TYPES
+        put("Non-Intersection Crashes",
+            f"={cells['total']}-SUMPRODUCT(COUNTIF({rng(C_TY)},"
+            f"{_array(INTERSECTION_TYPES)}))", key="nonint")
+        put("Night ROR Crashes",
+            f"=SUMPRODUCT(({rng(C_L)}>=4)*({rng(C_L)}<=6)"
+            f"*ISNUMBER(MATCH({rng(C_TY)},{ror},0)))", key="nightror")
+        put("% Night ROR of Non-Int",
+            f"=ROUND({cells['nightror']}/{cells['nonint']},2)", "0%",
+            key="p_n4")
+    r += 1
+
+    share_of = {"1": "p_wetror", "2": "p_ror", "3": "p_wet", "4": "p_night"}
+    ws.cell(row=r, column=1, value="Warrant").font = Font(bold=True)
+    ws.cell(row=r, column=_VAL, value="Met?").font = Font(bold=True)
+    r += 1
+    for w in s.warrants:
+        pkey = "p_n4" if w.warrant == "N-4" else share_of[w.warrant[-1]]
+        ws.cell(row=r, column=1,
+                value=f"{w.warrant}  {w.description} ({w.threshold:.0%})")
+        ws.cell(row=r, column=_VAL,
+                value=f'=IF(AND({cells["m1"]}="Yes",{cells["m2"]}="Yes",'
+                      f'{cells[pkey]}>={w.threshold}),"Yes","No")')
+        r += 1
+    r += 1
+
+    title("Sub-sections Meeting Warrants")
+    if not windows:
+        ws.cell(row=r, column=1, value="None at the minimum section length.")
+        r += 1
+    for win in windows:
+        met = ", ".join(win.names)
+        ws.cell(row=r, column=1,
+                value=f"MP {win.lo:.3f} to {win.hi:.3f}: {win.screen.total} "
+                      f"crashes, {win.screen.rate:.1f} per mile, meets {met}")
+        r += 1

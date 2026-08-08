@@ -217,11 +217,22 @@ _PREPARE_SCHEMA = {
 
 
 def _coded_view(row) -> dict:
-    """The coded fiche fields the model may look at (no PII in the fiche)."""
+    """The coded fiche fields the model may look at (no PII in the fiche).
+
+    Values must survive ``json.dumps``: the HSIP working sheet stores real
+    datetimes where the evaluation sheets carried strings, so anything
+    date-like is ISO-formatted here rather than crashing the request build.
+    """
     keep = ("crash_id", "date", "t", "c", "f", "l", "s", "crash_type",
             "on_road", "from_road", "toward_road", "mp", "miles", "status",
             "section")
-    return {k: row.fields.get(k) for k in keep if row.fields.get(k) not in (None, "")}
+    out = {}
+    for k in keep:
+        v = row.fields.get(k)
+        if v in (None, ""):
+            continue
+        out[k] = v.isoformat() if hasattr(v, "isoformat") else v
+    return out
 
 
 def _context_block(row, ctx: StudyContext) -> str:

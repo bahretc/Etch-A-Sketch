@@ -71,7 +71,11 @@ def add_warrant_sheet(wb, rows, length_mi: float, facility: str = "freeway",
     """Build the Warrant sheet from the in-study crash rows.
 
     ``rows`` are dicts carrying at least ``mp``, ``crash_id``, ``t``, ``c``,
-    ``f``, ``l``, ``s``, ``type``; ``dir`` and ``comment`` are optional.
+    ``f``, ``l``, ``s``, ``type``; ``dir`` and ``comment`` are optional. A row
+    may carry ``fills``, a mapping of column name to hex colour, for values the
+    engineer overrode by hand: the analysis uses the corrected value and the
+    solid fill marks it as an engineering call rather than TEAAS data. The
+    original stays on the fiche sheet.
     Returns ``(worksheet, SectionScreen)``.
     """
     if SHEET_WARRANT in wb.sheetnames:
@@ -98,6 +102,9 @@ def add_warrant_sheet(wb, rows, length_mi: float, facility: str = "freeway",
                 cell = ws.cell(row=i, column=_COL[name], value=v)
                 if name == "Date":
                     cell.number_format = DATE_FORMAT
+                colour = (r.get("fills") or {}).get(name)
+                if colour:
+                    cell.fill = PatternFill("solid", fgColor=colour)
     last = len(ordered) + 1
     _highlight(ws, last, multilane)
     ws.freeze_panes = "A2"

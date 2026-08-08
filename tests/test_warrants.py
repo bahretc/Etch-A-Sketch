@@ -403,3 +403,19 @@ def test_rounding_can_also_push_a_share_down():
     dark = [Crash(str(i), "ROR-L", 1, 5) for i in range(15)]
     day = [Crash(f"d{i}", "ROR-L", 1, 1) for i in range(16)]
     assert not f("F-4", screen_section(dark + day, 0.5, "freeway")).met
+
+
+def test_an_overridden_value_carries_its_fill_and_the_analysis_uses_it(tmp_path):
+    """A hand-corrected code shows solid yellow on the Warrant sheet; the
+    original stays on the fiche sheet, which this sheet never edits."""
+    rows = [_row(1, 13.0, l=5), _row(2, 13.2, l=1)]
+    rows[1]["l"] = 5
+    rows[1]["fills"] = {"L": "FFFF00"}
+    ws, screen = _wsheet(tmp_path, rows)
+    cell = ws.cell(row=3, column=8)                  # L of the second crash
+    assert cell.value == 5
+    assert cell.fill.patternType == "solid"
+    assert str(cell.fill.fgColor.rgb).endswith("FFFF00")
+    assert ws.cell(row=2, column=8).fill.patternType is None   # others untouched
+    f4 = next(w for w in screen.warrants if w.warrant == "F-4")
+    assert f4.count == 2                             # the override counts

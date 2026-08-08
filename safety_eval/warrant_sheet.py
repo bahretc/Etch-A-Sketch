@@ -32,32 +32,63 @@ COLUMNS = ["#", "MP", "Crash ID", "Date", "T", "C", "F", "L", "S", "Type",
            "Dir", "Comment"]
 _COL = {name: i + 1 for i, name in enumerate(COLUMNS)}
 
-FILL_WARRANT = PatternFill("solid", bgColor="FFEB9C")
+#: One colour per warrant input, so the columns read apart at a glance and
+#: yellow stays free. Wet C light blue, dark L lavender, ROR Type pale orange.
+FILL_WET = PatternFill("solid", bgColor="DDEBF7")
+FILL_DARK = PatternFill("solid", bgColor="E4DFEC")
+FILL_ROR = PatternFill("solid", bgColor="FCE4D6")
 FILL_HEAD = PatternFill("solid", fgColor="D9D9D9")
+
+#: Yellow is RESERVED for a value the engineer overrode by hand, and appears
+#: nowhere else on the sheet, so the one changed cell is findable on sight.
+#: The override cell is also EXCLUDED from the column's conditional formatting,
+#: because Excel paints a matching rule over a direct fill: without the carve-
+#: out the yellow would be hidden under the very highlight it must stand out
+#: from, which is exactly the bug this replaced.
+OVERRIDE_COLOUR = "FFFF00"
 
 #: Where the calculation block starts (one blank column after the table).
 _CALC = len(COLUMNS) + 2
 
 
-def _highlight(ws, last_row: int, multilane: bool = False) -> None:
-    """Wet C, dark L and ROR Types, over the whole table.
+def _ranges(letter: str, last_row: int, skip_rows) -> str:
+    """``H2:H40`` minus the skipped rows, as a space-separated sqref."""
+    rows = [r for r in range(2, last_row + 1) if r not in skip_rows]
+    parts, i = [], 0
+    while i < len(rows):
+        j = i
+        while j + 1 < len(rows) and rows[j + 1] == rows[j] + 1:
+            j += 1
+        parts.append(f"{letter}{rows[i]}" if i == j
+                     else f"{letter}{rows[i]}:{letter}{rows[j]}")
+        i = j + 1
+    return " ".join(parts)
 
-    SSSD is highlighted only when ``multilane`` is on, matching the warrant:
-    highlighting a type that does not count would overstate the ROR share to
-    anyone reading the sheet.
+
+def _highlight(ws, last_row: int, multilane: bool = False, skip=()) -> None:
+    """Wet C, dark L and ROR Types, one colour per column.
+
+    ``skip`` holds ``(column name, row)`` cells carved out of the rules:
+    engineer-overridden cells keep their direct yellow instead of being painted
+    over. SSSD is highlighted only when ``multilane`` is on, matching the
+    warrant: highlighting a type that does not count would overstate the ROR
+    share to anyone reading the sheet.
     """
     if last_row < 2:
         return
-    for name, codes in (("C", WET_CODES), ("L", DARK_CODES)):
+    for name, codes, fill in (("C", WET_CODES, FILL_WET),
+                              ("L", DARK_CODES, FILL_DARK)):
         letter = get_column_letter(_COL[name])
-        ws.conditional_formatting.add(
-            f"{letter}2:{letter}{last_row}",
-            CellIsRule(operator="between",
-                       formula=[str(min(codes) - 0.9), str(max(codes) + 0.9)],
-                       fill=FILL_WARRANT))
+        rng = _ranges(letter, last_row,
+                      {r for col, r in skip if col == name})
+        if rng:
+            ws.conditional_formatting.add(rng, CellIsRule(
+                operator="between",
+                formula=[str(min(codes) - 0.9), str(max(codes) + 0.9)],
+                fill=fill))
     letter = get_column_letter(_COL["Type"])
-    rng = f"{letter}2:{letter}{last_row}"
-    style = DifferentialStyle(fill=FILL_WARRANT)
+    rng = _ranges(letter, last_row, {r for col, r in skip if col == "Type"})
+    style = DifferentialStyle(fill=FILL_ROR)
     names = ROR_TYPES | MULTILANE_ROR_TYPES if multilane else ROR_TYPES
     for i, name in enumerate(sorted(names)):
         rule = Rule(type="containsText", operator="containsText", text=name,
@@ -89,6 +120,7 @@ def add_warrant_sheet(wb, rows, length_mi: float, facility: str = "freeway",
         cell.alignment = Alignment(horizontal="center")
 
     ordered = sorted(rows, key=lambda r: (r.get("mp") is None, r.get("mp") or 0))
+    overridden = set()
     for n, r in enumerate(ordered, start=1):
         i = n + 1
         ws.cell(row=i, column=_COL["#"], value=n)
@@ -105,8 +137,9 @@ def add_warrant_sheet(wb, rows, length_mi: float, facility: str = "freeway",
                 colour = (r.get("fills") or {}).get(name)
                 if colour:
                     cell.fill = PatternFill("solid", fgColor=colour)
+                    overridden.add((name, i))
     last = len(ordered) + 1
-    _highlight(ws, last, multilane)
+    _highlight(ws, last, multilane, skip=overridden)
     ws.freeze_panes = "A2"
 
     crashes = [Crash(crash_id=str(r.get("crash_id", "")),

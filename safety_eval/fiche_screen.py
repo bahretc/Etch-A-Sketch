@@ -40,9 +40,7 @@ from __future__ import annotations
 import re
 import subprocess
 
-from openpyxl.formatting.rule import CellIsRule, Rule
 from openpyxl.styles import Font, PatternFill
-from openpyxl.styles.differential import DifferentialStyle
 
 from . import study_type as _st
 from openpyxl.utils import get_column_letter
@@ -66,45 +64,6 @@ ANIMAL_TYPE = "animal"
 #: Black bold on it stays legible.
 BANNER_TEXT = "NOT IN STUDY - REPORT NOT REVIEWED"
 FILL_BANNER = PatternFill("solid", fgColor="A6A6A6")
-
-#: Highlight for a cell that feeds a warrant.
-FILL_WARRANT = PatternFill("solid", bgColor="FFEB9C")
-
-
-def apply_warrant_formatting(ws, last_row: int, col=None):
-    """Highlight the cells a warrant counts: wet C, dark L, and ROR Types.
-
-    The ranges MATCH THE WARRANT, which is the whole point. An earlier version
-    of this on the working sheet used C between 1.1 and 2.9 and L between 3.1
-    and 5.9, both narrower than the warrant, so C=3 and L=6 counted toward a
-    warrant without highlighting. Anyone eyeballing the sheet would undercount.
-
-    ``last_row`` is the last ADD row. The warrant runs on IS + RE + ADD, so
-    highlighting past it shows crashes that are not in the analysis.
-    """
-    from .warrants import DARK_CODES, MULTILANE_ROR_TYPES, ROR_TYPES, WET_CODES
-    col = col or {"c": 15, "l": 17, "type": 19}
-    if last_row < 2:
-        return {}
-    letter = {k: get_column_letter(v) for k, v in col.items()}
-    spans = {"c": (min(WET_CODES) - 0.9, max(WET_CODES) + 0.9),
-             "l": (min(DARK_CODES) - 0.9, max(DARK_CODES) + 0.9)}
-    out = {}
-    for key in ("c", "l"):
-        lo, hi = spans[key]
-        rng = f"{letter[key]}2:{letter[key]}{last_row}"
-        ws.conditional_formatting.add(rng, CellIsRule(
-            operator="between", formula=[str(lo), str(hi)], fill=FILL_WARRANT))
-        out[key] = rng
-    rng = f"{letter['type']}2:{letter['type']}{last_row}"
-    style = DifferentialStyle(fill=FILL_WARRANT)
-    for i, name in enumerate(sorted(ROR_TYPES | MULTILANE_ROR_TYPES)):
-        rule = Rule(type="containsText", operator="containsText", text=name,
-                    dxf=style, priority=i + 1)
-        rule.formula = [f'NOT(ISERROR(SEARCH("{name}",{letter["type"]}2)))']
-        ws.conditional_formatting.add(rng, rule)
-    out["type"] = rng
-    return out
 
 _MP_RE = re.compile(r"\s*(\d+\.\d{3})\s+(\S+)\s+(.*)")
 
@@ -265,13 +224,9 @@ def screen_sheet(ws, features: dict, lo: float, hi: float, initial_ids,
                 ws.cell(row=i, column=col[key]).fill = fill
     format_dates(ws)
     autofit_columns(ws)          # before the banner: its 34-character text is
-    banner = _insert_banner(ws, rows)  # a heading, not content, no width
-    if kind.runs_warrants:
-        # Highlight the warrant inputs, stopping at the last in-study row.
-        last = max((r for r in range(2, banner)
-                    if ws.cell(row=r, column=col["is"]).value in
-                    ("IS", "RE", "ADD", "?")), default=1)
-        apply_warrant_formatting(ws, last)
+    _insert_banner(ws, rows)     # a heading, not content, no width
+    # No conditional formatting on this sheet, ever: its extent goes stale the
+    # moment a determination moves. The Warrant sheet is the highlight's home.
     return tally
 
 

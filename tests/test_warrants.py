@@ -296,6 +296,36 @@ def test_the_highlight_covers_every_row_and_matches_the_warrant(tmp_path):
     assert rules["H2:H6"][0].formula == ["3.1", "6.9"]   # dark L in {4,5,6}
 
 
+def test_each_warrant_column_has_its_own_colour_and_none_is_yellow(tmp_path):
+    """All-yellow highlighting made the one hand-changed cell invisible: the
+    override was the same colour as the ordinary highlight around it. One
+    colour per column, and yellow appears in no rule at all."""
+    ws, _ = _wsheet(tmp_path, [_row(i, 13.0 + i / 100) for i in range(5)])
+    colours = set()
+    for rng, rules in ws.conditional_formatting._cf_rules.items():
+        col = str(rng.sqref)[0]
+        for rule in rules:
+            rgb = str(rule.dxf.fill.bgColor.rgb)
+            assert not rgb.endswith("FFFF00"), "yellow is reserved"
+            colours.add((col, rgb[-6:]))
+    per_col = {c: {rgb for cc, rgb in colours if cc == c} for c, _ in colours}
+    assert all(len(v) == 1 for v in per_col.values())     # one colour per column
+    assert len({next(iter(v)) for v in per_col.values()}) == 3   # all distinct
+
+
+def test_an_override_cell_is_carved_out_of_the_conditional_formatting(tmp_path):
+    """Excel paints a matching rule OVER a direct fill, so without the carve-
+    out the engineer's yellow is hidden under the ordinary highlight."""
+    rows = [_row(1, 13.0, l=5), _row(2, 13.2, l=1), _row(3, 13.4, l=5)]
+    rows[1]["l"] = 5
+    rows[1]["fills"] = {"L": "FFFF00"}
+    ws, _ = _wsheet(tmp_path, rows)
+    l_ranges = [str(rng.sqref) for rng in ws.conditional_formatting._cf_rules
+                if str(rng.sqref).startswith("H")]
+    assert l_ranges == ["H2 H4"]                     # row 3 carved out
+    assert str(ws.cell(row=3, column=8).fill.fgColor.rgb).endswith("FFFF00")
+
+
 def test_the_summary_reports_the_screen(tmp_path):
     rows = [_row(i, 13.0 + i / 200, c=2, l=5) for i in range(40)]
     ws, screen = _wsheet(tmp_path, rows, length_mi=1.0, facility="freeway")

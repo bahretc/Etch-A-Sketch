@@ -113,6 +113,39 @@ def _screened(tmp_path):
     return ws
 
 
+def test_animals_del_only_inside_the_initial_study_branch(tmp_path):
+    """DEL exists only inside the Initial Study branch (docs/03). On the real
+    corridor fiche the old rule marked 112 out-of-study animal crashes DEL,
+    an off-branch status on nearly a third of the sheet; they are NIS, final
+    and unreviewed, because an HSIP study does not consider animals at all."""
+    import openpyxl
+
+    from safety_eval.fiche_screen import screen_sheet
+    from safety_eval.fiche_workbook import build_fiche_workbook
+
+    animal_csv = _HDR + (
+        # in the Initial Study, animal -> DEL
+        '"0","US 74","0.500","E","*MILE 165 ","*MILE 166 ","US 74","12.719",'
+        '"","201","2021-09-03","17","1","0","1","O"\n'
+        # not in the study, animal -> NIS even though the colours say review
+        '"0","US 74","0.100","W","*MILE 165 ","*MILE 166 ","US 74","12.8",'
+        '"","202","2023-07-13","17","1","0","1","O"\n'
+        # not in the study, not an animal, same colours -> reviewed
+        '"0","US 74","0.100","W","*MILE 165 ","*MILE 166 ","US 74","12.8",'
+        '"","203","2023-07-14","19","1","0","1","O"\n')
+    out = tmp_path / "animals.xlsx"
+    build_fiche_workbook(str(out), study="X", fiche_csv=animal_csv)
+    ws = openpyxl.load_workbook(str(out))["X_Fiche"]
+    tally = screen_sheet(ws, FEATURES, LO, HI, ["201"], route="US 74",
+                         study="hsip")
+    got = {str(ws.cell(row=r, column=12).value):
+           ws.cell(row=r, column=9).value
+           for r in range(2, ws.max_row + 1)
+           if ws.cell(row=r, column=12).value is not None}
+    assert got["201"] == "DEL" and got["202"] == "NIS" and got["203"] == "?"
+    assert tally == {"IS": 0, "?": 1, "NIS": 1, "DEL": 1}
+
+
 def test_the_banner_sits_two_rows_below_the_last_question(tmp_path):
     """Blank row, then the banner. The delivered workbook does the same."""
     from safety_eval.fiche_screen import BANNER_TEXT

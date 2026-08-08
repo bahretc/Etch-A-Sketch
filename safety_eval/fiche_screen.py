@@ -187,10 +187,16 @@ def screen_sheet(ws, features: dict, lo: float, hi: float, initial_ids,
         fr = ws.cell(row=r, column=col["from"]).value
         tw = ws.cell(row=r, column=col["toward"]).value
         t = ws.cell(row=r, column=col["t"]).value
-        if kind.deletes_animals and T_CODES.get(t) == ANIMAL_TYPE:
-            status = "DEL"          # out of the study, not merely set aside
-        elif cid in initial:
-            status = "IS"
+        # DEL exists only inside the Initial Study branch (docs/03): an
+        # animal crash the study never contained is NIS, final, unreviewed -
+        # animals are not considered on an HSIP study, so it neither joins
+        # the study (never ADD) nor earns a "?". Marking it DEL would put an
+        # off-branch status on 100+ rows of a real corridor fiche.
+        animal = kind.deletes_animals and T_CODES.get(t) == ANIMAL_TYPE
+        if cid in initial:
+            status = "DEL" if animal else "IS"
+        elif animal:
+            status = "NIS"
         else:
             status = needs_review(fr, tw, on, features, lo, hi, route)
         tally[status] += 1

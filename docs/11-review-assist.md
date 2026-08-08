@@ -448,6 +448,16 @@ for the fifth or so of crashes that carry a coordinate at all. Neither is a
 detector. RE stays a diagram-and-narrative judgment, which is the case for
 having the assist read the redacted report.
 
+## Scoring against the engineer
+
+`safety-eval assist-score --proposals proposals.jsonl --workbook reviewed.xlsx`
+compares decide-mode proposals with the engineer's reviewed statuses, and the
+Review Queue tab carries the same scorer in an expander. The engineer's
+determinations are ground truth, full stop: the number measures the assist,
+never the review. Output is overall and per-status agreement plus every
+disagreement by crash ID with the assist's stated confidence, which is the
+list to read when tightening the assist's rules.
+
 ## Still to build
 
 - **A geocoder.** `GazetteerGeocoder` reads an address point file already on

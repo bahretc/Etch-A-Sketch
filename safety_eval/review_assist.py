@@ -441,3 +441,54 @@ def assist(row, ctx: StudyContext, pages, mode: str = "decide",
                             note=f"unparseable model output: {exc}",
                             flags=["parse-error"])
     return _parse(data, row, ctx, mode)
+
+
+def score_proposals(proposals_path: str, workbook_path: str,
+                    sheet: str | None = None, status_col: int = 9,
+                    id_col: int = 12) -> dict:
+    """Score decide-mode proposals against the engineer's reviewed statuses.
+
+    The engineer's determinations are ground truth, full stop: the number that
+    comes back measures the ASSIST, never the review. Returns ``scored``,
+    ``agree``, ``by_status`` ({engineer status: {"n", "agree"}}),
+    ``disagreements`` ([(crash_id, engineer, assist, confidence)]) and
+    ``skipped`` (proposals with no decide status or no reviewed row).
+    """
+    import openpyxl
+
+    wb = openpyxl.load_workbook(workbook_path)
+    if not sheet:
+        from .hsip import fiche_sheet_name
+        sheet = fiche_sheet_name(wb)
+    ws = wb[sheet]
+    truth = {}
+    for r in range(2, ws.max_row + 1):
+        cid = ws.cell(row=r, column=id_col).value
+        status = ws.cell(row=r, column=status_col).value
+        if cid is not None and status:
+            truth[str(cid).strip()] = str(status).strip()
+
+    out = {"scored": 0, "agree": 0, "by_status": {}, "disagreements": [],
+           "skipped": []}
+    with open(proposals_path, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            p = json.loads(line)
+            cid = str(p.get("crash_id", "")).strip()
+            proposed = p.get("proposed_status")
+            if not proposed or cid not in truth:
+                out["skipped"].append(cid or "?")
+                continue
+            actual = truth[cid]
+            out["scored"] += 1
+            row = out["by_status"].setdefault(actual, {"n": 0, "agree": 0})
+            row["n"] += 1
+            if proposed == actual:
+                out["agree"] += 1
+                row["agree"] += 1
+            else:
+                out["disagreements"].append(
+                    (cid, actual, proposed, p.get("confidence", "")))
+    return out

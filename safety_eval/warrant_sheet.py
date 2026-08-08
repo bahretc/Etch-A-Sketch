@@ -111,7 +111,8 @@ def add_warrant_sheet(wb, rows, length_mi: float, facility: str = "freeway",
     engineer overrode by hand: the analysis uses the corrected value and the
     solid fill marks it as an engineering call rather than TEAAS data. The
     original stays on the fiche sheet.
-    Returns ``(worksheet, SectionScreen)``.
+    Returns ``(worksheet, SectionScreen, findings)`` with one
+    :class:`~safety_eval.warrants.Finding` per warrant.
     """
     if SHEET_WARRANT in wb.sheetnames:
         del wb[SHEET_WARRANT]
@@ -158,7 +159,7 @@ def add_warrant_sheet(wb, rows, length_mi: float, facility: str = "freeway",
     # Widths come from the crash table alone: the summary sits below it, and
     # its long labels must spill across empty cells, not set column widths.
     autofit_columns(ws, last_row=last)
-    return ws, screen
+    return ws, screen, findings
 
 
 def _array(names) -> str:

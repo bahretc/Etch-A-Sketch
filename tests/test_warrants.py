@@ -267,7 +267,7 @@ def _wsheet(tmp_path, rows, **kw):
 
     from safety_eval.warrant_sheet import add_warrant_sheet
     wb = openpyxl.Workbook()
-    ws, screen = add_warrant_sheet(wb, rows, kw.pop("length_mi", 1.0), **kw)
+    ws, screen, _ = add_warrant_sheet(wb, rows, kw.pop("length_mi", 1.0), **kw)
     return ws, screen
 
 

@@ -164,11 +164,15 @@ def _write_lines(path: str, lines: list[str]) -> None:
             fh.write(CRLF)
 
 
-def write_import_list(path: str, rows, places: int = 3) -> int:
+def write_import_list(path: str, rows, places: int = 3,
+                      strip_zeros: bool = False) -> int:
     """Write a TEAAS milepost import file from ``(crash_id, milepost)`` pairs.
 
     Format is ``<crash id>|<tab><milepost>`` with CRLF line endings, matching
     the ``*_Import.txt`` files in examples/04-15-39049 byte for byte.
+    ``strip_zeros`` writes ``13.1`` instead of ``13.100``, matching the
+    engineer's own section import files (50032187AFTER_Import.txt); both forms
+    import identically, so this is byte-fidelity, not behaviour.
 
     A crash ID repeated with a *different* milepost is an error, not something
     to resolve silently: TEAAS would take one of them and the study would carry
@@ -189,7 +193,7 @@ def write_import_list(path: str, rows, places: int = 3) -> int:
                 f"crash {cid} appears twice with different mileposts "
                 f"({seen[cid]:.3f} and {mp:.3f}); resolve it before importing")
         seen[cid] = mp
-        lines.append(f"{cid}|\t{_fmt_mp(mp, places)}")
+        lines.append(f"{cid}|\t{_fmt_mp(mp, places, strip_zeros)}")
     _write_lines(path, lines)
     return len(lines)
 

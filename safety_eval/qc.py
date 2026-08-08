@@ -250,7 +250,7 @@ def recount(workbook_path: str, treatment: str | None = None,
 # --------------------------------------------------------------------------- #
 # the two-branch vocabulary (docs/03)
 # --------------------------------------------------------------------------- #
-def check_branch_vocabulary(workbook_path: str, sheet: str, initial_ids,
+def check_branch_vocabulary(workbook_path: str, sheet, initial_ids,
                             status_col: int = 9, id_col: int = 12) -> list:
     """Statuses that contradict Initial Study membership (docs/03).
 
@@ -262,13 +262,20 @@ def check_branch_vocabulary(workbook_path: str, sheet: str, initial_ids,
     This is the check that catches the mistake AFTER the engineer has reviewed,
     which is where it happens: the screen never emits an off-branch status, but
     an edit can.
+
+    ``sheet`` may be empty: the ``<study>_Fiche`` working sheet is found by
+    its name, the same rule every HSIP command uses.
     """
     import openpyxl
 
     from .review_queue import branch_vocab
 
     initial = {int(c) for c in initial_ids}
-    ws = openpyxl.load_workbook(workbook_path, data_only=True)[sheet]
+    wb = openpyxl.load_workbook(workbook_path, data_only=True)
+    if not sheet:
+        from .hsip import fiche_sheet_name
+        sheet = fiche_sheet_name(wb)
+    ws = wb[sheet]
     problems = []
     for r in range(2, ws.max_row + 1):
         status = ws.cell(row=r, column=status_col).value

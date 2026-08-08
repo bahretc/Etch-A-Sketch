@@ -494,6 +494,33 @@ def _cmd_fiche_workbook(args) -> int:
     from .study_type import get
     for sheet, n in counts.items():
         print(f"{n:>6} rows -> {sheet}")
+
+    want_screen = any(v is not None
+                      for v in (args.features, args.lo, args.hi))
+    if want_screen:
+        missing = [f for f, v in (("--features", args.features),
+                                  ("--lo", args.lo), ("--hi", args.hi),
+                                  ("--route", args.route)) if not v]
+        if missing:
+            print(f"screen skipped: {' '.join(missing)} required to run the "
+                  "colour screen with the build")
+            return 2
+        import openpyxl
+
+        from .fiche_screen import parse_features_report, screen_sheet
+        from .fiche_workbook import parse_initial_ids
+        ids = []
+        if args.initial_ids:
+            _, raw = parse_initial_ids(args.initial_ids)
+            ids = [r[0] for r in raw]
+        wb = openpyxl.load_workbook(out)
+        ws = wb[f"{args.study}_Fiche" if args.study else "Fiche"]
+        tally = screen_sheet(ws, parse_features_report(args.features),
+                             args.lo, args.hi, ids, route=args.route,
+                             study=args.study_type)
+        wb.save(out)
+        print("screened: " + "   ".join(f"{k} {v}"
+                                        for k, v in tally.items()))
     print(f"wrote {out}   ({get(args.study_type)})")
     return 0
 
@@ -541,6 +568,121 @@ def _cmd_teaas_import(args) -> int:
         path, n = written["held"]
         print(f"{n:>5} HELD (no milepost, not imported) -> {path}")
         return 1
+    return 0
+
+
+def _cmd_warrants(args) -> int:
+    """Screen a reviewed HSIP fiche workbook and rebuild its Warrant sheet."""
+    from . import hsip
+    from .warrants import format_screen
+
+    if args.initial_ids:
+        from .fiche_workbook import parse_initial_ids
+        from .qc import check_branch_vocabulary
+        _, raw = parse_initial_ids(args.initial_ids)
+        bad = check_branch_vocabulary(args.workbook, args.sheet or "",
+                                      [r[0] for r in raw])
+        if bad:
+            print(f"Refusing to run: {len(bad)} branch violation(s). "
+                  "Run check-branches.")
+            return 2
+    run = hsip.run_hsip(
+        args.workbook, args.facility, args.lo, args.hi, sheet=args.sheet,
+        multilane=args.multilane,
+        overrides=hsip.parse_overrides(args.override),
+        study_type=args.study_type, import_out=args.import_out,
+        strip_zeros=not args.padded, save=not args.no_save)
+    print(format_screen(run.screen))
+    print()
+    for line in run.finding_lines:
+        print(f"  {line}")
+    if run.import_lines:
+        print(f"\n{run.import_lines} ADD/RE crashes -> {args.import_out}")
+    for f in run.daylight_flags or ():
+        print(f"  daylight check: {f['crash_id']} has L={f['l']} at "
+              f"{f['time']:%H:%M} but {f['problem']} "
+              f"(sunrise {f['sunrise']:%H:%M}, sunset {f['sunset']:%H:%M})")
+    if not args.no_save:
+        print(f"\nWarrant sheet rebuilt in {args.workbook}")
+    return 0
+
+
+def _cmd_import_list(args) -> int:
+    """The ADD+RE milepost import for a section HSIP study (docs/09)."""
+    import openpyxl
+
+    from . import hsip
+    from .teaas import write_import_list
+
+    if args.initial_ids:
+        from .fiche_workbook import parse_initial_ids
+        from .qc import check_branch_vocabulary
+        _, raw = parse_initial_ids(args.initial_ids)
+        bad = check_branch_vocabulary(args.workbook, args.sheet or "",
+                                      [r[0] for r in raw])
+        if bad:
+            print(f"Refusing to write: {len(bad)} branch violation(s). "
+                  "Run check-branches.")
+            return 2
+    wb = openpyxl.load_workbook(args.workbook)
+    ws = wb[args.sheet or hsip.fiche_sheet_name(wb)]
+    pairs = hsip.import_pairs(hsip.read_analysis_rows(ws))
+    if not pairs:
+        print("No ADD or RE crashes with a milepost; nothing to import.")
+        return 1
+    n = write_import_list(args.out, pairs, strip_zeros=not args.padded)
+    print(f"{n} ADD/RE crashes -> {args.out}")
+    return 0
+
+
+def _cmd_feature_list(args) -> int:
+    """Feature inclusions for TEAAS from '<text>|<milepost>' pair lines."""
+    from .teaas import write_feature_list
+
+    rows = []
+    with open(args.pairs, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            sep = "|" if "|" in line else ","
+            text, mp = line.rsplit(sep, 1)
+            rows.append((text.strip(), float(mp)))
+    n = write_feature_list(args.out, rows, truncate=args.truncate)
+    print(f"{n} feature(s) -> {args.out} (verify against a live TEAAS "
+          "import; docs/09)")
+    return 0
+
+
+def _cmd_assist_score(args) -> int:
+    """Score decide-mode proposals against the engineer's determinations.
+
+    The engineer's reviewed statuses are ground truth, full stop. The output
+    is a measurement of the assist, never of the engineer.
+    """
+    from .review_assist import score_proposals
+
+    s = score_proposals(args.proposals, args.workbook, sheet=args.sheet,
+                        status_col=args.status_col, id_col=args.id_col)
+    if not s["scored"]:
+        print("Nothing to score: no proposal matched a reviewed crash.")
+        return 1
+    print(f"Scored {s['scored']} proposal(s) against the engineer's review "
+          f"(ground truth): {s['agree']}/{s['scored']} agree "
+          f"({s['agree'] / s['scored']:.0%}).")
+    for status in sorted(s["by_status"]):
+        row = s["by_status"][status]
+        print(f"  engineer {status:<4} {row['agree']:>3}/{row['n']:<3} "
+              f"({row['agree'] / row['n']:.0%}) matched")
+    if s["disagreements"]:
+        print(f"\n{len(s['disagreements'])} disagreement(s) "
+              "(engineer / assist, assist confidence):")
+        for cid, actual, proposed, conf in s["disagreements"]:
+            print(f"  {cid}: {actual} / {proposed}"
+                  f"{f'  ({conf})' if conf else ''}")
+    if s["skipped"]:
+        print(f"\n{len(s['skipped'])} proposal(s) not scored (no decide "
+              "status or not on the reviewed sheet).")
     return 0
 
 
@@ -921,6 +1063,89 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Filename prefix, e.g. '04-15-39049_'.")
     ti.set_defaults(func=_cmd_teaas_import)
 
+    wa = sub.add_parser(
+        "warrants",
+        help="Screen a REVIEWED HSIP fiche workbook (docs/12): reads the "
+             "engineer's IS/RE/ADD rows off the working sheet, rebuilds the "
+             "Warrant sheet (live formulas, facility dropdown, per-warrant "
+             "sub-section findings), and prints the screen. Optionally writes "
+             "the ADD+RE import list in the same run.")
+    wa.add_argument("--workbook", required=True,
+                    help="The study fiche workbook, after review.")
+    wa.add_argument("--sheet", help="Working sheet (default: the *_Fiche one).")
+    wa.add_argument("--facility", default="freeway",
+                    choices=["freeway", "us", "nc", "sr", "city"])
+    wa.add_argument("--lo", type=float, required=True, help="Study MP begin.")
+    wa.add_argument("--hi", type=float, required=True, help="Study MP end.")
+    wa.add_argument("--multilane", action="store_true",
+                    help="SSSD counts as ROR (docs/12; off by default).")
+    wa.add_argument("--override", action="append", default=[],
+                    metavar="CRASH_ID:FIELD=VALUE",
+                    help="Engineer correction, e.g. 107591377:l=5. The "
+                         "analysis uses the corrected value and the Warrant "
+                         "sheet paints that one cell the reserved yellow; the "
+                         "fiche sheet keeps the original. Repeatable.")
+    wa.add_argument("--study-type", default="hsip",
+                    choices=[k for k, _ in _study_choices()],
+                    help="Guard: only HSIP Package Analyses run warrants.")
+    wa.add_argument("--import-out", dest="import_out",
+                    help="Also write the ADD+RE milepost import here.")
+    wa.add_argument("--padded", action="store_true",
+                    help="Pad mileposts to three places (13.100) instead of "
+                         "the stripped default (13.1).")
+    wa.add_argument("--initial-ids", dest="initial_ids",
+                    help="TEAAS ID export; runs the branch gate first and "
+                         "refuses on any violation.")
+    wa.add_argument("--no-save", dest="no_save", action="store_true",
+                    help="Print the screen without touching the workbook.")
+    wa.set_defaults(func=_cmd_warrants)
+
+    il = sub.add_parser(
+        "import-list",
+        help="Write the section-study TEAAS milepost import from a reviewed "
+             "fiche workbook: ADD and RE crashes only, at their final "
+             "mileposts, crash-ID order (docs/09).")
+    il.add_argument("--workbook", required=True)
+    il.add_argument("--sheet", help="Working sheet (default: the *_Fiche one).")
+    il.add_argument("--out", required=True, help="e.g. 41000079305_Import.txt")
+    il.add_argument("--padded", action="store_true",
+                    help="Pad mileposts to three places instead of stripping "
+                         "trailing zeros.")
+    il.add_argument("--initial-ids", dest="initial_ids",
+                    help="TEAAS ID export; runs the branch gate first.")
+    il.set_defaults(func=_cmd_import_list)
+
+    fl = sub.add_parser(
+        "feature-list",
+        help="Write a TEAAS feature-inclusion import from '<text>|<milepost>' "
+             "lines (mile markers, curve PC/PI/PT estimates). Text is capped "
+             "at 20 characters; the format is unverified against a live "
+             "import (docs/09).")
+    fl.add_argument("--pairs", required=True,
+                    help="Text file, one '<text>|<milepost>' per line "
+                         "(comma also accepted; # comments ignored).")
+    fl.add_argument("--out", required=True)
+    fl.add_argument("--truncate", action="store_true",
+                    help="Shorten over-length text instead of refusing.")
+    fl.set_defaults(func=_cmd_feature_list)
+
+    sc = sub.add_parser(
+        "assist-score",
+        help="Score review-assist decide proposals against the ENGINEER'S "
+             "reviewed statuses, which are ground truth: overall and "
+             "per-status agreement plus every disagreement. Measures the "
+             "assist, never the engineer.")
+    sc.add_argument("--proposals", required=True, help="proposals.jsonl")
+    sc.add_argument("--workbook", required=True,
+                    help="The engineer's reviewed workbook.")
+    sc.add_argument("--sheet", help="Reviewed sheet (default: the *_Fiche one).")
+    sc.add_argument("--status-col", dest="status_col", type=int, default=9,
+                    help="1-based status column (default 9, the fiche IS? "
+                         "column).")
+    sc.add_argument("--id-col", dest="id_col", type=int, default=12,
+                    help="1-based crash-ID column (default 12).")
+    sc.set_defaults(func=_cmd_assist_score)
+
     fw = sub.add_parser(
         "fiche-workbook",
         help="Assemble the study fiche workbook from the TEAAS exports: the "
@@ -939,6 +1164,16 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Fatal Crash Analysis, HSIP Package Analysis, or "
                          "Evaluation. HSIP deletes animal crashes and runs the "
                          "warrant screen (docs/12).")
+    fw.add_argument("--features",
+                    help="Features Report (.pdf/.txt/.csv). With --lo/--hi/"
+                         "--route, runs the colour screen after the build: "
+                         "IS for Initial Study crashes, ? for anything the "
+                         "colours cannot clear, NIS otherwise, DEL for "
+                         "animals on an HSIP study, and the grey "
+                         "NOT-REVIEWED banner.")
+    fw.add_argument("--lo", type=float, help="Study MP begin (screen).")
+    fw.add_argument("--hi", type=float, help="Study MP end (screen).")
+    fw.add_argument("--route", default="", help='Study route, e.g. "US 74".')
     fw.set_defaults(func=_cmd_fiche_workbook)
 
     d = sub.add_parser("doctor", help="Report available optional backends.")

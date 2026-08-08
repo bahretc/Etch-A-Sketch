@@ -146,5 +146,5 @@ def _write_summary(ws, s, facility, multilane, lo, hi) -> None:
         ws.cell(row=row, column=c, value=f"{wr.warrant}  {wr.description}")
         ws.cell(row=row, column=v, value="Yes" if wr.met else "No")
         ws.cell(row=row, column=v + 1,
-                value=f"{wr.count}/{wr.total} = {wr.share:.0%} tested "
-                      f"({wr.exact_share:.1%} exact; needs {wr.threshold:.0%})")
+                value=f"{wr.count}/{wr.total} = {wr.share:.0%} "
+                      f"(needs {wr.threshold:.0%})")

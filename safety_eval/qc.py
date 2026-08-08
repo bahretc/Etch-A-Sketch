@@ -289,3 +289,86 @@ def check_branch_vocabulary(workbook_path: str, sheet: str, initial_ids,
                            f"that branch allows {', '.join(allowed)}",
                 "expected": list(allowed)})
     return problems
+
+
+# --------------------------------------------------------------------------- #
+# daylight sanity check on the L code
+# --------------------------------------------------------------------------- #
+#: A crash is flagged only when its time sits at least this far INSIDE the
+#: opposite regime. The buffer absorbs everything imprecise at the margins:
+#: the equation of time, atmospheric refraction, terrain shadow, and the
+#: officer's judgement at dusk. A crash near sunrise or sunset is never
+#: flagged, because dusk and dawn are exactly where the L code is a judgement
+#: call and a checker has no business second-guessing it.
+DAYLIGHT_BUFFER_MIN = 45
+
+#: L codes: 1 daylight; 2 and 3 are dusk/dawn and are NEVER checked; 4-6 dark.
+_L_DAY, _L_DUSK_DAWN, _L_DARK = {1}, {2, 3}, {4, 5, 6}
+
+
+def _sun_times(when, latitude: float, longitude: float):
+    """(sunrise, sunset) as local clock datetimes for the crash's date.
+
+    The standard solar-position approximation: declination and the equation of
+    time from the day of year, the hour angle from the latitude. Accurate to a
+    few minutes, which is far inside the buffer. The timezone offset (and so
+    DST) comes from the crash's own date via America/New_York.
+    """
+    import math
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    n = when.timetuple().tm_yday
+    b = math.radians(360 / 365 * (n - 81))
+    eot = 9.87 * math.sin(2 * b) - 7.53 * math.cos(b) - 1.5 * math.sin(b)
+    decl = math.radians(23.44) * math.sin(b)
+    lat = math.radians(latitude)
+    cos_w = -math.tan(lat) * math.tan(decl)
+    if not -1 <= cos_w <= 1:
+        return None, None                      # polar day/night; not NC
+    half_day = math.degrees(math.acos(cos_w)) / 15.0
+    noon_utc = 12 - longitude / 15 - eot / 60
+    offset = ZoneInfo("America/New_York").utcoffset(
+        datetime(when.year, when.month, when.day, 12)).total_seconds() / 3600
+    noon_local = noon_utc + offset
+    day0 = datetime(when.year, when.month, when.day)
+    return (day0 + timedelta(hours=noon_local - half_day),
+            day0 + timedelta(hours=noon_local + half_day))
+
+
+def daylight_check(rows, latitude: float = 35.28, longitude: float = -82.12,
+                   buffer_min: int = DAYLIGHT_BUFFER_MIN) -> list:
+    """Crashes whose L code clearly contradicts the sun.
+
+    ``rows`` are ``(crash_id, datetime_with_time, l_code)``. Flags only the
+    unambiguous cases: coded dark in broad daylight, or coded daylight well
+    after dark. Dusk/dawn codes (2, 3) are never flagged, and neither is
+    anything within ``buffer_min`` of sunrise or sunset. Default coordinates
+    are mid-corridor for the US 74 Polk study; pass the study's own.
+
+    A cursory check by design: it exists to catch a keyed 4 that should be a
+    1, not to relitigate light conditions.
+    """
+    from datetime import timedelta
+
+    out = []
+    for cid, when, l_code in rows:
+        if when is None or l_code not in (_L_DAY | _L_DARK):
+            continue
+        if (when.hour, when.minute) == (0, 0):
+            continue                           # date-only value, no real time
+        sunrise, sunset = _sun_times(when, latitude, longitude)
+        if sunrise is None:
+            continue
+        pad = timedelta(minutes=buffer_min)
+        clearly_day = sunrise + pad <= when <= sunset - pad
+        clearly_dark = when <= sunrise - pad or when >= sunset + pad
+        if l_code in _L_DARK and clearly_day:
+            out.append({"crash_id": cid, "l": l_code, "time": when,
+                        "sunrise": sunrise, "sunset": sunset,
+                        "problem": "coded dark in broad daylight"})
+        elif l_code in _L_DAY and clearly_dark:
+            out.append({"crash_id": cid, "l": l_code, "time": when,
+                        "sunrise": sunrise, "sunset": sunset,
+                        "problem": "coded daylight well after dark"})
+    return out

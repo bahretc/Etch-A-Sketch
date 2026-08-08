@@ -156,3 +156,44 @@ def test_branch_vocabulary_leaves_undecided_rows_alone(tmp_path):
     path = str(tmp_path / "f.xlsx")
     wb.save(path)
     assert check_branch_vocabulary(path, "F", [111]) == []
+
+
+# ---------------------------------------------------------------------------
+# daylight sanity check
+# ---------------------------------------------------------------------------
+import datetime as _dt
+
+from safety_eval.qc import daylight_check
+
+
+def test_dark_at_noon_is_flagged_and_dark_at_night_is_not():
+    rows = [(1, _dt.datetime(2023, 6, 15, 12, 30), 5),    # dark at noon: flag
+            (2, _dt.datetime(2023, 6, 15, 23, 30), 5),    # dark at night: fine
+            (3, _dt.datetime(2023, 6, 15, 12, 30), 1)]    # day at noon: fine
+    flagged = daylight_check(rows)
+    assert [f["crash_id"] for f in flagged] == [1]
+    assert flagged[0]["problem"] == "coded dark in broad daylight"
+
+
+def test_the_season_moves_the_boundary():
+    """19:30 is daylight in June and well after dark in December, same clock."""
+    june = [(1, _dt.datetime(2023, 6, 20, 19, 30), 1)]
+    december = [(2, _dt.datetime(2023, 12, 20, 19, 30), 1)]
+    assert daylight_check(june) == []
+    assert [f["crash_id"] for f in daylight_check(december)] == [2]
+    assert daylight_check(december)[0]["problem"] == \
+        "coded daylight well after dark"
+
+
+def test_dusk_dawn_codes_and_marginal_times_are_never_flagged():
+    """L 2 and 3 are judgement calls, and so is anything near the boundary."""
+    sunsetish = _dt.datetime(2023, 6, 20, 20, 40)     # within the buffer
+    rows = [(1, sunsetish, 5), (2, sunsetish, 1),
+            (3, _dt.datetime(2023, 6, 20, 12, 0), 2),
+            (4, _dt.datetime(2023, 6, 20, 12, 0), 3)]
+    assert daylight_check(rows) == []
+
+
+def test_date_only_values_are_skipped():
+    """A midnight timestamp is a date, not a time, and proves nothing."""
+    assert daylight_check([(1, _dt.datetime(2023, 6, 15), 5)]) == []

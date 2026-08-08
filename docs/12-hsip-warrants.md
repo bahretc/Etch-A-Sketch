@@ -106,6 +106,16 @@ RTSR, U-Turn, Head-on). Urban uses a 2-year recency window, rural a 3-year one:
 
 **These are the 2024 warrants. NCDOT has 2026 updates not yet in hand.**
 
+## Shares are rounded to whole percents BEFORE the test
+
+Every share in the workbook is `ROUND(count/total, 2)` and the `>=` comparison
+runs on the rounded value: 16/31 = 51.6% rounds to 52% and MEETS a 52%
+threshold. This is the test, not presentation, and it decides warrants at the
+margin. The thresholds are published as whole percents, so testing at
+whole-percent precision is the consistent reading. `WarrantResult.share` is
+the tested (rounded) value; `exact_share` keeps the unrounded one for anyone
+who wants to see the margin.
+
 ## Values still awaiting a source
 
 | constant | value | status |

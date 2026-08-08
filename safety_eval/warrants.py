@@ -118,6 +118,20 @@ class Crash:
         return self.light_condition in DARK_CODES
 
 
+#: The workbook rounds every share to two decimals BEFORE the >= test:
+#: ROUND(U10/U6, 2) >= 0.35. So 51.6% rounds to 52% and meets a 52% threshold.
+#: This is not a presentation choice, it is the test, and it matters at the
+#: margin: it is the difference between F-4 met and not met on study
+#: 41000079305. The thresholds are published as whole percents, so testing at
+#: whole-percent precision is the consistent reading.
+SHARE_PLACES = 2
+
+
+def rounded_share(count: int, base: int, places: int = SHARE_PLACES) -> float:
+    """The share as the warrant tests it."""
+    return round(count / base, places) if base else 0.0
+
+
 @dataclass
 class WarrantResult:
     warrant: str
@@ -130,6 +144,12 @@ class WarrantResult:
 
     @property
     def share(self) -> float:
+        """As tested: rounded to whole percent, like the workbook."""
+        return rounded_share(self.count, self.total)
+
+    @property
+    def exact_share(self) -> float:
+        """Unrounded, for a reader who wants to see the margin."""
         return self.count / self.total if self.total else 0.0
 
 
@@ -197,7 +217,7 @@ def screen_section(crashes, length_mi: float, facility: str = "freeway",
             # crashes, and whose numerator is ROR crashes in the dark.
             ni = [c for c in kept if not c.at_intersection_type]
             n, base = sum(1 for c in ni if c.is_ror(multilane) and c.is_dark), len(ni)
-        share = n / base if base else 0.0
+        share = rounded_share(n, base)
         out.append(WarrantResult(
             warrant=name, description=desc, threshold=threshold, count=n,
             total=base, met=meets and share >= threshold,
@@ -310,7 +330,7 @@ def screen_intersection(crashes, context: str = "urban", end_date=None
     end = end_date or (max(dates) if dates else None)
 
     fi = [c for c in kept if c.crash_type in FI_TYPES]
-    fi_share = len(fi) / total
+    fi_share = rounded_share(len(fi), total)
     fi_sev = _mean(_epdo(c.severity) for c in fi)
     tot_sev = _mean(_epdo(c.severity) for c in kept)
 
@@ -335,9 +355,10 @@ def screen_intersection(crashes, context: str = "urban", end_date=None
     s = IntersectionScreen(
         context=context, total=total, fi=len(fi), fi_share=fi_share,
         fi_severity=fi_sev, total_severity=tot_sev,
-        recent_1yr=r1, recent_1yr_share=r1 / total,
-        recent_n=rn, recent_n_share=rn / total, recency_years=years,
-        night=night, night_share=night / total, ka_fi_5yr=ka)
+        recent_1yr=r1, recent_1yr_share=rounded_share(r1, total),
+        recent_n=rn, recent_n_share=rounded_share(rn, total),
+        recency_years=years,
+        night=night, night_share=rounded_share(night, total), ka_fi_5yr=ka)
 
     def add(name, met, count, base, threshold, desc):
         s.warrants.append(WarrantResult(warrant=name, description=desc,

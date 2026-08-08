@@ -227,7 +227,7 @@ def test_I1u_has_two_alternative_paths():
     # path two: 40 total, 15 FI (37.5%), FI severity 76.8 from K
     s = screen_intersection(icrashes(15, sev="K") + icrashes(25, t="ROR-L"),
                             "urban", END)
-    assert s.fi_share == pytest.approx(0.375) and s.fi_severity >= 6
+    assert s.fi_share == pytest.approx(0.38) and s.fi_severity >= 6   # 0.375 rounded as tested
     assert w("I-1u", s).met
 
 
@@ -378,3 +378,28 @@ def test_best_achievable_reports_the_ceiling_for_every_warrant():
     assert best["F-3"][0] == 0.0            # no wet crash anywhere: settled
     for name, (share, lo, hi, count, base, threshold) in best.items():
         assert lo < hi and 0 <= share <= 1 and count <= base
+
+
+def test_shares_are_rounded_to_whole_percents_before_the_test():
+    """ROUND(count/total, 2) >= threshold, exactly as the workbook computes.
+
+    16 of 31 is 51.6%, which rounds to 52% and MEETS a 52% threshold. On study
+    41000079305 this is the difference between F-4 met and not met, so it is
+    the test itself, not presentation.
+    """
+    from safety_eval.warrants import rounded_share
+    assert rounded_share(16, 31) == 0.52
+    dark = [Crash(str(i), "ROR-L", 1, 5) for i in range(16)]
+    day = [Crash(f"d{i}", "ROR-L", 1, 1) for i in range(15)]
+    s = screen_section(dark + day, 0.5, "freeway")
+    f4 = f("F-4", s)
+    assert f4.exact_share == pytest.approx(16 / 31)
+    assert f4.share == 0.52 and f4.met
+
+
+def test_rounding_can_also_push_a_share_down():
+    """15/31 = 48.4% rounds to 48%, which still fails 52%: symmetric, not a
+    grace margin."""
+    dark = [Crash(str(i), "ROR-L", 1, 5) for i in range(15)]
+    day = [Crash(f"d{i}", "ROR-L", 1, 1) for i in range(16)]
+    assert not f("F-4", screen_section(dark + day, 0.5, "freeway")).met

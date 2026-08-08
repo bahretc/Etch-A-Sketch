@@ -166,3 +166,84 @@ def test_route_id_is_used_when_no_route_name_is_present():
         "geometry": {"type": "LineString",
                      "coordinates": [[-78.30, 35.60], [-78.29, 35.60]]}}]))
     assert set(inv.shape) == {"SR1003"}
+
+
+# --------------------------------------------------------------------------- #
+# the resolver does the work instead of punting (engineer, 2026-08)
+# --------------------------------------------------------------------------- #
+_MARKER_REPORT = """POLK 20000074 0.0            18.381
+10.645    163.0   Mile Marker                                             0.970    North and East
+12.662    165.0   Mile Marker                                             0.063    North and East
+13.715    166.0   Mile Marker                                             0.740    North and East
+14.455 30000009 NC 9 At grade intersection, 4 legs 0.000 South and East
+"""
+
+
+def test_mile_markers_land_in_the_inventory_under_every_alias():
+    """Marker rows carry the MARKER NUMBER where road rows carry a route id,
+    so the road regex dropped all 33 of them on the US 74 report and every
+    'MILE 165 to MILE 166' location came back unresolved."""
+    inv = FeatureInventory.from_features_report(_MARKER_REPORT, route="US 74")
+    for name in ("*MILE 165", "MILE MARKER 165", "MM 165"):
+        assert inv.mileposts_of("US 74", name) == [12.662], name
+    assert inv.mileposts_of("US 74", "MILE MARKER 166") == [13.715]
+    assert inv.mileposts_of("US 74", "NC 9") == [14.455]   # roads still parse
+
+
+def test_clean_shape_buckets_medians_and_drops_the_miscoded_point():
+    """A miscoded milepost is the very thing an RE fixes; it must not bend
+    the shape used to fix it, and it must not survive by sorting to the
+    end of the line either."""
+    from safety_eval.location import clean_shape
+    pts = [(13.00 + i * 0.01, 35.270 + i * 0.001, -82.130) for i in range(10)]
+    pts.append((13.051, 35.2751, -82.130))    # honest second report at the mp
+    pts.append((13.05, 35.9, -82.9))          # wild geocode at the same mp
+    # the RE case: the crash sits back at ~MP 13.045 but was coded 13.42,
+    # which sorts it to the END of the corridor where a neighbour-only
+    # check never looks.
+    pts.append((13.42, 35.2745, -82.130))
+    shape = clean_shape(pts)
+    mps = [p[0] for p in shape]
+    assert 13.42 not in mps                   # endpoint outlier dropped
+    lat_at_1305 = next(p[1] for p in shape if p[0] == 13.05)
+    assert abs(lat_at_1305 - 35.275) < 0.002  # median beat the wild geocode
+
+
+def test_resolve_falls_back_to_detailedfiche_coordinates():
+    """'Needs mp lookup against coords' is the resolver's own work: with the
+    corridor shape from the study's coded crashes, coordinates become a
+    milepost and the note names the source."""
+    from safety_eval.location import ReportLocation, clean_shape, resolve
+    inv = FeatureInventory()
+    inv.shape["US74"] = clean_shape(
+        [(13.0 + i * 0.02, 35.270 + i * 0.002, -82.130) for i in range(20)])
+    loc = ReportLocation(on_road="US 74")
+    got = resolve(loc, inv, fallback_coordinates=(35.2789, -82.1300))
+    assert got.milepost == pytest.approx(13.09, abs=0.02)
+    assert got.method == "coordinates"
+    assert any("DetailedFiche" in n and "starting point" in n
+               for n in got.notes)
+    # and without the fallback it still refuses to guess
+    bare = resolve(loc, inv)
+    assert bare.milepost is None
+
+
+def test_the_report_location_outranks_the_coded_coordinate():
+    """On 41000079305 crash 107660451 the DetailedFiche coordinate maps to
+    MP 13.01 while the report's stated location gives the engineer's 13.44:
+    the coordinate geocodes the CODED location, the very thing the review
+    corrects, so it must never outrank the report - and when the two
+    disagree, that disagreement is reported as the RE evidence it is."""
+    from safety_eval.location import ReportLocation, clean_shape, resolve
+    inv = FeatureInventory.from_features_report(_MARKER_REPORT, route="US 74")
+    inv.shape["US74"] = clean_shape(
+        [(13.0 + i * 0.02, 35.270 + i * 0.002, -82.130) for i in range(20)])
+    loc = ReportLocation(on_road="US 74", from_road="MILE MARKER 165",
+                         toward_road="MILE MARKER 166",
+                         dist_from_intersection=0.78)
+    coded = (35.2709, -82.1300)               # maps to ~MP 13.005
+    got = resolve(loc, inv, fallback_coordinates=coded)
+    assert got.milepost == pytest.approx(12.662 + 0.78, abs=0.01)
+    assert got.method == "features"
+    assert any("coded location is what the review corrects" in n
+               for n in got.notes)

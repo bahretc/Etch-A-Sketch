@@ -636,9 +636,16 @@ def _review_queue_tab(st) -> None:
         if inventory is not None:
             st.caption("Features reports loaded for routes: "
                        + ", ".join(sorted(inventory.features)))
-    st.session_state["rq_features"] = inventory
-
     coords = rq.parse_coordinates(coords_path) if coords_path else None
+    # The DetailedFiche doubles as the route shape (location.clean_shape):
+    # coordinates then resolve to a milepost instead of punting.
+    if inventory is not None and coords_path:
+        from safety_eval.location import clean_shape
+        for key in list(inventory.features):
+            pts = rq.parse_shape_points(coords_path, key)
+            if pts:
+                inventory.shape[key] = clean_shape(pts)
+    st.session_state["rq_features"] = inventory
     point = None
     if study_pt.strip():
         try:
@@ -722,7 +729,9 @@ def _review_queue_tab(st) -> None:
                 loc = read_location_block(words, report_pages[0].width,
                                           report_pages[0].height)
                 resolved = resolve(loc, st.session_state.get("rq_features"),
-                                   fiche_milepost=row.mp)
+                                   fiche_milepost=row.mp,
+                                   fallback_coordinates=(coords or {}).get(
+                                       row.crash_id))
                 st.caption("Resolved location: " + resolved.summary())
                 for note in resolved.notes[:3]:
                     st.caption("· " + note)

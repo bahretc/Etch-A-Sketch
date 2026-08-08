@@ -718,7 +718,8 @@ def _cmd_review_assist(args) -> int:
         mp_range = (lo, hi)
     queue = rq.build_queue(review, binder_index=idx, coords=coords,
                            study_point=point, mp_range=mp_range)
-    from .location import FeatureInventory, read_location_block, resolve
+    from .location import (FeatureInventory, clean_shape, read_location_block,
+                           resolve)
     inventory = None
     if args.features:
         inventory = FeatureInventory.from_files(args.features)
@@ -727,6 +728,18 @@ def _cmd_review_assist(args) -> int:
     else:
         print("  no features report supplied (--features): mileposts will not "
               "be resolved and the assist is told so")
+    # The DetailedFiche doubles as the route shape: hundreds of coded crashes
+    # on the milepost road are a dense (milepost, coordinate) map of it, so
+    # coordinates resolve to a milepost instead of punting to the engineer.
+    if inventory is not None and args.coords:
+        for key in list(inventory.features):
+            pts = rq.parse_shape_points(args.coords, key)
+            if pts:
+                inventory.shape[key] = clean_shape(pts)
+        if inventory.shape:
+            print("  route shape from the DetailedFiche: "
+                  + ", ".join(f"{k} ({len(v)} pts)"
+                              for k, v in inventory.shape.items()))
     ctx = ra.StudyContext(name=args.study_name, analysis_type=args.analysis_type,
                           study_point=point, mp_range=mp_range,
                           target_definition=args.target)
@@ -767,8 +780,10 @@ def _cmd_review_assist(args) -> int:
                     pages[0].save(_p)
                     words = ocr_words(_p, page=1)
                 loc = read_location_block(words, pages[0].width, pages[0].height)
-                ctx.resolved_location = resolve(loc, inventory,
-                                                fiche_milepost=row.mp)
+                ctx.resolved_location = resolve(
+                    loc, inventory, fiche_milepost=row.mp,
+                    fallback_coordinates=(coords.get(row.crash_id)
+                                          if coords else None))
             res = ra.assist(row, ctx, pages, mode=args.mode, client=client,
                             redacted=True, model=args.model)
             fh.write(json.dumps(vars(res)) + "\n")

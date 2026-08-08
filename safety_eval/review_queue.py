@@ -311,6 +311,50 @@ def _coord_rows(header, rows) -> dict[str, tuple[float, float]]:
     return out
 
 
+def parse_shape_points(source: str, route: str,
+                       sheet: str | None = None) -> list:
+    """``(milepost, lat, lon)`` for every DetailedFiche crash coded ON
+    ``route``, milepost order.
+
+    This is the corridor's route shape, sampled by the study's own crashes:
+    with the NCDOT LRS unreachable, hundreds of coded crashes on the
+    milepost road ARE a dense (milepost, coordinate) map of it. Feed the
+    result to ``location.clean_shape`` and put it on the inventory so
+    ``resolve`` can convert coordinates to a milepost instead of reporting
+    that it cannot.
+    """
+    from .location import normalize_route
+    want = normalize_route(route)
+    for header, rows in _fiche_tables(source, sheet):
+        cols: dict[str, int] = {}
+        for i, cell in enumerate(header):
+            p = str(cell or "").strip().upper()
+            if "MILEPOST" in p and "ROAD" in p:
+                cols.setdefault("road", i)
+            elif p == "MP" or p == "MILEPOST":
+                cols.setdefault("mp", i)
+            elif "LATITUDE" in p or p == "LAT":
+                cols.setdefault("lat", i)
+            elif "LONGITUDE" in p or p == "LONG":
+                cols.setdefault("lon", i)
+        if len(cols) < 4:
+            continue
+        pts = []
+        for row in rows:
+            try:
+                if normalize_route(str(row[cols["road"]] or "")) != want:
+                    continue
+                mp = float(row[cols["mp"]])
+                lat, lon = float(row[cols["lat"]]), float(row[cols["lon"]])
+            except (TypeError, IndexError, ValueError):
+                continue
+            if lat or lon:
+                pts.append((mp, lat, lon))
+        if pts:
+            return sorted(pts)
+    return []
+
+
 def parse_coordinates(source: str,
                       sheet: str | None = None) -> dict[str, tuple[float, float]]:
     """crash_id -> (lat, lon) from the DetailedFiche.

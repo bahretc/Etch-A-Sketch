@@ -265,6 +265,25 @@ class FeatureInventory:
         if not key:
             return inv
         for line in text.splitlines():
+            # Mile markers have their own row shape: milepost, the MARKER
+            # NUMBER where a road row carries a route id, then the type.
+            # They are how DMV-349s locate crashes on a freeway (docs/03), so
+            # dropping them cost the resolver every "MILE 165 to MILE 166"
+            # location on study 41000079305. Indexed under every way a report
+            # or the fiche writes them; the marker keeps its own milepost
+            # rather than deriving it, because the number restarts partway
+            # along some routes.
+            m = _MARKER_ROW_RE.match(line)
+            if m:
+                mp, num = float(m.group(1)), int(float(m.group(2)))
+                feats = inv.features.setdefault(key, {})
+                for alias in (f"*MILE {num}", f"MILE MARKER {num}",
+                              f"MM {num}"):
+                    mps = feats.setdefault(normalize_route(alias), [])
+                    if mp not in mps:
+                        mps.append(mp)
+                inv.route_names.setdefault(key, route_name.strip())
+                continue
             parsed = _parse_feature_row(line)
             if parsed is None:
                 continue
@@ -333,6 +352,9 @@ class FeatureInventory:
 _ROUTE_CLEAN_RE = re.compile(r"[^A-Z0-9]+")
 #: a features-report data row: milepost, route id, then the feature
 _FEATURE_ROW_RE = re.compile(r"^\s*(\d+\.\d{1,3})\s+([A-Z0-9]{4,})\s+(.+?)\s*$")
+#: a mile-marker row: milepost, marker number, the literal type
+_MARKER_ROW_RE = re.compile(
+    r"^\s*(\d+\.\d{1,3})\s+(\d+(?:\.\d+)?)\s+Mile Marker\b")
 #: feature type phrases that terminate the name
 _FEATURE_TYPE_RE = re.compile(
     r"\b(At grade intersection.*|Structure\b.*|Interchange.*|Ramp\b.*)$", re.I)
@@ -460,6 +482,60 @@ def haversine_mi(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     dp, dl = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
     a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
     return 2 * r_mi * math.asin(math.sqrt(a))
+
+
+def clean_shape(points, bucket: float = 0.01, max_dev_mi: float = 0.15):
+    """A usable route shape from the corridor's own coded crashes.
+
+    With no LRS geometry available, the study's DetailedFiche is already a
+    dense sampling of the route: hundreds of (milepost, lat, lon) triples.
+    Points are bucketed by rounded milepost (median coordinates per bucket)
+    and vertices are dropped worst-first while any sits further than
+    ``max_dev_mi`` from the line its neighbours draw. Endpoints are judged
+    by along-track consistency instead (a road is roughly arclength, so the
+    spatial step to the neighbour should match the milepost step, in the
+    forward direction): a miscoded milepost is the very thing an RE fixes,
+    and it must not bend the shape used to fix it, however the sort placed
+    it.
+    """
+    from statistics import median
+
+    if not points:
+        return []
+    buckets: dict = {}
+    for mp, lat, lon in points:
+        buckets.setdefault(round(float(mp) / bucket) * bucket, []).append(
+            (float(lat), float(lon)))
+    verts = [(round(mp, 3), median([v[0] for v in buckets[mp]]),
+              median([v[1] for v in buckets[mp]])) for mp in sorted(buckets)]
+
+    def endpoint_dev(end, n1, n2):
+        # n2 -> n1 points toward the endpoint in milepost order; the endpoint
+        # should sit about |delta mp| further along that heading.
+        cos = math.cos(math.radians(n1[1])) or 1e-9
+        ux, uy = (n1[2] - n2[2]) * 69.172 * cos, (n1[1] - n2[1]) * 69.0547
+        norm = math.hypot(ux, uy) or 1e-9
+        ux, uy = ux / norm, uy / norm
+        px, py = (end[2] - n1[2]) * 69.172 * cos, (end[1] - n1[1]) * 69.0547
+        along, cross = px * ux + py * uy, abs(py * ux - px * uy)
+        return max(cross, abs(along - abs(end[0] - n1[0])))
+
+    def deviation(i):
+        if i == 0:
+            return endpoint_dev(verts[0], verts[1], verts[2])
+        if i == len(verts) - 1:
+            return endpoint_dev(verts[-1], verts[-2], verts[-3])
+        a, b = verts[i - 1], verts[i + 1]
+        _, off = interpolate_milepost([a, b], verts[i][1], verts[i][2])
+        return off or 0.0
+
+    while len(verts) >= 3:
+        devs = [deviation(i) for i in range(len(verts))]
+        worst = max(range(len(verts)), key=devs.__getitem__)
+        if devs[worst] <= max_dev_mi:
+            break
+        verts.pop(worst)
+    return verts
 
 
 def interpolate_milepost(points, lat: float, lon: float):
@@ -600,33 +676,46 @@ def resolve(loc: ReportLocation, inventory: FeatureInventory | None = None,
             fiche_milepost: float | None = None,
             tolerance: float = MP_TOLERANCE,
             max_offset_mi: float = 0.25,
-            geocoder: "Geocoder | None" = None) -> ResolvedLocation:
-    """Best available location for one report; never guesses a milepost."""
+            geocoder: "Geocoder | None" = None,
+            fallback_coordinates: tuple | None = None) -> ResolvedLocation:
+    """Best available location for one report; never guesses a milepost.
+
+    ``fallback_coordinates`` are the crash's DetailedFiche coordinates
+    (TEAAS's own geocoding, never read off the report). They geocode the
+    CODED location, which is the very thing a review corrects, so they rank
+    LAST: the report's stated location resolves first, the coordinate fills
+    in only when nothing else does (flagged as a starting point), and when
+    both exist a disagreement between them is reported, because that
+    disagreement is the RE evidence itself. Verified on 41000079305 crash
+    107660451: the coordinate maps to MP 13.01, the report's stated
+    location to the engineer's 13.44.
+    """
     inv = inventory or FeatureInventory()
     route = normalize_route(loc.on_road)
     res = ResolvedLocation(route=loc.on_road.strip(), fiche_milepost=fiche_milepost)
 
-    # 1. coordinates, interpolated onto the route when geometry is available
+    # 1. the report's OWN coordinates, interpolated onto the route
+    coord_src = ""
     if loc.has_coordinates:
         res.latitude, res.longitude = loc.latitude, loc.longitude
         res.method, res.confidence = "coordinates", "medium"
         pts = inv.shape.get(route) or []
-        mp, offset = interpolate_milepost(pts, loc.latitude, loc.longitude)
+        mp, offset = interpolate_milepost(pts, res.latitude, res.longitude)
         if mp is not None:
             if offset is not None and offset > max_offset_mi:
                 res.notes.append(
                     f"coordinates sit {offset:.2f} mi off {loc.on_road}; "
-                    "point may belong to another route")
+                    "point may belong to another route" + coord_src)
                 res.confidence = "low"
             else:
                 res.milepost = round(mp, 2)
                 res.confidence = "high"
                 res.notes.append(
-                    f"milepost interpolated from route geometry"
+                    "milepost interpolated along the route shape"
                     + (f", {offset*5280:.0f} ft off centreline"
-                       if offset is not None else ""))
+                       if offset is not None else "") + coord_src)
         else:
-            res.notes.append("no route geometry available to convert the "
+            res.notes.append("no route shape available to convert the "
                              "coordinates to a milepost")
     # 2. distance from an intersecting route, signed by the road named "toward"
     if res.milepost is None and loc.dist_from_intersection is not None \
@@ -723,6 +812,33 @@ def resolve(loc: ReportLocation, inventory: FeatureInventory | None = None,
                 + "; a municipality distance is not a milepost")
         else:
             res.notes.append("location block carries nothing resolvable")
+
+    # 5. the DetailedFiche coordinate, LAST. It geocodes the CODED location,
+    #    the thing the review corrects, so it fills in only when the report's
+    #    own statements resolve nothing, and it cross-checks them when they
+    #    do: a disagreement here IS the RE evidence.
+    if fallback_coordinates and all(fallback_coordinates):
+        flat, flon = (float(v) for v in fallback_coordinates)
+        mp, offset = interpolate_milepost(inv.shape.get(route) or [],
+                                          flat, flon)
+        if mp is not None and (offset is None or offset <= max_offset_mi):
+            if res.milepost is None:
+                res.latitude, res.longitude = flat, flon
+                res.milepost, res.method = round(mp, 2), "coordinates"
+                res.confidence = "medium"
+                res.notes.append(
+                    f"MP {mp:.2f} interpolated from the DetailedFiche "
+                    "coordinate along the route shape"
+                    + (f", {offset*5280:.0f} ft off centreline"
+                       if offset is not None else "")
+                    + ". That coordinate geocodes the CODED location, the "
+                      "thing under review: a starting point, not proof")
+            elif abs(mp - res.milepost) > max(tolerance, 0.1):
+                res.notes.append(
+                    f"the DetailedFiche coordinate maps to MP {mp:.2f}, "
+                    f"{abs(mp - res.milepost):.2f} mi from the resolved "
+                    "location; the coded location is what the review "
+                    "corrects")
 
     if fiche_milepost is not None and res.milepost is not None:
         res.agrees_with_fiche = abs(res.milepost - fiche_milepost) <= tolerance

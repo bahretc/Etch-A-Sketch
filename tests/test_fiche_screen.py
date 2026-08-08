@@ -156,3 +156,37 @@ def test_columns_are_narrow_but_capped(tmp_path):
     assert widths, "autofit ran"
     assert all(w <= 30 for w in widths.values())
     assert ws.column_dimensions["Q"].width < 6      # a one-letter code column
+
+
+# ---------------------------------------------------------------------------
+# cut-and-paste row moves (the values-only re-sort incident)
+# ---------------------------------------------------------------------------
+def test_cut_and_paste_moves_styles_formats_and_formulas_together():
+    """A values-only move scrambled a reviewed fiche: fills, date formats and
+    group headers stayed at their old rows. Whole rows move as units."""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill
+
+    from safety_eval.fiche_screen import cut_and_paste_row, reanchor_sheet
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws["A2"] = "keep"                                # bystander
+    ws["A2"].fill = PatternFill("solid", fgColor="FF0000")
+    ws["A5"] = 42
+    ws["A5"].fill = PatternFill("solid", fgColor="C6EFCE")
+    ws["A5"].font = Font(bold=True)
+    ws["B5"] = "=A5*2"
+    ws["C5"] = 45000
+    ws["C5"].number_format = "m/d/yyyy"
+
+    landed = cut_and_paste_row(ws, 5, 3)
+    reanchor_sheet(ws)
+
+    assert landed == 3
+    assert ws["A3"].value == 42
+    assert str(ws["A3"].fill.fgColor.rgb).endswith("C6EFCE")   # fill travelled
+    assert ws["A3"].font.bold is True                          # font travelled
+    assert ws["B3"].value == "=A3*2"                           # re-anchored
+    assert ws["C3"].number_format == "m/d/yyyy"                # format travelled
+    assert str(ws["A2"].fill.fgColor.rgb).endswith("FF0000")   # bystander kept
+    assert ws["A5"].value is None                              # nothing left behind

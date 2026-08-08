@@ -327,3 +327,60 @@ def _reanchor(value, row: int):
         return value
     return re.sub(r"(?<![$\d])([A-Z]{1,2})(\d+)(?![\d(])",
                   lambda m: f"{m.group(1)}{row}", value)
+
+
+# --------------------------------------------------------------------------- #
+# moving rows without destroying the sheet
+# --------------------------------------------------------------------------- #
+def _capture_row(ws, r: int, ncol: int) -> list:
+    from copy import copy
+    out = []
+    for c in range(1, ncol + 1):
+        cell = ws.cell(row=r, column=c)
+        out.append([cell.value, copy(cell.font), copy(cell.fill),
+                    copy(cell.border), copy(cell.alignment),
+                    cell.number_format, copy(cell.protection)])
+    return out
+
+
+def _write_row(ws, r: int, data: list) -> None:
+    for c, (v, font, fill, border, align, numfmt, prot) in enumerate(data, 1):
+        cell = ws.cell(row=r, column=c)
+        cell.value = _reanchor(v, r)
+        cell.font, cell.fill, cell.border = font, fill, border
+        cell.alignment, cell.number_format, cell.protection = align, numfmt, prot
+
+
+def cut_and_paste_row(ws, src_row: int, insert_before: int) -> int:
+    """Move one whole row the way Excel cut-and-insert does.
+
+    Values, fills, fonts, number formats and formulas travel TOGETHER, and the
+    row's self-referencing formulas are re-anchored to where it lands. This
+    exists because a values-only re-sort once scrambled an engineer's reviewed
+    fiche: every colour, date format, group header and blank separator stayed
+    at its old address while the data moved out from under it. Whole rows move
+    as units or not at all.
+
+    Returns the row the data landed on. Call :func:`reanchor_sheet` after a
+    batch of moves, since every insert and delete shifts the rows below it.
+    """
+    data = _capture_row(ws, src_row, ws.max_column)
+    ws.delete_rows(src_row)
+    at = insert_before - 1 if src_row < insert_before else insert_before
+    ws.insert_rows(at)
+    _write_row(ws, at, data)
+    return at
+
+
+def reanchor_sheet(ws) -> int:
+    """Repoint every self-row formula to its current row, sheet-wide."""
+    n = 0
+    for r in range(2, ws.max_row + 1):
+        for c in range(1, ws.max_column + 1):
+            cell = ws.cell(row=r, column=c)
+            if isinstance(cell.value, str) and cell.value.startswith("="):
+                fixed = _reanchor(cell.value, r)
+                if fixed != cell.value:
+                    cell.value = fixed
+                    n += 1
+    return n

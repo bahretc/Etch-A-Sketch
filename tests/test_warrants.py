@@ -365,3 +365,16 @@ def test_best_windows_drops_the_contained_duplicates():
 def test_a_section_with_no_pattern_warrants_nothing():
     """Enough crashes and enough rate, but they are rear-ends."""
     assert scan_sections(placed(40, t="RE"), "freeway") == []
+
+
+def test_best_achievable_reports_the_ceiling_for_every_warrant():
+    """A warrant missed by one crash and a warrant that is structurally out of
+    reach look identical in a met/not-met list, and are not the same finding."""
+    from safety_eval.warrants import best_achievable
+    rows = placed(40, step=0.01)            # all ROR, all dry, all daylight
+    best = best_achievable(rows, "freeway")
+    assert set(best) == {"F-1", "F-2", "F-3", "F-4"}
+    assert best["F-2"][0] == 1.0            # every crash is ROR
+    assert best["F-3"][0] == 0.0            # no wet crash anywhere: settled
+    for name, (share, lo, hi, count, base, threshold) in best.items():
+        assert lo < hi and 0 <= share <= 1 and count <= base

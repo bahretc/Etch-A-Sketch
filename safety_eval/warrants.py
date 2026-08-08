@@ -462,3 +462,39 @@ def best_windows(windows, limit: int = 10) -> list:
         if len(kept) >= limit:
             break
     return kept
+
+
+def best_achievable(placed, facility: str = "freeway", multilane: bool = False,
+                    min_length: float = MIN_SECTION_MI, strict: bool = True
+                    ) -> dict:
+    """The closest ANY sub-section gets to each warrant.
+
+    Answers the question a bare list of warranting windows does not: for the
+    warrants that were NOT met, was it close, and where? A warrant missed by
+    one crash is worth a second look at the determinations; a warrant missed
+    because the corridor has no wet crashes at all is settled and should not
+    be revisited.
+
+    Returns ``{warrant: (share, lo, hi, count, base, threshold)}`` over windows
+    that clear the minimums.
+    """
+    rows = sorted(((float(mp), c) for mp, c in placed if mp is not None),
+                  key=lambda t: t[0])
+    bounds = sorted({mp for mp, _ in rows})
+    best: dict = {}
+    for i, lo in enumerate(bounds):
+        for hi in bounds[i:]:
+            if hi - lo < min_length:
+                continue
+            inside = [c for mp, c in rows if lo <= mp <= hi]
+            if not inside:
+                continue
+            s = screen_section(inside, hi - lo, facility, multilane=multilane,
+                               strict=strict)
+            if not s.meets_minimums:
+                continue
+            for w in s.warrants:
+                if w.warrant not in best or w.share > best[w.warrant][0]:
+                    best[w.warrant] = (w.share, lo, hi, w.count, w.total,
+                                       w.threshold)
+    return best

@@ -287,6 +287,46 @@ cannot use a named cross street unless a distance from it is also present, so
 `distance == 0`). Every determination here was made without an independent
 milepost.
 
+### Re-measured with the working resolver (2026-08, fourth run, n=47)
+
+Same frozen 47 reports, same harness byte for byte except the output filename;
+only the library changed underneath it (mile markers in the inventory, the
+route shape from coded crashes, the DetailedFiche coordinate ranked last -
+the fixes study 41000079305 forced). Recorded in
+`examples/samples/assist_eval_result_v2.csv`.
+
+| | third run | fourth run |
+|---|---|---|
+| exact agreement | 14 of 47 (30%) | **24 of 47 (51%)** |
+| IS (16) | 11 | 12 |
+| RE (16) | 1 | 4 |
+| ADD (5) | 0 | 1 |
+| DEL (3) | 1 | 0 |
+| NIS (7) | 1 | **7 of 7** |
+
+The gains generalise: this corridor has no mile markers and the sample no
+coordinates, so nothing here was fitted to US 74. What moved is the punting -
+the spurious DEL proposals (12 of them in the third run) vanished entirely,
+which is what recovered NIS, and RE went 1 to 4 as the resolver started
+producing something to compare the coded milepost against.
+
+What did not move, and why, both already diagnosed above:
+
+* **RE at 4 of 16.** Eleven true REs still come back IS: municipality-distance
+  location blocks resolve to nothing, so the assist trusts the coded location.
+  The corridor data that cracked this on 41000079305 (markers, the DetailedFiche
+  crash cloud) does not exist in this study's measurement inputs. The
+  per-corridor batch correction (the 17.691 cluster) also still needs the unit
+  of work it always needed.
+* **DEL at 0 of 3.** The harness predates branch narrowing and never says which
+  crashes were in the Initial Study, and DEL only exists on that branch
+  (docs/03). The membership is NOT recoverable from the Before/After ID lists
+  in examples/04-15-39049 - those are period-scoped final lists, and a crash in
+  the construction gap sits in neither while still being IS - it is the
+  InitialStudy.pdf strip analysis (study 41000075911, 327 crashes) that
+  carries it. Wiring `--initial-ids` into the measurement is the next cheap
+  correction, once that export is in hand.
+
 ### Study limits: read them, do not infer them
 
 The corridor was inferred from the labels twice. It is stated outright in

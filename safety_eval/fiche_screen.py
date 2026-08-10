@@ -345,3 +345,159 @@ def reanchor_sheet(ws) -> int:
                     cell.value = fixed
                     n += 1
     return n
+
+
+# --------------------------------------------------------------------------- #
+# applying the engineer's review: the reviewed-workbook layout
+# --------------------------------------------------------------------------- #
+#: The reviewed working sheet's blocks, in order, exactly as the engineer's
+#: own 41000079305 workbook lays them out: banner + rows per status, one
+#: blank row between blocks. "?" holds mid-review saves (crashes still
+#: awaiting their report); NIS splits by whether the report was reviewed.
+REVIEW_BLOCKS = (
+    ("IS", "IN STUDY"),
+    ("RE", "REMILEPOSTED"),
+    ("ADD", "ADDED TO STUDY"),
+    ("DEL", "DELETED FROM STUDY"),
+    ("?", "REPORT REVIEW REQUIRED"),
+    ("NIS-R", "NOT IN STUDY - REPORT REVIEWED"),
+    ("NIS", BANNER_TEXT),
+)
+#: Banner fills matching the engineer's workbook: theme accent for the study
+#: blocks, light grey for reviewed NIS, darker grey for never-reviewed.
+_BANNER_THEME = {"IS": (6, 0.40), "RE": (6, 0.40), "ADD": (6, 0.40),
+                 "DEL": (6, 0.40), "?": (6, 0.40),
+                 "NIS-R": (0, -0.15), "NIS": (0, -0.35)}
+#: The engineer's banners carry their fill on columns A and M.
+_BANNER_FILL_COLS = (1, 13)
+
+
+def _write_block_banner(ws, r: int, key: str, title: str) -> None:
+    from openpyxl.styles import Color, Font, PatternFill
+    cell = ws.cell(row=r, column=1, value=title)
+    cell.font = Font(bold=True)
+    theme, tint = _BANNER_THEME[key]
+    fill = PatternFill("solid", fgColor=Color(theme=theme, tint=tint))
+    for c in _BANNER_FILL_COLS:
+        ws.cell(row=r, column=c).fill = fill
+
+
+def apply_hsip_review(workbook_in: str, workbook_out: str, determinations,
+                      sheet: str | None = None,
+                      analysis_type: str = "section",
+                      initial_ids=None) -> dict:
+    """Write the engineer's determinations and regroup the working sheet.
+
+    Output is the reviewed-workbook layout of the engineer's own 41000079305
+    fiche: one banner per status block, rows keeping their original Milepost
+    Road / MP / From Road order INSIDE every block, one blank row between
+    blocks, reviewed NIS separated from never-reviewed NIS. Every row moves
+    whole - values, formulas, fills, number formats - and formulas are
+    re-anchored afterwards, which is the lesson the destroyed fiche sheet
+    taught (docs/02).
+
+    ``determinations`` carry crash_id, status, optional new_mp and comment
+    (``review_queue.Determination`` or anything with those attributes). Each
+    is validated against the branch vocabulary first (docs/03), with Initial
+    Study membership when ``initial_ids`` is given; NOTHING is written while
+    any determination is off-branch. A crash determined here counts as
+    reviewed, so its NIS lands in the reviewed block, and NIS rows already
+    sitting above the never-reviewed banner keep that standing on a re-save.
+    Returns ``{block key: rows}``.
+    """
+    import openpyxl
+
+    from .hsip import fiche_sheet_name, guard_no_drawings
+    from .review_queue import validate_determination
+
+    guard_no_drawings(workbook_in)
+    wb = openpyxl.load_workbook(workbook_in)
+    ws = wb[sheet or fiche_sheet_name(wb)]
+    col = {"status": 9, "new_mp": 10, "id": 12, "comment": 21}
+
+    initial = ({int(i) for i in initial_ids}
+               if initial_ids is not None else None)
+    problems_all = []
+    for det in determinations:
+        in_init = (int(det.crash_id) in initial) if initial is not None \
+            else None
+        problems = validate_determination(det, analysis_type,
+                                          in_initial_study=in_init)
+        if problems:
+            problems_all.append(f"crash {det.crash_id}: "
+                                + " ".join(problems))
+    if problems_all:
+        raise ValueError("refusing to write the review; "
+                         + " | ".join(problems_all))
+    dets = {str(d.crash_id).strip(): d for d in determinations}
+
+    # Pass 1: apply the edits, then capture every crash row in sheet order.
+    # Banners and blanks are not captured; the rebuild lays fresh ones.
+    ncol = ws.max_column
+    rows = []
+    reviewed_prior: set = set()
+    seen_unreviewed_banner = False
+    for r in range(2, ws.max_row + 1):
+        cid = ws.cell(row=r, column=col["id"]).value
+        if cid is None:
+            first = next((ws.cell(row=r, column=c).value
+                          for c in range(1, ncol + 1)
+                          if ws.cell(row=r, column=c).value not in (None, "")),
+                         None)
+            if isinstance(first, str) and first.strip() == BANNER_TEXT:
+                seen_unreviewed_banner = True
+            continue
+        cid_s = str(cid).strip()
+        det = dets.get(cid_s)
+        if det is not None:
+            ws.cell(row=r, column=col["status"], value=det.status)
+            if getattr(det, "new_mp", None) is not None:
+                ws.cell(row=r, column=col["new_mp"],
+                        value=float(det.new_mp))
+            comment = getattr(det, "comment", None)
+            if comment:
+                old = ws.cell(row=r, column=col["comment"]).value
+                text = (f"{old}; {comment}"
+                        if old and str(old).strip()
+                        and str(old).strip() != str(comment).strip()
+                        else comment)
+                ws.cell(row=r, column=col["comment"], value=text)
+        status = str(ws.cell(row=r, column=col["status"]).value or "").strip()
+        if status == "NIS" and not seen_unreviewed_banner:
+            reviewed_prior.add(cid_s)
+        rows.append((cid_s, status, _capture_row(ws, r, ncol)))
+
+    known = {key for key, _ in REVIEW_BLOCKS}
+    bad = sorted({s for _, s, _ in rows if s and s not in known
+                  and s != "NIS"})
+    if bad:
+        raise ValueError(f"unknown status(es) on the sheet: {bad}")
+
+    # Pass 2: rebuild the data area as banner-headed blocks.
+    if ws.max_row > 1:
+        ws.delete_rows(2, ws.max_row - 1)
+    blocks: dict = {key: [] for key, _ in REVIEW_BLOCKS}
+    for cid_s, status, cap in rows:
+        if status == "NIS":
+            key = ("NIS-R" if cid_s in dets or cid_s in reviewed_prior
+                   else "NIS")
+        else:
+            key = status or "?"
+        blocks[key].append(cap)
+    r, tally, first_block = 2, {}, True
+    for key, title in REVIEW_BLOCKS:
+        members = blocks[key]
+        if not members:
+            continue
+        if not first_block:
+            r += 1                                  # blank separator
+        first_block = False
+        _write_block_banner(ws, r, key, title)
+        r += 1
+        for cap in members:
+            _write_row(ws, r, cap)
+            r += 1
+        tally[key] = len(members)
+    reanchor_sheet(ws)
+    wb.save(workbook_out)
+    return tally

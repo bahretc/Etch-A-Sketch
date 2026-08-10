@@ -92,3 +92,12 @@ def test_the_animal_rule_is_stated_for_hsip_only():
     at = _app("evaluation")
     assert not [el for el in at.sidebar.info
                 if "animal" in (getattr(el, "value", "") or "")]
+
+
+def test_the_review_tab_carries_the_branch_and_sheet_inputs():
+    """The fiche review needs Initial Study membership (branch narrowing,
+    docs/03) and finds the working sheet by name when left blank."""
+    at = _app("hsip")
+    labels = {t.label for t in at.text_input}
+    assert "TEAAS ID export (.txt path, recommended)" in labels
+    assert "Review sheet name" in labels

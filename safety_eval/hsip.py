@@ -238,6 +238,9 @@ class HsipRun:
     rows: list                      # AnalysisRow, the in-analysis crashes
     import_lines: int = 0
     daylight_flags: list = None
+    lo: float | None = None
+    hi: float | None = None
+    overrides: dict = None          # the engineer's recorded corrections
 
     @property
     def finding_lines(self) -> list:
@@ -295,4 +298,80 @@ def run_hsip(workbook_path: str, facility: str, lo: float, hi: float,
         [(a.crash_id, times.get(a.crash_id, a.date), a.l)
          for a in rows if a.l is not None])
     return HsipRun(screen=screen, findings=findings, rows=rows,
-                   import_lines=n, daylight_flags=flags)
+                   import_lines=n, daylight_flags=flags, lo=lo, hi=hi,
+                   overrides=dict(overrides or {}))
+
+
+#: How a status reads in a sentence.
+_STATUS_WORDS = {"IS": "in the Initial Study", "RE": "remileposted",
+                 "ADD": "added from the report review"}
+
+
+def format_report(run: HsipRun, study: str = "", route: str = "",
+                  county: str = "") -> str:
+    """The warrant analysis as report text, docs/05 style.
+
+    Plain and understated: the rounded shares only (the thresholds are
+    published as whole percents), warrants that are met stated first, the
+    sub-section findings verbatim from the screen, and the engineering
+    calls (overrides, daylight flags) recorded so a reviewer can trace
+    every number to the sheet. No em dashes anywhere.
+    """
+    s = run.screen
+    where = ", ".join(x for x in (route, county and f"{county} County") if x)
+    header = "HSIP Package Analysis" + (f" - Study {study}" if study else "")
+    if run.lo is not None:
+        header += (f"\n{where + ', ' if where else ''}MP {run.lo:.3f} to "
+                   f"{run.hi:.3f} ({s.length_mi:.3f} miles)")
+    elif where:
+        header += f"\n{where}"
+
+    counts = {}
+    for a in run.rows:
+        counts[a.status] = counts.get(a.status, 0) + 1
+    parts = [f"{counts[k]} {_STATUS_WORDS[k]}" for k in ("IS", "RE", "ADD")
+             if counts.get(k)]
+    body = [
+        f"{s.total} crashes are in the analysis"
+        + (f" ({', '.join(parts)})" if parts else "")
+        + f", {s.rate:.1f} crashes per mile. The {s.facility} minimums of "
+        f"{s.min_total} crashes and {s.min_rate} crashes per mile are "
+        + ("met." if s.meets_minimums else "not met, so no warrant can be "
+           "met over the section.")]
+
+    met = [w for w in s.warrants if w.met]
+    unmet = [w for w in s.warrants if not w.met]
+    for w in met:
+        body.append(
+            f"Warrant {w.warrant}, {w.description}, is met: {w.count} of "
+            f"{w.total} crashes ({w.share:.0%}) against the "
+            f"{w.threshold:.0%} threshold.")
+    if unmet:
+        body.append(
+            "Not met over the full section: "
+            + "; ".join(f"{w.warrant} at {w.share:.0%} against "
+                        f"{w.threshold:.0%}" for w in unmet) + ".")
+
+    lines = [header, "", *body, "", "Sub-sections:"]
+    lines += [f"  {line}" for line in run.finding_lines]
+
+    notes = []
+    for cid, fields in (run.overrides or {}).items():
+        what = ", ".join(f"{k.upper()} to {v}" for k, v in fields.items())
+        notes.append(f"Crash {cid}: {what} per the crash report; the fiche "
+                     "sheet keeps the original value with a comment.")
+    for f in run.daylight_flags or ():
+        # An L override already answers the flag; asking the reader to
+        # confirm what the note above records would be noise.
+        if "l" in (run.overrides or {}).get(str(f["crash_id"]), {}):
+            continue
+        notes.append(
+            f"Crash {f['crash_id']} is coded L={f['l']} at "
+            f"{f['time']:%H:%M} but {f['problem']} (sunrise "
+            f"{f['sunrise']:%H:%M}, sunset {f['sunset']:%H:%M}); "
+            "confirm against the report.")
+    if notes:
+        lines += ["", "Engineering notes:"] + [f"  {n}" for n in notes]
+    lines += ["", "Prepared from the reviewed fiche workbook; every "
+              "determination is the engineer's."]
+    return "\n".join(lines)

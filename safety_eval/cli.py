@@ -571,6 +571,38 @@ def _cmd_teaas_import(args) -> int:
     return 0
 
 
+def _cmd_apply_review(args) -> int:
+    """Write the engineer's determinations onto the fiche working sheet."""
+    import json
+
+    from .fiche_screen import apply_hsip_review
+    from .review_queue import Determination
+
+    dets = []
+    with open(args.determinations, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            d = json.loads(line)
+            dets.append(Determination(
+                crash_id=str(d["crash_id"]), status=d["status"],
+                new_mp=d.get("new_mp"), comment=d.get("comment", "")))
+    initial = None
+    if args.initial_ids:
+        from .fiche_workbook import parse_initial_ids
+        _, raw = parse_initial_ids(args.initial_ids)
+        initial = [r[0] for r in raw]
+    tally = apply_hsip_review(args.workbook, args.out or args.workbook, dets,
+                              sheet=args.sheet,
+                              analysis_type=args.analysis_type,
+                              initial_ids=initial)
+    print("  ".join(f"{k} {v}" for k, v in tally.items()))
+    print(f"{len(dets)} determination(s) -> {args.out or args.workbook} "
+          "(reviewed layout: banners, blocks, blank separators)")
+    return 0
+
+
 def _cmd_warrants(args) -> int:
     """Screen a reviewed HSIP fiche workbook and rebuild its Warrant sheet."""
     from . import hsip
@@ -602,6 +634,13 @@ def _cmd_warrants(args) -> int:
         print(f"  daylight check: {f['crash_id']} has L={f['l']} at "
               f"{f['time']:%H:%M} but {f['problem']} "
               f"(sunrise {f['sunrise']:%H:%M}, sunset {f['sunset']:%H:%M})")
+    if args.report_out:
+        text = hsip.format_report(run, study=args.study or "",
+                                  route=args.route or "",
+                                  county=args.county or "")
+        with open(args.report_out, "w", encoding="utf-8") as fh:
+            fh.write(text + "\n")
+        print(f"report text -> {args.report_out}")
     if not args.no_save:
         print(f"\nWarrant sheet rebuilt in {args.workbook}")
     return 0
@@ -1096,6 +1135,25 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Filename prefix, e.g. '04-15-39049_'.")
     ti.set_defaults(func=_cmd_teaas_import)
 
+    ar = sub.add_parser(
+        "apply-review",
+        help="Write engineer determinations (a JSONL of crash_id / status / "
+             "new_mp / comment) onto the fiche working sheet and regroup it "
+             "into the reviewed layout: banner-headed IS / RE / ADD / DEL "
+             "blocks, reviewed NIS split from never-reviewed, original order "
+             "kept inside each block. Validates the branch vocabulary first "
+             "and writes nothing on a violation (docs/03).")
+    ar.add_argument("--workbook", required=True)
+    ar.add_argument("--determinations", required=True,
+                    help="JSONL, one determination per line.")
+    ar.add_argument("--out", help="Output path (default: in place).")
+    ar.add_argument("--sheet", help="Working sheet (default: the *_Fiche one).")
+    ar.add_argument("--analysis-type", dest="analysis_type",
+                    choices=["section", "intersection"], default="section")
+    ar.add_argument("--initial-ids", dest="initial_ids",
+                    help="TEAAS ID export; enables the branch check.")
+    ar.set_defaults(func=_cmd_apply_review)
+
     wa = sub.add_parser(
         "warrants",
         help="Screen a REVIEWED HSIP fiche workbook (docs/12): reads the "
@@ -1131,6 +1189,13 @@ def build_parser() -> argparse.ArgumentParser:
                          "refuses on any violation.")
     wa.add_argument("--no-save", dest="no_save", action="store_true",
                     help="Print the screen without touching the workbook.")
+    wa.add_argument("--report-out", dest="report_out",
+                    help="Also write the analysis as report text (docs/05 "
+                         "style): totals, warrants met and not, sub-section "
+                         "findings, engineering notes.")
+    wa.add_argument("--study", help="Study number for the report header.")
+    wa.add_argument("--route", help="Route for the report header, e.g. US 74.")
+    wa.add_argument("--county", help="County for the report header.")
     wa.set_defaults(func=_cmd_warrants)
 
     il = sub.add_parser(

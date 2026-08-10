@@ -210,3 +210,37 @@ def test_assist_score_reports_agreement_against_the_engineer(tmp_path, capsys):
     assert rc == 0
     assert "2/3 agree (67%)" in out
     assert "103: ADD / NIS" in out                # the disagreement, named
+
+
+def test_the_report_text_is_plain_and_complete(tmp_path):
+    """docs/05: understated, rounded shares only, no em dashes, warrants met
+    stated before the misses, the engineering calls on the record."""
+    rows = _analysis_rows() + [_row(300, "RE", 13.9, new_mp=13.25,
+                                    type="ROR-R", comment="moved per report")]
+    path = tmp_path / "study.xlsx"
+    _workbook(rows, times={
+        "200": (datetime.date(2024, 1, 10), datetime.time(20, 13))}
+    ).save(path)
+    run = hsip.run_hsip(str(path), "freeway", 13.0, 13.5,
+                        overrides={"200": {"l": 5}})
+    text = hsip.format_report(run, study="41000079999", route="US 74",
+                              county="Polk")
+    assert "—" not in text                       # no em dashes, ever
+    assert "HSIP Package Analysis - Study 41000079999" in text
+    assert "US 74, Polk County, MP 13.000 to 13.500" in text
+    assert ("36 crashes are in the analysis (35 in the Initial Study, "
+            "1 remileposted)") in text
+    assert "minimums of 30 crashes and 30 crashes per mile are met." in text
+    assert "Warrant F-2, Run Off Road, is met: 36 of 36 crashes (100%)" \
+        in text
+    assert "Sub-sections:" in text
+    assert "Crash 200: L to 5 per the crash report" in text
+    assert "every determination is the engineer's." in text
+
+
+def test_the_report_says_when_minimums_fail(tmp_path):
+    path = tmp_path / "study.xlsx"
+    _workbook(_analysis_rows(n=12)).save(path)
+    run = hsip.run_hsip(str(path), "freeway", 13.0, 13.5)
+    text = hsip.format_report(run)
+    assert "not met, so no warrant can be met over the section." in text

@@ -89,7 +89,10 @@ The HSIP flow in CLI form, end to end on a reviewed fiche workbook:
     safety-eval warrants --workbook N_Fiche.xlsx --facility freeway \
         --lo 12.8 --hi 13.815 --override 107591377:l=5 \
         --initial-ids I.txt --import-out N_Import.txt
+    safety-eval apply-review --workbook N_Fiche.xlsx --determinations dets.jsonl \
+        --initial-ids I.txt          # the reviewed layout, branch-checked
     safety-eval import-list / feature-list / assist-score
+    safety-eval warrants ... --report-out N_Warrants.txt   # docs/05 report text
 
 `safety_eval/hsip.py` is the seam: it reads the ENGINEER'S determinations off
 the reviewed working sheet (typed Type cells beat the T-code lookup), applies

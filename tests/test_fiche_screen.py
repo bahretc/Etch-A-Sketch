@@ -223,3 +223,110 @@ def test_cut_and_paste_moves_styles_formats_and_formulas_together():
     assert ws["C3"].number_format == "m/d/yyyy"                # format travelled
     assert str(ws["A2"].fill.fgColor.rgb).endswith("FF0000")   # bystander kept
     assert ws["A5"].value is None                              # nothing left behind
+
+
+# ---------------------------------------------------------------------------
+# applying the engineer's review (the reviewed-workbook layout)
+# ---------------------------------------------------------------------------
+REVIEW_CSV = _HDR + (
+    '"0","US 74","0.500","E","*MILE 165 ","*MILE 166 ","US 74","12.719","",'
+    '"106686224","2021-09-03","19","1","0","1","O"\n'
+    '"0","US 74","0.600","E","*MILE 165 ","*MILE 166 ","US 74","12.819","",'
+    '"555000001","2022-01-05","19","1","0","1","O"\n'
+    '"0","US 74","0.100","W","*MILE 167 ","*MILE 166 ","US 74","14.615","",'
+    '"107401040","2023-07-13","23","1","19","1","O"\n'
+    '"0","US 74","0.200","W","*MILE 167 ","*MILE 166 ","US 74","14.515","",'
+    '"555000002","2023-08-02","19","2","0","1","O"\n'
+    '"0","US 74","0.500","E","*MILE 62 ","*MILE 163 ","US 74","4.138","",'
+    '"107127776","2022-10-30","19","2","2","5","O"\n')
+REVIEW_IDS = ("CRASH ID|ON RD CD|SVRTY|DATE|TYPE|\n"
+              "106686224|20000074|5|09/03/2021 10:47|19|\n"
+              "555000001|20000074|3|01/05/2022 08:00|19|\n")
+
+
+def _reviewed(tmp_path, dets, initial=(106686224, 555000001)):
+    import openpyxl
+
+    from safety_eval.fiche_screen import apply_hsip_review, screen_sheet
+    from safety_eval.fiche_workbook import build_fiche_workbook
+    src = tmp_path / "r.xlsx"
+    build_fiche_workbook(str(src), study="41000079305",
+                         fiche_csv=REVIEW_CSV, initial_id_txt=REVIEW_IDS)
+    wb = openpyxl.load_workbook(str(src))
+    ws = wb["41000079305_Fiche"]
+    screen_sheet(ws, FEATURES, LO, HI, [str(i) for i in initial],
+                 route="US 74")
+    wb.save(str(src))
+    out = tmp_path / "r.reviewed.xlsx"
+    tally = apply_hsip_review(str(src), str(out), dets,
+                              initial_ids=list(initial))
+    return openpyxl.load_workbook(str(out))["41000079305_Fiche"], tally
+
+
+def _dets():
+    from safety_eval.review_queue import Determination
+    return [
+        Determination(crash_id="106686224", status="RE", new_mp=13.44,
+                      comment="report places it at MILE 165 + 0.78"),
+        Determination(crash_id="555000001", status="DEL",
+                      comment="not in the study area per report"),
+        Determination(crash_id="107401040", status="ADD", new_mp=13.20,
+                      comment="report places it inside the limits"),
+        Determination(crash_id="555000002", status="NIS",
+                      comment="report shows it at NC 9"),
+    ]
+
+
+def test_the_reviewed_layout_matches_the_engineers_workbook(tmp_path):
+    """Banner-headed blocks in the engineer's order, one blank row between,
+    reviewed NIS split from never-reviewed. The grammar was read off the
+    engineer's own reviewed 41000079305 fiche."""
+    ws, tally = _reviewed(tmp_path, _dets())
+    col_a = [ws.cell(row=r, column=1).value for r in range(1, ws.max_row + 1)]
+    banners = [v for v in col_a if isinstance(v, str) and v.isupper()
+               and not v.startswith("MUNI")]
+    assert banners == ["REMILEPOSTED", "ADDED TO STUDY",
+                       "DELETED FROM STUDY", "NOT IN STUDY - REPORT REVIEWED",
+                       "NOT IN STUDY - REPORT NOT REVIEWED"]
+    assert tally == {"RE": 1, "ADD": 1, "DEL": 1, "NIS-R": 1, "NIS": 1}
+    rows = {str(ws.cell(row=r, column=12).value): r
+            for r in range(2, ws.max_row + 1)
+            if ws.cell(row=r, column=12).value is not None}
+    # a blank row separates every block: banner sits two below the last row
+    for r in range(2, ws.max_row + 1):
+        v = ws.cell(row=r, column=1).value
+        if isinstance(v, str) and v in banners[1:]:
+            assert all(ws.cell(row=r - 1, column=c).value is None
+                       for c in range(1, ws.max_column + 1))
+    # determinations written: status, New MP, appended comment
+    assert ws.cell(row=rows["106686224"], column=9).value == "RE"
+    assert ws.cell(row=rows["106686224"], column=10).value == 13.44
+    assert "MILE 165 + 0.78" in str(
+        ws.cell(row=rows["106686224"], column=21).value)
+    # reviewed NIS above the never-reviewed banner, untouched NIS below it
+    banner_row = col_a.index("NOT IN STUDY - REPORT NOT REVIEWED") + 1
+    assert rows["555000002"] < banner_row < rows["107127776"]
+
+
+def test_review_rows_move_whole_and_formulas_reanchor(tmp_path):
+    """The destroyed-fiche lesson: a moved row carries its formulas, and each
+    self-row reference points at the row it landed on."""
+    ws, _ = _reviewed(tmp_path, _dets())
+    for r in range(2, ws.max_row + 1):
+        if ws.cell(row=r, column=12).value is None:
+            continue
+        s = ws.cell(row=r, column=19).value       # the Type VLOOKUP
+        assert isinstance(s, str) and s.startswith("=")
+        assert f"N{r}" in s, f"row {r} formula anchored elsewhere: {s}"
+
+
+def test_an_off_branch_review_writes_nothing(tmp_path):
+    """docs/03: an initial-study crash cannot be NIS. The refusal happens
+    before any cell is touched."""
+    import pytest as _pytest
+
+    from safety_eval.review_queue import Determination
+    bad = [Determination(crash_id="106686224", status="NIS",
+                         comment="wrong branch")]
+    with _pytest.raises(ValueError, match="refusing to write"):
+        _reviewed(tmp_path, bad)

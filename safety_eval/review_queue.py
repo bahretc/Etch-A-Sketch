@@ -532,7 +532,9 @@ def build_queue(
             dist = haversine_ft(lat, lon, *study_point)
         item = QueueItem(
             row=row,
-            pending=row.status is None,
+            # "?" is the screen's to-review marker on a fiche working sheet
+            # (docs/02); it is as pending as an empty cell.
+            pending=row.status in (None, "?"),
             has_report=(bool(binder_index.pages_for(row.crash_id))
                         if binder_index is not None else None),
             dist_ft=dist,

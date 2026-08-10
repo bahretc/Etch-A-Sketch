@@ -438,12 +438,18 @@ def _hsip_tab(st) -> None:
 
             base = os.path.splitext(os.path.basename(wb_up.name))[0]
             stem = base.replace("_Fiche", "")
-            d1, d2, d3 = st.columns(3)
+            d1, d2, d3, d4 = st.columns(4)
             if is_section:
                 with open(path, "rb") as fh:
                     d1.download_button("Workbook with Warrant sheet",
                                        fh.read(),
                                        file_name=f"{stem}_Fiche.xlsx")
+                d4.download_button(
+                    "Report text (docs/05)",
+                    hsip.format_report(run, study=stem),
+                    file_name=f"{stem}_Warrants.txt",
+                    help="Totals, warrants met and not, sub-section "
+                         "findings and engineering notes, ready to paste.")
             if import_lines:
                 with open(import_path, "rb") as fh:
                     d2.download_button(
@@ -566,14 +572,22 @@ def _review_queue_tab(st) -> None:
     c1, c2 = st.columns(2)
     with c1:
         wb_path = st.text_input(
-            "Evaluation workbook (.xlsx path)",
-            help="The workbook whose Filtered Fiche is being reviewed. A "
-                 "path, not an upload, so the reviewed copy can be saved "
-                 "next to it.")
-        sheet = st.text_input("Filtered Fiche sheet name", "Filtered Fiche")
+            "Workbook (.xlsx path)",
+            help="An evaluation workbook (Filtered Fiche) or the study "
+                 "fiche workbook (<study>_Fiche). A path, not an upload, "
+                 "so the reviewed copy can be saved next to it.")
+        sheet = st.text_input(
+            "Review sheet name", "",
+            help="Blank finds it: the <study>_Fiche working sheet if the "
+                 "workbook has one, else Filtered Fiche.")
         analysis_type = st.selectbox("Analysis type", ["section", "intersection"],
                                      help="Controls the status vocabulary; "
                                           "RE only exists for sections.")
+        initial_path = st.text_input(
+            "TEAAS ID export (.txt path, recommended)",
+            help="Initial Study membership fixes each crash's status branch "
+                 "(docs/03): in it, IS/RE/DEL; not in it, ADD/NIS. "
+                 "Validation and the AI assist both narrow to the branch.")
     with c2:
         index_path = st.text_input(
             "Binder index JSON (from `safety-eval binder-index`)",
@@ -602,6 +616,33 @@ def _review_queue_tab(st) -> None:
         if wb_path:
             st.error(f"Workbook not found: {wb_path}")
         st.stop()
+
+    if not sheet.strip():
+        import openpyxl
+        names = openpyxl.load_workbook(wb_path, read_only=True).sheetnames
+        sheet = next((n for n in names if n.endswith("_Fiche")),
+                     "Filtered Fiche")
+        st.caption(f"Reviewing sheet: {sheet}")
+    hsip_sheet = sheet.endswith("_Fiche")
+
+    initial = None
+    if initial_path:
+        if not os.path.exists(initial_path):
+            st.error(f"ID export not found: {initial_path}")
+            st.stop()
+        from safety_eval.fiche_workbook import parse_initial_ids
+        _, raw = parse_initial_ids(initial_path)
+        initial = {int(r[0]) for r in raw}
+        st.caption(f"Initial Study: {len(initial)} crashes; statuses narrow "
+                   "to each crash's branch.")
+
+    def _in_initial(crash_id):
+        if initial is None:
+            return None
+        try:
+            return int(str(crash_id)) in initial
+        except ValueError:
+            return None
 
     try:
         review = rq.load_review_sheet(wb_path, sheet)
@@ -746,7 +787,9 @@ def _review_queue_tab(st) -> None:
                                           study_point=point, mp_range=mp_range,
                                           prescreen_ft=item.dist_ft,
                                           resolved_location=resolved,
-                                          fiche_milepost=row.mp)
+                                          fiche_milepost=row.mp,
+                                          in_initial_study=_in_initial(
+                                              row.crash_id))
                     with st.spinner("Reviewing the redacted report..."):
                         try:
                             st.session_state[akey] = ra.assist(
@@ -770,7 +813,9 @@ def _review_queue_tab(st) -> None:
                     if (det is not None and not res.needs_manual
                             and st.button("Accept proposal and record",
                                           key=f"rq_accept_{row.crash_id}")):
-                        problems = rq.validate_determination(det, analysis_type)
+                        problems = rq.validate_determination(
+                            det, analysis_type,
+                            in_initial_study=_in_initial(row.crash_id))
                         if problems:
                             for pmsg in problems:
                                 st.error(pmsg)
@@ -829,7 +874,9 @@ def _review_queue_tab(st) -> None:
                     new_mp=new_mp if use_mp else None,
                     comment=comment.strip() or None,
                 )
-                problems = rq.validate_determination(det, analysis_type)
+                problems = rq.validate_determination(
+                    det, analysis_type,
+                    in_initial_study=_in_initial(row.crash_id))
                 if problems:
                     for pmsg in problems:
                         st.error(pmsg)
@@ -853,10 +900,24 @@ def _review_queue_tab(st) -> None:
     if dets and st.button(f"Save reviewed workbook ({len(dets)} "
                           "determination(s))"):
         out_path = os.path.splitext(wb_path)[0] + ".reviewed.xlsx"
-        n = rq.apply_determinations(wb_path, out_path, list(dets.values()),
-                                    sheet=sheet, analysis_type=analysis_type)
-        st.success(f"Wrote {n} determination(s) -> {out_path} "
-                   f"(audit trail: {audit_path})")
+        if hsip_sheet:
+            from safety_eval.fiche_screen import apply_hsip_review
+            tally = apply_hsip_review(
+                wb_path, out_path, list(dets.values()), sheet=sheet,
+                analysis_type=analysis_type,
+                initial_ids=sorted(initial) if initial else None)
+            n = len(dets)
+            st.success(f"Wrote {n} determination(s) -> {out_path} in the "
+                       "reviewed layout ("
+                       + "  ".join(f"{k} {v}" for k, v in tally.items())
+                       + f"); audit trail: {audit_path}")
+        else:
+            n = rq.apply_determinations(wb_path, out_path,
+                                        list(dets.values()),
+                                        sheet=sheet,
+                                        analysis_type=analysis_type)
+            st.success(f"Wrote {n} determination(s) -> {out_path} "
+                       f"(audit trail: {audit_path})")
         with open(out_path, "rb") as fh:
             st.download_button("Download reviewed workbook", fh.read(),
                                file_name=os.path.basename(out_path))

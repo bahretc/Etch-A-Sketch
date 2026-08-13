@@ -28,3 +28,14 @@ html, body { margin: 0; height: 100%;
 .lbl.mm span { background: #31445c; color: #fff; border-color: #31445c; }
 .leaflet-popup-content { font: 12.5px/1.5 "Segoe UI", system-ui, sans-serif; }
 .leaflet-popup-content .dim { color: #6b7280; font-size: 11.5px; }
+
+/* Collision-diagram badges (the 41000078675 grammar): octagon, severity
+   letter, Target/Other fill, road-condition ring. */
+.badge .oct { width: 26px; height: 26px; display: flex; align-items: center;
+  justify-content: center;
+  clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%,
+                     0 70%, 0 30%); }
+.badge .oct.in { width: 20px; height: 20px; }
+.badge .oct span { font: 700 12px/1 "Segoe UI", system-ui, sans-serif;
+  color: #111; }
+.badge .oct span.red { color: #c00000; }

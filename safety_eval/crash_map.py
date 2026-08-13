@@ -47,7 +47,7 @@ _DEEP_BUFFER_M = 900
 
 #: Working-sheet columns (fiche_workbook.FICHE_COLUMNS, 1-based).
 _COL = {"mproad": 7, "mp": 8, "status": 9, "new_mp": 10, "crash_id": 12,
-        "date": 13, "s": 18, "type": 19}
+        "date": 13, "c": 15, "s": 18, "type": 19}
 
 
 def _mp_to_ll(shape, mp):
@@ -66,7 +66,8 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
                    coords_source: str | None = None,
                    features=None, window: tuple | None = None,
                    subtitle: str = "", line_margin_mi: float = 0.35,
-                   pad_deg: float = 0.004) -> dict:
+                   pad_deg: float = 0.004, diagram: bool = False,
+                   targets=None) -> dict:
     """Everything the map draws, as one JSON-ready dict.
 
     ``coords_source`` defaults to the workbook itself: the fiche workbook the
@@ -116,6 +117,9 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
              "type": (str(typed).strip()
                       if isinstance(typed, str)
                       and not typed.startswith("=") else ""),
+             "c": (ws.cell(row=r, column=_COL["c"]).value
+                   if isinstance(ws.cell(row=r, column=_COL["c"]).value, int)
+                   else None),
              "sev": str(ws.cell(row=r, column=_COL["s"]).value or ""),
              "date": (date.strftime("%m/%d/%Y")
                       if hasattr(date, "strftime") else ""),
@@ -148,6 +152,16 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
             c["src"] = ("position: New MP on the centreline" if moved
                         else "position: coded MP on the centreline")
         crashes.append(c)
+
+    if diagram:
+        if targets is None:
+            from .warrants import ROR_TYPES
+            targets = ROR_TYPES
+        in_analysis = [c for c in crashes
+                       if c["status"] in ("IS", "RE", "ADD")]
+        diagram_layout(in_analysis, shape, targets)
+        # A collision diagram shows the analysis; everything else drops.
+        crashes = [c for c in in_analysis if c.get("diagram")]
 
     # Spread exact-duplicate coordinates in a small ring (about 2.5 m) so
     # stacked crashes stay individually clickable; popups carry the truth.
@@ -208,7 +222,73 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
     study = ws.title.replace("_Fiche", "")
     return {"study": study, "route": route, "lo": lo, "hi": hi,
             "subtitle": subtitle, "line": line, "crashes": crashes,
-            "overlays": overlays, "counts": counts}
+            "overlays": overlays, "counts": counts,
+            "diagram": bool(diagram)}
+
+
+#: Collision-diagram grammar, read off the engineer's 41000078675 example:
+#: severity letter in the badge, Target/Other fill, road-condition ring.
+_COND_BUCKET = {1: "Dry", 2: "Wet", 3: "Wet", 4: "Snow", 5: "Snow"}
+_SEV_LETTERS = {"O", "C", "B", "A", "K"}
+
+
+def _bearing_at(shape, mp):
+    """Unit vector along the road at a milepost, in planar degrees."""
+    for (m1, la1, lo1), (m2, la2, lo2) in zip(shape, shape[1:]):
+        if m1 <= mp <= m2 or (m2 == shape[-1][0] and mp >= m2):
+            cos = math.cos(math.radians(la1)) or 1e-9
+            dx, dy = (lo2 - lo1) * cos, (la2 - la1)
+            n = math.hypot(dx, dy) or 1e-9
+            return dx / n, dy / n, cos
+    la1, lo1 = shape[0][1], shape[0][2]
+    la2, lo2 = shape[1][1], shape[1][2]
+    cos = math.cos(math.radians(la1)) or 1e-9
+    dx, dy = (lo2 - lo1) * cos, (la2 - la1)
+    n = math.hypot(dx, dy) or 1e-9
+    return dx / n, dy / n, cos
+
+
+def diagram_layout(crashes, shape, targets, step_ft: float = 95,
+                   base_ft: float = 130, side: int = 1) -> None:
+    """Ladder the crashes off the roadway, collision-diagram style.
+
+    Crashes bucket by milepost rounded to 0.1 (the example's MPRound1) and
+    each successive crash in a bucket steps another ``step_ft`` out from the
+    centreline, so stacks never overlap and a reader counts a cluster at a
+    glance. Badges carry the severity letter; ``targets`` decides the
+    Target/Other fill; the ring is the road-condition bucket off the C code.
+    Mutates the crash dicts in place.
+    """
+    buckets: dict = {}
+    for c in crashes:
+        mp = c.get("new_mp") if c.get("new_mp") is not None \
+            else c.get("coded_mp")
+        if mp is None:
+            c["diagram"] = False
+            continue
+        c["_mp"] = float(mp)
+        buckets.setdefault(round(float(mp), 1), []).append(c)
+    for bucket, members in buckets.items():
+        members.sort(key=lambda c: (c["_mp"], c.get("date") or "",
+                                    c["id"]))
+        for i, c in enumerate(members):
+            ux, uy, cos = _bearing_at(shape, c["_mp"])
+            px, py = -uy * side, ux * side          # perpendicular
+            dist = (base_ft + i * step_ft) / 364000.0   # feet -> degrees lat
+            ala, aln = _mp_to_ll(shape, c["_mp"])
+            c["lat"] = round(ala + py * dist, 6)
+            c["lon"] = round(aln + px * dist / cos, 6)
+            c["diagram"] = True
+            c["sev"] = (c.get("sev") or "O").strip().upper()[:1]
+            if c["sev"] not in _SEV_LETTERS:
+                c["sev"] = "O"
+            c["cond"] = _COND_BUCKET.get(c.get("c"), "Unknown")
+            t = (c.get("type") or "").upper()
+            c["target"] = ("Target" if any(t.startswith(x.upper())
+                                          or x.upper() in t
+                                          for x in targets) else "Other")
+        for c in members:
+            c.pop("_mp", None)
 
 
 def _ll2t(lat, lon, z):
@@ -310,18 +390,40 @@ def render_map_html(data: dict, tiles: dict, out_path: str,
                         f"({k.get('IS', 0)} IS, {k.get('RE', 0)} RE, "
                         f"{k.get('ADD', 0)} ADD)",
                         d.get("subtitle") or "") if x]
-    rows = [("#0072B2", "IS &mdash; in study"),
-            ("#E69F00", "RE &mdash; remileposted (dashed line = the move)"),
-            ("#009E73", "ADD &mdash; added from report review"),
-            ("#6b7280", "DEL &mdash; deleted (animal / not in study)"),
-            ("#b8bec7", "NIS &mdash; not in study (context)")]
-    legend = "".join(
-        f'<div class="row"><span class="dot" style="background:{c}"></span>'
-        f'<span>{t}</span></div>' for c, t in rows)
+    if d.get("diagram"):
+        legend = ('<div class="row"><b>Crash Type</b></div>'
+                  '<div class="row"><span class="dot" '
+                  'style="background:#ffe14d"></span><span>Target</span></div>'
+                  '<div class="row"><span class="dot" '
+                  'style="background:#c9ccd1"></span><span>Other</span></div>'
+                  '<div class="row"><b>Severity</b>&nbsp;O / C / B / '
+                  '<span style="color:#c00000">A / K</span></div>'
+                  '<div class="row"><b>Ring = road condition</b></div>'
+                  + "".join(
+                      f'<div class="row"><span class="dot" '
+                      f'style="background:{c}"></span><span>{t}</span></div>'
+                      for c, t in (("#111111", "Dry"), ("#31b4e8", "Wet"),
+                                   ("#9fc5e8", "Snow"),
+                                   ("#8a8f98", "Unknown"))))
+    else:
+        rows = [("#0072B2", "IS &mdash; in study"),
+                ("#E69F00", "RE &mdash; remileposted (dashed line = the move)"),
+                ("#009E73", "ADD &mdash; added from report review"),
+                ("#6b7280", "DEL &mdash; deleted (animal / not in study)"),
+                ("#b8bec7", "NIS &mdash; not in study (context)")]
+        legend = "".join(
+            f'<div class="row"><span class="dot" style="background:{c}"></span>'
+            f'<span>{t}</span></div>' for c, t in rows)
     if d["overlays"].get("window"):
         legend += ('<div class="row"><span class="band"></span><span>'
                    + d["overlays"]["window"]["label"] + "</span></div>")
-    legend += ('<div class="note">RE and ADD are placed at the engineer\'s '
+    if d.get("diagram"):
+        legend += ('<div class="note">Badges ladder off the roadway at the '
+                   "crash's final milepost (0.1-mile groups); distance from "
+                   "the road is stacking order, not position. Click any "
+                   "badge for details.</div>")
+    else:
+        legend += ('<div class="note">RE and ADD are placed at the engineer\'s '
                "New MP on the centreline; other positions are DetailedFiche "
                "coordinates. The dotted centreline is derived from the "
                "corridor's coded crashes, so placements are approximate. "
@@ -351,11 +453,13 @@ def build_crash_map(out_path: str, workbook_path: str, route: str,
                     coords_source: str | None = None, features=None,
                     window: tuple | None = None, subtitle: str = "",
                     county: str = "", basemap: bool = True,
-                    zooms=DEFAULT_ZOOMS, progress=None) -> dict:
+                    zooms=DEFAULT_ZOOMS, progress=None,
+                    diagram: bool = False, targets=None) -> dict:
     """One call: data join, tile fetch, render. Returns a summary dict."""
     data = build_map_data(workbook_path, route, lo, hi, sheet=sheet,
                           coords_source=coords_source, features=features,
-                          window=window, subtitle=subtitle)
+                          window=window, subtitle=subtitle,
+                          diagram=diagram, targets=targets)
     tiles, misses = ({}, 0)
     if basemap:
         tiles, misses = fetch_tiles(data, zooms=zooms, progress=progress)

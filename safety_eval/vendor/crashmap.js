@@ -40,8 +40,25 @@
       (c.src ? `<br><span class="dim">${c.src}</span>` : "");
   }
 
+  const RING = { Dry: "#111111", Wet: "#31b4e8", Snow: "#9fc5e8",
+                 Unknown: "#8a8f98" };
+  function badge(c) {
+    const fill = c.target === "Target" ? "#ffe14d" : "#c9ccd1";
+    const red = (c.sev === "A" || c.sev === "K") ? " red" : "";
+    return L.marker([c.lat, c.lon], { icon: L.divIcon({
+      className: "badge",
+      html: `<div class="oct" style="background:${RING[c.cond] || RING.Unknown}">` +
+            `<div class="oct in" style="background:${fill}">` +
+            `<span class="${red}">${c.sev}</span></div></div>`,
+      iconSize: [26, 26], iconAnchor: [13, 13] }) }).bindPopup(popup(c));
+  }
+
   const layers = { IS: [], RE: [], ADD: [], DEL: [], NIS: [], moves: [] };
   for (const c of D.crashes) {
+    if (D.diagram) {
+      (layers[c.status] || layers.NIS).push(badge(c));
+      continue;
+    }
     const m = L.circleMarker([c.lat, c.lon], {
       radius: c.status === "NIS" ? 3.5 : (c.status === "DEL" ? 4.5 : 7),
       color: "#ffffff",

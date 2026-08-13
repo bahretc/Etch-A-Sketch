@@ -314,7 +314,7 @@ def _cmd_parse_email(args) -> int:
         print(f"No 'Assignment #N' blocks found in {args.input}")
         return 2
     _os.makedirs(args.outdir, exist_ok=True)
-    for num, pa in sorted(parsed.items(), key=lambda kv: int(kv[0])):
+    for num, pa in sorted(parsed.items(), key=lambda kv: (not str(kv[0]).isdigit(), int(kv[0]) if str(kv[0]).isdigit() else 0, str(kv[0]))):
         if args.assignment and num != args.assignment:
             continue
         for kind, build in (("assumptions", to_assumptions_dict),
@@ -712,12 +712,15 @@ def _cmd_crash_map(args) -> int:
         wlo, whi = (float(x) for x in args.window.split(":"))
         window = (wlo, whi, args.window_label or "")
     out = args.out or "CrashMap.html"
+    targets = ({t.strip() for t in args.targets.split(",") if t.strip()}
+               if args.targets else None)
     s = build_crash_map(out, args.workbook, args.route, args.lo, args.hi,
                         sheet=args.sheet, coords_source=args.coords,
                         features=features or None, window=window,
                         subtitle=args.subtitle or "",
                         county=args.county or "",
-                        basemap=not args.no_basemap)
+                        basemap=not args.no_basemap,
+                        diagram=args.diagram, targets=targets)
     print(f"{s['crashes']} crashes on the map "
           + "  ".join(f"{k} {v}" for k, v in sorted(s["counts"].items())))
     print(f"{s['tiles']} basemap tiles embedded"
@@ -1289,6 +1292,14 @@ def build_parser() -> argparse.ArgumentParser:
     cm.add_argument("--no-basemap", dest="no_basemap", action="store_true",
                     help="Skip tile downloads (points on a blank "
                          "background; offline builds and tests).")
+    cm.add_argument("--diagram", action="store_true",
+                    help="Collision-diagram style (the 41000078675 example): "
+                         "the analysis crashes laddered off the roadway at "
+                         "their final mileposts, severity letter in the "
+                         "badge, Target/Other fill, road-condition ring.")
+    cm.add_argument("--targets",
+                    help="Comma-separated target crash types for the diagram "
+                         "fill (default: the ROR warrant set).")
     cm.set_defaults(func=_cmd_crash_map)
 
     sc = sub.add_parser(

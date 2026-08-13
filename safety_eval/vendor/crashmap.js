@@ -107,4 +107,6 @@
   const b = L.latLngBounds(D.line.map(p => L.latLng(p[0], p[1])));
   map.setMaxBounds(b.pad(0.6));
   map.fitBounds(b.pad(0.12));
+  // Exposed for automation: the PDF export and tests drive the view.
+  window._map = map;
 })();

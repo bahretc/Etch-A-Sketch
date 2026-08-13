@@ -472,6 +472,67 @@ def _hsip_tab(st) -> None:
                 except ValueError as exc:
                     st.error(f"Feature inclusions: {exc}")
 
+    if is_section:
+        with st.expander("GIS crash map (self-contained HTML)"):
+            st.caption("Every crash over embedded aerial and street "
+                       "basemaps: statuses in the same colourblind-safe "
+                       "colours, RE and ADD moves drawn to the New MP, the "
+                       "study limits, your feature pairs as labels, and an "
+                       "optional shaded sub-section. One file, works "
+                       "offline, safe to email. Positions are approximate: "
+                       "the centreline comes from the corridor's own coded "
+                       "crashes.")
+            m1, m2 = st.columns(2)
+            map_route = m1.text_input("Route label", placeholder="US 74")
+            shade = m2.text_input("Shade sub-section lo:hi (optional)",
+                                  placeholder="13.560:13.815")
+            if st.button("Build crash map",
+                         disabled=not (wb_up and map_route.strip()
+                                       and hi > lo)):
+                from safety_eval.crash_map import build_crash_map
+                feats = []
+                for ln in features_text.splitlines():
+                    ln = ln.strip()
+                    if ln and "|" in ln:
+                        label, mp = ln.rsplit("|", 1)
+                        try:
+                            feats.append((label.strip(), float(mp)))
+                        except ValueError:
+                            pass
+                window = None
+                if shade.strip():
+                    try:
+                        wlo, whi = (float(x) for x in shade.split(":"))
+                        window = (wlo, whi, "")
+                    except ValueError:
+                        st.error("Shade range must be lo:hi, e.g. "
+                                 "13.560:13.815")
+                        st.stop()
+                with tempfile.TemporaryDirectory() as tmp:
+                    path = _save_upload(wb_up, tmp)
+                    out = os.path.join(tmp, "map.html")
+                    try:
+                        with st.spinner("Joining crashes and downloading "
+                                        "basemap tiles (a minute or two)..."):
+                            s = build_crash_map(out, path,
+                                                map_route.strip(), lo, hi,
+                                                features=feats or None,
+                                                window=window)
+                    except ValueError as exc:
+                        st.error(str(exc))
+                        st.stop()
+                    stem = os.path.splitext(os.path.basename(
+                        wb_up.name))[0].replace("_Fiche", "")
+                    with open(out, "rb") as fh:
+                        st.download_button(
+                            f"Download {stem}_CrashMap.html "
+                            f"({s['bytes'] / 1048576:.1f} MB, "
+                            f"{s['crashes']} crashes)", fh.read(),
+                            file_name=f"{stem}_CrashMap.html")
+                    if s["misses"]:
+                        st.warning(f"{s['misses']} basemap tile(s) failed "
+                                   "to download and will render blank.")
+
 
 def _section_results(st, run) -> None:
     s = run.screen

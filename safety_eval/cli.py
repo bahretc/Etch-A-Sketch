@@ -693,6 +693,39 @@ def _cmd_feature_list(args) -> int:
     return 0
 
 
+def _cmd_crash_map(args) -> int:
+    """Build the self-contained GIS crash map from a reviewed workbook."""
+    from .crash_map import build_crash_map
+
+    features = []
+    if args.features_pairs:
+        with open(args.features_pairs, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                sep = "|" if "|" in line else ","
+                label, mp = line.rsplit(sep, 1)
+                features.append((label.strip(), float(mp)))
+    window = None
+    if args.window:
+        wlo, whi = (float(x) for x in args.window.split(":"))
+        window = (wlo, whi, args.window_label or "")
+    out = args.out or "CrashMap.html"
+    s = build_crash_map(out, args.workbook, args.route, args.lo, args.hi,
+                        sheet=args.sheet, coords_source=args.coords,
+                        features=features or None, window=window,
+                        subtitle=args.subtitle or "",
+                        county=args.county or "",
+                        basemap=not args.no_basemap)
+    print(f"{s['crashes']} crashes on the map "
+          + "  ".join(f"{k} {v}" for k, v in sorted(s["counts"].items())))
+    print(f"{s['tiles']} basemap tiles embedded"
+          + (f" ({s['misses']} failed, render blank)" if s["misses"] else "")
+          + f"; {s['bytes'] / 1048576:.1f} MB -> {out}")
+    return 0
+
+
 def _cmd_assist_score(args) -> int:
     """Score decide-mode proposals against the engineer's determinations.
 
@@ -1226,6 +1259,37 @@ def build_parser() -> argparse.ArgumentParser:
     fl.add_argument("--truncate", action="store_true",
                     help="Shorten over-length text instead of refusing.")
     fl.set_defaults(func=_cmd_feature_list)
+
+    cm = sub.add_parser(
+        "crash-map",
+        help="Build a self-contained GIS crash map (one HTML file, basemap "
+             "tiles embedded, works offline) from a reviewed fiche "
+             "workbook: crashes by status, RE/ADD moves drawn to the New "
+             "MP, study limits, feature labels, optional shaded "
+             "sub-section. Positions are approximate: the centreline is "
+             "derived from the corridor's coded crashes.")
+    cm.add_argument("--workbook", required=True)
+    cm.add_argument("--route", required=True, help='e.g. "US 74".')
+    cm.add_argument("--lo", type=float, required=True, help="Study MP begin.")
+    cm.add_argument("--hi", type=float, required=True, help="Study MP end.")
+    cm.add_argument("--out", help="Output HTML (default CrashMap.html).")
+    cm.add_argument("--sheet", help="Working sheet (default: *_Fiche).")
+    cm.add_argument("--coords",
+                    help="DetailedFiche source (default: the workbook's own "
+                         "DetailedFiche sheet).")
+    cm.add_argument("--features-pairs", dest="features_pairs",
+                    help="'<label>|<milepost>' lines (the feature-list "
+                         "--pairs file): mile markers become MM chips, "
+                         "everything else labelled points.")
+    cm.add_argument("--window", help="Shade a sub-section, lo:hi.")
+    cm.add_argument("--window-label", dest="window_label",
+                    help="Label for the shaded sub-section.")
+    cm.add_argument("--subtitle", help="Header note, e.g. 'F-2 met at 82%%'.")
+    cm.add_argument("--county")
+    cm.add_argument("--no-basemap", dest="no_basemap", action="store_true",
+                    help="Skip tile downloads (points on a blank "
+                         "background; offline builds and tests).")
+    cm.set_defaults(func=_cmd_crash_map)
 
     sc = sub.add_parser(
         "assist-score",

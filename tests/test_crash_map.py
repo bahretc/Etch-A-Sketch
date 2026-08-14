@@ -210,8 +210,11 @@ def test_diagram_buckets_are_neat_columns_with_clear_pixel_steps(tmp_path):
                 assert math.hypot(a[0] - b[0], a[1] - b[1]) >= 24
         if len(members) > 4:
             deep = True
-            spread = {round(c["odx"]) for c in members}
-            assert len(spread) > 2            # two columns, staggered
+            # Two staggered lanes: on this north corridor the lane
+            # offset lives in ody (along-road is vertical), so a deep
+            # stack must occupy exactly two distinct lanes - one value
+            # would mean the doubles regressed to a single long chain.
+            assert len({round(c["ody"]) for c in members}) == 2
     assert deep                               # the split was exercised
 
 
@@ -317,11 +320,11 @@ def test_hundredths_grouping_buckets_at_mpround2(tmp_path):
     """diagram_round=0.01 is the example CSV's MPRound2: crashes a
     hundredth apart anchor at their own mileposts instead of merging
     into one 0.1-mile column, so a 13.55 crash can no longer render
-    inside a window that begins at 13.56. And EVERY earlier separation
-    rule still holds: same-anchor badges stagger (zoom-invariant
-    geometry), while cross-anchor badges in a cascade differ in REACH
-    by at least a symbol - the only offset a zoom change cannot cancel.
-    Symbols are 20 px in this mode."""
+    inside a window that begins at 13.56. The layout is composed at the
+    exhibit's own scale like a plotted sheet: at that scale every
+    same-side pair keeps a symbol of clearance in (along-road, reach)
+    space, isolated crashes stay AT the road (base reach), and only
+    near-neighbours stack. Symbols are 20 px in this mode."""
     path = _workbook(tmp_path)
     _set_dirs(path, {"501": "EBT", "502": "WBT", "504": "EBT/EBT",
                      "505": "WBT/WBT"})
@@ -331,27 +334,88 @@ def test_hundredths_grouping_buckets_at_mpround2(tmp_path):
     d1 = crash_map.build_map_data(path, "US 74", 13.05, 13.35, diagram=True)
     anchors1 = {(c["lat"], c["lon"]) for c in d1["crashes"]}
     assert len(anchors) > len(anchors1)        # finer grid, more anchors
+    mid_lat = sum(c["lat"] for c in d["crashes"]) / len(d["crashes"])
+    m_per_px = 156543.03392 * math.cos(math.radians(mid_lat)) \
+        / 2 ** crash_map._COMPOSE_Z
+    px_per_mi = 1609.344 / m_per_px
     by_side: dict = {}
     for c in d["crashes"]:
         side = "WB" if (c.get("dir") or "").startswith("WB") else "EB"
         mp = c["new_mp"] if c["new_mp"] is not None else c["coded_mp"]
-        by_side.setdefault(side, []).append(c | {"_m": mp})
+        # This corridor runs north: EB reach is +odx, WB reach is -odx.
+        reach = c["odx"] if side == "EB" else -c["odx"]
+        by_side.setdefault(side, []).append((mp, reach))
+    base_reaches = 0
     for members in by_side.values():
-        for i, a in enumerate(members):
-            for b in members[i + 1:]:
-                if abs(a["_m"] - b["_m"]) > 0.09:
-                    continue
-                dx, dy = a["odx"] - b["odx"], a["ody"] - b["ody"]
-                assert math.hypot(dx, dy) >= 20
-                if (a["lat"], a["lon"]) != (b["lat"], b["lon"]):
-                    # This corridor runs north: EB reach is +odx, WB
-                    # reach is -odx. Cross-anchor pairs must ratchet.
-                    assert abs(dx) >= 20
+        for i, (ma, ra) in enumerate(members):
+            base_reaches += ra <= 43
+            for mb, rb in members[i + 1:]:
+                assert math.hypot((ma - mb) * px_per_mi, ra - rb) >= 21
+    # Reach levels recycle: even on this worst-case corridor (a crash
+    # every hundredth), badges keep returning to the road instead of
+    # ratcheting off into the fields.
+    assert base_reaches >= 3
     out = tmp_path / "h.html"
     crash_map.render_map_html(d, {}, str(out))
     html = out.read_text("utf-8")
     assert "nearest 0.01 mile" in html
     assert "badge sm" in html                  # 20 px symbols
+
+
+def test_the_nickel_grid_snaps_and_keeps_single_columns(tmp_path):
+    """diagram_round=0.05: anchors snap to the 0.05 grid (13.56 -> 13.55,
+    halving the window-boundary drift) and deep stacks stay SINGLE
+    columns - the doubled width cannot fit the halved anchor pitch."""
+    path = _workbook(tmp_path)
+    d = crash_map.build_map_data(path, "US 74", 13.05, 13.35, diagram=True,
+                                 diagram_round=0.05)
+    for ld in d["overlays"]["ladders"]:
+        assert abs(ld["mp"] * 20 - round(ld["mp"] * 20)) < 1e-6
+    by_anchor: dict = {}
+    for c in d["crashes"]:
+        by_anchor.setdefault((c["lat"], c["lon"]), []).append(c)
+    multi = [v for v in by_anchor.values() if len(v) >= 3]
+    assert multi
+    for members in multi:
+        # Single column: all badges on one perpendicular ray, no lateral
+        # lanes - the doubled width cannot fit the halved anchor pitch
+        # (this corridor runs north, so the ray is pure odx).
+        assert len({round(c["ody"]) for c in members}) == 1
+
+
+def test_the_gis_export_carries_exact_mileposts_and_all_groupings(tmp_path):
+    """The GIS file is the hundredth-fidelity answer: exact final MPs as
+    geometry, with MPRound1/05/2 + Offset columns precomputed the way
+    the engineer's AttributeTable carries them, plus the centreline,
+    limits and window as their own features. CSV twin alongside."""
+    import csv
+    import json
+
+    path = _workbook(tmp_path)
+    out = tmp_path / "diagram.geojson"
+    n, csv_path = crash_map.export_gis(
+        str(out), path, "US 74", 13.05, 13.35,
+        window=(13.10, 13.30, "hot spot"), route_id="20000074075")
+    gj = json.loads(out.read_text("utf-8"))
+    crashes = [f for f in gj["features"]
+               if "CrashID" in f["properties"]]
+    assert len(crashes) == n and n > 20
+    p = crashes[0]["properties"]
+    for col in ("CrashNum", "CrashID", "Status", "RouteID", "MP",
+                "MPRound1", "Offset1", "MPRound05", "Offset05",
+                "MPRound2", "Offset2", "TargetFlag", "Injury",
+                "RoadCond", "CrashDate"):
+        assert col in p
+    assert p["RouteID"] == "20000074075"
+    re_row = next(f["properties"] for f in crashes
+                  if f["properties"]["CrashID"] == "700")
+    assert re_row["MP"] == 13.2 and re_row["CodedMP"] == 13.9
+    layers = {f["properties"].get("Layer") for f in gj["features"]}
+    assert {"Centerline", "Begin Study", "End Study",
+            "Warrant Window"} <= layers
+    with open(csv_path) as fh:
+        rows = list(csv.DictReader(fh))
+    assert len(rows) == n and rows[0]["CrashID"]
 
 
 def test_a_crash_without_a_coordinate_is_placed_by_its_milepost(tmp_path):

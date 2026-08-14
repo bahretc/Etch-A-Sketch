@@ -728,6 +728,15 @@ def _cmd_crash_map(args) -> int:
     print(f"{s['tiles']} basemap tiles embedded"
           + (f" ({s['misses']} failed, render blank)" if s["misses"] else "")
           + f"; {s['bytes'] / 1048576:.1f} MB -> {out}")
+    if args.gis_out:
+        from .crash_map import export_gis
+        n, csv_path = export_gis(
+            args.gis_out, args.workbook, args.route, args.lo, args.hi,
+            sheet=args.sheet, coords_source=args.coords,
+            centerline=args.centerline, targets=targets, window=window,
+            route_id=args.route_id or "")
+        print(f"{n} crashes at exact mileposts -> {args.gis_out} "
+              f"(+ {csv_path})")
     return 0
 
 
@@ -1310,9 +1319,20 @@ def build_parser() -> argparse.ArgumentParser:
     cm.add_argument("--diagram-round", dest="diagram_round", type=float,
                     default=0.1,
                     help="Diagram grouping increment in miles: 0.1 "
-                         "(default, the example's MPRound1) or 0.01 "
-                         "(MPRound2; exact along-road placement, but "
-                         "dense clusters crowd at close mileposts).")
+                         "(default, the example's MPRound1), 0.05 "
+                         "(half-pitch columns, smaller symbols), or "
+                         "0.01 (MPRound2; exact anchors, composed "
+                         "reaches where crashes crowd).")
+    cm.add_argument("--gis-out", dest="gis_out",
+                    help="Also write the diagram as DATA for ArcGIS: a "
+                         "GeoJSON (plus CSV twin) with every analysis "
+                         "crash at its exact final milepost and the "
+                         "MPRound1/05/2 + Offset grouping columns, with "
+                         "the centreline, limits and window as "
+                         "features.")
+    cm.add_argument("--route-id", dest="route_id",
+                    help="NCDOT RouteID carried into the GIS export "
+                         "(e.g. 20000074075).")
     cm.set_defaults(func=_cmd_crash_map)
 
     sc = sub.add_parser(

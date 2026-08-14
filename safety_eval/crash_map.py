@@ -389,6 +389,9 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
 #: severity letter in the badge, Target/Other fill, road-condition ring.
 _COND_BUCKET = {1: "Dry", 2: "Wet", 3: "Wet", 4: "Snow", 5: "Snow"}
 _SEV_LETTERS = {"O", "C", "B", "A", "K"}
+#: The hundredths (MPRound2) layout is composed at this zoom - the
+#: letter-print fit - the way a plotted exhibit is composed at one scale.
+_COMPOSE_Z = 15
 
 
 def _bearing_at(shape, mp):
@@ -443,7 +446,6 @@ def diagram_layout(crashes, shape, targets, step_px: float = 34,
     offset from its anchor - and returns the ladder guide lines as
     anchor + screen angle + pixel length.
     """
-    nd = 1 if round_to >= 0.1 else 2
     buckets: dict = {}
     for c in crashes:
         mp = c.get("new_mp") if c.get("new_mp") is not None \
@@ -454,7 +456,13 @@ def diagram_layout(crashes, shape, targets, step_px: float = 34,
         c["_mp"] = float(mp)
         d = (c.get("dir") or "").upper()
         dcode = "WB" if d.startswith(("WB", "SB")) else "EB"
-        buckets.setdefault((round(float(mp), nd), dcode), []).append(c)
+        # Power-of-ten grids keep decimal rounding (13.05 -> 13.1, the
+        # TEAAS convention); other grids (0.05) snap arithmetically.
+        if round_to in (0.1, 0.01):
+            grid = round(float(mp), 1 if round_to == 0.1 else 2)
+        else:
+            grid = round(round(float(mp) / round_to) * round_to, 3)
+        buckets.setdefault((grid, dcode), []).append(c)
     # One shared road bearing for every ladder: locally-perpendicular
     # ladders CONVERGE as they run out on a curve, and adjacent deep
     # stacks tangle at their far ends. Parallel columns - the print
@@ -490,53 +498,59 @@ def diagram_layout(crashes, shape, targets, step_px: float = 34,
         px, py = -uy * s, ux * s                # perpendicular (E, N)
         return (_mp_to_ll(shape, anchor), (px, -py), (ux, -uy))
 
+    # The exhibit is composed at ONE scale (z15, the letter-print fit),
+    # the way a plotted sheet is - guaranteeing separation at every
+    # zoom instead forced a reach ratchet whose cascades marched a mile
+    # off the road (reviewed verdict: hot garbage). At the composition
+    # scale the anchor pitch decides the layout: a grid the symbols fit
+    # between (0.1, or 0.05 with the smaller symbols) draws classic
+    # columns; a finer grid (0.01) falls back to collision-composed
+    # reaches, where isolated crashes sit at the road and only true
+    # near-neighbours stack.
+    fine = round_to < 0.1                   # 20 px symbols, tighter steps
+    badge = 20 if fine else 26
+    step = 24.0 if fine else step_px
+    base = 42.0 if fine else base_px
+    mid_lat = shape[len(shape) // 2][1]
+    m_per_px = (156543.03392 * math.cos(math.radians(mid_lat))
+                / 2 ** _COMPOSE_Z)
+    px_per_mi = 1609.344 / m_per_px
+    pitch = round_to * px_per_mi
     ladders = []
-    if nd >= 2:
-        # MPRound2 mode: every crash anchors at its OWN hundredth, and
-        # same-side crashes within a rolling tenth of each other CASCADE
-        # outward as one string. The zoom-proof separation rule: badges
-        # sharing an anchor may stagger in two lanes (their relative
-        # geometry never changes with zoom), but badges at DIFFERENT
-        # anchors must differ in REACH by at least a badge, because at
-        # some zoom the along-road gap cancels any fixed lane offset.
-        # So the reach RATCHETS anchor to anchor. Symbols shrink to 20
-        # px in this mode so a dense run still fits the page.
-        rung, half, ratchet, base = 27, 13.5, 21, 40
+    if pitch < badge + 1:
+        # Anchors closer than a symbol at composition scale: composed
+        # reaches with a symbol of clearance in (along-px, reach) space.
+        rung, clear = step / 2, badge + 2
         sides: dict = {}
         for (bmp, dcode), members in sorted(buckets.items()):
             sides.setdefault(dcode, []).append((bmp, members))
         for dcode in sorted(sides):
-            anchors = sorted(sides[dcode])
-            runs: list = []
-            for bmp, members in anchors:
-                if runs and bmp - runs[-1][-1][0] <= 0.09:
-                    runs[-1].append((bmp, members))
-                else:
-                    runs.append([(bmp, members)])
-            for run in runs:
-                cur = float(base)
-                for bmp, members in run:
-                    (ala, aln), (sx, sy), (tx, ty) = frame(bmp, dcode)
-                    members.sort(key=lambda c: (c["_mp"],
-                                                c.get("date") or "",
-                                                c["id"]))
-                    reach = cur
-                    for m, c in enumerate(members):
-                        lane = -15 if m % 2 == 0 else 15
-                        reach = cur + (m // 2) * rung + (m % 2) * half
-                        c["lat"], c["lon"] = round(ala, 6), round(aln, 6)
-                        c["odx"] = round(sx * reach + tx * lane, 1)
-                        c["ody"] = round(sy * reach + ty * lane, 1)
-                        decorate(c)
-                    ladders.append(
-                        {"mp": bmp, "dir": dcode, "n": len(members),
-                         "lat": round(ala, 6), "lon": round(aln, 6),
-                         "angle": round(math.degrees(math.atan2(sy, sx)),
-                                        1),
-                         "len": round(reach - 8)})
-                    cur = reach + ratchet
-                    for c in members:
-                        c.pop("_mp", None)
+            placed = []                     # (along_px, reach)
+            for bmp, members in sorted(sides[dcode]):
+                (ala, aln), (sx, sy), (tx, ty) = frame(bmp, dcode)
+                members.sort(key=lambda c: (c["_mp"],
+                                            c.get("date") or "",
+                                            c["id"]))
+                s = bmp * px_per_mi
+                top = base
+                for c in members:
+                    reach = base
+                    while any(math.hypot(s - ps, reach - pr) < clear
+                              for ps, pr in placed):
+                        reach += rung
+                    placed.append((s, reach))
+                    top = max(top, reach)
+                    c["lat"], c["lon"] = round(ala, 6), round(aln, 6)
+                    c["odx"] = round(sx * reach, 1)
+                    c["ody"] = round(sy * reach, 1)
+                    decorate(c)
+                ladders.append(
+                    {"mp": bmp, "dir": dcode, "n": len(members),
+                     "lat": round(ala, 6), "lon": round(aln, 6),
+                     "angle": round(math.degrees(math.atan2(sy, sx)), 1),
+                     "len": round(top - 8)})
+                for c in members:
+                    c.pop("_mp", None)
         return ladders
 
     for (bmp, dcode), members in sorted(buckets.items()):
@@ -546,16 +560,18 @@ def diagram_layout(crashes, shape, targets, step_px: float = 34,
         # A stack deeper than 4 splits into two staggered columns (the
         # example CSV's Offset1/Offset2), halving the ladder's reach so
         # the fitted zoom stays close instead of shrinking the road to
-        # make room for one long chain.
-        double = len(members) > 4
+        # make room for one long chain. Only when the anchor pitch can
+        # afford the doubled width - on the 0.05 grid it cannot, so
+        # those stacks stay single columns.
+        double = len(members) > 4 and pitch >= 1.5 * badge
         reach = 0.0
         for i, c in enumerate(members):
             if double:
                 q = i % 2
-                reach = base_px + (i // 2) * step_px + q * step_px / 2
+                reach = base + (i // 2) * step + q * step / 2
                 lat_off = 11 if q else -11
             else:
-                reach = base_px + i * step_px
+                reach = base + i * step
                 lat_off = 0
             c["lat"], c["lon"] = round(ala, 6), round(aln, 6)
             c["odx"] = round(sx * reach + tx * lat_off, 1)
@@ -565,8 +581,8 @@ def diagram_layout(crashes, shape, targets, step_px: float = 34,
                         "lat": round(ala, 6), "lon": round(aln, 6),
                         "angle": round(math.degrees(math.atan2(sy, sx)), 1),
                         "len": round(reach if not double
-                                     else base_px + ((len(members) - 1) // 2)
-                                     * step_px + 8)})
+                                     else base + ((len(members) - 1) // 2)
+                                     * step + 8)})
         for c in members:
             c.pop("_mp", None)
     return ladders
@@ -792,3 +808,145 @@ def build_crash_map(out_path: str, workbook_path: str, route: str,
     size = render_map_html(data, tiles, out_path, county=county)
     return {"crashes": len(data["crashes"]), "counts": data["counts"],
             "tiles": len(tiles), "misses": misses, "bytes": size}
+
+
+def export_gis(out_path: str, workbook_path: str, route: str,
+               lo: float, hi: float, sheet: str | None = None,
+               coords_source: str | None = None,
+               centerline: str | None = None, targets=None,
+               window: tuple | None = None,
+               route_id: str = "") -> tuple:
+    """The diagram as DATA: a GeoJSON (plus a CSV twin) for ArcGIS.
+
+    Every analysis crash sits at its EXACT final milepost on the
+    centreline, with the grouping schemes precomputed as columns the way
+    the engineer's AttributeTable carries them - MPRound1/Offset1 (0.1),
+    MPRound05/Offset05 (0.05) and MPRound2/Offset2 (0.01) - so the
+    exhibit can be composed in GIS at any sheet scale. The centreline,
+    study limits and warrant window ride along as their own features.
+    Returns ``(crash_count, csv_path)``.
+    """
+    import csv as _csv
+
+    import openpyxl
+
+    from .hsip import fiche_sheet_name
+    from .warrants import ROR_TYPES
+
+    coords_source = coords_source or workbook_path
+    if centerline:
+        shape = _load_centerline(centerline, route)
+    else:
+        shape = clean_shape(parse_shape_points(coords_source, route))
+        if len(shape) < 2:
+            raise ValueError(
+                f"the DetailedFiche in {coords_source} carries no usable "
+                f"coordinates on {route}; cannot place the crashes")
+    if targets is None:
+        targets = ROR_TYPES
+    wb = openpyxl.load_workbook(workbook_path)
+    ws = wb[sheet or fiche_sheet_name(wb)]
+    rows = []
+    for r in range(2, ws.max_row + 1):
+        cid = ws.cell(row=r, column=_COL["crash_id"]).value
+        status = str(ws.cell(row=r, column=_COL["status"]).value
+                     or "").strip()
+        if cid is None or status not in ("IS", "RE", "ADD"):
+            continue
+        coded = ws.cell(row=r, column=_COL["mp"]).value
+        new = ws.cell(row=r, column=_COL["new_mp"]).value
+        mp = (float(new) if status in ("RE", "ADD")
+              and isinstance(new, (int, float))
+              else float(coded) if isinstance(coded, (int, float)) else None)
+        if mp is None:
+            continue
+        typed = ws.cell(row=r, column=_COL["type"]).value
+        dv = ws.cell(row=r, column=_COL["dir"]).value
+        date = ws.cell(row=r, column=_COL["date"]).value
+        sev = str(ws.cell(row=r, column=_COL["s"]).value or "O").strip()
+        cval = ws.cell(row=r, column=_COL["c"]).value
+        lval = ws.cell(row=r, column=17).value
+        ctype = (str(typed).strip() if isinstance(typed, str)
+                 and not typed.startswith("=") else "")
+        dirv = (str(dv).strip() if isinstance(dv, str)
+                and not dv.startswith("=") else "")
+        rows.append({
+            "id": str(cid).strip(), "status": status, "mp": round(mp, 3),
+            "coded": (round(float(coded), 3)
+                      if isinstance(coded, (int, float)) else None),
+            "dir": dirv,
+            "side": "WB" if dirv.upper().startswith(("WB", "SB")) else "EB",
+            "type": ctype, "sev": sev.upper()[:1],
+            "cond": _COND_BUCKET.get(cval, "Unknown"),
+            "l": lval if isinstance(lval, int) else "",
+            "date": (date.strftime("%m/%d/%Y")
+                     if hasattr(date, "strftime") else ""),
+            "target": 1 if any(ctype.upper().startswith(x.upper())
+                               or x.upper() in ctype.upper()
+                               for x in targets) else 0})
+    rows.sort(key=lambda x: (x["mp"], x["date"], x["id"]))
+
+    def ranks(grid):
+        counts: dict = {}
+        out = {}
+        for row in rows:
+            key = (round(round(row["mp"] / grid) * grid, 3), row["side"])
+            counts[key] = counts.get(key, 0) + 1
+            out[row["id"]] = (key[0], counts[key])
+        return out
+
+    r1, r05, r2 = ranks(0.1), ranks(0.05), ranks(0.01)
+    feats = []
+    csv_rows = []
+    for i, row in enumerate(rows, start=1):
+        la, ln = _mp_to_ll(shape, row["mp"])
+        props = {
+            "CrashNum": i, "CrashID": row["id"], "Status": row["status"],
+            "RouteID": route_id, "Route": route, "Direction": row["dir"],
+            "Dir": row["side"], "MP": row["mp"], "CodedMP": row["coded"],
+            "MPRound1": r1[row["id"]][0], "Offset1": r1[row["id"]][1],
+            "MPRound05": r05[row["id"]][0], "Offset05": r05[row["id"]][1],
+            "MPRound2": r2[row["id"]][0], "Offset2": r2[row["id"]][1],
+            "CrashType": row["type"], "TargetFlag": row["target"],
+            "Injury": row["sev"], "RoadCond": row["cond"],
+            "LightCond": row["l"], "CrashDate": row["date"],
+            "Latitude": round(la, 6), "Longitude": round(ln, 6)}
+        feats.append({"type": "Feature", "properties": props,
+                      "geometry": {"type": "Point",
+                                   "coordinates": [round(ln, 6),
+                                                   round(la, 6)]}})
+        csv_rows.append(props)
+    line = [[round(p[2], 6), round(p[1], 6)] for p in shape
+            if lo - 0.15 <= p[0] <= hi + 0.15]
+    feats.append({"type": "Feature",
+                  "properties": {"Layer": "Centerline", "Route": route,
+                                 "RouteID": route_id},
+                  "geometry": {"type": "LineString", "coordinates": line}})
+    for mp, kind in ((lo, "Begin Study"), (hi, "End Study")):
+        la, ln = _mp_to_ll(shape, mp)
+        feats.append({"type": "Feature",
+                      "properties": {"Layer": kind, "MP": round(mp, 3)},
+                      "geometry": {"type": "Point",
+                                   "coordinates": [round(ln, 6),
+                                                   round(la, 6)]}})
+    if window:
+        wlo, whi = float(window[0]), float(window[1])
+        wline = [[round(ln, 6), round(la, 6)] for la, ln in
+                 (_mp_to_ll(shape, wlo + i * (whi - wlo) / 24)
+                  for i in range(25))]
+        feats.append({"type": "Feature",
+                      "properties": {"Layer": "Warrant Window",
+                                     "BeginMP": wlo, "EndMP": whi,
+                                     "Label": (window[2]
+                                               if len(window) > 2 else "")},
+                      "geometry": {"type": "LineString",
+                                   "coordinates": wline}})
+    with open(out_path, "w", encoding="utf-8") as fh:
+        json.dump({"type": "FeatureCollection", "features": feats}, fh)
+    csv_path = out_path.rsplit(".", 1)[0] + ".csv"
+    cols = list(csv_rows[0]) if csv_rows else []
+    with open(csv_path, "w", newline="", encoding="utf-8") as fh:
+        w = _csv.DictWriter(fh, fieldnames=cols)
+        w.writeheader()
+        w.writerows(csv_rows)
+    return len(csv_rows), csv_path

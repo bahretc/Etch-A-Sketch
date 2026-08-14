@@ -692,14 +692,19 @@ def render_map_html(data: dict, tiles: dict, out_path: str,
                         f"MP {d['lo']:.3f} to {d['hi']:.3f}", count,
                         d.get("subtitle") or "") if x]
     if d.get("diagram"):
-        def loct(fill, ring="#767b85", letter=""):
+        def loct(fill, ring="#767b85", letter="", lcolor="#111111"):
             return ('<span class="lwrap">'
                     f'<span class="loct" style="background:{ring}">'
-                    f'<span class="in" style="background:{fill}">{letter}'
+                    f'<span class="in" style="background:{fill};'
+                    f'color:{lcolor}">{letter}'
                     "</span></span></span>")
         red_style = ' style="color:#c00000;font-weight:600"'
+        # K and A letters are red IN the swatch, exactly as on the
+        # badges themselves - a legend that recolours the symbol it
+        # explains is wrong.
         sev_rows = "".join(
-            f'<div class="row">{loct("#ffffff", "#767b85", k)}'
+            f'<div class="row">'
+            f'{loct("#ffffff", "#767b85", k, "#c00000" if red else "#111111")}'
             f'<span{red_style if red else ""}>{t}</span></div>'
             for k, t, red in (("K", "K - Fatal", True),
                               ("A", "A - Serious Injury", True),

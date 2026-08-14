@@ -290,9 +290,12 @@ def test_an_analysis_crash_with_a_far_geocode_relocates_not_drops(tmp_path):
 
 def test_the_diagram_html_is_an_exhibit_not_an_explorer(tmp_path):
     """No layer checkboxes, no zoom buttons; three legend boxes with the
-    example's headers; a north arrow; the diagram title."""
+    example's headers; a north arrow; the diagram title. The legend says
+    only what a printed reader needs: no click-me prose, and no window
+    row duplicating the on-map HOT SPOT callout."""
     path = _workbook(tmp_path)
-    d = crash_map.build_map_data(path, "US 74", 13.05, 13.35, diagram=True)
+    d = crash_map.build_map_data(path, "US 74", 13.05, 13.35, diagram=True,
+                                 window=(13.10, 13.30, "hot spot"))
     out = tmp_path / "d.html"
     crash_map.render_map_html(d, {}, str(out), county="Polk")
     html = out.read_text("utf-8")
@@ -306,6 +309,25 @@ def test_the_diagram_html_is_an_exhibit_not_an_explorer(tmp_path):
     # Dry/Unknown), and the condition swatches are rings, not dots.
     assert html.count("#f4f7fa") >= 2          # RING map + legend swatch
     assert '<span class="dot"' not in html
+    assert "Click any" not in html
+    assert '<span class="band"' not in html    # HOT SPOT callout suffices
+
+
+def test_hundredths_grouping_buckets_at_mpround2(tmp_path):
+    """diagram_round=0.01 is the example CSV's MPRound2: crashes a
+    hundredth apart anchor at their own mileposts instead of merging
+    into one 0.1-mile column, so a 13.55 crash can no longer render
+    inside a window that begins at 13.56."""
+    path = _workbook(tmp_path)
+    d = crash_map.build_map_data(path, "US 74", 13.05, 13.35, diagram=True,
+                                 diagram_round=0.01)
+    anchors = {(c["lat"], c["lon"]) for c in d["crashes"]}
+    d1 = crash_map.build_map_data(path, "US 74", 13.05, 13.35, diagram=True)
+    anchors1 = {(c["lat"], c["lon"]) for c in d1["crashes"]}
+    assert len(anchors) > len(anchors1)        # finer grid, more anchors
+    out = tmp_path / "h.html"
+    crash_map.render_map_html(d, {}, str(out))
+    assert "nearest 0.01 mile" in out.read_text("utf-8")
 
 
 def test_a_crash_without_a_coordinate_is_placed_by_its_milepost(tmp_path):

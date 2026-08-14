@@ -86,7 +86,8 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
                    features=None, window: tuple | None = None,
                    subtitle: str = "", line_margin_mi: float = 0.35,
                    pad_deg: float = 0.004, diagram: bool = False,
-                   targets=None, centerline: str | None = None) -> dict:
+                   targets=None, centerline: str | None = None,
+                   diagram_round: float = 0.1) -> dict:
     """Everything the map draws, as one JSON-ready dict.
 
     ``coords_source`` defaults to the workbook itself: the fiche workbook the
@@ -190,7 +191,8 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
             targets = ROR_TYPES
         in_analysis = [c for c in crashes
                        if c["status"] in ("IS", "RE", "ADD")]
-        ladders = diagram_layout(in_analysis, shape, targets)
+        ladders = diagram_layout(in_analysis, shape, targets,
+                                 round_to=diagram_round)
         # A collision diagram shows the analysis; everything else drops,
         # and the RE move tails go with it (the badge is not a position,
         # so a line from the coded coordinate to it would mislead).
@@ -343,7 +345,8 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
     data = {"study": study, "route": route, "lo": lo, "hi": hi,
             "subtitle": subtitle, "line": line, "crashes": crashes,
             "overlays": overlays, "counts": counts,
-            "diagram": bool(diagram), "shape_src": shape_src}
+            "diagram": bool(diagram), "shape_src": shape_src,
+            "diagram_round": diagram_round}
     if diagram:
         # The tight crop: the studied stretch plus the badge anchors -
         # ladders and callouts live in screen space, so their reach
@@ -415,11 +418,13 @@ def _bearing_at(shape, mp):
 
 
 def diagram_layout(crashes, shape, targets, step_px: float = 34,
-                   base_px: float = 48, eb_side: int = -1) -> list:
+                   base_px: float = 48, eb_side: int = -1,
+                   round_to: float = 0.1) -> list:
     """Ladder the crashes off the roadway, collision-diagram style.
 
-    Crashes bucket by final milepost rounded to 0.1 (the example's
-    MPRound1) AND by direction of travel: crashes travelling with
+    Crashes bucket by final milepost rounded to ``round_to`` - 0.1 mile
+    (the example's MPRound1) by default, 0.01 for its finer MPRound2 -
+    AND by direction of travel: crashes travelling with
     increasing milepost (EB on US 74) ladder off one side of the road,
     the opposing direction off the other, exactly like the engineer's
     ArcGIS layout. Every badge in a bucket anchors at the SAME point on
@@ -438,6 +443,7 @@ def diagram_layout(crashes, shape, targets, step_px: float = 34,
     offset from its anchor - and returns the ladder guide lines as
     anchor + screen angle + pixel length.
     """
+    nd = 1 if round_to >= 0.1 else 2
     buckets: dict = {}
     for c in crashes:
         mp = c.get("new_mp") if c.get("new_mp") is not None \
@@ -448,7 +454,7 @@ def diagram_layout(crashes, shape, targets, step_px: float = 34,
         c["_mp"] = float(mp)
         d = (c.get("dir") or "").upper()
         dcode = "WB" if d.startswith(("WB", "SB")) else "EB"
-        buckets.setdefault((round(float(mp), 1), dcode), []).append(c)
+        buckets.setdefault((round(float(mp), nd), dcode), []).append(c)
     # One shared road bearing for every ladder: locally-perpendicular
     # ladders CONVERGE as they run out on a curve, and adjacent deep
     # stacks tangle at their far ends. Parallel columns - the print
@@ -654,20 +660,20 @@ def render_map_html(data: dict, tiles: dict, out_path: str,
         legend = "".join(
             f'<div class="row"><span class="dot" style="background:{c}"></span>'
             f'<span>{t}</span></div>' for c, t in rows)
-    if d["overlays"].get("window"):
-        row = ('<div class="row"><span class="band"></span><span>'
-               + d["overlays"]["window"]["label"] + "</span></div>")
-        # In the diagram the boxes carry the white background, so a bare
-        # row would float transparent over the imagery.
-        legend += (f'<div class="box">{row}</div>' if d.get("diagram")
-                   else row)
+    if d["overlays"].get("window") and not d.get("diagram"):
+        # The diagram's HOT SPOT callout on the map already names the
+        # window; a legend row would say it twice.
+        legend += ('<div class="row"><span class="band"></span><span>'
+                   + d["overlays"]["window"]["label"] + "</span></div>")
     lrs = d.get("shape_src") == "lrs"
     if d.get("diagram"):
-        legend += ('<div class="note">Crashes group to the nearest 0.1 '
-                   "mile of their final milepost and split by direction "
-                   "of travel, one side of the road each; distance from "
-                   "the road is stacking order, not position. Click any "
-                   "badge for details.</div>")
+        # One caveat a reviewer must have - the stacks are counts, not
+        # offsets - and nothing else.
+        step = d.get("diagram_round", 0.1)
+        legend += (f'<div class="note">Crashes group to the nearest '
+                   f"{step:g} mile by direction of travel; distance "
+                   "from the road is stacking order, not "
+                   "position.</div>")
     elif lrs:
         legend += ('<div class="note">RE and ADD are placed at the '
                    "engineer's New MP on the route centreline; other "
@@ -715,13 +721,15 @@ def build_crash_map(out_path: str, workbook_path: str, route: str,
                     county: str = "", basemap: bool = True,
                     zooms=DEFAULT_ZOOMS, progress=None,
                     diagram: bool = False, targets=None,
-                    centerline: str | None = None) -> dict:
+                    centerline: str | None = None,
+                    diagram_round: float = 0.1) -> dict:
     """One call: data join, tile fetch, render. Returns a summary dict."""
     data = build_map_data(workbook_path, route, lo, hi, sheet=sheet,
                           coords_source=coords_source, features=features,
                           window=window, subtitle=subtitle,
                           diagram=diagram, targets=targets,
-                          centerline=centerline)
+                          centerline=centerline,
+                          diagram_round=diagram_round)
     tiles, misses = ({}, 0)
     if basemap:
         # The diagram has no layer switcher, so one basemap (aerial).

@@ -721,7 +721,8 @@ def _cmd_crash_map(args) -> int:
                         county=args.county or "",
                         basemap=not args.no_basemap,
                         diagram=args.diagram, targets=targets,
-                        centerline=args.centerline)
+                        centerline=args.centerline,
+                        diagram_round=args.diagram_round)
     print(f"{s['crashes']} crashes on the map "
           + "  ".join(f"{k} {v}" for k, v in sorted(s["counts"].items())))
     print(f"{s['tiles']} basemap tiles embedded"
@@ -1306,6 +1307,12 @@ def build_parser() -> argparse.ArgumentParser:
                          "([lon, lat, m], or 2D vertices with begin/end MP "
                          "properties; the NCDOT LRS export or a calibrated "
                          "trace). Replaces the crash-cloud centreline.")
+    cm.add_argument("--diagram-round", dest="diagram_round", type=float,
+                    default=0.1,
+                    help="Diagram grouping increment in miles: 0.1 "
+                         "(default, the example's MPRound1) or 0.01 "
+                         "(MPRound2; exact along-road placement, but "
+                         "dense clusters crowd at close mileposts).")
     cm.set_defaults(func=_cmd_crash_map)
 
     sc = sub.add_parser(

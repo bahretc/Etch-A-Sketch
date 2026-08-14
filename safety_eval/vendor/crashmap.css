@@ -46,6 +46,12 @@ html, body { margin: 0; height: 100%;
 .leaflet-popup-content { font: 12.5px/1.5 "Segoe UI", system-ui, sans-serif; }
 .leaflet-popup-content .dim { color: #6b7280; font-size: 11.5px; }
 
+/* Screen-space ladder guide lines: rotated from the road anchor out to
+   the last badge of the stack. */
+.ladder { pointer-events: none; }
+.ladder .ln { height: 0; border-top: 2px solid rgba(255, 255, 255, 0.85);
+  transform-origin: 0 0; }
+
 /* Collision-diagram badges (the 41000078675 grammar): octagon, severity
    letter, Target/Other fill, road-condition ring. */
 .badge .oct { width: 26px; height: 26px; display: flex; align-items: center;

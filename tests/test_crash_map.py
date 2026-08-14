@@ -165,38 +165,54 @@ def _set_dirs(path, dirs):
 def test_diagram_ladders_split_by_direction_onto_opposite_sides(tmp_path):
     """The example's grammar: direction of travel decides the side of the
     road. This corridor runs north (MP increasing), so increasing-MP
-    traffic ladders east of the line and opposing traffic west."""
+    traffic ladders east (screen right, odx > 0) and opposing traffic
+    west (odx < 0). The offsets are SCREEN pixels: a ground-feet step
+    spanned half a badge at the fitted zoom - overlapping symbols."""
     path = _workbook(tmp_path)
     _set_dirs(path, {"501": "EBT", "502": "WBT", "504": "EBT/EBT",
                      "505": "WBT/WBT"})
     d = crash_map.build_map_data(path, "US 74", 13.05, 13.35, diagram=True)
     got = {c["id"]: c for c in d["crashes"]}
     for cid in ("501", "504"):
-        assert got[cid]["lon"] > -82.13, cid          # east of the line
+        assert got[cid]["odx"] > 0, cid               # east of the line
     for cid in ("502", "505"):
-        assert got[cid]["lon"] < -82.13, cid          # west of the line
+        assert got[cid]["odx"] < 0, cid               # west of the line
     # No direction coded -> the increasing-MP side, still on the diagram.
-    assert got["507"]["lon"] > -82.13
+    assert got["507"]["odx"] > 0
 
 
-def test_diagram_buckets_are_neat_columns_at_the_rounded_milepost(tmp_path):
-    """Every badge in a 0.1-mile bucket sits at the SAME along-road
-    position (the rounded milepost); distance off the road is stacking
-    order. Ragged per-crash positions were v1; the engineer's layout is
-    columns."""
+def test_diagram_buckets_are_neat_columns_with_clear_pixel_steps(tmp_path):
+    """Every badge in a (0.1-mile, direction) bucket anchors at the SAME
+    point on the road; stacking is a screen offset, and every pair of
+    badges in a bucket stays at least ~a badge apart (26 px symbols, 24
+    px floor for the staggered double columns), so symbols can never
+    overlap at any zoom. Deep stacks split into two staggered columns
+    (the example CSV's Offset1/Offset2)."""
     path = _workbook(tmp_path)
+    _set_dirs(path, {"501": "EBT", "502": "WBT", "504": "EBT/EBT",
+                     "505": "WBT/WBT"})
     d = crash_map.build_map_data(path, "US 74", 13.05, 13.35, diagram=True)
     by_bucket: dict = {}
     for c in d["crashes"]:
         mp = c["new_mp"] if c["new_mp"] is not None else c["coded_mp"]
-        by_bucket.setdefault(round(mp, 1), []).append(c)
+        side = "WB" if (c.get("dir") or "").startswith("WB") else "EB"
+        by_bucket.setdefault((round(mp, 1), side), []).append(c)
     multi = [v for v in by_bucket.values() if len(v) > 1]
     assert multi
+    deep = False
     for members in multi:
-        lats = {c["lat"] for c in members}
-        lons = sorted(c["lon"] for c in members)
-        assert len(lats) == 1                 # one along-road position
-        assert len(set(lons)) == len(lons)    # distinct stacking steps
+        anchors = {(c["lat"], c["lon"]) for c in members}
+        assert len(anchors) == 1              # one anchor on the road
+        offs = [(c["odx"], c["ody"]) for c in members]
+        assert all(math.hypot(ox, oy) >= 26 for ox, oy in offs)
+        for i, a in enumerate(offs):
+            for b in offs[i + 1:]:
+                assert math.hypot(a[0] - b[0], a[1] - b[1]) >= 24
+        if len(members) > 4:
+            deep = True
+            spread = {round(c["odx"]) for c in members}
+            assert len(spread) > 2            # two columns, staggered
+    assert deep                               # the split was exercised
 
 
 def test_diagram_overlays_carry_ladders_ticks_and_labelled_limits(tmp_path):
@@ -204,12 +220,18 @@ def test_diagram_overlays_carry_ladders_ticks_and_labelled_limits(tmp_path):
     d = crash_map.build_map_data(path, "US 74", 13.05, 13.35, diagram=True,
                                  window=(13.10, 13.30, "hot spot"))
     ovl = d["overlays"]
-    assert ovl["ladders"] and all(len(ld["line"]) == 2
-                                  for ld in ovl["ladders"])
+    assert ovl["ladders"]
+    for ld in ovl["ladders"]:
+        assert {"lat", "lon", "angle", "len"} <= set(ld)
+        assert ld["len"] > 0
     assert [t["mp"] for t in ovl["mp_ticks"]] == [13.1, 13.2, 13.3]
     assert [x["kind"] for x in ovl["limits"]] == ["begin", "end"]
     assert ovl["window"]["mid"]
+    assert len(ovl["window"]["label_off"]) == 2
     assert d["fit_bounds"][0][0] < d["fit_bounds"][1][0]
+    # The screen reach of ladders and callouts pads the fit per side.
+    assert len(d["pad"]) == 4 and all(p >= 0 for p in d["pad"])
+    assert max(d["pad"]) >= 100                # the callout's reach
     re = next(c for c in d["crashes"] if c["id"] == "700")
     assert "from_lat" not in re                # no misleading move tails
 

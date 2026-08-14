@@ -47,12 +47,17 @@
   function badge(c) {
     const fill = c.target === "Target" ? "#ffe14d" : "#c9ccd1";
     const red = (c.sev === "A" || c.sev === "K") ? " red" : "";
+    // odx/ody are the ladder's SCREEN offsets: the marker anchors on the
+    // road and the icon is shifted in pixels, so a stack keeps the same
+    // clean spacing at every zoom. The popup follows the badge.
+    const ox = c.odx || 0, oy = c.ody || 0;
     return L.marker([c.lat, c.lon], { icon: L.divIcon({
       className: "badge",
       html: `<div class="oct" style="background:${RING[c.cond] || RING.Unknown}">` +
             `<div class="oct in" style="background:${fill}">` +
             `<span class="${red}">${c.sev}</span></div></div>`,
-      iconSize: [26, 26], iconAnchor: [13, 13] }) }).bindPopup(popup(c));
+      iconSize: [26, 26], iconAnchor: [13 - ox, 13 - oy],
+      popupAnchor: [ox, oy - 16] }) }).bindPopup(popup(c));
   }
 
   const layers = { IS: [], RE: [], ADD: [], DEL: [], NIS: [], moves: [] };
@@ -94,8 +99,13 @@
     : { color: "#31445c", weight: 2, opacity: 0.7, dashArray: "1 6" })
     .addTo(study);
   for (const ld of ovl.ladders || []) {
-    L.polyline(ld.line, { color: "#ffffff", weight: 1.6, opacity: 0.9,
-                          interactive: false }).addTo(study);
+    // Screen-space guide line: a rotated div from the road anchor out to
+    // the last badge, fixed length like the stack itself.
+    L.marker([ld.lat, ld.lon], { interactive: false, zIndexOffset: -900,
+      icon: L.divIcon({ className: "ladder", iconSize: [1, 1],
+        iconAnchor: [0, 0],
+        html: `<div class="ln" style="width:${ld.len}px;` +
+              `transform:rotate(${ld.angle}deg)"></div>` }) }).addTo(study);
   }
   for (const tk of ovl.mp_ticks || []) {
     L.circleMarker([tk.lat, tk.lon], { radius: 3, color: "#1e7d32",
@@ -110,11 +120,13 @@
       .bindPopup(ovl.window.label).addTo(study);
     if (D.diagram) {
       const w = ovl.window;
-      L.marker(w.label_pos || w.mid, { interactive: false, icon: L.divIcon({
+      const wo = w.label_off || [0, 90];
+      L.marker(w.mid, { interactive: false, icon: L.divIcon({
         className: "lbl hot",
         html: `<span><b>HOT SPOT &middot; MP ${w.lo.toFixed(3)} to ` +
               `${w.hi.toFixed(3)}</b><br>${w.label}</span>`,
-        iconSize: [300, 54], iconAnchor: [150, 27] }) }).addTo(study);
+        iconSize: [300, 54],
+        iconAnchor: [150 - wo[0], 27 - wo[1]] }) }).addTo(study);
     }
   }
   for (const lim of ovl.limits || []) {
@@ -132,7 +144,7 @@
   for (const mk of ovl.markers || []) {
     L.marker([mk.lat, mk.lon], { icon: L.divIcon({ className: "lbl mm",
       html: `<span>${mk.short}</span>`,
-      iconAnchor: D.diagram ? [-2, -34] : [16, -6] }) })
+      iconAnchor: D.diagram ? [22, -16] : [16, -6] }) })
       .bindPopup(`${mk.label} (MP ${mk.mp.toFixed(3)})`).addTo(study);
   }
   for (const cv of ovl.points || []) {
@@ -160,12 +172,13 @@
     ? L.latLngBounds(D.fit_bounds)
     : L.latLngBounds(D.line.map(p => L.latLng(p[0], p[1])));
   map.setMaxBounds(b.pad(0.6));
-  if (D.fit_bounds)
-    // Part of the left strip stays reserved for the legend column; the
-    // west context segment may run under it, the study itself never does.
-    map.fitBounds(b, { paddingTopLeft: [170, 26],
-                       paddingBottomRight: [26, 26] });
-  else
+  if (D.fit_bounds) {
+    // data.pad carries the screen reach of the ladders and callouts per
+    // side; the left pad also reserves the legend column strip.
+    const pd = D.pad || [40, 60, 150, 40];
+    map.fitBounds(b, { paddingTopLeft: [Math.max(170, pd[0]), pd[1]],
+                       paddingBottomRight: [pd[2], pd[3]] });
+  } else
     map.fitBounds(b.pad(0.12));
   // Exposed for automation: the PDF export and tests drive the view.
   window._map = map;

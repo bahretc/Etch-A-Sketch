@@ -202,14 +202,17 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
 
     # Spread exact-duplicate coordinates in a small ring (about 2.5 m) so
     # stacked crashes stay individually clickable; popups carry the truth.
-    groups: dict = {}
-    for c in crashes:
-        groups.setdefault((c["lat"], c["lon"]), []).append(c)
-    for (la, ln), members in groups.items():
-        for i, c in enumerate(members[1:], start=1):
-            ang = 2 * math.pi * i / max(len(members) - 1, 1)
-            c["lat"] = round(la + 2.3e-5 * math.sin(ang), 6)
-            c["lon"] = round(ln + 2.8e-5 * math.cos(ang), 6)
+    # Not in the diagram: a bucket's badges SHARE their anchor by design
+    # and separate by screen offset instead.
+    if not diagram:
+        groups: dict = {}
+        for c in crashes:
+            groups.setdefault((c["lat"], c["lon"]), []).append(c)
+        for (la, ln), members in groups.items():
+            for i, c in enumerate(members[1:], start=1):
+                ang = 2 * math.pi * i / max(len(members) - 1, 1)
+                c["lat"] = round(la + 2.3e-5 * math.sin(ang), 6)
+                c["lon"] = round(ln + 2.8e-5 * math.cos(ang), 6)
 
     line = [[round(la, 6), round(ln, 6)] for m, la, ln in shape
             if lo - line_margin_mi <= m <= hi + line_margin_mi]
@@ -285,24 +288,26 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
                      (_mp_to_ll(shape, wlo + i * (whi - wlo) / 24)
                       for i in range(25))]}
         if diagram:
-            # The hotspot callout sits beyond the tallest ladder inside
-            # the window, on that ladder's side, so it labels the cluster
-            # without covering a single badge. Geographic offset, so it
-            # holds at any zoom.
-            best = None
-            for ld in ladders:
-                if wlo - 0.05 <= ld["mp"] <= whi + 0.05:
-                    if best is None or ld["n"] > best["n"]:
-                        best = ld
-            far_ft = 150 + ((best["n"] - 1) * 95 + 560 if best else 560)
-            wmid = (wlo + whi) / 2
-            ux, uy, cos = _bearing_at(shape, wmid)
-            s = -1 if (best or {}).get("dir") == "EB" else 1
-            px, py = -uy * s, ux * s
-            dist = far_ft / 364000.0
-            overlays["window"]["label_pos"] = [
-                round(mid_la + py * dist, 6),
-                round(mid_ln + px * dist / cos, 6)]
+            # The hotspot callout goes on the side OPPOSITE the tallest
+            # in-window ladder, past whatever ladders that side has - a
+            # screen offset like the ladders themselves, so it clears
+            # them at any zoom and the fit pads stay balanced.
+            inw = [ld for ld in ladders
+                   if wlo - 0.05 <= ld["mp"] <= whi + 0.05]
+            tallest = max(inw, key=lambda ld: ld["n"], default=None)
+            lside = ("WB" if (tallest or {}).get("dir") == "EB" else "EB")
+            opp = max((ld["len"] for ld in inw if ld["dir"] == lside),
+                      default=40)
+            reach = opp + 70
+            ang = next((ld["angle"] for ld in ladders
+                        if ld["dir"] == lside), None)
+            if ang is None:
+                ux, uy, _cos = _bearing_at(shape, (wlo + whi) / 2)
+                s = -1 if lside == "EB" else 1  # eb_side default
+                ang = math.degrees(math.atan2(-ux * s, -uy * s))
+            overlays["window"]["label_off"] = [
+                round(math.cos(math.radians(ang)) * reach),
+                round(math.sin(math.radians(ang)) * reach)]
 
     counts: dict = {}
     for c in crashes:
@@ -313,21 +318,35 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
             "overlays": overlays, "counts": counts,
             "diagram": bool(diagram), "shape_src": shape_src}
     if diagram:
-        # The tight crop: the studied stretch plus every badge, ladder
-        # and callout, nothing more. fitBounds on this beats padding the
-        # whole drawn line.
+        # The tight crop: the studied stretch plus the badge anchors -
+        # ladders and callouts live in screen space, so their reach
+        # becomes fitBounds PADDING (data["pad"], px per side) rather
+        # than geography.
         core = [(la, ln) for m, la, ln in shape
                 if lo - 0.06 <= m <= hi + 0.06]
         core += [(c["lat"], c["lon"]) for c in crashes]
-        core += [tuple(ld["line"][1]) for ld in ladders]
-        if overlays.get("window") and overlays["window"].get("label_pos"):
-            core.append(tuple(overlays["window"]["label_pos"]))
         if core:
             data["fit_bounds"] = [
                 [round(min(p[0] for p in core), 6),
                  round(min(p[1] for p in core), 6)],
                 [round(max(p[0] for p in core), 6),
                  round(max(p[1] for p in core), 6)]]
+        pad = [40.0, 60.0, 150.0, 40.0]     # left, top, right, bottom
+        def grow(ex, ey, m=13):
+            pad[0] = max(pad[0], -ex + m)
+            pad[1] = max(pad[1], -ey + m)
+            pad[2] = max(pad[2], ex + m)
+            pad[3] = max(pad[3], ey + m)
+        for ld in ladders:
+            ang = math.radians(ld["angle"])
+            grow(math.cos(ang) * (ld["len"] + 15),
+                 math.sin(ang) * (ld["len"] + 15))
+        w = overlays.get("window") or {}
+        if w.get("label_off"):
+            ox, oy = w["label_off"]
+            grow(ox - 150, oy - 27, 0)
+            grow(ox + 150, oy + 27, 0)
+        data["pad"] = [round(p) for p in pad]
     return data
 
 
@@ -353,23 +372,29 @@ def _bearing_at(shape, mp):
     return dx / n, dy / n, cos
 
 
-def diagram_layout(crashes, shape, targets, step_ft: float = 95,
-                   base_ft: float = 150, eb_side: int = -1) -> list:
+def diagram_layout(crashes, shape, targets, step_px: float = 34,
+                   base_px: float = 48, eb_side: int = -1) -> list:
     """Ladder the crashes off the roadway, collision-diagram style.
 
     Crashes bucket by final milepost rounded to 0.1 (the example's
     MPRound1) AND by direction of travel: crashes travelling with
     increasing milepost (EB on US 74) ladder off one side of the road,
     the opposing direction off the other, exactly like the engineer's
-    ArcGIS layout. Every badge in a bucket sits at the SAME along-road
-    position - the rounded milepost - so the stacks read as neat rows;
-    distance from the road is stacking order, not position. Badges carry
-    the severity letter; ``targets`` decides the Target/Other fill; the
-    ring is the road-condition bucket off the C code.
+    ArcGIS layout. Every badge in a bucket anchors at the SAME point on
+    the road - the rounded milepost - and steps outward in SCREEN
+    PIXELS, not ground feet: the symbols are fixed-size, so only a
+    fixed-pixel step keeps a stack separated at every zoom and on the
+    printed page alike (a ground-feet step spans 12 px or 60 px
+    depending on the fitted zoom, and 12 px is half a badge - measured
+    overlap, the first version's mistake). Badges carry the severity
+    letter; ``targets`` decides the Target/Other fill; the ring is the
+    road-condition bucket off the C code.
 
     ``eb_side`` is the perpendicular sign the increasing-MP direction
     ladders on (-1 = the driver's right for that direction). Mutates the
-    crash dicts in place and returns the ladder guide lines.
+    crash dicts in place - ``odx``/``ody`` are each badge's screen
+    offset from its anchor - and returns the ladder guide lines as
+    anchor + screen angle + pixel length.
     """
     buckets: dict = {}
     for c in crashes:
@@ -382,19 +407,50 @@ def diagram_layout(crashes, shape, targets, step_ft: float = 95,
         d = (c.get("dir") or "").upper()
         dcode = "WB" if d.startswith(("WB", "SB")) else "EB"
         buckets.setdefault((round(float(mp), 1), dcode), []).append(c)
+    # One shared road bearing for every ladder: locally-perpendicular
+    # ladders CONVERGE as they run out on a curve, and adjacent deep
+    # stacks tangle at their far ends. Parallel columns - the print
+    # idiom - never can. (Local bearings return only if the corridor
+    # bends so far the mean direction degenerates.)
+    mean_uxy = None
+    if buckets:
+        vx = vy = 0.0
+        for bmp, _dcode in buckets:
+            a = min(max(bmp, shape[0][0]), shape[-1][0])
+            ux, uy, _ = _bearing_at(shape, a)
+            vx += ux
+            vy += uy
+        n = math.hypot(vx, vy)
+        if n > 0.3 * len(buckets):
+            mean_uxy = (vx / n, vy / n)
     ladders = []
     for (bmp, dcode), members in sorted(buckets.items()):
         members.sort(key=lambda c: (c["_mp"], c.get("date") or "",
                                     c["id"]))
         anchor = min(max(bmp, shape[0][0]), shape[-1][0])
-        ux, uy, cos = _bearing_at(shape, anchor)
+        ux, uy = mean_uxy or _bearing_at(shape, anchor)[:2]
         s = eb_side if dcode == "EB" else -eb_side
-        px, py = -uy * s, ux * s                    # perpendicular
+        px, py = -uy * s, ux * s                # perpendicular (E, N)
+        sx, sy = px, -py                        # screen: y grows down
+        tx, ty = ux, -uy                        # along-road, screen
         ala, aln = _mp_to_ll(shape, anchor)
+        # A stack deeper than 4 splits into two staggered columns (the
+        # example CSV's Offset1/Offset2), halving the ladder's reach so
+        # the fitted zoom stays close instead of shrinking the road to
+        # make room for one long chain.
+        double = len(members) > 4
+        reach = 0.0
         for i, c in enumerate(members):
-            dist = (base_ft + i * step_ft) / 364000.0   # feet -> deg lat
-            c["lat"] = round(ala + py * dist, 6)
-            c["lon"] = round(aln + px * dist / cos, 6)
+            if double:
+                q = i % 2
+                reach = base_px + (i // 2) * step_px + q * step_px / 2
+                lat_off = 11 if q else -11
+            else:
+                reach = base_px + i * step_px
+                lat_off = 0
+            c["lat"], c["lon"] = round(ala, 6), round(aln, 6)
+            c["odx"] = round(sx * reach + tx * lat_off, 1)
+            c["ody"] = round(sy * reach + ty * lat_off, 1)
             c["diagram"] = True
             c["sev"] = (c.get("sev") or "O").strip().upper()[:1]
             if c["sev"] not in _SEV_LETTERS:
@@ -404,11 +460,12 @@ def diagram_layout(crashes, shape, targets, step_ft: float = 95,
             c["target"] = ("Target" if any(t.startswith(x.upper())
                                           or x.upper() in t
                                           for x in targets) else "Other")
-        far = (base_ft + (len(members) - 1) * step_ft + 55) / 364000.0
         ladders.append({"mp": bmp, "dir": dcode, "n": len(members),
-                        "line": [[round(ala, 6), round(aln, 6)],
-                                 [round(ala + py * far, 6),
-                                  round(aln + px * far / cos, 6)]]})
+                        "lat": round(ala, 6), "lon": round(aln, 6),
+                        "angle": round(math.degrees(math.atan2(sy, sx)), 1),
+                        "len": round(reach if not double
+                                     else base_px + ((len(members) - 1) // 2)
+                                     * step_px + 8)})
         for c in members:
             c.pop("_mp", None)
     return ladders

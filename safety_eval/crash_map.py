@@ -266,6 +266,44 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
                                          "lat": round(la, 6),
                                          "lon": round(ln, 6)})
             m = round(m + 0.1, 1)
+        # The BEGIN/END callouts step OUTWARD along the road (there are
+        # no ladders beyond the study) plus toward a ladder-free side
+        # when one exists - a screen offset, like everything else in the
+        # diagram, so a badge can never sit under them. The first cut
+        # anchored them beside the dot and the 12.8 stack ran straight
+        # through the BEGIN box.
+        for lim, sign in ((overlays["limits"][0], -1),
+                          (overlays["limits"][1], 1)):
+            ux, uy, _cos = _bearing_at(shape, lim["mp"])
+            tx, ty = ux, -uy                # along-road, screen
+            near = {}
+            for ld in ladders:
+                if abs(ld["mp"] - lim["mp"]) <= 0.06:
+                    near[ld["dir"]] = min(near.get(ld["dir"], 9e9),
+                                          ld["len"])
+            free = [side for side in ("WB", "EB") if side not in near]
+            pang = None
+            if free:
+                side = free[0]
+                pang = next((ld["angle"] for ld in ladders
+                             if ld["dir"] == side), None)
+                if pang is None:
+                    s = -1 if side == "EB" else 1   # eb_side default
+                    pang = math.degrees(math.atan2(-ux * s, -uy * s))
+            if sign * tx < -0.3:
+                # Outward runs west: at print widths that is under the
+                # reserved legend column, always. Step INWARD along the
+                # road instead, further out (a leader line ties the box
+                # back to its dot).
+                ox, oy = -sign * 140 * tx, -sign * 140 * ty
+                perp = 58
+            else:
+                ox, oy = sign * 100 * tx, sign * 100 * ty
+                perp = 46
+            if pang is not None:
+                ox += math.cos(math.radians(pang)) * perp
+                oy += math.sin(math.radians(pang)) * perp
+            lim["off"] = [round(ox), round(oy)]
     for label, mp in features or ():
         la, ln = _mp_to_ll(shape, float(mp))
         item = {"mp": round(float(mp), 3), "label": str(label),
@@ -346,6 +384,11 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
             ox, oy = w["label_off"]
             grow(ox - 150, oy - 27, 0)
             grow(ox + 150, oy + 27, 0)
+        for lim in overlays["limits"]:
+            if lim.get("off"):
+                ox, oy = lim["off"]
+                grow(ox - 58, oy - 19, 0)
+                grow(ox + 58, oy + 19, 0)
         data["pad"] = [round(p) for p in pad]
     return data
 
@@ -357,19 +400,29 @@ _SEV_LETTERS = {"O", "C", "B", "A", "K"}
 
 
 def _bearing_at(shape, mp):
-    """Unit vector along the road at a milepost, in planar degrees."""
-    for (m1, la1, lo1), (m2, la2, lo2) in zip(shape, shape[1:]):
-        if m1 <= mp <= m2 or (m2 == shape[-1][0] and mp >= m2):
-            cos = math.cos(math.radians(la1)) or 1e-9
-            dx, dy = (lo2 - lo1) * cos, (la2 - la1)
-            n = math.hypot(dx, dy) or 1e-9
-            return dx / n, dy / n, cos
-    la1, lo1 = shape[0][1], shape[0][2]
-    la2, lo2 = shape[1][1], shape[1][2]
-    cos = math.cos(math.radians(la1)) or 1e-9
-    dx, dy = (lo2 - lo1) * cos, (la2 - la1)
-    n = math.hypot(dx, dy) or 1e-9
-    return dx / n, dy / n, cos
+    """Unit vector along the road at a milepost, in planar degrees.
+
+    Zero-length segments are skipped, not divided by: a crash-cloud
+    shape can put two bucket medians at the same point, and normalising
+    that noise once flipped a BEGIN callout to the wrong side of the
+    study.
+    """
+    def seg(a, b):
+        (_, la1, lo1), (_, la2, lo2) = a, b
+        cos = math.cos(math.radians(la1)) or 1e-9
+        dx, dy = (lo2 - lo1) * cos, (la2 - la1)
+        n = math.hypot(dx, dy)
+        return (dx / n, dy / n, cos) if n >= 1e-7 else None
+    for a, b in zip(shape, shape[1:]):
+        if a[0] <= mp <= b[0] or (b[0] == shape[-1][0] and mp >= b[0]):
+            got = seg(a, b)
+            if got:
+                return got
+    for a, b in zip(shape, shape[1:]):
+        got = seg(a, b)
+        if got:
+            return got
+    return 1.0, 0.0, 1.0
 
 
 def diagram_layout(crashes, shape, targets, step_px: float = 34,
@@ -571,10 +624,11 @@ def render_map_html(data: dict, tiles: dict, out_path: str,
                         f"{k.get('ADD', 0)} ADD)",
                         d.get("subtitle") or "") if x]
     if d.get("diagram"):
-        def loct(fill, ring="#111111", letter=""):
-            return (f'<span class="loct" style="background:{ring}">'
+        def loct(fill, ring="#767b85", letter=""):
+            return ('<span class="lwrap">'
+                    f'<span class="loct" style="background:{ring}">'
                     f'<span class="in" style="background:{fill}">{letter}'
-                    '</span></span>')
+                    "</span></span></span>")
         red_style = ' style="color:#c00000;font-weight:600"'
         sev_rows = "".join(
             f'<div class="row">{loct("#ffffff", "#767b85", k)}'
@@ -584,6 +638,15 @@ def render_map_html(data: dict, tiles: dict, out_path: str,
                               ("B", "B - Minor Injury", False),
                               ("C", "C - Possible Injury", False),
                               ("O", "O - Property Damage Only", False)))
+        # Road condition is the badge's RING, so the swatches are rings
+        # too - the condition colour around a white inner, exactly what
+        # the symbol shows - never filled dots. Snow is white (see the
+        # RING note in crashmap.js); the swatch wrapper's hairline
+        # shadow keeps it visible on the white box.
+        cond_rows = "".join(
+            f'<div class="row">{loct("#ffffff", c)}<span>{t}</span></div>'
+            for c, t in (("#111111", "Dry"), ("#31b4e8", "Wet"),
+                         ("#f4f7fa", "Snow"), ("#8a8f98", "Unknown")))
         legend = (
             '<div class="box"><div class="h">Crash Type</div>'
             f'<div class="row">{loct("#ffe14d")}<span>Target</span></div>'
@@ -591,13 +654,8 @@ def render_map_html(data: dict, tiles: dict, out_path: str,
             "</div>"
             f'<div class="box"><div class="h">Crash Severity</div>{sev_rows}'
             "</div>"
-            '<div class="box"><div class="h">Road Condition</div>'
-            + "".join(
-                f'<div class="row"><span class="dot" '
-                f'style="background:{c}"></span><span>{t}</span></div>'
-                for c, t in (("#111111", "Dry"), ("#31b4e8", "Wet"),
-                             ("#9fc5e8", "Snow"), ("#8a8f98", "Unknown")))
-            + "</div>")
+            f'<div class="box"><div class="h">Road Condition</div>{cond_rows}'
+            "</div>")
     else:
         rows = [("#0072B2", "IS &mdash; in study"),
                 ("#E69F00", "RE &mdash; remileposted (dashed line = the move)"),

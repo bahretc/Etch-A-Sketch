@@ -226,6 +226,11 @@ def test_diagram_overlays_carry_ladders_ticks_and_labelled_limits(tmp_path):
         assert ld["len"] > 0
     assert [t["mp"] for t in ovl["mp_ticks"]] == [13.1, 13.2, 13.3]
     assert [x["kind"] for x in ovl["limits"]] == ["begin", "end"]
+    # Callouts step outward along the road (screen px) so no badge can
+    # sit under them; this corridor runs north, so begin goes down-screen
+    # and end up.
+    b_off, e_off = (x["off"] for x in ovl["limits"])
+    assert b_off[1] > 60 and e_off[1] < -60
     assert ovl["window"]["mid"]
     assert len(ovl["window"]["label_off"]) == 2
     assert d["fit_bounds"][0][0] < d["fit_bounds"][1][0]
@@ -296,6 +301,11 @@ def test_the_diagram_html_is_an_exhibit_not_an_explorer(tmp_path):
     for header in ("Crash Type", "Crash Severity", "Road Condition"):
         assert f'<div class="h">{header}</div>' in html
     assert 'id="north"' in html
+    # Snow ring is WHITE (Wet's blue was indistinguishable from the
+    # example's light blue on a Target fill; grey would collide with
+    # Dry/Unknown), and the condition swatches are rings, not dots.
+    assert html.count("#f4f7fa") >= 2          # RING map + legend swatch
+    assert '<span class="dot"' not in html
 
 
 def test_a_crash_without_a_coordinate_is_placed_by_its_milepost(tmp_path):

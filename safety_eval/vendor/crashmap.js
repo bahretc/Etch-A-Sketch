@@ -42,7 +42,12 @@
       (c.src ? `<br><span class="dim">${c.src}</span>` : "");
   }
 
-  const RING = { Dry: "#111111", Wet: "#31b4e8", Snow: "#9fc5e8",
+  // Road-condition ring colours. Snow is white, not the example's light
+  // blue: against Wet's blue ring the two could not be told apart on a
+  // Target fill, and another grey would collide with Dry (black) and
+  // Unknown (grey). The badge's drop shadow keeps a white ring visible
+  // over light imagery.
+  const RING = { Dry: "#111111", Wet: "#31b4e8", Snow: "#f4f7fa",
                  Unknown: "#8a8f98" };
   function badge(c) {
     const fill = c.target === "Target" ? "#ffe14d" : "#c9ccd1";
@@ -137,9 +142,26 @@
       ? `${lim.kind === "begin" ? "BEGIN" : "END"} STUDY<br>MP ` +
         `${lim.mp.toFixed(3)}`
       : lim.mp.toFixed(3);
+    // Diagram callouts carry a computed screen offset (lim.off) that
+    // clears the ladder columns and roadside chips; a far-offset box
+    // gets a leader line back to its dot.
+    const lof = (D.diagram && lim.off) || [0, 0];
+    const reach = Math.hypot(lof[0], lof[1]);
+    if (D.diagram && reach > 90) {
+      const ang = Math.atan2(lof[1], lof[0]) * 180 / Math.PI;
+      L.marker([lim.lat, lim.lon], { interactive: false,
+        zIndexOffset: -900,
+        icon: L.divIcon({ className: "leader", iconSize: [1, 1],
+          iconAnchor: [0, 0],
+          html: `<div class="ln" style="width:${Math.round(reach - 34)}px;` +
+                `transform:rotate(${ang.toFixed(1)}deg)"></div>` })
+        }).addTo(study);
+    }
     L.marker([lim.lat, lim.lon], { interactive: false, icon: L.divIcon({
       className: D.diagram ? "lbl limit" : "lbl", html: `<span>${txt}</span>`,
-      iconAnchor: D.diagram ? [-14, -18] : [-8, 18] }) }).addTo(study);
+      iconSize: D.diagram ? [116, 38] : null,
+      iconAnchor: D.diagram ? [58 - lof[0], 19 - lof[1]]
+                            : [-8, 18] }) }).addTo(study);
   }
   for (const mk of ovl.markers || []) {
     L.marker([mk.lat, mk.lon], { icon: L.divIcon({ className: "lbl mm",

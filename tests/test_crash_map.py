@@ -314,6 +314,8 @@ def test_the_diagram_html_is_an_exhibit_not_an_explorer(tmp_path):
     assert '<span class="dot"' not in html
     assert "Click any" not in html
     assert '<span class="band"' not in html    # HOT SPOT callout suffices
+    assert "crashes in the analysis" in html
+    assert " IS, " not in html                 # no status breakdown here
 
 
 def test_hundredths_grouping_buckets_at_mpround2(tmp_path):

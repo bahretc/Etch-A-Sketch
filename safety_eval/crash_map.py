@@ -681,11 +681,15 @@ def render_map_html(data: dict, tiles: dict, out_path: str,
 
     k = d["counts"]
     n_in = (k.get("IS", 0) + k.get("RE", 0) + k.get("ADD", 0))
+    # The IS/RE/ADD breakdown is review-process detail: it stays on the
+    # working crash map, whose legend is those statuses, and off the
+    # diagram exhibit, whose audience only needs the count.
+    count = (f"{n_in} crashes in the analysis" if d.get("diagram")
+             else f"{n_in} crashes in the analysis "
+                  f"({k.get('IS', 0)} IS, {k.get('RE', 0)} RE, "
+                  f"{k.get('ADD', 0)} ADD)")
     bits = [x for x in (county and f"{county} County",
-                        f"MP {d['lo']:.3f} to {d['hi']:.3f}",
-                        f"{n_in} crashes in the analysis "
-                        f"({k.get('IS', 0)} IS, {k.get('RE', 0)} RE, "
-                        f"{k.get('ADD', 0)} ADD)",
+                        f"MP {d['lo']:.3f} to {d['hi']:.3f}", count,
                         d.get("subtitle") or "") if x]
     if d.get("diagram"):
         def loct(fill, ring="#767b85", letter=""):

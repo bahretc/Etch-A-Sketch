@@ -142,21 +142,10 @@
       ? `${lim.kind === "begin" ? "BEGIN" : "END"} STUDY<br>MP ` +
         `${lim.mp.toFixed(3)}`
       : lim.mp.toFixed(3);
-    // Diagram callouts carry a computed screen offset (lim.off) that
-    // clears the ladder columns and roadside chips; a far-offset box
-    // gets a leader line back to its dot.
+    // Diagram callouts sit BESIDE their dots on a computed screen
+    // offset that clears the ladder columns; the fit below makes room
+    // for the legend, so the label never drifts from its milepost.
     const lof = (D.diagram && lim.off) || [0, 0];
-    const reach = Math.hypot(lof[0], lof[1]);
-    if (D.diagram && reach > 90) {
-      const ang = Math.atan2(lof[1], lof[0]) * 180 / Math.PI;
-      L.marker([lim.lat, lim.lon], { interactive: false,
-        zIndexOffset: -900,
-        icon: L.divIcon({ className: "leader", iconSize: [1, 1],
-          iconAnchor: [0, 0],
-          html: `<div class="ln" style="width:${Math.round(reach - 34)}px;` +
-                `transform:rotate(${ang.toFixed(1)}deg)"></div>` })
-        }).addTo(study);
-    }
     L.marker([lim.lat, lim.lon], { interactive: false, icon: L.divIcon({
       className: D.diagram ? "lbl limit" : "lbl", html: `<span>${txt}</span>`,
       iconSize: D.diagram ? [116, 38] : null,
@@ -196,10 +185,27 @@
   map.setMaxBounds(b.pad(0.6));
   if (D.fit_bounds) {
     // data.pad carries the screen reach of the ladders and callouts per
-    // side; the left pad also reserves the legend column strip.
+    // side; the left pad also reserves the legend column strip. A
+    // second pass then measures the ACTUAL legend and widens the strip
+    // until no limit callout hides under it - the label stays beside
+    // its milepost and the view makes the room.
     const pd = D.pad || [40, 60, 150, 40];
-    map.fitBounds(b, { paddingTopLeft: [Math.max(170, pd[0]), pd[1]],
-                       paddingBottomRight: [pd[2], pd[3]] });
+    let left = Math.max(170, pd[0]);
+    for (let pass = 0; pass < 3; pass++) {
+      map.fitBounds(b, { paddingTopLeft: [left, pd[1]],
+                         paddingBottomRight: [pd[2], pd[3]] });
+      const legend = document.getElementById("legend");
+      if (!D.diagram || !legend) break;
+      const lr = legend.getBoundingClientRect().right + 10;
+      let deficit = 0;
+      for (const lim of ovl.limits || []) {
+        const p = map.latLngToContainerPoint([lim.lat, lim.lon]);
+        const boxLeft = p.x + ((lim.off && lim.off[0]) || 0) - 58;
+        deficit = Math.max(deficit, lr - boxLeft);
+      }
+      if (deficit <= 1) break;
+      left += Math.ceil(deficit);
+    }
   } else
     map.fitBounds(b.pad(0.12));
   // Exposed for automation: the PDF export and tests drive the view.

@@ -266,23 +266,21 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
                                          "lat": round(la, 6),
                                          "lon": round(ln, 6)})
             m = round(m + 0.1, 1)
-        # The BEGIN/END callouts step OUTWARD along the road (there are
-        # no ladders beyond the study) plus toward a ladder-free side
-        # when one exists - a screen offset, like everything else in the
-        # diagram, so a badge can never sit under them. The first cut
-        # anchored them beside the dot and the 12.8 stack ran straight
-        # through the BEGIN box.
+        # The BEGIN/END callouts stay BESIDE their dots - a label that
+        # drifts down the road mislabels the study limit. Each box sits
+        # just off the road on the ladder-free side (outward along the
+        # road when both sides ladder); the map view, not the label,
+        # makes room for the legend (crashmap.js widens the left fit
+        # padding until nothing hides under it).
         for lim, sign in ((overlays["limits"][0], -1),
                           (overlays["limits"][1], 1)):
             ux, uy, _cos = _bearing_at(shape, lim["mp"])
-            tx, ty = ux, -uy                # along-road, screen
             near = {}
             for ld in ladders:
                 if abs(ld["mp"] - lim["mp"]) <= 0.06:
                     near[ld["dir"]] = min(near.get(ld["dir"], 9e9),
                                           ld["len"])
             free = [side for side in ("WB", "EB") if side not in near]
-            pang = None
             if free:
                 side = free[0]
                 pang = next((ld["angle"] for ld in ladders
@@ -290,19 +288,10 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
                 if pang is None:
                     s = -1 if side == "EB" else 1   # eb_side default
                     pang = math.degrees(math.atan2(-ux * s, -uy * s))
-            if sign * tx < -0.3:
-                # Outward runs west: at print widths that is under the
-                # reserved legend column, always. Step INWARD along the
-                # road instead, further out (a leader line ties the box
-                # back to its dot).
-                ox, oy = -sign * 140 * tx, -sign * 140 * ty
-                perp = 58
+                ox = math.cos(math.radians(pang)) * 54
+                oy = math.sin(math.radians(pang)) * 54
             else:
-                ox, oy = sign * 100 * tx, sign * 100 * ty
-                perp = 46
-            if pang is not None:
-                ox += math.cos(math.radians(pang)) * perp
-                oy += math.sin(math.radians(pang)) * perp
+                ox, oy = sign * 78 * ux, sign * 78 * -uy
             lim["off"] = [round(ox), round(oy)]
     for label, mp in features or ():
         la, ln = _mp_to_ll(shape, float(mp))

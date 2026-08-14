@@ -226,17 +226,17 @@ def test_diagram_overlays_carry_ladders_ticks_and_labelled_limits(tmp_path):
         assert ld["len"] > 0
     assert [t["mp"] for t in ovl["mp_ticks"]] == [13.1, 13.2, 13.3]
     assert [x["kind"] for x in ovl["limits"]] == ["begin", "end"]
-    # Callouts step outward along the road (screen px) so no badge can
-    # sit under them; this corridor runs north, so begin goes down-screen
-    # and end up.
-    b_off, e_off = (x["off"] for x in ovl["limits"])
-    assert b_off[1] > 60 and e_off[1] < -60
+    # Callouts sit BESIDE their dots (a label that drifts down the road
+    # mislabels the limit): a short offset off the road, clear of the
+    # ladder side, never a flight across the map.
+    for off in (x["off"] for x in ovl["limits"]):
+        assert 40 <= math.hypot(off[0], off[1]) <= 90
     assert ovl["window"]["mid"]
     assert len(ovl["window"]["label_off"]) == 2
     assert d["fit_bounds"][0][0] < d["fit_bounds"][1][0]
     # The screen reach of ladders and callouts pads the fit per side.
     assert len(d["pad"]) == 4 and all(p >= 0 for p in d["pad"])
-    assert max(d["pad"]) >= 100                # the callout's reach
+    assert max(d["pad"]) >= 100                # the hotspot's reach
     re = next(c for c in d["crashes"] if c["id"] == "700")
     assert "from_lat" not in re                # no misleading move tails
 

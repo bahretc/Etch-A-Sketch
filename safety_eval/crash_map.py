@@ -323,7 +323,7 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
             # them at any zoom and the fit pads stay balanced.
             inw = [ld for ld in ladders
                    if wlo - 0.05 <= ld["mp"] <= whi + 0.05]
-            tallest = max(inw, key=lambda ld: ld["n"], default=None)
+            tallest = max(inw, key=lambda ld: ld["len"], default=None)
             lside = ("WB" if (tallest or {}).get("dir") == "EB" else "EB")
             opp = max((ld["len"] for ld in inw if ld["dir"] == lside),
                       default=40)
@@ -471,17 +471,78 @@ def diagram_layout(crashes, shape, targets, step_px: float = 34,
         n = math.hypot(vx, vy)
         if n > 0.3 * len(buckets):
             mean_uxy = (vx / n, vy / n)
-    ladders = []
-    for (bmp, dcode), members in sorted(buckets.items()):
-        members.sort(key=lambda c: (c["_mp"], c.get("date") or "",
-                                    c["id"]))
+
+    def decorate(c):
+        c["diagram"] = True
+        c["sev"] = (c.get("sev") or "O").strip().upper()[:1]
+        if c["sev"] not in _SEV_LETTERS:
+            c["sev"] = "O"
+        c["cond"] = _COND_BUCKET.get(c.get("c"), "Unknown")
+        t = (c.get("type") or "").upper()
+        c["target"] = ("Target" if any(t.startswith(x.upper())
+                                      or x.upper() in t
+                                      for x in targets) else "Other")
+
+    def frame(bmp, dcode):
         anchor = min(max(bmp, shape[0][0]), shape[-1][0])
         ux, uy = mean_uxy or _bearing_at(shape, anchor)[:2]
         s = eb_side if dcode == "EB" else -eb_side
         px, py = -uy * s, ux * s                # perpendicular (E, N)
-        sx, sy = px, -py                        # screen: y grows down
-        tx, ty = ux, -uy                        # along-road, screen
-        ala, aln = _mp_to_ll(shape, anchor)
+        return (_mp_to_ll(shape, anchor), (px, -py), (ux, -uy))
+
+    ladders = []
+    if nd >= 2:
+        # MPRound2 mode: every crash anchors at its OWN hundredth, and
+        # same-side crashes within a rolling tenth of each other CASCADE
+        # outward as one string. The zoom-proof separation rule: badges
+        # sharing an anchor may stagger in two lanes (their relative
+        # geometry never changes with zoom), but badges at DIFFERENT
+        # anchors must differ in REACH by at least a badge, because at
+        # some zoom the along-road gap cancels any fixed lane offset.
+        # So the reach RATCHETS anchor to anchor. Symbols shrink to 20
+        # px in this mode so a dense run still fits the page.
+        rung, half, ratchet, base = 27, 13.5, 21, 40
+        sides: dict = {}
+        for (bmp, dcode), members in sorted(buckets.items()):
+            sides.setdefault(dcode, []).append((bmp, members))
+        for dcode in sorted(sides):
+            anchors = sorted(sides[dcode])
+            runs: list = []
+            for bmp, members in anchors:
+                if runs and bmp - runs[-1][-1][0] <= 0.09:
+                    runs[-1].append((bmp, members))
+                else:
+                    runs.append([(bmp, members)])
+            for run in runs:
+                cur = float(base)
+                for bmp, members in run:
+                    (ala, aln), (sx, sy), (tx, ty) = frame(bmp, dcode)
+                    members.sort(key=lambda c: (c["_mp"],
+                                                c.get("date") or "",
+                                                c["id"]))
+                    reach = cur
+                    for m, c in enumerate(members):
+                        lane = -15 if m % 2 == 0 else 15
+                        reach = cur + (m // 2) * rung + (m % 2) * half
+                        c["lat"], c["lon"] = round(ala, 6), round(aln, 6)
+                        c["odx"] = round(sx * reach + tx * lane, 1)
+                        c["ody"] = round(sy * reach + ty * lane, 1)
+                        decorate(c)
+                    ladders.append(
+                        {"mp": bmp, "dir": dcode, "n": len(members),
+                         "lat": round(ala, 6), "lon": round(aln, 6),
+                         "angle": round(math.degrees(math.atan2(sy, sx)),
+                                        1),
+                         "len": round(reach - 8)})
+                    cur = reach + ratchet
+                    for c in members:
+                        c.pop("_mp", None)
+        return ladders
+
+    for (bmp, dcode), members in sorted(buckets.items()):
+        members.sort(key=lambda c: (c["_mp"], c.get("date") or "",
+                                    c["id"]))
+        (ala, aln), (sx, sy), (tx, ty) = frame(bmp, dcode)
         # A stack deeper than 4 splits into two staggered columns (the
         # example CSV's Offset1/Offset2), halving the ladder's reach so
         # the fitted zoom stays close instead of shrinking the road to
@@ -499,15 +560,7 @@ def diagram_layout(crashes, shape, targets, step_px: float = 34,
             c["lat"], c["lon"] = round(ala, 6), round(aln, 6)
             c["odx"] = round(sx * reach + tx * lat_off, 1)
             c["ody"] = round(sy * reach + ty * lat_off, 1)
-            c["diagram"] = True
-            c["sev"] = (c.get("sev") or "O").strip().upper()[:1]
-            if c["sev"] not in _SEV_LETTERS:
-                c["sev"] = "O"
-            c["cond"] = _COND_BUCKET.get(c.get("c"), "Unknown")
-            t = (c.get("type") or "").upper()
-            c["target"] = ("Target" if any(t.startswith(x.upper())
-                                          or x.upper() in t
-                                          for x in targets) else "Other")
+            decorate(c)
         ladders.append({"mp": bmp, "dir": dcode, "n": len(members),
                         "lat": round(ala, 6), "lon": round(aln, 6),
                         "angle": round(math.degrees(math.atan2(sy, sx)), 1),

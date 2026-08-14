@@ -49,6 +49,10 @@
   // over light imagery.
   const RING = { Dry: "#111111", Wet: "#31b4e8", Snow: "#f4f7fa",
                  Unknown: "#8a8f98" };
+  // MPRound2 (hundredths) exhibits use 20 px symbols so a dense ratchet
+  // cascade still fits the page; the default MPRound1 columns keep 26.
+  const FINE = D.diagram && D.diagram_round && D.diagram_round < 0.1;
+  const BSZ = FINE ? 20 : 26;
   function badge(c) {
     const fill = c.target === "Target" ? "#ffe14d" : "#c9ccd1";
     const red = (c.sev === "A" || c.sev === "K") ? " red" : "";
@@ -57,12 +61,12 @@
     // clean spacing at every zoom. The popup follows the badge.
     const ox = c.odx || 0, oy = c.ody || 0;
     return L.marker([c.lat, c.lon], { icon: L.divIcon({
-      className: "badge",
+      className: FINE ? "badge sm" : "badge",
       html: `<div class="oct" style="background:${RING[c.cond] || RING.Unknown}">` +
             `<div class="oct in" style="background:${fill}">` +
             `<span class="${red}">${c.sev}</span></div></div>`,
-      iconSize: [26, 26], iconAnchor: [13 - ox, 13 - oy],
-      popupAnchor: [ox, oy - 16] }) }).bindPopup(popup(c));
+      iconSize: [BSZ, BSZ], iconAnchor: [BSZ / 2 - ox, BSZ / 2 - oy],
+      popupAnchor: [ox, oy - BSZ / 2 - 3] }) }).bindPopup(popup(c));
   }
 
   const layers = { IS: [], RE: [], ADD: [], DEL: [], NIS: [], moves: [] };
@@ -112,14 +116,33 @@
         html: `<div class="ln" style="width:${ld.len}px;` +
               `transform:rotate(${ld.angle}deg)"></div>` }) }).addTo(study);
   }
+  const tickLabels = [];
   for (const tk of ovl.mp_ticks || []) {
     L.circleMarker([tk.lat, tk.lon], { radius: 3, color: "#1e7d32",
       weight: 2, fillColor: "#ffffff", fillOpacity: 1,
       interactive: false }).addTo(study);
-    L.marker([tk.lat, tk.lon], { interactive: false, icon: L.divIcon({
-      className: "lbl mp", html: `<span>${tk.mp.toFixed(1)}</span>`,
-      iconSize: [34, 16], iconAnchor: [30, -4] }) }).addTo(study);
+    tickLabels.push([tk, L.marker([tk.lat, tk.lon], { interactive: false,
+      icon: L.divIcon({
+        className: "lbl mp", html: `<span>${tk.mp.toFixed(1)}</span>`,
+        iconSize: [34, 16], iconAnchor: [30, -4] }) }).addTo(study)]);
   }
+  // Tick labels thin themselves to whatever the zoom can afford (about
+  // a chip of clearance); at the hundredths exhibit's smaller fit the
+  // full 0.1 run piles into a chain otherwise.
+  function thinTicks() {
+    if (tickLabels.length < 2) return;
+    const a = map.latLngToContainerPoint(tickLabels[0][1].getLatLng());
+    const b = map.latLngToContainerPoint(tickLabels[1][1].getLatLng());
+    const pitch = Math.hypot(a.x - b.x, a.y - b.y);
+    // The chips are angled, so ~30 px of pitch keeps them clear.
+    const stride = pitch >= 30 ? 1 : pitch >= 16 ? 2 : 5;
+    for (const [tk, mk] of tickLabels) {
+      const on = Math.round(tk.mp * 10) % stride === 0;
+      if (on && !study.hasLayer(mk)) study.addLayer(mk);
+      if (!on && study.hasLayer(mk)) study.removeLayer(mk);
+    }
+  }
+  map.on("zoomend", thinTicks);
   if (ovl.window) {
     L.polyline(ovl.window.line, { color: "#D55E00", weight: 9, opacity: 0.30 })
       .bindPopup(ovl.window.label).addTo(study);
@@ -208,6 +231,7 @@
     }
   } else
     map.fitBounds(b.pad(0.12));
+  thinTicks();
   // Exposed for automation: the PDF export and tests drive the view.
   window._map = map;
 })();

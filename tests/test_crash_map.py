@@ -317,17 +317,41 @@ def test_hundredths_grouping_buckets_at_mpround2(tmp_path):
     """diagram_round=0.01 is the example CSV's MPRound2: crashes a
     hundredth apart anchor at their own mileposts instead of merging
     into one 0.1-mile column, so a 13.55 crash can no longer render
-    inside a window that begins at 13.56."""
+    inside a window that begins at 13.56. And EVERY earlier separation
+    rule still holds: same-anchor badges stagger (zoom-invariant
+    geometry), while cross-anchor badges in a cascade differ in REACH
+    by at least a symbol - the only offset a zoom change cannot cancel.
+    Symbols are 20 px in this mode."""
     path = _workbook(tmp_path)
+    _set_dirs(path, {"501": "EBT", "502": "WBT", "504": "EBT/EBT",
+                     "505": "WBT/WBT"})
     d = crash_map.build_map_data(path, "US 74", 13.05, 13.35, diagram=True,
                                  diagram_round=0.01)
     anchors = {(c["lat"], c["lon"]) for c in d["crashes"]}
     d1 = crash_map.build_map_data(path, "US 74", 13.05, 13.35, diagram=True)
     anchors1 = {(c["lat"], c["lon"]) for c in d1["crashes"]}
     assert len(anchors) > len(anchors1)        # finer grid, more anchors
+    by_side: dict = {}
+    for c in d["crashes"]:
+        side = "WB" if (c.get("dir") or "").startswith("WB") else "EB"
+        mp = c["new_mp"] if c["new_mp"] is not None else c["coded_mp"]
+        by_side.setdefault(side, []).append(c | {"_m": mp})
+    for members in by_side.values():
+        for i, a in enumerate(members):
+            for b in members[i + 1:]:
+                if abs(a["_m"] - b["_m"]) > 0.09:
+                    continue
+                dx, dy = a["odx"] - b["odx"], a["ody"] - b["ody"]
+                assert math.hypot(dx, dy) >= 20
+                if (a["lat"], a["lon"]) != (b["lat"], b["lon"]):
+                    # This corridor runs north: EB reach is +odx, WB
+                    # reach is -odx. Cross-anchor pairs must ratchet.
+                    assert abs(dx) >= 20
     out = tmp_path / "h.html"
     crash_map.render_map_html(d, {}, str(out))
-    assert "nearest 0.01 mile" in out.read_text("utf-8")
+    html = out.read_text("utf-8")
+    assert "nearest 0.01 mile" in html
+    assert "badge sm" in html                  # 20 px symbols
 
 
 def test_a_crash_without_a_coordinate_is_placed_by_its_milepost(tmp_path):

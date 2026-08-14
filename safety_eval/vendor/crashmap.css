@@ -67,6 +67,10 @@ html, body { margin: 0; height: 100%;
 .badge .oct span { font: 700 12px/1 "Segoe UI", system-ui, sans-serif;
   color: #111; }
 .badge .oct span.red { color: #c00000; }
+/* Hundredths (MPRound2) exhibits: smaller symbols, same grammar. */
+.badge.sm .oct { width: 20px; height: 20px; }
+.badge.sm .oct.in { width: 15px; height: 15px; }
+.badge.sm .oct span { font-size: 9.5px; }
 
 /* Diagram legend: separate white boxes with bold-italic headers, the way
    the engineer's ArcGIS layout prints them. */

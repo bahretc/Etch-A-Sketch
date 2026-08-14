@@ -54,10 +54,23 @@ for w in WAYS:
 SRMAP = {k: next(iter(v)) for k, v in srsets.items() if len(v) == 1}
 
 
+_ABBR = ((" ROAD", " RD"), (" STREET", " ST"), (" LANE", " LN"),
+         (" DRIVE", " DR"), (" PARKWAY", " PKWY"), (" TRAIL", " TRL"),
+         (" AVENUE", " AVE"), (" HIGHWAY", " HWY"), (" CIRCLE", " CIR"),
+         (" COURT", " CT"), (" PLACE", " PL"))
+
+
+def abbrev(name):
+    up = name.upper()
+    for a, b in _ABBR:
+        if up.endswith(a):
+            up = up[: -len(a)] + b
+        up = up.replace(a + " ", b + " ")
+    return up
+
+
 def srfor(name):
-    key = re.sub(r"[^A-Z0-9 ]", "", name.upper()).strip()
-    key = key.replace(" ROAD", " RD").replace(" STREET", " ST").replace(
-        " LANE", " LN").replace(" DRIVE", " DR").replace(" TRAIL", " TRL")
+    key = abbrev(re.sub(r"[^A-Za-z0-9 ]", "", name)).strip()
     return SRMAP.get(key)
 
 
@@ -125,7 +138,7 @@ def named_labels(b, want, cap, cls_css, minsep=95, skip=()):
             continue
         placed.append((mid["lat"], mid["lon"]))
         sr = srfor(nm)
-        html = nm.upper() + (f"<br>({sr})" if sr else "")
+        html = abbrev(nm) + (f"<br>({sr})" if sr else "")
         out.append({"ll": [round(mid["lat"], 5), round(mid["lon"], 5)],
                     "html": html, "cls": cls_css, "ox": 0, "oy": -13})
     return out
@@ -248,6 +261,11 @@ text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,
 .rlbig{font-size:13px}
 .yb{background:#FFFFBE;border:1px solid #000;color:#000;font-weight:bold;
 font-size:9.5px;padding:1px 4px}
+.yh{color:#000;font-weight:bold;font-size:9.5px;
+text-shadow:-1.5px -1.5px 0 #FFF36E,1.5px -1.5px 0 #FFF36E,
+-1.5px 1.5px 0 #FFF36E,1.5px 1.5px 0 #FFF36E,-1.5px 0 0 #FFF36E,
+1.5px 0 0 #FFF36E,0 -1.5px 0 #FFF36E,0 1.5px 0 #FFF36E,0 0 4px #FFF36E}
+.co.col{text-align:left}
 .town{color:#1F5FBF;font-weight:bold;font-style:italic;font-size:16px;
 text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,
 1.5px 1.5px 0 #fff,0 0 3px #fff}
@@ -297,7 +315,7 @@ for(const cls of P.order){
     for(const pts of group)
       L.polyline(pts,Object.assign({interactive:false},spec)).addTo(map);
 }
-if(P.study) L.polyline(P.study,{color:"#0058D8",weight:P.studyW||6,
+if(P.study) L.polyline(P.study,{color:"#0455E8",weight:P.studyW||6,
   opacity:1,interactive:false}).addTo(map);
 for(const s of (P.stations||[])){
   const ap=cpt(s.ll), bc=[ap.x+s.off[0],ap.y+s.off[1]];
@@ -316,7 +334,8 @@ for(const s of (P.stations||[])){
 }
 for(const c of (P.callouts||[])){
   const ap=cpt(c.a), bc=[ap.x+c.off[0],ap.y+c.off[1]];
-  const m=lbl(cll(bc),c.html,"co",0,0,500);
+  const hw=c.needle?3:11;
+  const m=lbl(cll(bc),c.html,"co"+(c.needle?" col":""),0,0,500);
   const el=m.getElement().querySelector("span");
   const r=el.getBoundingClientRect(),
     mr=document.getElementById("map").getBoundingClientRect();
@@ -327,10 +346,10 @@ for(const c of (P.callouts||[])){
     ty=dy!==0?(b.h/2)/Math.abs(dy):1e9;
   const t=Math.min(tx,ty), ex=b.x+dx*t, ey=b.y+dy*t;
   let b1,b2;
-  if(tx<ty){b1=[ex,Math.max(b.y-b.h/2+3,ey-11)];
-    b2=[ex,Math.min(b.y+b.h/2-3,ey+11)];}
-  else{b1=[Math.max(b.x-b.w/2+3,ex-11),ey];
-    b2=[Math.min(b.x+b.w/2-3,ex+11),ey];}
+  if(tx<ty){b1=[ex,Math.max(b.y-b.h/2+3,ey-hw)];
+    b2=[ex,Math.min(b.y+b.h/2-3,ey+hw)];}
+  else{b1=[Math.max(b.x-b.w/2+3,ex-hw),ey];
+    b2=[Math.min(b.x+b.w/2-3,ex+hw),ey];}
   L.polygon([cll(b1),cll(b2),cll([ap.x,ap.y])],{color:"#000",weight:1,
     fillColor:"#BEE8FF",fillOpacity:1,interactive:false}).addTo(map);
 }
@@ -411,10 +430,9 @@ loc_payload = {
     "style": {
         "minor": [{"color": "#3F3F3F", "weight": 3.4, "opacity": 0.85},
                   {"color": "#F2F2F2", "weight": 2.0, "opacity": 0.95}],
-        "us74": [{"color": "#2E2E2E", "weight": 7.4, "opacity": 0.9},
-                 {"color": "#FFD400", "weight": 5.0, "opacity": 1},
-                 {"color": "#6F6F6F", "weight": 1.5, "opacity": 1,
-                  "dashArray": "7 8"}]},
+        "us74": [{"color": "#4A4A4A", "weight": 7.8, "opacity": 0.95,
+                  "dashArray": "7 7"},
+                 {"color": "#FFD400", "weight": 5.2, "opacity": 1}]},
     "roads": loc_roads,
     "study": STUDY, "studyW": 7,
     "labels": loc_labels,
@@ -462,7 +480,7 @@ def area_cls(w):
 
 area_roads = clip(AB, area_cls)
 area_labels = named_labels(
-    AB, ("tertiary", "unclassified"), 15, "yb", minsep=105,
+    AB, ("tertiary", "unclassified"), 15, "yh", minsep=105,
     skip=("Golden Maple Drive", "Lone Cypress Trail", "Majesty Rock Bend",
           "Apple Tree Lane", "Wolverine Trail", "Government Complex Drive",
           "Landrum Road", "Landrum Rd"))
@@ -570,10 +588,9 @@ aadt_payload = {
         "minor": [{"color": "#A8AEB5", "weight": 2.0, "opacity": 1}],
         "link": [{"color": "#B7B7B7", "weight": 1.7, "opacity": 1}],
         "sec": [{"color": "#8F969E", "weight": 2.6, "opacity": 1}],
-        "us74": [{"color": "#8C8C8C", "weight": 6.6, "opacity": 1},
-                 {"color": "#FFD400", "weight": 4.6, "opacity": 1},
-                 {"color": "#6F6F6F", "weight": 1.5, "opacity": 1,
-                  "dashArray": "7 8"}]},
+        "us74": [{"color": "#6F6F6F", "weight": 7.0, "opacity": 1,
+                  "dashArray": "7 7"},
+                 {"color": "#FFD400", "weight": 4.6, "opacity": 1}]},
     "roads": aadt_roads,
     "study": STUDY, "studyW": 6,
     "stations": stations,
@@ -584,7 +601,7 @@ aadt_payload = {
                   "US 74 from MP 12.800 to MP 13.815<br>"
                   "<span style='display:block;height:6px'></span>"
                   "2024 AADT = 18,500")},
-        {"a": STUDY[len(STUDY) // 10], "off": [-175, -105],
+        {"a": STUDY[len(STUDY) // 10], "off": [-175, -105], "needle": True,
          "html": ("Assumed AADT equal to the<br>"
                   "US 74 station east of NC 108<br>"
                   "2024 AADT = 18,500")}],

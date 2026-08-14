@@ -24,8 +24,9 @@
       attribution: "Map data: &copy; OpenStreetMap contributors" });
   const first = Object.values(bases)[0];
 
+  // The diagram is a finished exhibit: no zoom buttons, no layer picker.
   const map = L.map("map", { layers: first ? [first] : [],
-                             zoomControl: true,
+                             zoomControl: !D.diagram,
                              minZoom: D.zmin, maxZoom: D.zmax });
   L.control.scale({ imperial: true, metric: false }).addTo(map);
 
@@ -36,6 +37,7 @@
     return `<b>#${c.id}</b> &mdash; <b>${c.status}</b>` +
       `<br>${c.date}${c.type ? " &middot; " + c.type : ""}` +
       `${c.sev ? " &middot; severity " + c.sev : ""}` +
+      `${c.dir ? " &middot; " + c.dir : ""}` +
       `${c.road ? "<br>on " + c.road : ""}` + move +
       (c.src ? `<br><span class="dim">${c.src}</span>` : "");
   }
@@ -85,22 +87,52 @@
 
   const ovl = D.overlays;
   const study = L.layerGroup();
-  L.polyline(D.line, { color: "#31445c", weight: 2, opacity: 0.7,
-                       dashArray: "1 6" }).addTo(study);
-  if (ovl.window)
+  // A real (LRS/calibrated) centreline draws solid; the crash-cloud
+  // approximation stays dotted as its own honesty cue.
+  L.polyline(D.line, D.shape_src === "lrs"
+    ? { color: "#f8fafc", weight: 2.5, opacity: 0.85 }
+    : { color: "#31445c", weight: 2, opacity: 0.7, dashArray: "1 6" })
+    .addTo(study);
+  for (const ld of ovl.ladders || []) {
+    L.polyline(ld.line, { color: "#ffffff", weight: 1.6, opacity: 0.9,
+                          interactive: false }).addTo(study);
+  }
+  for (const tk of ovl.mp_ticks || []) {
+    L.circleMarker([tk.lat, tk.lon], { radius: 3, color: "#1e7d32",
+      weight: 2, fillColor: "#ffffff", fillOpacity: 1,
+      interactive: false }).addTo(study);
+    L.marker([tk.lat, tk.lon], { interactive: false, icon: L.divIcon({
+      className: "lbl mp", html: `<span>${tk.mp.toFixed(1)}</span>`,
+      iconSize: [34, 16], iconAnchor: [30, -4] }) }).addTo(study);
+  }
+  if (ovl.window) {
     L.polyline(ovl.window.line, { color: "#D55E00", weight: 9, opacity: 0.30 })
       .bindPopup(ovl.window.label).addTo(study);
+    if (D.diagram) {
+      const w = ovl.window;
+      L.marker(w.label_pos || w.mid, { interactive: false, icon: L.divIcon({
+        className: "lbl hot",
+        html: `<span><b>HOT SPOT &middot; MP ${w.lo.toFixed(3)} to ` +
+              `${w.hi.toFixed(3)}</b><br>${w.label}</span>`,
+        iconSize: [300, 54], iconAnchor: [150, 27] }) }).addTo(study);
+    }
+  }
   for (const lim of ovl.limits || []) {
     L.circleMarker([lim.lat, lim.lon], { radius: 5, color: "#111827",
       weight: 2.5, fillColor: "#ffffff", fillOpacity: 1 })
       .bindPopup(lim.label).addTo(study);
+    const txt = D.diagram
+      ? `${lim.kind === "begin" ? "BEGIN" : "END"} STUDY<br>MP ` +
+        `${lim.mp.toFixed(3)}`
+      : lim.mp.toFixed(3);
     L.marker([lim.lat, lim.lon], { interactive: false, icon: L.divIcon({
-      className: "lbl", html: `<span>${lim.mp.toFixed(3)}</span>`,
-      iconAnchor: [-8, 18] }) }).addTo(study);
+      className: D.diagram ? "lbl limit" : "lbl", html: `<span>${txt}</span>`,
+      iconAnchor: D.diagram ? [-14, -18] : [-8, 18] }) }).addTo(study);
   }
   for (const mk of ovl.markers || []) {
     L.marker([mk.lat, mk.lon], { icon: L.divIcon({ className: "lbl mm",
-      html: `<span>${mk.short}</span>`, iconAnchor: [16, -6] }) })
+      html: `<span>${mk.short}</span>`,
+      iconAnchor: D.diagram ? [-2, -34] : [16, -6] }) })
       .bindPopup(`${mk.label} (MP ${mk.mp.toFixed(3)})`).addTo(study);
   }
   for (const cv of ovl.points || []) {
@@ -111,19 +143,30 @@
 
   inAnalysis.addTo(map); moves.addTo(map); dels.addTo(map); study.addTo(map);
 
-  const k = D.counts;
-  const over = {
-    [`In analysis (${(k.IS || 0) + (k.RE || 0) + (k.ADD || 0)})`]: inAnalysis };
-  if (layers.moves.length) over["RE / ADD moves"] = moves;
-  if (k.DEL) over[`Deleted (${k.DEL})`] = dels;
-  if (k.NIS) over[`Not in study (${k.NIS})`] = nis;
-  over["Study overlays"] = study;
-  L.control.layers(bases, over,
-    { collapsed: false, position: "topright" }).addTo(map);
+  if (!D.diagram) {
+    const k = D.counts;
+    const over = {
+      [`In analysis (${(k.IS || 0) + (k.RE || 0) + (k.ADD || 0)})`]:
+        inAnalysis };
+    if (layers.moves.length) over["RE / ADD moves"] = moves;
+    if (k.DEL) over[`Deleted (${k.DEL})`] = dels;
+    if (k.NIS) over[`Not in study (${k.NIS})`] = nis;
+    over["Study overlays"] = study;
+    L.control.layers(bases, over,
+      { collapsed: false, position: "topright" }).addTo(map);
+  }
 
-  const b = L.latLngBounds(D.line.map(p => L.latLng(p[0], p[1])));
+  const b = D.fit_bounds
+    ? L.latLngBounds(D.fit_bounds)
+    : L.latLngBounds(D.line.map(p => L.latLng(p[0], p[1])));
   map.setMaxBounds(b.pad(0.6));
-  map.fitBounds(b.pad(0.12));
+  if (D.fit_bounds)
+    // Part of the left strip stays reserved for the legend column; the
+    // west context segment may run under it, the study itself never does.
+    map.fitBounds(b, { paddingTopLeft: [170, 26],
+                       paddingBottomRight: [26, 26] });
+  else
+    map.fitBounds(b.pad(0.12));
   // Exposed for automation: the PDF export and tests drive the view.
   window._map = map;
 })();

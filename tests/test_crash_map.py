@@ -151,6 +151,131 @@ def test_a_workbook_without_coordinates_is_refused(tmp_path):
         crash_map.build_map_data(str(path), "US 74", 13.0, 13.4)
 
 
+def _set_dirs(path, dirs):
+    """Write Dir (col 20) by crash id into the working sheet."""
+    wb = openpyxl.load_workbook(path)
+    ws = wb["41000079999_Fiche"]
+    for r in range(2, ws.max_row + 1):
+        cid = ws.cell(row=r, column=12).value
+        if cid is not None and str(cid) in dirs:
+            ws.cell(row=r, column=20, value=dirs[str(cid)])
+    wb.save(path)
+
+
+def test_diagram_ladders_split_by_direction_onto_opposite_sides(tmp_path):
+    """The example's grammar: direction of travel decides the side of the
+    road. This corridor runs north (MP increasing), so increasing-MP
+    traffic ladders east of the line and opposing traffic west."""
+    path = _workbook(tmp_path)
+    _set_dirs(path, {"501": "EBT", "502": "WBT", "504": "EBT/EBT",
+                     "505": "WBT/WBT"})
+    d = crash_map.build_map_data(path, "US 74", 13.05, 13.35, diagram=True)
+    got = {c["id"]: c for c in d["crashes"]}
+    for cid in ("501", "504"):
+        assert got[cid]["lon"] > -82.13, cid          # east of the line
+    for cid in ("502", "505"):
+        assert got[cid]["lon"] < -82.13, cid          # west of the line
+    # No direction coded -> the increasing-MP side, still on the diagram.
+    assert got["507"]["lon"] > -82.13
+
+
+def test_diagram_buckets_are_neat_columns_at_the_rounded_milepost(tmp_path):
+    """Every badge in a 0.1-mile bucket sits at the SAME along-road
+    position (the rounded milepost); distance off the road is stacking
+    order. Ragged per-crash positions were v1; the engineer's layout is
+    columns."""
+    path = _workbook(tmp_path)
+    d = crash_map.build_map_data(path, "US 74", 13.05, 13.35, diagram=True)
+    by_bucket: dict = {}
+    for c in d["crashes"]:
+        mp = c["new_mp"] if c["new_mp"] is not None else c["coded_mp"]
+        by_bucket.setdefault(round(mp, 1), []).append(c)
+    multi = [v for v in by_bucket.values() if len(v) > 1]
+    assert multi
+    for members in multi:
+        lats = {c["lat"] for c in members}
+        lons = sorted(c["lon"] for c in members)
+        assert len(lats) == 1                 # one along-road position
+        assert len(set(lons)) == len(lons)    # distinct stacking steps
+
+
+def test_diagram_overlays_carry_ladders_ticks_and_labelled_limits(tmp_path):
+    path = _workbook(tmp_path)
+    d = crash_map.build_map_data(path, "US 74", 13.05, 13.35, diagram=True,
+                                 window=(13.10, 13.30, "hot spot"))
+    ovl = d["overlays"]
+    assert ovl["ladders"] and all(len(ld["line"]) == 2
+                                  for ld in ovl["ladders"])
+    assert [t["mp"] for t in ovl["mp_ticks"]] == [13.1, 13.2, 13.3]
+    assert [x["kind"] for x in ovl["limits"]] == ["begin", "end"]
+    assert ovl["window"]["mid"]
+    assert d["fit_bounds"][0][0] < d["fit_bounds"][1][0]
+    re = next(c for c in d["crashes"] if c["id"] == "700")
+    assert "from_lat" not in re                # no misleading move tails
+
+
+def _centerline(tmp_path, lon):
+    import json
+
+    cl = tmp_path / "us74.geojson"
+    cl.write_text(json.dumps({
+        "type": "FeatureCollection", "features": [{
+            "type": "Feature", "properties": {"RouteName": "US 74"},
+            "geometry": {"type": "LineString", "coordinates": [
+                [lon, 35.26, 12.9], [lon, 35.28, 13.2],
+                [lon, 35.30, 13.5]]}}]}))
+    return str(cl)
+
+
+def test_a_centerline_geojson_replaces_the_crash_cloud(tmp_path):
+    """When the real geometry is supplied it IS the corridor; the
+    crash-cloud approximation and its dotted-line caveat both go away,
+    and coordinates still win for crash placement."""
+    path = _workbook(tmp_path)
+    d = crash_map.build_map_data(
+        path, "US 74", 13.05, 13.35,
+        centerline=_centerline(tmp_path, -82.1315))
+    assert d["shape_src"] == "lrs"
+    assert all(p[1] == pytest.approx(-82.1315) for p in d["line"])
+    placed = {c["id"]: c for c in d["crashes"]}
+    assert placed["501"]["lon"] == pytest.approx(-82.13)   # coordinate
+    assert placed["700"]["lon"] == pytest.approx(-82.1315)  # New MP on line
+    out = tmp_path / "m.html"
+    crash_map.render_map_html(d, {}, str(out))
+    assert "placements are approximate" not in out.read_text("utf-8")
+
+
+def test_an_analysis_crash_with_a_far_geocode_relocates_not_drops(tmp_path):
+    """The DetailedFiche geocodes scatter up to a mile off the road
+    (measured on the study this was built for). With a real centerline
+    that far from the geocode cloud, an IS crash must land on the
+    centreline with the popup saying so - losing analysis crashes to bad
+    geocodes cost v1 eleven of fifteen IS. Context (NIS) still drops."""
+    path = _workbook(tmp_path)
+    d = crash_map.build_map_data(
+        path, "US 74", 13.05, 13.35,
+        centerline=_centerline(tmp_path, -82.20))
+    placed = {c["id"]: c for c in d["crashes"]}
+    assert placed["501"]["lon"] == pytest.approx(-82.20)
+    assert "off this map" in placed["501"]["src"]
+    assert "500" not in placed                             # NIS, far: gone
+
+
+def test_the_diagram_html_is_an_exhibit_not_an_explorer(tmp_path):
+    """No layer checkboxes, no zoom buttons; three legend boxes with the
+    example's headers; a north arrow; the diagram title."""
+    path = _workbook(tmp_path)
+    d = crash_map.build_map_data(path, "US 74", 13.05, 13.35, diagram=True)
+    out = tmp_path / "d.html"
+    crash_map.render_map_html(d, {}, str(out), county="Polk")
+    html = out.read_text("utf-8")
+    assert "Collision Diagram" in html
+    assert '<div id="legend" class="diagram">' in html
+    for header in ("Crash Type", "Crash Severity", "Road Condition"):
+        assert f'<div class="h">{header}</div>' in html
+    assert 'id="north"' in html
+
+
 def test_a_crash_without_a_coordinate_is_placed_by_its_milepost(tmp_path):
     """The DetailedFiche covers only part of the fiche; on the real study
     dropping coordinate-less crashes cost 11 of the 15 IS crashes. On-route

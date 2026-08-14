@@ -47,7 +47,26 @@ _DEEP_BUFFER_M = 900
 
 #: Working-sheet columns (fiche_workbook.FICHE_COLUMNS, 1-based).
 _COL = {"mproad": 7, "mp": 8, "status": 9, "new_mp": 10, "crash_id": 12,
-        "date": 13, "c": 15, "s": 18, "type": 19}
+        "date": 13, "c": 15, "s": 18, "type": 19, "dir": 20}
+
+
+def _load_centerline(path: str, route: str):
+    """Route geometry with vertex mileposts, via location.load_route_shape.
+
+    Accepts the GeoJSON conventions that loader documents ([lon, lat, m]
+    vertices, or 2D vertices with begin/end MP properties). This is the
+    real centreline - LRS or a calibrated OSM trace - and when present it
+    replaces the crash-cloud approximation entirely.
+    """
+    from .location import FeatureInventory, normalize_route
+
+    inv = FeatureInventory()
+    inv.load_route_shape(path, route=route)
+    pts = inv.shape.get(normalize_route(route)) or []
+    if len(pts) < 2:
+        raise ValueError(
+            f"centerline {path} carries no usable vertices for {route}")
+    return pts
 
 
 def _mp_to_ll(shape, mp):
@@ -67,7 +86,7 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
                    features=None, window: tuple | None = None,
                    subtitle: str = "", line_margin_mi: float = 0.35,
                    pad_deg: float = 0.004, diagram: bool = False,
-                   targets=None) -> dict:
+                   targets=None, centerline: str | None = None) -> dict:
     """Everything the map draws, as one JSON-ready dict.
 
     ``coords_source`` defaults to the workbook itself: the fiche workbook the
@@ -76,19 +95,26 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
     feature-inclusion list uses - split onto the map as mile markers (label
     starting MILE MARKER), curve points (label containing CURVE), or plain
     labelled points. ``window`` is ``(lo, hi, label)`` for the shaded
-    sub-section.
+    sub-section. ``centerline`` is a GeoJSON with vertex mileposts (LRS or
+    a calibrated trace); when given it IS the corridor, and the
+    crash-cloud approximation is not used at all.
     """
     import openpyxl
 
     from .hsip import fiche_sheet_name
 
     coords_source = coords_source or workbook_path
-    pts = parse_shape_points(coords_source, route)
-    shape = clean_shape(pts)
-    if len(shape) < 2:
-        raise ValueError(
-            f"the DetailedFiche in {coords_source} carries no usable "
-            f"coordinates on {route}; cannot draw the corridor")
+    if centerline:
+        shape = _load_centerline(centerline, route)
+        shape_src = "lrs"
+    else:
+        pts = parse_shape_points(coords_source, route)
+        shape = clean_shape(pts)
+        shape_src = "crash-cloud"
+        if len(shape) < 2:
+            raise ValueError(
+                f"the DetailedFiche in {coords_source} carries no usable "
+                f"coordinates on {route}; cannot draw the corridor")
     coords = parse_coordinates(coords_source)
 
     from .location import normalize_route
@@ -107,7 +133,11 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
         typed = ws.cell(row=r, column=_COL["type"]).value
         date = ws.cell(row=r, column=_COL["date"]).value
         road = str(ws.cell(row=r, column=_COL["mproad"]).value or "")
+        dv = ws.cell(row=r, column=_COL["dir"]).value
         c = {"id": cid,
+             "dir": (str(dv).strip()
+                     if isinstance(dv, str) and dv.strip()
+                     and not dv.startswith("=") else ""),
              "status": str(ws.cell(row=r, column=_COL["status"]).value
                            or "").strip(),
              "coded_mp": (round(float(coded), 3)
@@ -153,15 +183,22 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
                         else "position: coded MP on the centreline")
         crashes.append(c)
 
+    ladders = []
     if diagram:
         if targets is None:
             from .warrants import ROR_TYPES
             targets = ROR_TYPES
         in_analysis = [c for c in crashes
                        if c["status"] in ("IS", "RE", "ADD")]
-        diagram_layout(in_analysis, shape, targets)
-        # A collision diagram shows the analysis; everything else drops.
+        ladders = diagram_layout(in_analysis, shape, targets)
+        # A collision diagram shows the analysis; everything else drops,
+        # and the RE move tails go with it (the badge is not a position,
+        # so a line from the coded coordinate to it would mislead).
         crashes = [c for c in in_analysis if c.get("diagram")]
+        for c in crashes:
+            c.pop("from_lat", None)
+            c.pop("from_lon", None)
+        line_margin_mi = min(line_margin_mi, 0.15)
 
     # Spread exact-duplicate coordinates in a small ring (about 2.5 m) so
     # stacked crashes stay individually clickable; popups carry the truth.
@@ -181,21 +218,51 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
 
     # Only what the map shows: crashes beyond the drawn stretch would
     # balloon the basemap to the whole corridor (11 miles, on the study
-    # this was built for).
+    # this was built for). But an ANALYSIS crash is never silently lost
+    # to a bad geocode: the DetailedFiche coordinates scatter up to a
+    # mile off the road (measured on this study's own corridor), so one
+    # whose final milepost is on the drawn stretch relocates to the
+    # centreline, popup saying so, instead of dropping off the map.
     la0 = min(p[0] for p in line) - pad_deg
     la1 = max(p[0] for p in line) + pad_deg
     lo0 = min(p[1] for p in line) - pad_deg
     lo1 = max(p[1] for p in line) + pad_deg
-    crashes = [c for c in crashes
-               if la0 <= c["lat"] <= la1 and lo0 <= c["lon"] <= lo1]
+    kept = []
+    for c in crashes:
+        if la0 <= c["lat"] <= la1 and lo0 <= c["lon"] <= lo1:
+            kept.append(c)
+            continue
+        moved = c["status"] in ("RE", "ADD") and c["new_mp"] is not None
+        mp = c["new_mp"] if moved else c["coded_mp"]
+        if (c["status"] in ("IS", "RE", "ADD") and mp is not None
+                and shape[0][0] <= mp <= shape[-1][0]
+                and normalize_route(c["road"]) == route_key):
+            la, ln = _mp_to_ll(shape, mp)
+            c["lat"], c["lon"] = round(la, 6), round(ln, 6)
+            c.pop("from_lat", None)
+            c.pop("from_lon", None)
+            c["src"] = ("position: milepost on the centreline (the "
+                        "DetailedFiche coordinate is off this map)")
+            kept.append(c)
+    crashes = kept
 
     overlays: dict = {"limits": [], "markers": [], "points": [],
-                      "window": None}
-    for mp, label in ((lo, f"MP {lo:.3f} (study begin)"),
-                      (hi, f"MP {hi:.3f} (study end)")):
+                      "window": None, "ladders": ladders, "mp_ticks": []}
+    for mp, label, kind in ((lo, f"MP {lo:.3f} (study begin)", "begin"),
+                            (hi, f"MP {hi:.3f} (study end)", "end")):
         la, ln = _mp_to_ll(shape, mp)
         overlays["limits"].append({"mp": round(mp, 3), "label": label,
+                                   "kind": kind,
                                    "lat": round(la, 6), "lon": round(ln, 6)})
+    if diagram:
+        # Green milepost ticks every tenth, the ladders' own scale.
+        m = round(math.ceil(round(lo, 6) * 10 - 1e-6) / 10, 1)
+        while m <= hi + 1e-9:
+            la, ln = _mp_to_ll(shape, m)
+            overlays["mp_ticks"].append({"mp": round(m, 1),
+                                         "lat": round(la, 6),
+                                         "lon": round(ln, 6)})
+            m = round(m + 0.1, 1)
     for label, mp in features or ():
         la, ln = _mp_to_ll(shape, float(mp))
         item = {"mp": round(float(mp), 3), "label": str(label),
@@ -210,20 +277,58 @@ def build_map_data(workbook_path: str, route: str, lo: float, hi: float,
         wlo, whi = float(window[0]), float(window[1])
         label = (window[2] if len(window) > 2 and window[2]
                  else f"sub-section MP {wlo:.3f} to {whi:.3f}")
+        mid_la, mid_ln = _mp_to_ll(shape, (wlo + whi) / 2)
         overlays["window"] = {
             "lo": wlo, "hi": whi, "label": label,
+            "mid": [round(mid_la, 6), round(mid_ln, 6)],
             "line": [[round(la, 6), round(ln, 6)] for la, ln in
                      (_mp_to_ll(shape, wlo + i * (whi - wlo) / 24)
                       for i in range(25))]}
+        if diagram:
+            # The hotspot callout sits beyond the tallest ladder inside
+            # the window, on that ladder's side, so it labels the cluster
+            # without covering a single badge. Geographic offset, so it
+            # holds at any zoom.
+            best = None
+            for ld in ladders:
+                if wlo - 0.05 <= ld["mp"] <= whi + 0.05:
+                    if best is None or ld["n"] > best["n"]:
+                        best = ld
+            far_ft = 150 + ((best["n"] - 1) * 95 + 560 if best else 560)
+            wmid = (wlo + whi) / 2
+            ux, uy, cos = _bearing_at(shape, wmid)
+            s = -1 if (best or {}).get("dir") == "EB" else 1
+            px, py = -uy * s, ux * s
+            dist = far_ft / 364000.0
+            overlays["window"]["label_pos"] = [
+                round(mid_la + py * dist, 6),
+                round(mid_ln + px * dist / cos, 6)]
 
     counts: dict = {}
     for c in crashes:
         counts[c["status"]] = counts.get(c["status"], 0) + 1
     study = ws.title.replace("_Fiche", "")
-    return {"study": study, "route": route, "lo": lo, "hi": hi,
+    data = {"study": study, "route": route, "lo": lo, "hi": hi,
             "subtitle": subtitle, "line": line, "crashes": crashes,
             "overlays": overlays, "counts": counts,
-            "diagram": bool(diagram)}
+            "diagram": bool(diagram), "shape_src": shape_src}
+    if diagram:
+        # The tight crop: the studied stretch plus every badge, ladder
+        # and callout, nothing more. fitBounds on this beats padding the
+        # whole drawn line.
+        core = [(la, ln) for m, la, ln in shape
+                if lo - 0.06 <= m <= hi + 0.06]
+        core += [(c["lat"], c["lon"]) for c in crashes]
+        core += [tuple(ld["line"][1]) for ld in ladders]
+        if overlays.get("window") and overlays["window"].get("label_pos"):
+            core.append(tuple(overlays["window"]["label_pos"]))
+        if core:
+            data["fit_bounds"] = [
+                [round(min(p[0] for p in core), 6),
+                 round(min(p[1] for p in core), 6)],
+                [round(max(p[0] for p in core), 6),
+                 round(max(p[1] for p in core), 6)]]
+    return data
 
 
 #: Collision-diagram grammar, read off the engineer's 41000078675 example:
@@ -249,15 +354,22 @@ def _bearing_at(shape, mp):
 
 
 def diagram_layout(crashes, shape, targets, step_ft: float = 95,
-                   base_ft: float = 130, side: int = 1) -> None:
+                   base_ft: float = 150, eb_side: int = -1) -> list:
     """Ladder the crashes off the roadway, collision-diagram style.
 
-    Crashes bucket by milepost rounded to 0.1 (the example's MPRound1) and
-    each successive crash in a bucket steps another ``step_ft`` out from the
-    centreline, so stacks never overlap and a reader counts a cluster at a
-    glance. Badges carry the severity letter; ``targets`` decides the
-    Target/Other fill; the ring is the road-condition bucket off the C code.
-    Mutates the crash dicts in place.
+    Crashes bucket by final milepost rounded to 0.1 (the example's
+    MPRound1) AND by direction of travel: crashes travelling with
+    increasing milepost (EB on US 74) ladder off one side of the road,
+    the opposing direction off the other, exactly like the engineer's
+    ArcGIS layout. Every badge in a bucket sits at the SAME along-road
+    position - the rounded milepost - so the stacks read as neat rows;
+    distance from the road is stacking order, not position. Badges carry
+    the severity letter; ``targets`` decides the Target/Other fill; the
+    ring is the road-condition bucket off the C code.
+
+    ``eb_side`` is the perpendicular sign the increasing-MP direction
+    ladders on (-1 = the driver's right for that direction). Mutates the
+    crash dicts in place and returns the ladder guide lines.
     """
     buckets: dict = {}
     for c in crashes:
@@ -267,15 +379,20 @@ def diagram_layout(crashes, shape, targets, step_ft: float = 95,
             c["diagram"] = False
             continue
         c["_mp"] = float(mp)
-        buckets.setdefault(round(float(mp), 1), []).append(c)
-    for bucket, members in buckets.items():
+        d = (c.get("dir") or "").upper()
+        dcode = "WB" if d.startswith(("WB", "SB")) else "EB"
+        buckets.setdefault((round(float(mp), 1), dcode), []).append(c)
+    ladders = []
+    for (bmp, dcode), members in sorted(buckets.items()):
         members.sort(key=lambda c: (c["_mp"], c.get("date") or "",
                                     c["id"]))
+        anchor = min(max(bmp, shape[0][0]), shape[-1][0])
+        ux, uy, cos = _bearing_at(shape, anchor)
+        s = eb_side if dcode == "EB" else -eb_side
+        px, py = -uy * s, ux * s                    # perpendicular
+        ala, aln = _mp_to_ll(shape, anchor)
         for i, c in enumerate(members):
-            ux, uy, cos = _bearing_at(shape, c["_mp"])
-            px, py = -uy * side, ux * side          # perpendicular
-            dist = (base_ft + i * step_ft) / 364000.0   # feet -> degrees lat
-            ala, aln = _mp_to_ll(shape, c["_mp"])
+            dist = (base_ft + i * step_ft) / 364000.0   # feet -> deg lat
             c["lat"] = round(ala + py * dist, 6)
             c["lon"] = round(aln + px * dist / cos, 6)
             c["diagram"] = True
@@ -287,8 +404,14 @@ def diagram_layout(crashes, shape, targets, step_ft: float = 95,
             c["target"] = ("Target" if any(t.startswith(x.upper())
                                           or x.upper() in t
                                           for x in targets) else "Other")
+        far = (base_ft + (len(members) - 1) * step_ft + 55) / 364000.0
+        ladders.append({"mp": bmp, "dir": dcode, "n": len(members),
+                        "line": [[round(ala, 6), round(aln, 6)],
+                                 [round(ala + py * far, 6),
+                                  round(aln + px * far / cos, 6)]]})
         for c in members:
             c.pop("_mp", None)
+    return ladders
 
 
 def _ll2t(lat, lon, z):
@@ -391,20 +514,33 @@ def render_map_html(data: dict, tiles: dict, out_path: str,
                         f"{k.get('ADD', 0)} ADD)",
                         d.get("subtitle") or "") if x]
     if d.get("diagram"):
-        legend = ('<div class="row"><b>Crash Type</b></div>'
-                  '<div class="row"><span class="dot" '
-                  'style="background:#ffe14d"></span><span>Target</span></div>'
-                  '<div class="row"><span class="dot" '
-                  'style="background:#c9ccd1"></span><span>Other</span></div>'
-                  '<div class="row"><b>Severity</b>&nbsp;O / C / B / '
-                  '<span style="color:#c00000">A / K</span></div>'
-                  '<div class="row"><b>Ring = road condition</b></div>'
-                  + "".join(
-                      f'<div class="row"><span class="dot" '
-                      f'style="background:{c}"></span><span>{t}</span></div>'
-                      for c, t in (("#111111", "Dry"), ("#31b4e8", "Wet"),
-                                   ("#9fc5e8", "Snow"),
-                                   ("#8a8f98", "Unknown"))))
+        def loct(fill, ring="#111111", letter=""):
+            return (f'<span class="loct" style="background:{ring}">'
+                    f'<span class="in" style="background:{fill}">{letter}'
+                    '</span></span>')
+        red_style = ' style="color:#c00000;font-weight:600"'
+        sev_rows = "".join(
+            f'<div class="row">{loct("#ffffff", "#767b85", k)}'
+            f'<span{red_style if red else ""}>{t}</span></div>'
+            for k, t, red in (("K", "K - Fatal", True),
+                              ("A", "A - Serious Injury", True),
+                              ("B", "B - Minor Injury", False),
+                              ("C", "C - Possible Injury", False),
+                              ("O", "O - Property Damage Only", False)))
+        legend = (
+            '<div class="box"><div class="h">Crash Type</div>'
+            f'<div class="row">{loct("#ffe14d")}<span>Target</span></div>'
+            f'<div class="row">{loct("#c9ccd1")}<span>Other</span></div>'
+            "</div>"
+            f'<div class="box"><div class="h">Crash Severity</div>{sev_rows}'
+            "</div>"
+            '<div class="box"><div class="h">Road Condition</div>'
+            + "".join(
+                f'<div class="row"><span class="dot" '
+                f'style="background:{c}"></span><span>{t}</span></div>'
+                for c, t in (("#111111", "Dry"), ("#31b4e8", "Wet"),
+                             ("#9fc5e8", "Snow"), ("#8a8f98", "Unknown")))
+            + "</div>")
     else:
         rows = [("#0072B2", "IS &mdash; in study"),
                 ("#E69F00", "RE &mdash; remileposted (dashed line = the move)"),
@@ -415,13 +551,24 @@ def render_map_html(data: dict, tiles: dict, out_path: str,
             f'<div class="row"><span class="dot" style="background:{c}"></span>'
             f'<span>{t}</span></div>' for c, t in rows)
     if d["overlays"].get("window"):
-        legend += ('<div class="row"><span class="band"></span><span>'
-                   + d["overlays"]["window"]["label"] + "</span></div>")
+        row = ('<div class="row"><span class="band"></span><span>'
+               + d["overlays"]["window"]["label"] + "</span></div>")
+        # In the diagram the boxes carry the white background, so a bare
+        # row would float transparent over the imagery.
+        legend += (f'<div class="box">{row}</div>' if d.get("diagram")
+                   else row)
+    lrs = d.get("shape_src") == "lrs"
     if d.get("diagram"):
-        legend += ('<div class="note">Badges ladder off the roadway at the '
-                   "crash's final milepost (0.1-mile groups); distance from "
+        legend += ('<div class="note">Crashes group to the nearest 0.1 '
+                   "mile of their final milepost and split by direction "
+                   "of travel, one side of the road each; distance from "
                    "the road is stacking order, not position. Click any "
                    "badge for details.</div>")
+    elif lrs:
+        legend += ('<div class="note">RE and ADD are placed at the '
+                   "engineer's New MP on the route centreline; other "
+                   "positions are DetailedFiche coordinates. Click any "
+                   "point for details.</div>")
     else:
         legend += ('<div class="note">RE and ADD are placed at the engineer\'s '
                "New MP on the centreline; other positions are DetailedFiche "
@@ -429,16 +576,25 @@ def render_map_html(data: dict, tiles: dict, out_path: str,
                "corridor's coded crashes, so placements are approximate. "
                "Click any point for details.</div>")
 
+    north = ""
+    kind_word = "Collision Diagram" if d.get("diagram") else "Crash Map"
+    if d.get("diagram"):
+        north = ('<div id="north" aria-label="North">'
+                 '<svg viewBox="0 0 24 30" width="26" height="32">'
+                 '<polygon points="12,2 18,20 12,16 6,20" fill="#111827"/>'
+                 '<text x="12" y="29" text-anchor="middle" '
+                 'font-size="9" font-weight="700" fill="#111827">N</text>'
+                 "</svg></div>")
     html = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{d['route']} Crash Map - Study {d['study']}</title>
+<title>{d['route']} {kind_word} - Study {d['study']}</title>
 <style>{vendor('leaflet.min.css')}</style>
 <style>{vendor('crashmap.css')}</style></head><body>
-<div id="hdr"><h1>{d['route']} Crash Map &middot; Study {d['study']}</h1>
+<div id="hdr"><h1>{d['route']} {kind_word} &middot; Study {d['study']}</h1>
 <span class="sub">{" &middot; ".join(bits)}</span></div>
 <div id="map"></div>
-<div id="legend">{legend}</div>
-<script>{vendor('leaflet.min.js')}</script>
+<div id="legend"{' class="diagram"' if d.get('diagram') else ''}>{legend}</div>
+{north}<script>{vendor('leaflet.min.js')}</script>
 <script>window.DATA={json.dumps(d)};</script>
 <script>window.TILES={json.dumps(tiles)};</script>
 <script>{vendor('crashmap.js')}</script>
@@ -454,15 +610,20 @@ def build_crash_map(out_path: str, workbook_path: str, route: str,
                     window: tuple | None = None, subtitle: str = "",
                     county: str = "", basemap: bool = True,
                     zooms=DEFAULT_ZOOMS, progress=None,
-                    diagram: bool = False, targets=None) -> dict:
+                    diagram: bool = False, targets=None,
+                    centerline: str | None = None) -> dict:
     """One call: data join, tile fetch, render. Returns a summary dict."""
     data = build_map_data(workbook_path, route, lo, hi, sheet=sheet,
                           coords_source=coords_source, features=features,
                           window=window, subtitle=subtitle,
-                          diagram=diagram, targets=targets)
+                          diagram=diagram, targets=targets,
+                          centerline=centerline)
     tiles, misses = ({}, 0)
     if basemap:
-        tiles, misses = fetch_tiles(data, zooms=zooms, progress=progress)
+        # The diagram has no layer switcher, so one basemap (aerial).
+        kinds = ("a",) if diagram else ("a", "s")
+        tiles, misses = fetch_tiles(data, kinds=kinds, zooms=zooms,
+                                    progress=progress)
     size = render_map_html(data, tiles, out_path, county=county)
     return {"crashes": len(data["crashes"]), "counts": data["counts"],
             "tiles": len(tiles), "misses": misses, "bytes": size}

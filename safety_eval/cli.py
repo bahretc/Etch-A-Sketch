@@ -720,7 +720,8 @@ def _cmd_crash_map(args) -> int:
                         subtitle=args.subtitle or "",
                         county=args.county or "",
                         basemap=not args.no_basemap,
-                        diagram=args.diagram, targets=targets)
+                        diagram=args.diagram, targets=targets,
+                        centerline=args.centerline)
     print(f"{s['crashes']} crashes on the map "
           + "  ".join(f"{k} {v}" for k, v in sorted(s["counts"].items())))
     print(f"{s['tiles']} basemap tiles embedded"
@@ -1300,6 +1301,11 @@ def build_parser() -> argparse.ArgumentParser:
     cm.add_argument("--targets",
                     help="Comma-separated target crash types for the diagram "
                          "fill (default: the ROR warrant set).")
+    cm.add_argument("--centerline",
+                    help="Route geometry GeoJSON with vertex mileposts "
+                         "([lon, lat, m], or 2D vertices with begin/end MP "
+                         "properties; the NCDOT LRS export or a calibrated "
+                         "trace). Replaces the crash-cloud centreline.")
     cm.set_defaults(func=_cmd_crash_map)
 
     sc = sub.add_parser(

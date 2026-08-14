@@ -486,6 +486,19 @@ def _hsip_tab(st) -> None:
             map_route = m1.text_input("Route label", placeholder="US 74")
             shade = m2.text_input("Shade sub-section lo:hi (optional)",
                                   placeholder="13.560:13.815")
+            map_style = st.radio(
+                "Style", ["Crash map", "Collision diagram"],
+                horizontal=True,
+                help="The diagram ladders the analysis crashes off the "
+                     "roadway in 0.1-mile groups split by direction of "
+                     "travel: severity letter in the badge, Target/Other "
+                     "fill, road-condition ring.")
+            cl_up = st.file_uploader(
+                "Route centerline GeoJSON (optional; vertex mileposts)",
+                type=["geojson", "json"], key="map_centerline",
+                help="The NCDOT LRS export or a calibrated trace. Without "
+                     "it the centreline is derived from the corridor's "
+                     "coded crashes and positions are approximate.")
             if st.button("Build crash map",
                          disabled=not (wb_up and map_route.strip()
                                        and hi > lo)):
@@ -508,27 +521,32 @@ def _hsip_tab(st) -> None:
                         st.error("Shade range must be lo:hi, e.g. "
                                  "13.560:13.815")
                         st.stop()
+                diagram = map_style == "Collision diagram"
                 with tempfile.TemporaryDirectory() as tmp:
                     path = _save_upload(wb_up, tmp)
                     out = os.path.join(tmp, "map.html")
+                    cl_path = _save_upload(cl_up, tmp) if cl_up else None
                     try:
                         with st.spinner("Joining crashes and downloading "
                                         "basemap tiles (a minute or two)..."):
                             s = build_crash_map(out, path,
                                                 map_route.strip(), lo, hi,
                                                 features=feats or None,
-                                                window=window)
+                                                window=window,
+                                                diagram=diagram,
+                                                centerline=cl_path)
                     except ValueError as exc:
                         st.error(str(exc))
                         st.stop()
                     stem = os.path.splitext(os.path.basename(
                         wb_up.name))[0].replace("_Fiche", "")
+                    kind = ("CollisionDiagram" if diagram else "CrashMap")
                     with open(out, "rb") as fh:
                         st.download_button(
-                            f"Download {stem}_CrashMap.html "
+                            f"Download {stem}_{kind}.html "
                             f"({s['bytes'] / 1048576:.1f} MB, "
                             f"{s['crashes']} crashes)", fh.read(),
-                            file_name=f"{stem}_CrashMap.html")
+                            file_name=f"{stem}_{kind}.html")
                     if s["misses"]:
                         st.warning(f"{s['misses']} basemap tile(s) failed "
                                    "to download and will render blank.")

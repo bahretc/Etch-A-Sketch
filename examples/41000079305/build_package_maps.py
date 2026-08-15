@@ -36,6 +36,7 @@ SP = ("/tmp/claude-0/-home-user-Etch-A-Sketch/"
       "4d83860a-51f4-5f7b-a60e-765168dfbb13/scratchpad/map79305")
 REPO = "/home/user/Etch-A-Sketch/examples/41000079305"
 WO = "41000079305"
+PH = "74S00010"
 DIVISION = "14"
 COORDS = "35.275639, -82.132762"
 DESC = ["US 74 from 0.075 miles east of SR 1526 (Bill Collins Rd) "
@@ -289,8 +290,8 @@ background:#fff}
 .leaflet-container{background:#fff}
 #footer{position:absolute;left:0;right:0;top:706px;bottom:0;
 background:#fff}
-#fl{position:absolute;left:16px;top:12px;font-size:12.5px;
-line-height:1.85}
+#fl{position:absolute;left:16px;top:9px;font-size:12.5px;
+line-height:1.62}
 #fc{position:absolute;left:22%;right:22%;top:8px;text-align:center;
 font-size:11.5px;line-height:1.5}
 .fh{font-weight:bold;font-size:12.5px}
@@ -466,7 +467,7 @@ def build(out, title, payload, tiles=None, panels="", legend=False,
 {panels}{alegend}
 <div id="north">{NORTH}</div>
 <div id="footer">
-<div id="fl"><b>WO Number</b> {WO}<br><b>NCDOT Division</b> {DIVISION}</div>
+<div id="fl"><b>WO Number</b> {WO}<br><b>PH Number</b> {PH}<br><b>NCDOT Division</b> {DIVISION}</div>
 <div id="fc"><span class="fh">Study Area</span><br>{DESC[0]}<br>{DESC[1]}<br>
 {DESC[2]}</div>
 <div id="fr"><span class="fh">Coordinates</span><br>{COORDS}</div>

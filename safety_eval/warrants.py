@@ -543,7 +543,8 @@ def _window_share(win: Window, code: str) -> float:
 
 def subsection_findings(placed, section: SectionScreen,
                         multilane: bool = False,
-                        min_length: float = MIN_SECTION_MI) -> list:
+                        min_length: float = MIN_SECTION_MI,
+                        strict: bool = True) -> list:
     """One finding per warrant, which is what a reader actually asks.
 
     The raw scan answers a different question: every span that warrants. On a
@@ -555,9 +556,9 @@ def subsection_findings(placed, section: SectionScreen,
     then how close did any sub-section get?
     """
     windows = scan_sections(placed, section.facility, multilane=multilane,
-                            min_length=min_length)
+                            min_length=min_length, strict=strict)
     ceiling = best_achievable(placed, section.facility, multilane=multilane,
-                              min_length=min_length)
+                              min_length=min_length, strict=strict)
     out = []
     for w in section.warrants:
         meeting = [win for win in windows if w.warrant in win.names]

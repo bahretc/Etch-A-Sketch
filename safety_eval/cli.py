@@ -623,7 +623,8 @@ def _cmd_warrants(args) -> int:
         multilane=args.multilane,
         overrides=hsip.parse_overrides(args.override),
         study_type=args.study_type, import_out=args.import_out,
-        strip_zeros=not args.padded, save=not args.no_save)
+        strip_zeros=not args.padded, save=not args.no_save,
+        inclusive_minimums=args.inclusive_minimums)
     print(format_screen(run.screen))
     print()
     for line in run.finding_lines:
@@ -1236,6 +1237,12 @@ def build_parser() -> argparse.ArgumentParser:
                          "refuses on any violation.")
     wa.add_argument("--no-save", dest="no_save", action="store_true",
                     help="Print the screen without touching the workbook.")
+    wa.add_argument("--inclusive-minimums", dest="inclusive_minimums",
+                    action="store_true",
+                    help="Overview reading of the facility minimums: a count "
+                         "equal to the minimum clears it (>=). Default "
+                         "follows the warrant workbook, which tests strictly "
+                         "greater than.")
     wa.add_argument("--report-out", dest="report_out",
                     help="Also write the analysis as report text (docs/05 "
                          "style): totals, warrants met and not, sub-section "

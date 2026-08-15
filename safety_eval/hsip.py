@@ -251,7 +251,7 @@ def run_hsip(workbook_path: str, facility: str, lo: float, hi: float,
              sheet: str | None = None, multilane: bool = False,
              overrides: dict | None = None, study_type: str = "hsip",
              import_out: str | None = None, strip_zeros: bool = True,
-             save: bool = True) -> HsipRun:
+             save: bool = True, inclusive_minimums: bool = False) -> HsipRun:
     """The reviewed fiche workbook, taken the rest of the way.
 
     Reads the engineer's IS/RE/ADD rows off the working sheet, rebuilds the
@@ -283,7 +283,8 @@ def run_hsip(workbook_path: str, facility: str, lo: float, hi: float,
 
     _, screen, findings = add_warrant_sheet(
         wb, warrant_rows(rows, overrides), hi - lo, facility,
-        multilane=multilane, lo=lo, hi=hi)
+        multilane=multilane, lo=lo, hi=hi,
+        strict=not inclusive_minimums)
     if save:
         wb.save(workbook_path)
 

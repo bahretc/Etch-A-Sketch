@@ -102,7 +102,8 @@ def _highlight(ws, last_row: int, multilane: bool = False, skip=()) -> None:
 
 
 def add_warrant_sheet(wb, rows, length_mi: float, facility: str = "freeway",
-                      multilane: bool = False, lo=None, hi=None):
+                      multilane: bool = False, lo=None, hi=None,
+                      strict: bool = True):
     """Build the Warrant sheet from the in-study crash rows.
 
     ``rows`` are dicts carrying at least ``mp``, ``crash_id``, ``t``, ``c``,
@@ -152,10 +153,13 @@ def add_warrant_sheet(wb, rows, length_mi: float, facility: str = "freeway",
                      road_condition=r.get("c") if isinstance(r.get("c"), int) else None,
                      light_condition=r.get("l") if isinstance(r.get("l"), int) else None)
                for r in ordered]
-    screen = screen_section(crashes, length_mi, facility, multilane=multilane)
+    screen = screen_section(crashes, length_mi, facility, multilane=multilane,
+                            strict=strict)
     placed = [(r.get("mp"), c) for r, c in zip(ordered, crashes)]
-    findings = subsection_findings(placed, screen, multilane=multilane)
-    _write_summary(ws, screen, facility, multilane, lo, hi, last, findings)
+    findings = subsection_findings(placed, screen, multilane=multilane,
+                                   strict=strict)
+    _write_summary(ws, screen, facility, multilane, lo, hi, last,
+                   findings, strict=strict)
     # Widths come from the crash table alone: the summary sits below it, and
     # its long labels must spill across empty cells, not set column widths.
     autofit_columns(ws, last_row=last)
@@ -183,7 +187,7 @@ _SHARE_KEY = {"1": "p_wetror", "2": "p_ror", "3": "p_wet"}
 
 
 def _write_summary(ws, s, facility, multilane, lo, hi, last_row: int,
-                   findings) -> None:
+                   findings, strict=True) -> None:
     """The calculation block, BELOW the crash table, in live Excel formulas.
 
     Below rather than beside: comment text spills rightward and a side block
@@ -235,9 +239,10 @@ def _write_summary(ws, s, facility, multilane, lo, hi, last_row: int,
         lambda c: f"=VLOOKUP({c['fac']},{c['tbl']},4,FALSE)", "0", key="reqn")
     put("Required Crashes/Mi",
         lambda c: f"=VLOOKUP({c['fac']},{c['tbl']},5,FALSE)", "0", key="reqr")
+    mins_op = ">" if strict else ">="
     put("Meets Minimums?",
-        lambda c: f'=IF(AND({c["total"]}>{c["reqn"]},'
-                  f'{c["rate"]}>{c["reqr"]}),"Yes","No")', key="mins")
+        lambda c: f'=IF(AND({c["total"]}{mins_op}{c["reqn"]},'
+                  f'{c["rate"]}{mins_op}{c["reqr"]}),"Yes","No")', key="mins")
     blank()
     put("ROR Crashes", f"=SUMPRODUCT(COUNTIF({rng('J')},{ror}))", key="ror")
     put("% ROR", lambda c: f"=ROUND({c['ror']}/{c['total']},2)", "0%",

@@ -1,22 +1,26 @@
-"""Package maps for study 41000079305 in the VHB house format.
+"""Package maps for study 41000079305 in the current VHB figure format.
 
-Matched to the engineer's own 41000078675 deliverables:
-full bleed map, white footer strip (WO Number and NCDOT Division on
-the left, Study Area description centered, Lat Long and the vhb mark
-on the right, italic data source line), NC county locator inset with
-the study county in red, black north arrow icon with an alternating
-scale bar, route shields.
+Matched to the engineer's newest deliverable set (slip M260408001,
+with the 41000078675 section set informing section-specific idioms):
+full bleed map over a white footer strip (WO Number and NCDOT
+Division left, Study Area centered, Coordinates right, the vhb
+logo bottom right, italic data source line), NC county locator inset
+with a red pin at the study, plain north arrow, route shields.
 
-Location Map  - aerial, yellow circle X markers at Begin Study and
-                End Study with white label boxes and leaders, white
-                halo road names rotated along the roads.
-Area Map      - minimal grey street vector, shields only, thin red
-                ring at the study location, urban footprint tint.
-ADT Map       - NCDOT AADT Mapping Application look: tan basemap,
-                station dots colored by route class with the standard
-                legend, the governing station's attribute panel with
-                the 2024 row boxed in red and an arrow to its dot.
+Location Map - aerial; yellow circle X markers at Begin Study and
+               End Study with white label boxes and leaders (the
+               house section idiom); road names dark with white halo.
+Area Map     - soft web style vector: pale green land, white roads
+               with grey casings, blue grey highways, streams and
+               ponds in blue, town names, shields, red map pin.
+AADT Map     - AADT Mapping Application look on a white canvas:
+               station dots colored by route class with the standard
+               legend, numbered badges, one attribute panel per
+               mainline station with leader lines and the governing
+               2024 row boxed in red, the study route traced cyan,
+               and a red ellipse around the study section.
 """
+import base64
 import json
 import math
 import os
@@ -33,7 +37,7 @@ SP = ("/tmp/claude-0/-home-user-Etch-A-Sketch/"
 REPO = "/home/user/Etch-A-Sketch/examples/41000079305"
 WO = "41000079305"
 DIVISION = "14"
-LATLON = ("35.275639", "-82.132762")
+COORDS = "35.275639, -82.132762"
 DESC = ["US 74 from 0.075 miles east of SR 1526 (Bill Collins Rd) "
         "[MP 12.800]",
         "to 0.100 miles east of Mile Marker 166 [MP 13.815]",
@@ -47,6 +51,7 @@ def data_path(name):
             return cand
     raise FileNotFoundError(name)
 
+
 cl = json.load(open(f"{REPO}/centerline_us74.geojson"))
 CO = cl["features"][0]["geometry"]["coordinates"]
 STUDY = [[round(c[1], 6), round(c[0], 6)] for c in CO if 12.8 <= c[2] <= 13.815]
@@ -55,13 +60,11 @@ MID = STUDY[len(STUDY) // 2]
 osm = json.load(open(data_path("osm2.json")))
 WAYS = [e for e in osm["elements"] if e["type"] == "way"
         and "highway" in e.get("tags", {})]
+PLACES = [e for e in osm["elements"] if e["type"] == "node"]
 
 aadt = json.load(open(data_path("aadt_raw.json")))
-GOV_ID = "0750000003"
-GOV = next(f for f in aadt["features"]
-           if f["properties"].get("LocationID") == GOV_ID)
-GOV_LL = [round(GOV["geometry"]["coordinates"][1], 5),
-          round(GOV["geometry"]["coordinates"][0], 5)]
+LOGO_B64 = base64.b64encode(open(data_path("vhb_logo.png"), "rb")
+                            .read()).decode()
 
 _SUFF = (("Road", "Rd"), ("Street", "St"), ("Lane", "Ln"),
          ("Drive", "Dr"), ("Parkway", "Pkwy"), ("Trail", "Trl"),
@@ -85,10 +88,10 @@ def isi26(w):
     return "I 26" in w["tags"].get("ref", "")
 
 
-def clip(b, classify):
+def clip_ways(ways, b, classify):
     out = defaultdict(list)
     m = 0.004
-    for w in WAYS:
+    for w in ways:
         g = w.get("geometry") or []
         if not any(b[0] - m <= p["lat"] <= b[2] + m
                    and b[1] - m <= p["lon"] <= b[3] + m for p in g):
@@ -98,6 +101,10 @@ def clip(b, classify):
             out[cls].append([[round(p["lat"], 5), round(p["lon"], 5)]
                              for p in g])
     return dict(out)
+
+
+def clip(b, classify):
+    return clip_ways(WAYS, b, classify)
 
 
 def vertex_and_rot(pred, target):
@@ -200,15 +207,14 @@ def assemble_rings(ways_pts):
     return rings
 
 
-def us_shield(num, s=1.0):
-    w, h = 26 * s, 24 * s
-    return (f'<svg width="{w:.0f}" height="{h:.0f}" viewBox="0 0 26 24">'
+def us_shield(num):
+    return ('<svg width="26" height="24" viewBox="0 0 26 24">'
             '<path d="M13 22.8 C8.2 19.9 2.2 17.8 2.2 9.7 C2.2 6.8 3 4.8 4 '
             '3.7 C6.3 4.8 8.7 5.2 13 5.2 C17.3 5.2 19.7 4.8 22 3.7 C23 4.8 '
             '23.8 6.8 23.8 9.7 C23.8 17.8 17.8 19.9 13 22.8 Z" fill="#fff" '
-            'stroke="#000" stroke-width="1.5"/>'
+            'stroke="#5B6670" stroke-width="1.4"/>'
             f'<text x="13" y="15.8" text-anchor="middle" font-size="9.5" '
-            f'font-weight="bold" font-family="Arial" fill="#000">{num}'
+            f'font-weight="bold" font-family="Arial" fill="#3C4043">{num}'
             '</text></svg>')
 
 
@@ -216,30 +222,33 @@ def nc_shield(num):
     fs = 7.5 if len(num) > 2 else 9
     return ('<svg width="26" height="26" viewBox="0 0 26 26">'
             '<rect x="5" y="5" width="16" height="16" '
-            'transform="rotate(45 13 13)" fill="#000" stroke="#fff" '
-            'stroke-width="1"/>'
-            '<circle cx="13" cy="4" r="1.6" fill="#000"/>'
-            '<circle cx="22" cy="13" r="1.6" fill="#000"/>'
-            '<circle cx="13" cy="22" r="1.6" fill="#000"/>'
-            '<circle cx="4" cy="13" r="1.6" fill="#000"/>'
+            'transform="rotate(45 13 13)" fill="#fff" stroke="#5B6670" '
+            'stroke-width="1.4"/>'
             f'<text x="13" y="{13 + fs * 0.36:.1f}" text-anchor="middle" '
             f'font-size="{fs}" font-weight="bold" font-family="Arial" '
-            f'fill="#fff">{num}</text></svg>')
+            f'fill="#3C4043">{num}</text></svg>')
 
 
 def i_shield(num):
     return ('<svg width="26" height="26" viewBox="0 0 26 26">'
             '<path d="M13 24.6 C6.3 21.7 2 18.6 2 12.9 L2 8.3 C5.3 9.3 9 '
             '9.7 13 9.7 C17 9.7 20.7 9.3 24 8.3 L24 12.9 C24 18.6 19.7 '
-            '21.7 13 24.6 Z" fill="#003F87" stroke="#fff" '
+            '21.7 13 24.6 Z" fill="#3B6FB5" stroke="#fff" '
             'stroke-width="1.1"/>'
             '<path d="M2 8.3 C2 5.2 3 3.3 4.1 2.1 C7 3.5 9.9 4.1 13 4.1 '
             'C16.1 4.1 19 3.5 21.9 2.1 C23 3.3 24 5.2 24 8.3 C20.7 9.3 17 '
-            '9.7 13 9.7 C9 9.7 5.3 9.3 2 8.3 Z" fill="#CE1126" '
+            '9.7 13 9.7 C9 9.7 5.3 9.3 2 8.3 Z" fill="#C8452E" '
             'stroke="#fff" stroke-width="1.1"/>'
             f'<text x="13" y="19.6" text-anchor="middle" font-size="8.5" '
             f'font-weight="bold" font-family="Arial" fill="#fff">{num}'
             '</text></svg>')
+
+
+PIN = ('<svg width="26" height="36" viewBox="0 0 26 36">'
+       '<path d="M13 1 C6.4 1 1.5 6 1.5 12.2 C1.5 20.6 13 34 13 34 '
+       'C13 34 24.5 20.6 24.5 12.2 C24.5 6 19.6 1 13 1 Z" fill="#D93025" '
+       'stroke="#A11B12" stroke-width="1"/>'
+       '<circle cx="13" cy="12.2" r="4.4" fill="#fff"/></svg>')
 
 
 def locator_svg():
@@ -262,12 +271,14 @@ def locator_svg():
                 pts = [xy(c[0], c[1]) for c in ring]
                 dd.append("M" + " L".join(f"{x:.1f},{y:.1f}"
                                           for x, y in pts) + " Z")
-        fill = ("#CC1111" if "polk" in
-                (f["properties"].get("NAME", "") or "").lower() else "#fff")
-        paths.append(f'<path d="{" ".join(dd)}" fill="{fill}" '
+        paths.append(f'<path d="{" ".join(dd)}" fill="#fff" '
                      'stroke="#8A8A8A" stroke-width="0.5"/>')
+    px, py = xy(-82.132762, 35.275639)
+    pin = (f'<path d="M{px:.1f} {py - 9:.1f} c-3 0 -5 2.1 -5 4.7 '
+           f'c0 3.3 5 8.8 5 8.8 c0 0 5 -5.5 5 -8.8 c0 -2.6 -2 -4.7 '
+           f'-5 -4.7 z" fill="#D93025" transform="translate(0,-4)"/>')
     return (f'<svg width="{W:.0f}" height="{H:.0f}" '
-            f'viewBox="0 0 {W:.0f} {H:.0f}">{"".join(paths)}</svg>')
+            f'viewBox="0 0 {W:.0f} {H:.0f}">{"".join(paths)}{pin}</svg>')
 
 
 CSS = """html,body{margin:0;width:1056px;height:816px;background:#fff;
@@ -282,29 +293,23 @@ background:#fff}
 line-height:1.85}
 #fc{position:absolute;left:22%;right:22%;top:8px;text-align:center;
 font-size:11.5px;line-height:1.5}
-#fc .h{font-weight:bold;font-size:12.5px}
-#fr{position:absolute;right:16px;top:12px;font-size:12.5px;
-line-height:1.85;text-align:left}
-#vhb{position:absolute;right:16px;bottom:6px;font-size:27px;
-font-weight:800;color:#3E4A57;letter-spacing:-0.5px}
-#vhb small{font-size:13px;vertical-align:6px}
+.fh{font-weight:bold;font-size:12.5px}
+#fr{position:absolute;right:26px;top:8px;font-size:12px;
+line-height:1.6;text-align:center}
+#vhb{position:absolute;right:10px;bottom:2px;height:50px}
 #ds{position:absolute;left:12px;bottom:3px;font-size:8.5px;
 font-style:italic;color:#555}
 #locator{position:absolute;top:10px;left:10px;z-index:1300;
 background:#fff;border:1px solid #999;padding:3px;line-height:0}
-#nsbox{position:absolute;left:10px;bottom:120px;z-index:1300;
-background:#fff;border:1px solid #888;padding:5px 10px 6px 7px;
-display:flex;align-items:center;gap:8px}
-#panel{position:absolute;top:118px;left:10px;z-index:1300;
-background:#fff;border:1px solid #777;width:196px;
-font-size:8.6px;line-height:1.38}
-#panel .hd{font-weight:bold;font-size:9.3px;border-bottom:1px solid #999;
-padding:3px 6px;background:#F2F2F2}
-#panel .bd{padding:3px 6px 4px}
-#panel .row{display:flex}
-#panel .row b{color:#9A9A9A;font-weight:normal;width:74px;
+#north{position:absolute;left:14px;bottom:122px;z-index:1300}
+.panel{position:absolute;z-index:1300;background:#fff;
+border:1px solid #777;width:172px;font-size:8.4px;line-height:1.33}
+.panel .bd{padding:3px 6px 4px}
+.panel .row{display:flex}
+.panel .row b{color:#9A9A9A;font-weight:normal;width:66px;
 flex-shrink:0}
-#panel .row.hot{outline:2px solid #E8112D;outline-offset:-1px}
+.panel .row span{word-break:break-word}
+.panel .row.hot{outline:2px solid #E8112D;outline-offset:-1px}
 #alegend{position:absolute;right:12px;bottom:122px;z-index:1300;
 background:#fff;border:1px solid #999;padding:6px 12px 7px;
 font-size:10.5px}
@@ -314,14 +319,21 @@ font-size:10.5px}
 .lblc{position:relative}
 .lblc>span{position:absolute;white-space:nowrap;text-align:center;
 display:inline-block;line-height:1.15}
-.rn{color:#fff;font-weight:600;font-size:9.5px;
-text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,
-1px 1px 0 #000,0 0 2px #000}
-.gn{color:#6E6E6E;font-weight:600;font-size:9px;
-text-shadow:-1px -1px 0 #F6EFDC,1px -1px 0 #F6EFDC,
--1px 1px 0 #F6EFDC,1px 1px 0 #F6EFDC}
+.rn{color:#2E3033;font-weight:600;font-size:9.5px;
+text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,
+1px 1px 0 #fff,0 0 2.5px #fff}
+.gn{color:#9AA0A6;font-weight:600;font-size:9px;
+text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,
+1px 1px 0 #fff}
+.tn{color:#3C4043;font-weight:bold;font-size:12.5px;
+text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,
+-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff,0 0 3px #fff}
+.tn.h{font-size:10.5px}
 .bx{background:#fff;border:1.2px solid #000;color:#000;
 font-weight:bold;font-size:11px;padding:3px 10px}
+.badge{background:#fff;border:1.4px solid #000;border-radius:50%;
+width:15px;height:15px;font-size:9.5px;font-weight:bold;
+line-height:15px;text-align:center}
 """
 
 JS = r"""(function(){
@@ -349,8 +361,14 @@ function lbl(ll,html,cls,ox,oy,rot,z){
     html+'</span>',iconSize:[0,0]}),zIndexOffset:z||0}).addTo(map);
 }
 for(const ring of (P.muniFill||[]))
-  L.polygon(ring,{color:"#E6E6E6",weight:0,fillColor:"#E6E6E6",
+  L.polygon(ring,{color:"#E4E4E4",weight:0,fillColor:"#E4E4E4",
     fillOpacity:1,interactive:false}).addTo(map);
+for(const wp of (P.waterPoly||[]))
+  L.polygon(wp,{color:"#A9D3E8",weight:1,fillColor:"#BFE0F0",
+    fillOpacity:1,interactive:false}).addTo(map);
+for(const wl of (P.waterLine||[]))
+  L.polyline(wl,{color:"#A9D3E8",weight:1.2,opacity:1,
+    interactive:false}).addTo(map);
 for(const cls of P.order||[]){
   const passes=P.style[cls], group=P.roads[cls];
   if(!passes||!group) continue;
@@ -358,9 +376,19 @@ for(const cls of P.order||[]){
     for(const pts of group)
       L.polyline(pts,Object.assign({interactive:false},spec)).addTo(map);
 }
-if(P.redRing)
-  L.circleMarker(P.redRing,{radius:17,color:"#E8100C",weight:4.2,
-    fillOpacity:0,interactive:false}).addTo(map);
+if(P.redEllipse){
+  const p0=cpt(P.study[0]), p1=cpt(P.study[P.study.length-1]);
+  const ecx=(p0.x+p1.x)/2, ecy=(p0.y+p1.y)/2;
+  const ea=Math.hypot(p1.x-p0.x,p1.y-p0.y)/2+P.redEllipse.pad,
+    eb=P.redEllipse.b;
+  const eang=Math.atan2(p1.y-p0.y,p1.x-p0.x)*180/Math.PI;
+  lbl(cll([ecx,ecy]),
+    '<svg width="'+(2*ea+12)+'" height="'+(2*eb+12)+'">'+
+    '<ellipse cx="'+(ea+6)+'" cy="'+(eb+6)+'" rx="'+ea+'" ry="'+eb+
+    '" fill="none" stroke="#E8100C" stroke-width="4"/></svg>',
+    "",0,0,eang,600);
+}
+if(P.pin) lbl(P.pin,P.pinSvg,"",0,-16,0,950);
 const XMARK='<svg width="27" height="27"><circle cx="13.5" cy="13.5" '+
   'r="10.5" fill="#F5C844" stroke="#5E5320" stroke-width="2"/>'+
   '<line x1="6.5" y1="6.5" x2="20.5" y2="20.5" stroke="#5E5320" '+
@@ -376,54 +404,39 @@ for(const m of (P.limits||[])){
 for(const s of (P.stations||[]))
   L.circleMarker(s.ll,{radius:5,color:"#fff",weight:1.4,
     fillColor:s.c,fillOpacity:1,interactive:false}).addTo(map);
+for(const nb of (P.numbered||[]))
+  lbl(nb.ll,'<span class="badge">'+nb.n+'</span>',"",13,-11,0,940);
 for(const l of (P.labels||[]))
   lbl(l.ll,l.html,l.cls,l.ox,l.oy,l.rot||0,l.z||0);
-if(P.arrowTo){
-  const t=cpt(P.arrowTo);
-  const pn=document.getElementById("panel").getBoundingClientRect();
-  const hot=document.querySelector("#panel .row.hot");
-  const hr=hot?hot.getBoundingClientRect():pn;
+if(P.panelLeaders){
   const mr=document.getElementById("map").getBoundingClientRect();
-  const x0=pn.right-mr.left+2, y0=(hr.top+hr.bottom)/2-mr.top;
   const svg=document.getElementById("leader");
   svg.setAttribute("width",mr.width);svg.setAttribute("height",mr.height);
-  svg.innerHTML='<defs><marker id="ah" markerWidth="9" markerHeight="9" '+
-    'refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 Z" '+
-    'fill="#000"/></marker></defs>'+
-    '<line x1="'+x0+'" y1="'+y0+'" x2="'+(t.x-8)+'" y2="'+(t.y-4)+
-    '" stroke="#000" stroke-width="1.4" marker-end="url(#ah)"/>';
-}
-(function(){
-  const z=map.getZoom(), c=map.getCenter();
-  const ftpp=40075016.686*Math.cos(c.lat*Math.PI/180)/
-    Math.pow(2,z+8)*3.28084;
-  const fpu=P.scaleUnit==="Miles"?5280:1;
-  const ticks=P.scaleTicks, tot=ticks[ticks.length-1];
-  const w=tot*fpu/ftpp;
-  let segs="", labs="";
-  for(let i=0;i<ticks.length-1;i++){
-    const x0=ticks[i]*fpu/ftpp, x1=ticks[i+1]*fpu/ftpp;
-    segs+='<div style="position:absolute;left:'+x0+'px;top:12px;width:'+
-      (x1-x0)+'px;height:6px;border:1px solid #000;background:'+
-      (i%2?'#fff':'#111')+'"></div>';
+  let lines="";
+  for(const pl of P.panelLeaders){
+    const el=document.getElementById(pl.id);
+    if(!el) continue;
+    const r=el.getBoundingClientRect();
+    const t=cpt(pl.ll);
+    const cx=r.left-mr.left+r.width/2, cy=r.top-mr.top+r.height/2;
+    const dx=t.x-cx, dy=t.y-cy;
+    const tx=dx!==0?(r.width/2)/Math.abs(dx):1e9,
+      ty=dy!==0?(r.height/2)/Math.abs(dy):1e9;
+    const tt=Math.min(tx,ty);
+    lines+='<line x1="'+(cx+dx*tt)+'" y1="'+(cy+dy*tt)+'" x2="'+t.x+
+      '" y2="'+t.y+'" stroke="#000" stroke-width="1.3"/>';
   }
-  for(const t of ticks)
-    labs+='<span style="position:absolute;top:0;left:'+(t*fpu/ftpp)+
-      'px;transform:translateX(-50%);font-size:9px">'+
-      t.toLocaleString("en-US")+'</span>';
-  document.getElementById("sbar").innerHTML=
-    '<div style="position:relative;height:21px;width:'+(w+36)+'px">'+
-    segs+labs+'<span style="position:absolute;left:'+(w+7)+
-    'px;top:10px;font-size:9.5px">'+P.scaleUnit+'</span></div>';
-})();
+  svg.innerHTML=lines;
+}
 window._map=map;
 })();"""
 
-NORTH = ('<svg width="30" height="30" viewBox="0 0 30 30">'
-         '<circle cx="15" cy="15" r="13.5" fill="#111"/>'
-         '<polygon points="15,4.5 21,23 15,18 9,23" fill="#fff"/>'
-         '<text x="21.6" y="11" text-anchor="middle" font-size="8" '
-         'font-weight="bold" font-family="Arial" fill="#fff">N</text>'
+NORTH = ('<svg width="26" height="46" viewBox="0 0 26 46">'
+         '<polygon points="13,2 21,34 13,27 5,34" fill="#fff" '
+         'stroke="#111" stroke-width="1.6"/>'
+         '<polygon points="13,2 13,27 5,34" fill="#111"/>'
+         '<text x="13" y="44" text-anchor="middle" font-size="10" '
+         'font-weight="bold" font-family="Arial" fill="#111">N</text>'
          '</svg>')
 
 
@@ -432,11 +445,12 @@ def vendor(name):
         encoding="utf-8")
 
 
-def build(out, title, payload, tiles=None, panel="", datasource=""):
+def build(out, title, payload, tiles=None, panels="", legend=False,
+          datasource=""):
     tile_js = (f"window.TILES={json.dumps(tiles)};" if tiles else "")
     alegend = ""
-    if payload.get("stations"):
-        rows = [("#2E7DDB", "Interstates"), ("#E8112D", "US Routes"),
+    if legend:
+        rows = [("#3B6FB5", "Interstates"), ("#E8112D", "US Routes"),
                 ("#B14FC5", "NC Routes"), ("#38A800", "Secondary Routes"),
                 ("#000000", "Non-System Routes")]
         alegend = ('<div id="alegend">' + "".join(
@@ -449,14 +463,14 @@ def build(out, title, payload, tiles=None, panel="", datasource=""):
 <div id="map"></div>
 <svg id="leader"></svg>
 <div id="locator">{locator_svg()}</div>
-{panel}{alegend}
-<div id="nsbox">{NORTH}<div id="sbar"></div></div>
+{panels}{alegend}
+<div id="north">{NORTH}</div>
 <div id="footer">
 <div id="fl"><b>WO Number</b> {WO}<br><b>NCDOT Division</b> {DIVISION}</div>
-<div id="fc"><span class="h">Study Area</span><br>{DESC[0]}<br>{DESC[1]}<br>
+<div id="fc"><span class="fh">Study Area</span><br>{DESC[0]}<br>{DESC[1]}<br>
 {DESC[2]}</div>
-<div id="fr"><b>Lat</b> {LATLON[0]}<br><b>Long</b> {LATLON[1]}</div>
-<div id="vhb">vhb<small>&reg;</small></div>
+<div id="fr"><span class="fh">Coordinates</span><br>{COORDS}</div>
+<img id="vhb" src="data:image/png;base64,{LOGO_B64}" alt="vhb">
 <div id="ds">Data Source: {datasource}</div>
 </div>
 <script>{vendor('leaflet.min.js')}</script>
@@ -484,7 +498,6 @@ loc_payload = {
         {"ll": STUDY[0], "off": [116, 46], "txt": "Begin Study"},
         {"ll": STUDY[-1], "off": [-108, -42], "txt": "End Study"}],
     "labels": loc_labels,
-    "scaleTicks": [0, 0.25, 0.5], "scaleUnit": "Miles",
 }
 print("Location Map tiles...")
 if os.path.exists(f"{SP}/loc_tiles.json"):
@@ -496,7 +509,7 @@ else:
     print(f"  {len(tiles)} tiles ({misses} missed)")
     json.dump(tiles, open(f"{SP}/loc_tiles.json", "w"))
 build(f"{SP}/{WO}_LocationMap.html", "Location Map", loc_payload, tiles,
-      datasource="NCDOT, OpenStreetMap, Esri, VHB")
+      datasource="Esri, Maxar, Earthstar Geographics")
 
 # ================================================================ 2 AREA
 AB = (35.238, -82.225, 35.322, -82.055)
@@ -526,7 +539,32 @@ try:
 except FileNotFoundError:
     pass
 
+water_line, water_poly = [], []
+try:
+    for w in json.load(open(data_path("water.json"))):
+        g = [[round(p["lat"], 5), round(p["lon"], 5)]
+             for p in w.get("geometry") or []]
+        if len(g) < 2:
+            continue
+        if w.get("tags", {}).get("natural") == "water":
+            water_poly.append(g)
+        else:
+            water_line.append(g)
+    print(f"water: {len(water_line)} lines, {len(water_poly)} polys")
+except FileNotFoundError:
+    pass
+
 area_labels = []
+for p in PLACES:
+    nm = p["tags"].get("name", "")
+    if not (AB[0] < p["lat"] < AB[2] and AB[1] < p["lon"] < AB[3]):
+        continue
+    town = p["tags"].get("place") == "town"
+    area_labels.append({"ll": [round(p["lat"], 5), round(p["lon"], 5)],
+                        "html": nm, "cls": "tn" + ("" if town else " h"),
+                        "ox": 30 if nm == "Beulah" else 0,
+                        "oy": 14 if nm in ("Beulah", "Mill Spring") else 0,
+                        "z": 800})
 for tgt, ref, svg in [((35.263, -82.19), "us74", us_shield("74")),
                       ((35.284, -82.095), "us74", us_shield("74")),
                       ((35.268, -82.181), "NC 108", nc_shield("108")),
@@ -541,30 +579,36 @@ for tgt, ref, svg in [((35.263, -82.19), "us74", us_shield("74")),
         area_labels.append({"ll": v, "html": svg, "cls": "", "ox": 0,
                             "oy": 0, "z": 900})
 area_payload = {
-    "minz": 10, "maxz": 17,
+    "minz": 10, "maxz": 17, "mapbg": "#E9F0E6",
     "fb": [[AB[0], AB[1]], [AB[2], AB[3]]],
     "order": ["res", "minor", "sec", "hwy"],
     "style": {
-        "res": [{"color": "#ABABAB", "weight": 0.8, "opacity": 1}],
-        "minor": [{"color": "#7A7A7A", "weight": 1.3, "opacity": 1}],
-        "sec": [{"color": "#3D3D3D", "weight": 2.0, "opacity": 1}],
-        "hwy": [{"color": "#1A1A1A", "weight": 3.3, "opacity": 1}]},
+        "res": [{"color": "#DFE3E0", "weight": 1.8, "opacity": 1},
+                {"color": "#FFFFFF", "weight": 1.0, "opacity": 1}],
+        "minor": [{"color": "#CFD5D2", "weight": 3.0, "opacity": 1},
+                  {"color": "#FFFFFF", "weight": 1.8, "opacity": 1}],
+        "sec": [{"color": "#C0C7CD", "weight": 4.0, "opacity": 1},
+                {"color": "#FFFFFF", "weight": 2.5, "opacity": 1}],
+        "hwy": [{"color": "#7E93AC", "weight": 4.4, "opacity": 1},
+                {"color": "#9FB1C6", "weight": 2.8, "opacity": 1}]},
     "roads": clip(AB, area_cls),
     "muniFill": muni_fill,
-    "redRing": MID,
+    "waterLine": water_line, "waterPoly": water_poly,
+    "pin": MID, "pinSvg": PIN,
     "labels": area_labels,
-    "scaleTicks": [0, 0.5, 1, 2], "scaleUnit": "Miles",
 }
 build(f"{SP}/{WO}_AreaMap.html", "Area Map", area_payload,
       datasource="NCDOT, OpenStreetMap, VHB")
 
-# ================================================================= 3 ADT
+# ================================================================ 3 AADT
 DB = (35.246, -82.206, 35.300, -82.094)
 
 
 def adt_cls(w):
     hw = w["tags"]["highway"]
-    if is74(w) or isi26(w):
+    if is74(w):
+        return "us74"
+    if isi26(w):
         return "hwy"
     if hw == "secondary":
         return "sec"
@@ -575,7 +619,7 @@ def adt_cls(w):
     return None
 
 
-CLASS_COLOR = {"1": "#2E7DDB", "2": "#E8112D", "3": "#B14FC5",
+CLASS_COLOR = {"1": "#3B6FB5", "2": "#E8112D", "3": "#B14FC5",
                "4": "#38A800", "8": "#000000"}
 stations = []
 for f in aadt["features"]:
@@ -585,7 +629,44 @@ for f in aadt["features"]:
     c = CLASS_COLOR.get(str(f["properties"].get("Route", ""))[:1])
     if c:
         stations.append({"ll": [round(lat, 5), round(lon, 5)], "c": c})
-print(f"ADT stations in frame: {len(stations)}")
+print(f"AADT stations in frame: {len(stations)}")
+
+MAINS = []
+for f in aadt["features"]:
+    p = f["properties"]
+    if p.get("Route") == 20000074075 and p.get("LocationID") in (
+            "0750000218", "0750000003", "0750000007"):
+        lon, lat = f["geometry"]["coordinates"]
+        MAINS.append({"id": p["LocationID"],
+                      "ll": [round(lat, 5), round(lon, 5)],
+                      "loc": (p.get("Location") or "").replace(
+                          "US 74 ", "").upper(),
+                      "props": p})
+MAINS.sort(key=lambda s: s["ll"][1])
+
+panels_html = ""
+panel_leaders = []
+numbered = []
+PANEL_POS = {"0750000218": (10, 128), "0750000003": (398, 14),
+             "0750000007": (688, 16)}
+for n, st in enumerate(MAINS, start=1):
+    numbered.append({"ll": st["ll"], "n": n})
+    x, y = PANEL_POS[st["id"]]
+    rows = ""
+    for key, val in [("LocationID", st["id"]), ("COUNTY", "POLK"),
+                     ("RTE_CLS", "US Routes"), ("ROUTE", "US 74"),
+                     ("LOCATION", st["loc"])]:
+        rows += f'<div class="row"><b>{key}</b><span>{val}</span></div>'
+    for yy in range(2002, 2025):
+        val = str(st["props"].get(f"AADT_{yy}") or "").strip()
+        hot = ' hot' if yy == 2024 else ''
+        rows += (f'<div class="row{hot}"><b>AADT_{yy}</b>'
+                 f'<span>{val}</span></div>')
+    pid = f"panel{n}"
+    panels_html += (f'<div class="panel" id="{pid}" '
+                    f'style="left:{x}px;top:{y}px">'
+                    f'<div class="bd">{rows}</div></div>')
+    panel_leaders.append({"id": pid, "ll": st["ll"]})
 
 adt_labels = road_name_labels(DB, 11, "gn", minsep=95, oy=-10,
                               skip=("Golden Maple Drive",
@@ -607,39 +688,30 @@ for tgt, ref in [((35.270, -82.1815), "NC 108"), ((35.255, -82.097), "NC 9"),
         adt_labels.append({"ll": v, "html": nc_shield(ref.split()[1]),
                            "cls": "", "ox": 0, "oy": 0, "z": 850})
 
-gp = GOV["properties"]
-rows_html = ""
-for key, val in [("LocationID", GOV_ID), ("COUNTY", "POLK"),
-                 ("RTE_CLS", "US Routes"), ("ROUTE", "US 74"),
-                 ("LOCATION", "EAST OF NC 108")]:
-    rows_html += f'<div class="row"><b>{key}</b><span>{val}</span></div>'
-for y in range(2002, 2025):
-    val = str(gp.get(f"AADT_{y}") or "").strip()
-    hot = ' hot' if y == 2024 else ''
-    rows_html += (f'<div class="row{hot}"><b>AADT_{y}</b>'
-                  f'<span>{val}</span></div>')
-PANEL = (f'<div id="panel"><div class="hd">NCDOT AADT Stations: {GOV_ID}'
-         f'</div><div class="bd">{rows_html}</div></div>')
-
 adt_payload = {
-    "minz": 10, "maxz": 17,
+    "minz": 10, "maxz": 17, "mapbg": "#FBFBFA",
     "fb": [[DB[0], DB[1]], [DB[2], DB[3]]],
-    "order": ["res", "minor", "sec", "hwy"],
+    "order": ["res", "minor", "sec", "hwy", "us74"],
     "style": {
-        "res": [{"color": "#E3DCC8", "weight": 1.1, "opacity": 1}],
-        "minor": [{"color": "#CFCABA", "weight": 3.0, "opacity": 1},
+        "res": [{"color": "#E4E4E2", "weight": 1.4, "opacity": 1}],
+        "minor": [{"color": "#D8D8D6", "weight": 3.0, "opacity": 1},
                   {"color": "#FFFFFF", "weight": 1.7, "opacity": 1}],
-        "sec": [{"color": "#C4BFAF", "weight": 4.0, "opacity": 1},
+        "sec": [{"color": "#CFCFCD", "weight": 4.0, "opacity": 1},
                 {"color": "#FFFFFF", "weight": 2.4, "opacity": 1}],
-        "hwy": [{"color": "#D9A05B", "weight": 5.2, "opacity": 1},
-                {"color": "#FBEED3", "weight": 3.0, "opacity": 1}]},
+        "hwy": [{"color": "#CFCFCD", "weight": 4.6, "opacity": 1},
+                {"color": "#FFFFFF", "weight": 2.8, "opacity": 1}],
+        "us74": [{"color": "#C9C9C7", "weight": 5.4, "opacity": 1},
+                 {"color": "#FFFFFF", "weight": 3.4, "opacity": 1},
+                 {"color": "#5BC8F0", "weight": 2.8, "opacity": 0.95}]},
     "roads": clip(DB, adt_cls),
     "stations": stations,
-    "arrowTo": GOV_LL,
+    "numbered": numbered,
+    "panelLeaders": panel_leaders,
+    "redEllipse": {"pad": 14, "b": 26},
+    "study": STUDY,
     "labels": adt_labels,
-    "scaleTicks": [0, 2000, 4000], "scaleUnit": "Feet",
-    "mapbg": "#F6EFDC",
 }
-build(f"{SP}/{WO}_ADTMap.html", "ADT Map", adt_payload, panel=PANEL,
-      datasource="NCDOT AADT Stations (2024 publication)")
+build(f"{SP}/{WO}_AADTMap.html", "AADT Map", adt_payload,
+      panels=panels_html, legend=True,
+      datasource="NCDOT AADT Mapping Application")
 print("done")

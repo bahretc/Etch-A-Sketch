@@ -272,14 +272,12 @@ def locator_svg():
                 pts = [xy(c[0], c[1]) for c in ring]
                 dd.append("M" + " L".join(f"{x:.1f},{y:.1f}"
                                           for x, y in pts) + " Z")
-        paths.append(f'<path d="{" ".join(dd)}" fill="#fff" '
+        fill = ("#CC1111" if "polk" in
+                (f["properties"].get("NAME", "") or "").lower() else "#fff")
+        paths.append(f'<path d="{" ".join(dd)}" fill="{fill}" '
                      'stroke="#8A8A8A" stroke-width="0.5"/>')
-    px, py = xy(-82.132762, 35.275639)
-    pin = (f'<path d="M{px:.1f} {py - 9:.1f} c-3 0 -5 2.1 -5 4.7 '
-           f'c0 3.3 5 8.8 5 8.8 c0 0 5 -5.5 5 -8.8 c0 -2.6 -2 -4.7 '
-           f'-5 -4.7 z" fill="#D93025" transform="translate(0,-4)"/>')
     return (f'<svg width="{W:.0f}" height="{H:.0f}" '
-            f'viewBox="0 0 {W:.0f} {H:.0f}">{"".join(paths)}{pin}</svg>')
+            f'viewBox="0 0 {W:.0f} {H:.0f}">{"".join(paths)}</svg>')
 
 
 CSS = """html,body{margin:0;width:1056px;height:816px;background:#fff;
@@ -297,7 +295,7 @@ font-size:11.5px;line-height:1.5}
 .fh{font-weight:bold;font-size:12.5px}
 #fr{position:absolute;right:26px;top:8px;font-size:12px;
 line-height:1.6;text-align:center}
-#vhb{position:absolute;right:10px;bottom:2px;height:50px}
+#vhb{position:absolute;right:16px;bottom:12px;height:40px;width:auto}
 #ds{position:absolute;left:12px;bottom:3px;font-size:8.5px;
 font-style:italic;color:#555}
 #locator{position:absolute;top:10px;left:10px;z-index:1300;

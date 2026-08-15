@@ -1,20 +1,20 @@
-"""Package maps for study 41000079305 in the NCDOT house format.
+"""Package maps for HSIP Study 41000079305 in the consultant figure format.
 
-Modeled on the engineer's ArcMap deliverables for Order 6300055941E
-PH 81I00059 (Location Map, Vicinity Map, AADT Map): bold title line
-above a neatlined frame, blue study marking, sky blue callout boxes
-with wedge leaders, cream AADT year boxes with the governing year
-boxed in red, yellow halo route labels, alternating scale bar in a
-white box, compass rose bottom right.
+Chrome modeled on the HSIP Study 41000074368 figures (and slip
+240816037AA siblings): bordered page, map frame, info table
+(PH # / Work Order / Division / County / Location Description /
+Latitude / Longitude), bottom title block (logo, study number and
+date, map name, figure number), red bordered study location box top
+left with a red leader, thin red ellipse around the study section,
+white rotated road label boxes on aerial, plain black north arrow,
+small legend and scale bar.
 
-Location Map  - aerial, study section blue over the yellow route.
-Area Map      - vicinity style vector street map, white background.
-AADT Map      - white background road diagram with the three mainline
-                count stations and the assumption callout.
+Figure 1 Location Map (aerial), Figure 2 Area Map (grey street
+vector), Figure 3 AADT Map (roads with mainline count stations).
 """
 import json
 import math
-import re
+import os
 import sys
 from collections import defaultdict
 
@@ -25,39 +25,37 @@ from safety_eval.crash_map import fetch_tiles  # noqa: E402
 
 SP = ("/tmp/claude-0/-home-user-Etch-A-Sketch/"
       "4d83860a-51f4-5f7b-a60e-765168dfbb13/scratchpad/map79305")
+REPO = "/home/user/Etch-A-Sketch/examples/41000079305"
 STUDY_NO = "41000079305"
-TITLE_LL = "(35.275639, -82.132762)"
+DATE = "08/15/2026"
+TBL = {"ph": "", "wo": STUDY_NO, "div": "14", "county": "Polk",
+       "desc": "US 74 from MP 12.800 to MP 13.815",
+       "lat": "35.275639", "lon": "-82.132762"}
 
-# ---------------------------------------------------------------- data
-cl = json.load(open(f"{SP}/centerline_us74.geojson"))
+cl = json.load(open(f"{REPO}/centerline_us74.geojson"))
 CO = cl["features"][0]["geometry"]["coordinates"]
 STUDY = [[round(c[1], 6), round(c[0], 6)] for c in CO if 12.8 <= c[2] <= 13.815]
 
-osm = json.load(open(f"{SP}/osm_roads.json"))
+osm = json.load(open(f"{SP}/osm2.json"))
 WAYS = [e for e in osm["elements"] if e["type"] == "way"
         and "highway" in e.get("tags", {})]
 PLACES = [e for e in osm["elements"] if e["type"] == "node"]
+RELS = [e for e in osm["elements"] if e["type"] == "relation"]
 
-aadt = json.load(open(f"{SP}/aadt_raw.json"))
-
-# name -> SR from station Location strings plus OSM refs; ambiguous -> None
-srsets = defaultdict(set)
-for f in aadt["features"]:
-    loc = f["properties"].get("Location", "") or ""
-    for m in re.finditer(r"SR (\d{4}) \(([^)]+)\)", loc):
-        srsets[re.sub(r"[^A-Z0-9 ]", "", m.group(2).upper()).strip()].add(
-            "SR " + m.group(1))
-for w in WAYS:
-    ref, nm = w["tags"].get("ref", ""), w["tags"].get("name")
-    if nm and re.fullmatch(r"SR \d{4}", ref):
-        srsets[re.sub(r"[^A-Z0-9 ]", "", nm.upper()).strip()].add(ref)
-SRMAP = {k: next(iter(v)) for k, v in srsets.items() if len(v) == 1}
-
-
+SRNUM = {"SMITH-WALDROP RD": "1528", "SMITH WALDROP RD": "1528",
+         "POST OFFICE RD": "1166", "HUGH CHAMPION RD": "1525",
+         "WALKER RD": "1533", "S PEAK ST": "1534", "TURNER RD": "1334",
+         "MEADOWLARK LN": "1566", "BILL COLLINS RD": "1526",
+         "SILVER CREEK RD": "1138", "LANDRUM RD": "1520",
+         "BLANTON ST": "1535", "SMITH DAIRY RD": "1519",
+         "JOHN SHEHAN RD": "1330", "SCHOOL RD": "1321",
+         "SANDY PLAINS RD": "1005", "WILL GREEN RD": "1335",
+         "FLOYD BLACKWELL RD": "1337", "HORSEPOWER LN": "1322",
+         "OLD RUTHERFORDTON RD": "1368", "HAYES RD": "1534",
+         "HOUSTON RD": "1137", "WALKER ST": "1137"}
 _ABBR = ((" ROAD", " RD"), (" STREET", " ST"), (" LANE", " LN"),
          (" DRIVE", " DR"), (" PARKWAY", " PKWY"), (" TRAIL", " TRL"),
-         (" AVENUE", " AVE"), (" HIGHWAY", " HWY"), (" CIRCLE", " CIR"),
-         (" COURT", " CT"), (" PLACE", " PL"))
+         (" AVENUE", " AVE"), (" HIGHWAY", " HWY"), (" COURT", " CT"))
 
 
 def abbrev(name):
@@ -65,13 +63,11 @@ def abbrev(name):
     for a, b in _ABBR:
         if up.endswith(a):
             up = up[: -len(a)] + b
-        up = up.replace(a + " ", b + " ")
     return up
 
 
-def srfor(name):
-    key = abbrev(re.sub(r"[^A-Za-z0-9 ]", "", name)).strip()
-    return SRMAP.get(key)
+def srnum(name):
+    return SRNUM.get(abbrev(name))
 
 
 def is74(w):
@@ -98,291 +94,312 @@ def clip(b, classify):
     return dict(out)
 
 
-def nearest_vertex(pred, target):
-    best, bd = None, 9e9
+def muni_lines(b):
+    path = f"{SP}/muni_ways.json"
+    if not os.path.exists(path):
+        return []
+    lines = []
+    for w in json.load(open(path)):
+        g = w.get("geometry") or []
+        if len(g) >= 2 and any(
+                b[0] <= p["lat"] <= b[2] and b[1] <= p["lon"] <= b[3]
+                for p in g):
+            lines.append([[round(p["lat"], 5), round(p["lon"], 5)]
+                          for p in g])
+    return lines
+
+
+def vertex_and_rot(pred, target):
+    best, bd, rot = None, 9e9, 0
     for w in WAYS:
         if not pred(w):
             continue
-        for p in w.get("geometry") or []:
+        g = w.get("geometry") or []
+        for i, p in enumerate(g):
             d = (p["lat"] - target[0]) ** 2 + (p["lon"] - target[1]) ** 2
             if d < bd:
-                bd, best = d, [round(p["lat"], 5), round(p["lon"], 5)]
-    return best
+                j = i + 1 if i + 1 < len(g) else i - 1
+                if j < 0:
+                    continue
+                a, c = (g[i], g[j]) if j > i else (g[j], g[i])
+                dlat, dlon = c["lat"] - a["lat"], c["lon"] - a["lon"]
+                ang = math.degrees(math.atan2(
+                    -dlat, dlon * math.cos(math.radians(p["lat"]))))
+                if ang > 90:
+                    ang -= 180
+                if ang < -90:
+                    ang += 180
+                bd, best, rot = d, [round(p["lat"], 5), round(p["lon"], 5)], \
+                    round(ang, 1)
+    return best, rot
 
 
-def named_labels(b, want, cap, cls_css, minsep=95, skip=()):
-    latpx = 746 / (b[2] - b[0])
-    lonpx = 996 / (b[3] - b[1])
+def named_way_label(name):
+    def pred(w):
+        return w["tags"].get("name", "").upper() == name.upper()
+    return pred
+
+
+def sr_number_labels(b, cap=14, minsep=80):
+    latpx = 606 / (b[2] - b[0])
+    lonpx = 1004 / (b[3] - b[1])
     by = defaultdict(list)
     for w in WAYS:
         nm = w["tags"].get("name")
-        if not nm or w["tags"]["highway"] not in want or nm in skip:
+        if not nm or not srnum(nm):
+            continue
+        if w["tags"]["highway"] not in ("tertiary", "unclassified",
+                                        "residential", "secondary"):
             continue
         g = [p for p in (w.get("geometry") or [])
              if b[0] <= p["lat"] <= b[2] and b[1] <= p["lon"] <= b[3]]
         if len(g) >= 2:
-            by[nm].append(g)
-    items = sorted(((nm, max(segs, key=len)) for nm, segs in by.items()),
-                   key=lambda x: -len(x[1]))
-    mlat, mlon = (b[2] - b[0]) * 0.045, (b[3] - b[1]) * 0.05
+            by[srnum(nm)].append(g)
     placed, out = [], []
-    for nm, seg in items:
+    for num, segs in sorted(by.items(), key=lambda x: -max(len(s) for s in x[1])):
         if len(out) >= cap:
             break
-        mid = seg[len(seg) // 2]
-        if not (b[0] + mlat <= mid["lat"] <= b[2] - mlat
-                and b[1] + mlon <= mid["lon"] <= b[3] - mlon):
+        seg = max(segs, key=len)
+        i = len(seg) // 2
+        mid = seg[i]
+        if not (b[0] + 0.045 * (b[2]-b[0]) <= mid["lat"] <= b[2] - 0.045 * (b[2]-b[0])
+                and b[1] + 0.05 * (b[3]-b[1]) <= mid["lon"] <= b[3] - 0.05 * (b[3]-b[1])):
             continue
         if any(abs(mid["lon"] - q[1]) * lonpx < minsep
                and abs(mid["lat"] - q[0]) * latpx < minsep for q in placed):
             continue
         placed.append((mid["lat"], mid["lon"]))
-        sr = srfor(nm)
-        html = abbrev(nm) + (f"<br>({sr})" if sr else "")
+        j = i + 1 if i + 1 < len(seg) else i - 1
+        a, c = (seg[i], seg[j]) if j > i else (seg[j], seg[i])
+        ang = math.degrees(math.atan2(
+            -(c["lat"] - a["lat"]),
+            (c["lon"] - a["lon"]) * math.cos(math.radians(mid["lat"]))))
+        if ang > 90:
+            ang -= 180
+        if ang < -90:
+            ang += 180
         out.append({"ll": [round(mid["lat"], 5), round(mid["lon"], 5)],
-                    "html": html, "cls": cls_css, "ox": 0, "oy": -13})
+                    "html": num, "cls": "srn", "rot": round(ang, 1),
+                    "ox": 0, "oy": -9})
     return out
 
 
-def station_rows(props, n=3):
-    rows = []
-    for y in range(2024, 2001, -1):
-        v = str(props.get(f"AADT_{y}") or "").strip()
-        if v:
-            rows.append([str(y), f"{int(v):,}"])
-        if len(rows) == n:
-            break
-    return rows
-
-
-MAINS = []
-for f in aadt["features"]:
-    if f["properties"].get("Route") == 20000074075:
-        lon, lat = f["geometry"]["coordinates"]
-        MAINS.append({"ll": [round(lat, 5), round(lon, 5)],
-                      "loc": f["properties"].get("Location", ""),
-                      "rows": station_rows(f["properties"])})
-MAINS.sort(key=lambda s: s["ll"][1])
-assert len(MAINS) == 3, MAINS
-
-# ---------------------------------------------------------------- svg
-
-
-def rose_svg():
-    cx, cy, rl, rs = 36, 42, 26, 12
-    def pt(ang, dist):
-        a = math.radians(ang)
-        return (cx + dist * math.sin(a), cy - dist * math.cos(a))
-    polys = []
-    for ang in (45, 135, 225, 315, 0, 90, 180, 270):
-        card = ang % 90 == 0
-        tip = pt(ang, rl if card else rs)
-        sh = 6.4 if card else 4.6
-        shl, shr = pt(ang - 22.5, sh), pt(ang + 22.5, sh)
-        polys.append(
-            f'<polygon points="{tip[0]:.1f},{tip[1]:.1f} {cx},{cy} '
-            f'{shl[0]:.1f},{shl[1]:.1f}" fill="#111" stroke="#111" '
-            'stroke-width="0.5"/>'
-            f'<polygon points="{tip[0]:.1f},{tip[1]:.1f} {cx},{cy} '
-            f'{shr[0]:.1f},{shr[1]:.1f}" fill="#fff" stroke="#111" '
-            'stroke-width="0.7"/>')
-    ring = (f'<circle cx="{cx}" cy="{cy}" r="9.6" fill="none" '
-            'stroke="#111" stroke-width="1"/>'
-            f'<circle cx="{cx}" cy="{cy}" r="7.6" fill="none" '
-            'stroke="#111" stroke-width="0.5"/>')
-    lt = 'font-family="Georgia,serif" font-size="10.5" fill="#111"'
-    letters = (f'<text x="{cx}" y="11" text-anchor="middle" {lt}>N</text>'
-               f'<text x="{cx + rl + 6}" y="{cy + 3.5}" '
-               f'text-anchor="middle" {lt}>E</text>'
-               f'<text x="{cx}" y="{cy + rl + 11}" text-anchor="middle" '
-               f'{lt}>S</text>'
-               f'<text x="{cx - rl - 6}" y="{cy + 3.5}" '
-               f'text-anchor="middle" {lt}>W</text>')
-    return (f'<svg width="72" height="84" viewBox="0 0 72 84">{ring}'
-            f'{"".join(polys)}{letters}</svg>')
-
-
 def us_shield(num):
-    return ('<svg width="27" height="25" viewBox="0 0 27 25">'
-            '<path d="M13.5 23.6 C8.5 20.6 2.2 18.4 2.2 10 C2.2 7 3.1 4.9 '
-            '4.1 3.8 C6.5 4.9 9 5.4 13.5 5.4 C18 5.4 20.5 4.9 22.9 3.8 '
-            'C23.9 4.9 24.8 7 24.8 10 C24.8 18.4 18.5 20.6 13.5 23.6 Z" '
-            'fill="#fff" stroke="#000" stroke-width="1.5"/>'
-            f'<text x="13.5" y="16.4" text-anchor="middle" font-size="10" '
+    return ('<svg width="26" height="24" viewBox="0 0 26 24">'
+            '<path d="M13 22.8 C8.2 19.9 2.2 17.8 2.2 9.7 C2.2 6.8 3 4.8 4 '
+            '3.7 C6.3 4.8 8.7 5.2 13 5.2 C17.3 5.2 19.7 4.8 22 3.7 C23 4.8 '
+            '23.8 6.8 23.8 9.7 C23.8 17.8 17.8 19.9 13 22.8 Z" fill="#fff" '
+            'stroke="#000" stroke-width="1.5"/>'
+            f'<text x="13" y="15.8" text-anchor="middle" font-size="9.5" '
             f'font-weight="bold" font-family="Arial" fill="#000">{num}'
             '</text></svg>')
 
 
 def nc_shield(num):
-    fs = 8 if len(num) > 2 else 9
-    return ('<svg width="27" height="27" viewBox="0 0 27 27">'
-            '<rect x="5.2" y="5.2" width="16.6" height="16.6" '
-            'transform="rotate(45 13.5 13.5)" fill="#000" stroke="#fff" '
+    fs = 7.5 if len(num) > 2 else 9
+    return ('<svg width="26" height="26" viewBox="0 0 26 26">'
+            '<rect x="5" y="5" width="16" height="16" '
+            'transform="rotate(45 13 13)" fill="#000" stroke="#fff" '
             'stroke-width="1"/>'
-            f'<text x="13.5" y="{13.5 + fs * 0.36:.1f}" text-anchor="middle" '
+            f'<text x="13" y="{13 + fs * 0.36:.1f}" text-anchor="middle" '
             f'font-size="{fs}" font-weight="bold" font-family="Arial" '
             f'fill="#fff">{num}</text></svg>')
 
 
 def i_shield(num):
-    return ('<svg width="27" height="27" viewBox="0 0 27 27">'
-            '<path d="M13.5 25.6 C6.5 22.6 2 19.4 2 13.4 L2 8.6 C5.4 9.6 '
-            '9.3 10.1 13.5 10.1 C17.7 10.1 21.6 9.6 25 8.6 L25 13.4 '
-            'C25 19.4 20.5 22.6 13.5 25.6 Z" fill="#003F87" stroke="#fff" '
-            'stroke-width="1.2"/>'
-            '<path d="M2 8.6 C2 5.4 3 3.4 4.2 2.2 C7.2 3.6 10.2 4.3 13.5 '
-            '4.3 C16.8 4.3 19.8 3.6 22.8 2.2 C24 3.4 25 5.4 25 8.6 C21.6 '
-            '9.6 17.7 10.1 13.5 10.1 C9.3 10.1 5.4 9.6 2 8.6 Z" '
-            'fill="#CE1126" stroke="#fff" stroke-width="1.2"/>'
-            f'<text x="13.5" y="20.4" text-anchor="middle" font-size="9" '
+    return ('<svg width="26" height="26" viewBox="0 0 26 26">'
+            '<path d="M13 24.6 C6.3 21.7 2 18.6 2 12.9 L2 8.3 C5.3 9.3 9 '
+            '9.7 13 9.7 C17 9.7 20.7 9.3 24 8.3 L24 12.9 C24 18.6 19.7 '
+            '21.7 13 24.6 Z" fill="#003F87" stroke="#fff" '
+            'stroke-width="1.1"/>'
+            '<path d="M2 8.3 C2 5.2 3 3.3 4.1 2.1 C7 3.5 9.9 4.1 13 4.1 '
+            'C16.1 4.1 19 3.5 21.9 2.1 C23 3.3 24 5.2 24 8.3 C20.7 9.3 17 '
+            '9.7 13 9.7 C9 9.7 5.3 9.3 2 8.3 Z" fill="#CE1126" '
+            'stroke="#fff" stroke-width="1.1"/>'
+            f'<text x="13" y="19.6" text-anchor="middle" font-size="8.5" '
             f'font-weight="bold" font-family="Arial" fill="#fff">{num}'
             '</text></svg>')
 
 
-# ---------------------------------------------------------------- page
 CSS = """html,body{margin:0;width:1056px;height:816px;background:#fff;
-font-family:Arial,Helvetica,sans-serif;overflow:hidden}
-#title{position:absolute;top:9px;left:30px;font-size:17px;font-weight:bold;
-color:#000}
-#frame{position:absolute;top:38px;left:30px;right:30px;bottom:24px;
-border:1.6px solid #000}
-#map{position:absolute;inset:0;background:#fff}
-.leaflet-container{background:#fff}
-#scale{position:absolute;left:13px;bottom:12px;z-index:1200;background:#fff;
-border:1.3px solid #000;padding:4px 12px 7px 12px}
-#rose{position:absolute;right:13px;bottom:12px;z-index:1200;background:#fff;
-border:1.3px solid #000;padding:2px 3px 0 3px}
+font-family:Arial,Helvetica,sans-serif;overflow:hidden;color:#000}
+#page{position:absolute;inset:12px;border:1.6px solid #000}
+#frame{position:absolute;top:10px;left:10px;right:10px;height:612px;
+border:1.5px solid #000;overflow:hidden}
+#map{position:absolute;inset:0;background:#F4F3F0}
+.leaflet-container{background:#F4F3F0}
+#tbl{position:absolute;left:10px;right:10px;top:634px}
+#tbl table{width:100%;border-collapse:collapse}
+#tbl th{background:#D9D9D9;border:1.2px solid #000;font-size:11px;
+padding:4px 2px}
+#tbl td{border:1.2px solid #000;font-size:10.5px;padding:9px 2px;
+text-align:center}
+#ttl{position:absolute;left:10px;right:10px;bottom:8px;height:70px;
+display:flex;border:1.2px solid #000}
+#ttl>div{border-left:1.2px solid #000;display:flex;flex-direction:column;
+justify-content:center;align-items:center;text-align:center}
+#ttl>div:first-child{border-left:none}
+#logo{width:26%;font-size:30px;font-weight:bold;color:#00447C;
+letter-spacing:0.04em}
+#tmid{width:34%;font-size:13.5px;font-weight:bold;line-height:1.5}
+#tname{width:25%;font-size:13.5px;font-weight:bold}
+#tfig{width:15%;font-size:13.5px;font-weight:bold}
+#studybox{position:absolute;top:12px;left:12px;z-index:1300;
+background:#fff;border:1.6px solid #C00000;padding:5px 12px;
+font-size:11px;line-height:1.45;text-align:center}
+#north{position:absolute;top:12px;right:12px;z-index:1300;background:#fff;
+border:1px solid #666;padding:3px 6px 1px;text-align:center}
+#legend{position:absolute;right:12px;bottom:44px;z-index:1300;
+background:#fff;border:1.2px solid #000;padding:4px 10px 6px;
+font-size:10.5px}
+#legend .h{font-weight:bold;font-size:11.5px;text-align:center;
+margin-bottom:3px}
+#legend .r{display:flex;align-items:center;gap:7px;margin-top:2px}
+#scale{position:absolute;right:12px;bottom:10px;z-index:1300;
+background:rgba(255,255,255,.92);border:1px solid #888;
+padding:2px 8px 4px}
+#attrib{position:absolute;left:12px;bottom:10px;z-index:1300;
+color:#555;font-size:8.5px;background:rgba(255,255,255,.75);
+padding:1px 5px}
+#leader{position:absolute;inset:0;z-index:1200;pointer-events:none}
 .lblc{position:relative}
 .lblc>span{position:absolute;white-space:nowrap;text-align:center;
 display:inline-block;line-height:1.2}
-.rl{color:#ffe500;font-weight:bold;font-size:11px;
-text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,
-1px 1px 0 #000,0 0 3px #000}
-.rlbig{font-size:13px}
-.yb{background:#FFFFBE;border:1px solid #000;color:#000;font-weight:bold;
-font-size:9.5px;padding:1px 4px}
-.yh{color:#000;font-weight:bold;font-size:9.5px;
-text-shadow:-1.5px -1.5px 0 #FFF36E,1.5px -1.5px 0 #FFF36E,
--1.5px 1.5px 0 #FFF36E,1.5px 1.5px 0 #FFF36E,-1.5px 0 0 #FFF36E,
-1.5px 0 0 #FFF36E,0 -1.5px 0 #FFF36E,0 1.5px 0 #FFF36E,0 0 4px #FFF36E}
-.co.col{text-align:left}
-.town{color:#1F5FBF;font-weight:bold;font-style:italic;font-size:16px;
-text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,-1.5px 1.5px 0 #fff,
-1.5px 1.5px 0 #fff,0 0 3px #fff}
-.town.h{font-size:12px}
-.hwyname{color:#9E3123;font-weight:bold;font-size:9.5px;
-text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff}
-.mn{color:#2E3338;font-size:10px;font-weight:bold;
-text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff}
-.mns{color:#4A5057;font-size:9px;font-weight:normal;
-text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff}
-.co{background:#BEE8FF;border:1px solid #000;color:#000;font-weight:bold;
-font-size:12px;line-height:1.4;padding:7px 11px}
-.ab{background:#FFFFBE;border:1px solid #000;color:#000;font-size:10.5px;
+.wb{background:#fff;border:1px solid #000;color:#000;font-weight:bold;
+font-size:10.5px;padding:2px 9px}
+.srn{color:#3D4147;font-weight:bold;font-size:9.5px;
+text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,
+1px 1px 0 #fff,0 0 2px #fff}
+.tn{color:#1F1F1F;font-weight:bold;font-size:12.5px;
+letter-spacing:0.06em;
+text-shadow:-1.5px -1.5px 0 #fff,1.5px -1.5px 0 #fff,
+-1.5px 1.5px 0 #fff,1.5px 1.5px 0 #fff,0 0 3px #fff}
+.tn small{display:block;font-size:10px;font-weight:normal;
+letter-spacing:0}
+.tn.h{font-size:10.5px}
+.ab{background:#fff;border:1px solid #000;color:#000;font-size:10.5px;
 line-height:1.45;padding:3px 4px;text-align:left}
-.ab b.hot{display:block;border:2px solid #E8112D;padding:0 3px;
+.ab b.hot{display:block;border:2px solid #C00000;padding:0 3px;
 font-weight:bold}
 .ab span{display:block;padding:0 5px}
+.rb{background:#fff;border:1.6px solid #C00000;color:#000;
+font-size:10.5px;line-height:1.45;padding:5px 10px;text-align:center}
 """
 
 JS = r"""(function(){
 const P=window.P;
-const map=L.map("map",{zoomControl:false,attributionControl:false,zoomSnap:1,
-  minZoom:P.minz,maxZoom:P.maxz});
+const map=L.map("map",{zoomControl:false,attributionControl:false,
+  zoomSnap:1,minZoom:P.minz,maxZoom:P.maxz});
 if(window.TILES){
   const BLANK="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAAB"+
     "AAEAAAICTAEAOw==";
   const Base=L.TileLayer.extend({getTileUrl:function(c){
-    return window.TILES[P.kind+"/"+c.z+"/"+c.x+"/"+c.y]||BLANK;}});
+    return window.TILES["a/"+c.z+"/"+c.x+"/"+c.y]||BLANK;}});
   (new Base("",{minZoom:P.minz,maxZoom:P.maxz})).addTo(map);
 }
 map.fitBounds(P.fb,{animate:false});
 function cpt(ll){return map.latLngToContainerPoint(L.latLng(ll[0],ll[1]));}
 function cll(p){return map.containerPointToLatLng(L.point(p[0],p[1]));}
-function lbl(ll,html,cls,ox,oy,z){
+function lbl(ll,html,cls,ox,oy,rot,z){
   const la=(ll.lat!==undefined)?ll.lat:ll[0],
     lo=(ll.lng!==undefined)?ll.lng:ll[1];
-  const st="transform:translate(calc(-50% + "+(ox||0)+
-    "px), calc(-50% + "+(oy||0)+"px))";
+  const st="transform:translate(calc(-50% + "+(ox||0)+"px), calc(-50% + "+
+    (oy||0)+"px)) rotate("+(rot||0)+"deg)";
   return L.marker([la,lo],{interactive:false,icon:L.divIcon({
     className:"lblc",html:'<span class="'+(cls||"")+'" style="'+st+'">'+
     html+'</span>',iconSize:[0,0]}),zIndexOffset:z||0}).addTo(map);
 }
-for(const cls of P.order){
+for(const cls of P.order||[]){
   const passes=P.style[cls], group=P.roads[cls];
   if(!passes||!group) continue;
   for(const spec of passes)
     for(const pts of group)
       L.polyline(pts,Object.assign({interactive:false},spec)).addTo(map);
 }
-if(P.study) L.polyline(P.study,{color:"#0455E8",weight:P.studyW||6,
-  opacity:1,interactive:false}).addTo(map);
+for(const pts of P.muni||[])
+  L.polyline(pts,{color:"#7A7A7A",weight:1.6,dashArray:"6 4",
+    interactive:false}).addTo(map);
+// red ellipse around the study section
+const p0=cpt(P.study[0]), p1=cpt(P.study[P.study.length-1]);
+const ecx=(p0.x+p1.x)/2, ecy=(p0.y+p1.y)/2;
+const ea=Math.hypot(p1.x-p0.x,p1.y-p0.y)/2+P.ellPad, eb=P.ellB;
+const eang=Math.atan2(p1.y-p0.y,p1.x-p0.x)*180/Math.PI;
+lbl(cll([ecx,ecy]),
+  '<svg width="'+(2*ea+12)+'" height="'+(2*eb+12)+'">'+
+  '<ellipse cx="'+(ea+6)+'" cy="'+(eb+6)+'" rx="'+ea+'" ry="'+eb+
+  '" fill="none" stroke="#D40000" stroke-width="2.6"/></svg>',
+  "",0,0,eang,600);
 for(const s of (P.stations||[])){
   const ap=cpt(s.ll), bc=[ap.x+s.off[0],ap.y+s.off[1]];
-  L.polyline([s.ll,cll(bc)],{color:"#000",weight:1.3,
+  L.polyline([s.ll,cll(bc)],{color:"#000",weight:1.2,
     interactive:false}).addTo(map);
   let rows="";
   for(const r of s.rows){
     const t=r[0]+" AADT = "+r[1];
     rows+=(r[0]===s.hot)?'<b class="hot">'+t+'</b>':'<span>'+t+'</span>';
   }
-  lbl(cll(bc),rows,"ab",0,0,300);
+  lbl(cll(bc),rows,"ab",0,0,0,300);
   lbl(s.ll,'<svg width="13" height="13"><rect x="2.8" y="2.8" '+
     'width="7.4" height="7.4" transform="rotate(45 6.5 6.5)" '+
     'fill="#1F6FDE" stroke="#0A2E66" stroke-width="1.4"/></svg>',
-    "",0,0,400);
+    "",0,0,0,400);
 }
-for(const c of (P.callouts||[])){
+for(const c of (P.notes||[])){
   const ap=cpt(c.a), bc=[ap.x+c.off[0],ap.y+c.off[1]];
-  const hw=c.needle?3:11;
-  const m=lbl(cll(bc),c.html,"co"+(c.needle?" col":""),0,0,500);
-  const el=m.getElement().querySelector("span");
-  const r=el.getBoundingClientRect(),
-    mr=document.getElementById("map").getBoundingClientRect();
-  const b={x:r.left-mr.left+r.width/2,y:r.top-mr.top+r.height/2,
-    w:r.width,h:r.height};
-  const dx=ap.x-b.x, dy=ap.y-b.y;
-  const tx=dx!==0?(b.w/2)/Math.abs(dx):1e9,
-    ty=dy!==0?(b.h/2)/Math.abs(dy):1e9;
-  const t=Math.min(tx,ty), ex=b.x+dx*t, ey=b.y+dy*t;
-  let b1,b2;
-  if(tx<ty){b1=[ex,Math.max(b.y-b.h/2+3,ey-hw)];
-    b2=[ex,Math.min(b.y+b.h/2-3,ey+hw)];}
-  else{b1=[Math.max(b.x-b.w/2+3,ex-hw),ey];
-    b2=[Math.min(b.x+b.w/2-3,ex+hw),ey];}
-  L.polygon([cll(b1),cll(b2),cll([ap.x,ap.y])],{color:"#000",weight:1,
-    fillColor:"#BEE8FF",fillOpacity:1,interactive:false}).addTo(map);
+  L.polyline([c.a,cll(bc)],{color:"#000",weight:1.2,
+    interactive:false}).addTo(map);
+  lbl(cll(bc),c.html,"rb",0,0,0,500);
 }
 for(const l of (P.labels||[]))
-  lbl(l.ll,l.html,l.cls,l.ox,l.oy,l.z||0);
+  lbl(l.ll,l.html,l.cls,l.ox,l.oy,l.rot||0,l.z||0);
+// red leader from study box to the ellipse
+(function(){
+  const box=document.getElementById("studybox");
+  const fr=document.getElementById("frame").getBoundingClientRect();
+  const br=box.getBoundingClientRect();
+  const x0=br.right-fr.left-6, y0=br.bottom-fr.top-4;
+  const t=cpt(P.leaderTo);
+  const svg=document.getElementById("leader");
+  svg.setAttribute("width",fr.width);svg.setAttribute("height",fr.height);
+  svg.innerHTML='<line x1="'+x0+'" y1="'+y0+'" x2="'+t.x+'" y2="'+t.y+
+    '" stroke="#C00000" stroke-width="1.6"/>';
+})();
+// scale bar
 (function(){
   const z=map.getZoom(), c=map.getCenter();
   const ftpp=40075016.686*Math.cos(c.lat*Math.PI/180)/
     Math.pow(2,z+8)*3.28084;
-  let best=P.scaleFt||0;
-  if(!best){const cands=[1000,2000,2500,4000,5000,10000,20000,40000];
-    best=cands[0];
-    for(const t of cands)
-      if(Math.abs(t/ftpp-330)<Math.abs(best/ftpp-330)) best=t;}
-  const w=best/ftpp;
-  function fmtn(x){return x.toLocaleString("en-US");}
+  const totFt=P.scaleUnit==="Miles"?P.scaleTot*5280:P.scaleTot;
+  const w=totFt/ftpp;
   function lab(x,v){return '<span style="position:absolute;top:0;left:'+
-    x+'px;transform:translateX(-50%);font-size:10px">'+fmtn(v)+
-    '</span>';}
+    x+'px;transform:translateX(-50%);font-size:9px">'+
+    v.toLocaleString("en-US")+'</span>';}
   document.getElementById("scale").innerHTML=
-    '<div style="position:relative;height:25px;width:'+(w+44)+'px">'+
-    '<div style="position:absolute;left:0;top:13px;width:'+w+
-    'px;height:7px;border:1px solid #000;background:#fff"></div>'+
-    '<div style="position:absolute;left:1px;top:14px;width:'+(w/4)+
-    'px;height:5px;background:#000"></div>'+
-    '<div style="position:absolute;left:'+(w/2)+'px;top:14px;width:'+
-    (w/2-1)+'px;height:5px;background:#000"></div>'+
-    lab(0,0)+lab(w/4,best/4)+lab(w/2,best/2)+lab(w,best)+
-    '<span style="position:absolute;left:'+(w+8)+
-    'px;top:12px;font-size:10px">Feet</span></div>';
+    '<div style="position:relative;height:20px;width:'+(w+34)+'px">'+
+    '<div style="position:absolute;left:0;top:11px;width:'+w+
+    'px;height:5px;border:1px solid #000;background:#fff"></div>'+
+    '<div style="position:absolute;left:1px;top:12px;width:'+(w/2)+
+    'px;height:3px;background:#3b3b3b"></div>'+
+    lab(0,0)+lab(w/2,P.scaleTot/2)+lab(w,P.scaleTot)+
+    '<span style="position:absolute;left:'+(w+6)+
+    'px;top:10px;font-size:9px">'+P.scaleUnit+'</span></div>';
 })();
 window._map=map;
 })();"""
+
+NORTH = ('<svg width="22" height="34" viewBox="0 0 22 34">'
+         '<polygon points="11,1 18,24 11,18 4,24" fill="#111"/>'
+         '<text x="11" y="33" text-anchor="middle" font-size="11" '
+         'font-weight="bold" font-family="Arial" fill="#111">N</text>'
+         '</svg>')
+GL_ELL = ('<svg width="26" height="14"><ellipse cx="13" cy="7" rx="11" '
+          'ry="5.5" fill="none" stroke="#D40000" stroke-width="2"/></svg>')
+GL_MUNI = ('<svg width="26" height="8"><line x1="1" y1="4" x2="25" y2="4" '
+           'stroke="#7A7A7A" stroke-width="1.6" '
+           'stroke-dasharray="6 4"/></svg>')
+GL_STA = ('<svg width="26" height="13"><rect x="9.3" y="2.8" width="7.4" '
+          'height="7.4" transform="rotate(45 13 6.5)" fill="#1F6FDE" '
+          'stroke="#0A2E66" stroke-width="1.4"/></svg>')
 
 
 def vendor(name):
@@ -390,16 +407,35 @@ def vendor(name):
         encoding="utf-8")
 
 
-def build(out, name, payload, tiles=None):
-    title = f"Study {STUDY_NO} {name} {TITLE_LL}"
+def build(out, name, fig, payload, legend_rows, tiles=None, attrib=""):
     tile_js = (f"window.TILES={json.dumps(tiles)};" if tiles else "")
+    leg = "".join(f'<div class="r">{g}<span>{t}</span></div>'
+                  for g, t in legend_rows)
     html = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
-<title>{title}</title>
+<title>{name} - HSIP Study {STUDY_NO}</title>
 <style>{vendor('leaflet.min.css')}</style><style>{CSS}</style></head><body>
-<div id="title">{title}</div>
+<div id="page">
 <div id="frame"><div id="map"></div>
+<svg id="leader"></svg>
+<div id="studybox"><b>Study Location:</b><br>US 74, Polk County<br>
+MP 12.800 to MP 13.815</div>
+<div id="north">{NORTH}</div>
+<div id="legend"><div class="h">Legend</div>{leg}</div>
 <div id="scale"></div>
-<div id="rose">{rose_svg()}</div></div>
+{f'<div id="attrib">{attrib}</div>' if attrib else ''}</div>
+<div id="tbl"><table><tr><th style="width:9%">PH #</th>
+<th style="width:12%">Work Order</th><th style="width:8%">Division</th>
+<th style="width:9%">County</th>
+<th style="width:43%">Location Description</th>
+<th style="width:9.5%">Latitude</th>
+<th style="width:9.5%">Longitude</th></tr>
+<tr><td>{TBL['ph']}</td><td>{TBL['wo']}</td><td>{TBL['div']}</td>
+<td>{TBL['county']}</td><td>{TBL['desc']}</td><td>{TBL['lat']}</td>
+<td>{TBL['lon']}</td></tr></table></div>
+<div id="ttl"><div id="logo">VHB</div>
+<div id="tmid">HSIP Study &ndash; {STUDY_NO}<br>{DATE}</div>
+<div id="tname">{name}</div><div id="tfig">Figure {fig}</div></div>
+</div>
 <script>{vendor('leaflet.min.js')}</script>
 <script>{tile_js}window.P={json.dumps(payload)};</script>
 <script>{JS}</script></body></html>"""
@@ -410,42 +446,33 @@ def build(out, name, payload, tiles=None):
 
 # ============================================================ 1 LOCATION
 LB = (35.2665, -82.1525, 35.2845, -82.1125)
-loc_roads = clip(LB, lambda w: "us74" if is74(w) else (
-    "minor" if w["tags"]["highway"] in
-    ("secondary", "tertiary", "unclassified", "residential",
-     "motorway_link") else None))
-loc_labels = named_labels(LB, ("tertiary", "unclassified", "residential"),
-                          5, "rl", minsep=120,
-                          skip=("Golden Maple Drive", "Lone Cypress Trail",
-                                "Majesty Rock Bend", "Apple Tree Lane"))
-for t in (-82.147, -82.118):
-    v = nearest_vertex(is74, (35.276, t))
+loc_labels = []
+for tgt in ((35.2705, -82.147), (35.2825, -82.118)):
+    v, rot = vertex_and_rot(is74, tgt)
     if v:
-        loc_labels.append({"ll": v, "html": "US 74", "cls": "rl rlbig",
-                           "ox": 0, "oy": -17})
+        loc_labels.append({"ll": v, "html": "US 74", "cls": "wb",
+                           "rot": rot, "ox": 0, "oy": -22, "z": 700})
+for nm, disp, tgt, oy in [
+        ("Bill Collins Road", "SR 1526 (Bill Collins Rd)",
+         (35.2735, -82.1435), -18),
+        ("Smith Waldrop Road", "SR 1528 (Smith-Waldrop Rd)",
+         (35.2812, -82.138), -18),
+        ("Hugh Champion Road", "SR 1525 (Hugh Champion Rd)",
+         (35.2755, -82.1155), -18)]:
+    v, rot = vertex_and_rot(named_way_label(nm), tgt)
+    if v:
+        loc_labels.append({"ll": v, "html": disp, "cls": "wb", "rot": rot,
+                           "ox": 0, "oy": oy, "z": 650})
 loc_payload = {
-    "minz": 14, "maxz": 16, "kind": "a",
+    "minz": 14, "maxz": 16,
     "fb": [[LB[0], LB[1]], [LB[2], LB[3]]],
-    "order": ["minor", "us74"],
-    "style": {
-        "minor": [{"color": "#3F3F3F", "weight": 3.4, "opacity": 0.85},
-                  {"color": "#F2F2F2", "weight": 2.0, "opacity": 0.95}],
-        "us74": [{"color": "#4A4A4A", "weight": 7.8, "opacity": 0.95,
-                  "dashArray": "7 7"},
-                 {"color": "#FFD400", "weight": 5.2, "opacity": 1}]},
-    "roads": loc_roads,
-    "study": STUDY, "studyW": 7,
+    "order": [], "style": {}, "roads": {},
+    "study": STUDY, "ellPad": 26, "ellB": 46,
+    "leaderTo": STUDY[0],
     "labels": loc_labels,
-    "callouts": [{
-        "a": [35.275639, -82.132762], "off": [-250, -138],
-        "html": ("Location of Section Study<br>"
-                 "US 74 from MP 12.800 to MP 13.815<br>"
-                 "<span style='display:block;height:6px'></span>"
-                 "2024 AADT = 18,500")}],
-    "scaleFt": 4000,
+    "scaleTot": 4000, "scaleUnit": "Feet",
 }
 print("Location Map tiles...")
-import os  # noqa: E402
 if os.path.exists(f"{SP}/loc_tiles.json"):
     tiles = json.load(open(f"{SP}/loc_tiles.json"))
     print(f"  {len(tiles)} tiles (cached)")
@@ -454,8 +481,9 @@ else:
                                 kinds=("a",), zooms=(14, 15, 16))
     print(f"  {len(tiles)} tiles ({misses} missed)")
     json.dump(tiles, open(f"{SP}/loc_tiles.json", "w"))
-build(f"{SP}/{STUDY_NO}_LocationMap.html", "Location Map",
-      loc_payload, tiles)
+build(f"{SP}/{STUDY_NO}_LocationMap.html", "Location Map", 1, loc_payload,
+      [(GL_ELL, "Study Section")], tiles,
+      attrib="Esri, Maxar, Earthstar Geographics")
 
 # ================================================================ 2 AREA
 AB = (35.238, -82.225, 35.322, -82.055)
@@ -463,85 +491,8 @@ AB = (35.238, -82.225, 35.322, -82.055)
 
 def area_cls(w):
     hw = w["tags"]["highway"]
-    if isi26(w):
-        return "i26"
-    if is74(w):
-        return "us74"
-    if hw == "motorway_link":
-        return "link"
-    if hw == "secondary":
-        return "sec"
-    if hw in ("tertiary", "unclassified"):
-        return "minor"
-    if hw == "residential":
-        return "res"
-    return None
-
-
-area_roads = clip(AB, area_cls)
-area_labels = named_labels(
-    AB, ("tertiary", "unclassified"), 15, "yh", minsep=105,
-    skip=("Golden Maple Drive", "Lone Cypress Trail", "Majesty Rock Bend",
-          "Apple Tree Lane", "Wolverine Trail", "Government Complex Drive",
-          "Landrum Road", "Landrum Rd"))
-for p in PLACES:
-    nm = p["tags"].get("name", "")
-    if not (AB[0] < p["lat"] < AB[2] and AB[1] < p["lon"] < AB[3]):
-        continue
-    town = p["tags"].get("place") == "town"
-    area_labels.append({"ll": [round(p["lat"], 5), round(p["lon"], 5)],
-                        "html": nm, "cls": "town" + ("" if town else " h"),
-                        "ox": 0, "oy": 0, "z": 700})
-shields = []
-for tgt, ref, svg in [((35.263, -82.19), "us74", us_shield("74")),
-                      ((35.284, -82.095), "us74", us_shield("74")),
-                      ((35.27, -82.181), "NC 108", nc_shield("108")),
-                      ((35.305, -82.163), "NC 108", nc_shield("108")),
-                      ((35.252, -82.093), "NC 9", nc_shield("9")),
-                      ((35.292, -82.121), "NC 9", nc_shield("9")),
-                      ((35.245, -82.218), "I 26", i_shield("26"))]:
-    pred = (is74 if ref == "us74" else isi26 if ref == "I 26"
-            else (lambda w, r=ref: w["tags"].get("ref") == r))
-    v = nearest_vertex(pred, tgt)
-    if v:
-        shields.append({"ll": v, "html": svg, "cls": "", "ox": 0, "oy": 0,
-                        "z": 800})
-hn = nearest_vertex(is74, (35.2685, -82.158))
-if hn:
-    shields.append({"ll": hn, "html": "(SGT W DEAN ARLEDGE MEMORIAL HWY)",
-                    "cls": "hwyname", "ox": 0, "oy": 15, "z": 600})
-area_payload = {
-    "minz": 10, "maxz": 17,
-    "fb": [[AB[0], AB[1]], [AB[2], AB[3]]],
-    "order": ["res", "minor", "link", "sec", "i26", "us74"],
-    "style": {
-        "res": [{"color": "#DCDCDC", "weight": 1.2, "opacity": 1}],
-        "minor": [{"color": "#A0A0A0", "weight": 3.4, "opacity": 1},
-                  {"color": "#FFEE8C", "weight": 2.2, "opacity": 1}],
-        "link": [{"color": "#BDBDBD", "weight": 1.8, "opacity": 1}],
-        "sec": [{"color": "#8A5A17", "weight": 4.4, "opacity": 1},
-                {"color": "#E8A33D", "weight": 3.0, "opacity": 1}],
-        "i26": [{"color": "#2B2B2B", "weight": 6.0, "opacity": 1},
-                {"color": "#7A8FA6", "weight": 4.2, "opacity": 1}],
-        "us74": [{"color": "#701A12", "weight": 5.4, "opacity": 1},
-                 {"color": "#C0504D", "weight": 3.8, "opacity": 1}]},
-    "roads": area_roads,
-    "study": STUDY, "studyW": 5,
-    "labels": area_labels + shields,
-    "scaleFt": 20000,
-}
-build(f"{SP}/{STUDY_NO}_AreaMap.html", "Area Map", area_payload)
-
-# ================================================================ 3 AADT
-DB = (35.244, -82.205, 35.302, -82.088)
-
-
-def aadt_cls(w):
-    hw = w["tags"]["highway"]
-    if is74(w):
-        return "us74"
-    if isi26(w):
-        return "sec"
+    if isi26(w) or is74(w):
+        return "hwy"
     if hw in ("motorway_link", "secondary_link"):
         return "link"
     if hw == "secondary":
@@ -553,59 +504,94 @@ def aadt_cls(w):
     return None
 
 
-aadt_roads = clip(DB, aadt_cls)
-aadt_labels = named_labels(
-    DB, ("tertiary", "unclassified"), 7, "mns", minsep=120,
-    skip=("Golden Maple Drive", "Lone Cypress Trail", "Majesty Rock Bend",
-          "Apple Tree Lane", "Wolverine Trail", "Government Complex Drive",
-          "East Mills Street", "West Mills Street", "Pea Ridge Road"))
-aadt_labels = [
-    l for l in aadt_labels
-    if all(abs(l["ll"][0] - s["ll"][0]) > 0.009
-           or abs(l["ll"][1] - s["ll"][1]) > 0.014 for s in MAINS)]
-for t in (-82.178, -82.097):
-    v = nearest_vertex(is74, (35.27, t))
+area_labels = sr_number_labels(AB, cap=14)
+for p in PLACES:
+    nm = (p["tags"].get("name") or "").upper()
+    if not (AB[0] < p["lat"] < AB[2] and AB[1] < p["lon"] < AB[3]):
+        continue
+    town = p["tags"].get("place") == "town"
+    pop = p["tags"].get("population")
+    html = nm + (f"<small>Pop. {int(pop):,}</small>" if pop and town else "")
+    ox, oy = (30, 14) if nm == "BEULAH" else (0, 12) if nm == "MILL SPRING" \
+        else (0, 0)
+    area_labels.append({"ll": [round(p["lat"], 5), round(p["lon"], 5)],
+                        "html": html, "cls": "tn" + ("" if town else " h"),
+                        "ox": ox, "oy": oy, "z": 800})
+for tgt, ref, svg in [((35.263, -82.19), "us74", us_shield("74")),
+                      ((35.284, -82.095), "us74", us_shield("74")),
+                      ((35.268, -82.181), "NC 108", nc_shield("108")),
+                      ((35.305, -82.163), "NC 108", nc_shield("108")),
+                      ((35.252, -82.093), "NC 9", nc_shield("9")),
+                      ((35.290, -82.140), "NC 9", nc_shield("9")),
+                      ((35.245, -82.218), "I 26", i_shield("26"))]:
+    pred = (is74 if ref == "us74" else isi26 if ref == "I 26"
+            else (lambda w, r=ref: w["tags"].get("ref") == r))
+    v, _ = vertex_and_rot(pred, tgt)
     if v:
-        aadt_labels.append({"ll": v, "html": "US 74", "cls": "rl rlbig",
-                            "ox": 0, "oy": -16})
-for ref, tgt in [("NC 108", (35.266, -82.181)), ("NC 108", (35.293, -82.163)),
-                 ("NC 9", (35.255, -82.094)), ("NC 9", (35.289, -82.135))]:
-    v = nearest_vertex(lambda w, r=ref: w["tags"].get("ref") == r, tgt)
+        area_labels.append({"ll": v, "html": svg, "cls": "", "ox": 0,
+                            "oy": 0, "z": 900})
+area_payload = {
+    "minz": 10, "maxz": 17,
+    "fb": [[AB[0], AB[1]], [AB[2], AB[3]]],
+    "order": ["res", "minor", "link", "sec", "hwy"],
+    "style": {
+        "res": [{"color": "#DCDCDC", "weight": 1.1, "opacity": 1}],
+        "minor": [{"color": "#C4C4C4", "weight": 1.9, "opacity": 1}],
+        "link": [{"color": "#C9C9C9", "weight": 1.4, "opacity": 1}],
+        "sec": [{"color": "#9FA4AA", "weight": 2.6, "opacity": 1}],
+        "hwy": [{"color": "#141414", "weight": 4.6, "opacity": 1},
+                {"color": "#FFFFFF", "weight": 1.5, "opacity": 1}]},
+    "roads": clip(AB, area_cls),
+    "muni": muni_lines(AB),
+    "study": STUDY, "ellPad": 12, "ellB": 20,
+    "leaderTo": STUDY[0],
+    "labels": area_labels,
+    "scaleTot": 2, "scaleUnit": "Miles",
+}
+build(f"{SP}/{STUDY_NO}_AreaMap.html", "Area Map", 2, area_payload,
+      [(GL_ELL, "Study Section"), (GL_MUNI, "Municipal Boundary")])
+
+# ================================================================ 3 AADT
+DB = (35.244, -82.205, 35.302, -82.088)
+aadt_labels = sr_number_labels(DB, cap=9)
+for tgt in ((35.2645, -82.178), (35.284, -82.097)):
+    v, rot = vertex_and_rot(is74, tgt)
     if v:
-        aadt_labels.append({"ll": v, "html": ref, "cls": "mn",
-                            "ox": 14, "oy": -12})
-stations = [
-    dict(MAINS[0], off=[-6, 62], hot="2024"),
-    dict(MAINS[1], off=[30, 66], hot="2024"),
-    dict(MAINS[2], off=[-26, 64], hot="2024"),
+        aadt_labels.append({"ll": v, "html": "US 74", "cls": "wb",
+                            "rot": rot, "ox": 0, "oy": -20, "z": 700})
+for tgt, ref, svg in [((35.266, -82.181), "NC 108", nc_shield("108")),
+                      ((35.293, -82.163), "NC 108", nc_shield("108")),
+                      ((35.255, -82.094), "NC 9", nc_shield("9")),
+                      ((35.284, -82.13), "NC 9", nc_shield("9"))]:
+    v, _ = vertex_and_rot(lambda w, r=ref: w["tags"].get("ref") == r, tgt)
+    if v:
+        aadt_labels.append({"ll": v, "html": svg, "cls": "", "ox": 0,
+                            "oy": 0, "z": 900})
+STA = [
+    {"ll": [35.259, -82.19343], "off": [-4, 66], "hot": "2024",
+     "rows": [["2024", "21,000"], ["2023", "20,000"], ["2022", "17,500"]]},
+    {"ll": [35.26306, -82.17387], "off": [40, 70], "hot": "2024",
+     "rows": [["2024", "18,500"], ["2023", "19,000"], ["2022", "17,000"]]},
+    {"ll": [35.28569, -82.105], "off": [-30, 68], "hot": "2024",
+     "rows": [["2024", "15,500"], ["2023", "18,000"], ["2022", "15,500"]]},
 ]
 aadt_payload = {
     "minz": 10, "maxz": 17,
     "fb": [[DB[0], DB[1]], [DB[2], DB[3]]],
-    "order": ["res", "minor", "link", "sec", "us74"],
-    "style": {
-        "res": [{"color": "#D8D8D8", "weight": 1.1, "opacity": 1}],
-        "minor": [{"color": "#A8AEB5", "weight": 2.0, "opacity": 1}],
-        "link": [{"color": "#B7B7B7", "weight": 1.7, "opacity": 1}],
-        "sec": [{"color": "#8F969E", "weight": 2.6, "opacity": 1}],
-        "us74": [{"color": "#6F6F6F", "weight": 7.0, "opacity": 1,
-                  "dashArray": "7 7"},
-                 {"color": "#FFD400", "weight": 4.6, "opacity": 1}]},
-    "roads": aadt_roads,
-    "study": STUDY, "studyW": 6,
-    "stations": stations,
+    "order": ["res", "minor", "link", "sec", "hwy"],
+    "style": area_payload["style"],
+    "roads": clip(DB, area_cls),
+    "muni": [],
+    "study": STUDY, "ellPad": 12, "ellB": 24,
+    "leaderTo": STUDY[0],
+    "stations": STA,
+    "notes": [{"a": STUDY[len(STUDY) // 2], "off": [-30, -128],
+               "html": ("Assumed AADT equal to the US 74<br>"
+                        "station east of NC 108<br>"
+                        "<b>2024 AADT = 18,500</b>")}],
     "labels": aadt_labels,
-    "callouts": [
-        {"a": STUDY[(len(STUDY) * 3) // 4], "off": [120, -150],
-         "html": ("Location of Section Study<br>"
-                  "US 74 from MP 12.800 to MP 13.815<br>"
-                  "<span style='display:block;height:6px'></span>"
-                  "2024 AADT = 18,500")},
-        {"a": STUDY[len(STUDY) // 10], "off": [-175, -105], "needle": True,
-         "html": ("Assumed AADT equal to the<br>"
-                  "US 74 station east of NC 108<br>"
-                  "2024 AADT = 18,500")}],
-    "scaleFt": 10000,
+    "scaleTot": 2, "scaleUnit": "Miles",
 }
-build(f"{SP}/{STUDY_NO}_AADTMap.html", "AADT Map", aadt_payload)
+build(f"{SP}/{STUDY_NO}_AADTMap.html", "AADT Map", 3, aadt_payload,
+      [(GL_ELL, "Study Section"), (GL_STA, "AADT Count Station")])
 print("done")

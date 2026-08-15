@@ -634,7 +634,7 @@ MAINS = []
 for f in aadt["features"]:
     p = f["properties"]
     if p.get("Route") == 20000074075 and p.get("LocationID") in (
-            "0750000218", "0750000003", "0750000007"):
+            "0750000003",):
         lon, lat = f["geometry"]["coordinates"]
         MAINS.append({"id": p["LocationID"],
                       "ll": [round(lat, 5), round(lon, 5)],
@@ -646,10 +646,8 @@ MAINS.sort(key=lambda s: s["ll"][1])
 panels_html = ""
 panel_leaders = []
 numbered = []
-PANEL_POS = {"0750000218": (10, 128), "0750000003": (398, 14),
-             "0750000007": (688, 16)}
+PANEL_POS = {"0750000003": (10, 128)}
 for n, st in enumerate(MAINS, start=1):
-    numbered.append({"ll": st["ll"], "n": n})
     x, y = PANEL_POS[st["id"]]
     rows = ""
     for key, val in [("LocationID", st["id"]), ("COUNTY", "POLK"),

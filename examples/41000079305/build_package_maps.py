@@ -423,13 +423,13 @@ MP 12.800 to MP 13.815</div>
 <div id="legend"><div class="h">Legend</div>{leg}</div>
 <div id="scale"></div>
 {f'<div id="attrib">{attrib}</div>' if attrib else ''}</div>
-<div id="tbl"><table><tr><th style="width:9%">PH #</th>
-<th style="width:12%">Work Order</th><th style="width:8%">Division</th>
-<th style="width:9%">County</th>
-<th style="width:43%">Location Description</th>
-<th style="width:9.5%">Latitude</th>
-<th style="width:9.5%">Longitude</th></tr>
-<tr><td>{TBL['ph']}</td><td>{TBL['wo']}</td><td>{TBL['div']}</td>
+<div id="tbl"><table><tr>
+<th style="width:14%">Work Order</th><th style="width:9%">Division</th>
+<th style="width:10%">County</th>
+<th style="width:46%">Location Description</th>
+<th style="width:10.5%">Latitude</th>
+<th style="width:10.5%">Longitude</th></tr>
+<tr><td>{TBL['wo']}</td><td>{TBL['div']}</td>
 <td>{TBL['county']}</td><td>{TBL['desc']}</td><td>{TBL['lat']}</td>
 <td>{TBL['lon']}</td></tr></table></div>
 <div id="ttl"><div id="logo">VHB</div>

@@ -39,16 +39,24 @@ DESC = ["US 74 from 0.075 miles east of SR 1526 (Bill Collins Rd) "
         "to 0.100 miles east of Mile Marker 166 [MP 13.815]",
         "in Polk County"]
 
+
+def data_path(name):
+    for base in (SP, f"{REPO}/mapdata"):
+        cand = f"{base}/{name}"
+        if os.path.exists(cand):
+            return cand
+    raise FileNotFoundError(name)
+
 cl = json.load(open(f"{REPO}/centerline_us74.geojson"))
 CO = cl["features"][0]["geometry"]["coordinates"]
 STUDY = [[round(c[1], 6), round(c[0], 6)] for c in CO if 12.8 <= c[2] <= 13.815]
 MID = STUDY[len(STUDY) // 2]
 
-osm = json.load(open(f"{SP}/osm2.json"))
+osm = json.load(open(data_path("osm2.json")))
 WAYS = [e for e in osm["elements"] if e["type"] == "way"
         and "highway" in e.get("tags", {})]
 
-aadt = json.load(open(f"{SP}/aadt_raw.json"))
+aadt = json.load(open(data_path("aadt_raw.json")))
 GOV_ID = "0750000003"
 GOV = next(f for f in aadt["features"]
            if f["properties"].get("LocationID") == GOV_ID)
@@ -235,7 +243,7 @@ def i_shield(num):
 
 
 def locator_svg():
-    d = json.load(open(f"{SP}/counties.json"))
+    d = json.load(open(data_path("counties.json")))
     lon0, lon1, lat0, lat1 = -84.45, -75.30, 33.70, 36.75
     W = 208.0
     k = W / (lon1 - lon0)
@@ -508,12 +516,15 @@ def area_cls(w):
 
 
 muni_fill = []
-if os.path.exists(f"{SP}/muni_ways.json"):
+try:
+    _mw = json.load(open(data_path("muni_ways.json")))
     ways_pts = [[[round(p["lat"], 5), round(p["lon"], 5)]
                  for p in w.get("geometry") or []]
-                for w in json.load(open(f"{SP}/muni_ways.json"))]
+                for w in _mw]
     muni_fill = assemble_rings([w for w in ways_pts if len(w) >= 2])
     print(f"muni rings: {len(muni_fill)}")
+except FileNotFoundError:
+    pass
 
 area_labels = []
 for tgt, ref, svg in [((35.263, -82.19), "us74", us_shield("74")),

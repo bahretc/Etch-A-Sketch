@@ -747,20 +747,24 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         x, y = road_pt(t)
         a = road_ang(t) + math.pi / 2
         up = jn.get("side", -1)
+        ex = x + up * 52 * math.cos(a)
+        ey = y + up * 52 * math.sin(a)
         svg.append(f'<line x1="{x:.1f}" y1="{y:.1f}" '
-                   f'x2="{x + up * 52 * math.cos(a):.1f}" '
-                   f'y2="{y + up * 52 * math.sin(a):.1f}" stroke="#000" '
+                   f'x2="{ex:.1f}" y2="{ey:.1f}" stroke="#000" '
                    'stroke-width="1.1"/>')
-        lx = x + up * 62 * math.cos(a)
-        ly = y + up * 62 * math.sin(a) + (0 if up < 0 else 12)
-        svg.append(_stroke_text(lx, ly - 4, jn["label"], size=11.5))
-        jn_keep.append((lx - 4.2 * len(jn["label"]), ly - 12,
-                        lx + 4.2 * len(jn["label"]), ly + 6))
+        lx = ex + 8
+        ly = ey + (14 if up > 0 else -12)
+        svg.append(_stroke_text(lx, ly, jn["label"], size=11.5,
+                                anchor="start"))
+        jn_keep.append((lx - 6, ly - 10,
+                        lx + 8.4 * len(jn["label"]), ly + 10))
+        jn_keep.append((min(x, ex) - 16, min(y, ey) - 6,
+                        max(x, ex) + 16, max(y, ey) + 6))
 
     if "north_rot" not in layout:
         layout["north_rot"] = math.degrees(road_ang(0.5))
     keep_out = [(892, 10, 1632, 400), (1300, 826, 1632, 1056),
-                (210, 905, 560, 1040), (300, 20, 890, 300),
+                (140, 915, 470, 1040), (300, 20, 890, 300),
                 (0, 830, 200, 1056), (1460, 360, 1632, 446)]
     keep_out += jn_keep
     keep_out += [tuple(r) for r in layout.get("keep_out", [])]
@@ -771,65 +775,132 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         return not any(x0 < kx1 and x1 > kx0 and y0 < ky1 and y1 > ky0
                        for kx0, ky0, kx1, ky1 in keep_out)
 
-    # every crash stays at its true milepost. The first assembly at a
-    # location sits just off the line and stacked ones climb a tight
-    # ladder on their side of the road, the way the drawn sheets ladder
-    # a cluster. Separation and centerline clearance both test the
-    # assembly's true ink extents, never its origin alone.
+    # clusters compose as drafted ladders, the way the reference sheets
+    # stack a location: crashes within a stretch group into one ladder
+    # per side of the road, rows ordered so the bubbles read in crash
+    # order from the outside in, pitch set by each row's true ink
+    # extents, every row stepping back by the same stagger
     route_fwd = layout.get("route_forward", "E")
-    placed: list[tuple[float, float, float, float]] = []   # ink boxes
+    items = []
     for cr in sorted([c for c in crashes if c.mp is not None],
                      key=lambda c: (c.mp, c.seq)):
-        t = (cr.mp - lo) / (hi - lo) if hi > lo else 0.5
-        t = min(1.0, max(0.0, t))
+        t = min(1.0, max(0.0, (cr.mp - lo) / (hi - lo) if hi > lo else 0.5))
         bx, by = road_pt(t)
         ang = math.degrees(road_ang(t))
         nx, ny = _rot(0, -1, ang)
-        fx, fy = _rot(1, 0, ang)
         g, box, n_ext = crash_glyph(cr, base_ang=ang,
                                     route_forward=route_fwd)
-        pref, hard_side = 1, False
+        pref, hard = 1, False
         if cr.acc_typ in (ROR_TYPES | {18, 19}) and cr.units:
-            # a departure trajectory must stay on the side of the road
-            # the vehicle actually left toward
             base = ang - _DIR_ANG.get(route_fwd, 0)
             ua = base + _DIR_ANG.get(cr.units[0].direction, -base)
             side = -1 if cr.acc_typ == 2 else 1
             fa = math.radians(ua + side * 44)
             pref = 1 if math.cos(fa) * nx + math.sin(fa) * ny > 0 else -1
-            hard_side = True
-        cands = []
-        for sd in ((pref,) if hard_side else (pref, -pref)):
-            d0 = max(26.0, (10 - n_ext[0]) if sd > 0 else (10 + n_ext[1]))
-            for k in range(5):
-                for j, sh in enumerate((0, -16, 16, -34, 34, -52, 52,
-                                        -70, 70, -88, 88, -106, 106)):
-                    cands.append((k + 0.2 * j +
-                                  (1.6 if sd != pref else 0),
-                                  d0, k, sh, sd))
-        cands.sort()
-        pick = fallback = None
-        for _, d0, k, sh, sd in cands:
-            ox = bx + sd * nx * (d0 + 44 * k) + fx * sh
-            oy = by + sd * ny * (d0 + 44 * k) + fy * sh
-            bb = (ox + box[0] - 5, oy + box[2] - 5,
-                  ox + box[1] + 5, oy + box[3] + 5)
-            if not clear(*bb):
+            hard = True
+        items.append({"cr": cr, "t": t, "bx": bx, "by": by, "g": g,
+                      "box": box, "n": n_ext, "pref": pref, "hard": hard})
+
+    clusters: list[list[dict]] = []
+    for it in items:
+        if clusters and it["bx"] - clusters[-1][-1]["bx"] < 150:
+            clusters[-1].append(it)
+        else:
+            clusters.append([it])
+    all_boxes: list[tuple[float, float, float, float]] = []
+
+    def open_spot(bb):
+        return clear(*bb) and not any(
+            bb[0] < r[2] and bb[2] > r[0] and bb[1] < r[3] and bb[3] > r[1]
+            for r in all_boxes)
+
+    for cl in clusters:
+        above = [it for it in cl if it["hard"] and it["pref"] > 0]
+        below = [it for it in cl if it["hard"] and it["pref"] < 0]
+        for it in cl:
+            if not it["hard"]:
+                (below if len(below) < len(above) else above).append(it)
+        tm = sum(it["t"] for it in cl) / len(cl)
+        ax, ay = road_pt(tm)
+        angm = math.degrees(road_ang(tm))
+        nx, ny = _rot(0, -1, angm)
+        fx, fy = _rot(1, 0, angm)
+        for sd, members in ((1, above), (-1, below)):
+            if not members:
                 continue
-            if fallback is None:
-                fallback = (ox, oy, bb)
-            if not any(bb[0] < px1 and bb[2] > px0
-                       and bb[1] < py1 and bb[3] > py0
-                       for px0, py0, px1, py1 in placed):
-                pick = (ox, oy, bb)
-                break
-        ox, oy, bb = pick or fallback or (
-            bx - nx * 90, by - ny * 90,
-            (bx + box[0], by + box[2], bx + box[1], by + box[3]))
-        placed.append(bb)
-        dx, dy = layout.get("nudges", {}).get(cr.crash_id, (0, 0))
-        svg.append(f'<g transform="translate({ox + dx:.1f},'
-                   f'{oy + dy:.1f})">{g}</g>')
+            members.sort(key=lambda it: it["cr"].seq)
+            rows = members[::-1] if sd > 0 else members
+            dist = prev_lo = prev_hi = None
+            for k, it in enumerate(rows):
+                n_lo, n_hi = it["n"]
+                if dist is None:
+                    dist = max(26.0, (10 - n_lo) if sd > 0
+                               else (10 + n_hi))
+                elif sd > 0:
+                    dist = dist + prev_hi - n_lo + 14
+                else:
+                    dist = dist - prev_lo + n_hi + 14
+                prev_lo, prev_hi = n_lo, n_hi
+                it["dist"], it["k"] = dist, k
+            # slide the ladder along the road; when furniture sits
+            # mid-cluster and no slide can clear it, step the whole
+            # ladder outward instead
+            cands2 = sorted(
+                (depth * 0.02 + abs(sh) * 0.01, depth, sh)
+                for depth in (0, 36, 72, 108)
+                for sh in (0, -44, 44, -88, 88, -132, 132, -176, 176))
+            def row_bb(it, s2, dist, sx):
+                tx = ax + s2 * nx * dist + fx * sx
+                ty = ay + s2 * ny * dist + fy * sx
+                return (tx, ty, (tx + it["box"][0] - 4,
+                                 ty + it["box"][2] - 4,
+                                 tx + it["box"][1] + 4,
+                                 ty + it["box"][3] + 4))
+
+            rigid = None
+            for _, dp, cand in cands2:
+                if all(open_spot(row_bb(it, sd, it["dist"] + dp,
+                                        cand - 24 * it["k"])[2])
+                       for it in rows):
+                    rigid = (cand, dp)
+                    break
+            for it in rows:
+                if rigid is not None:
+                    cand, dp = rigid
+                    ox, oy, bb = row_bb(it, sd, it["dist"] + dp,
+                                        cand - 24 * it["k"])
+                    all_boxes.append(bb)
+                else:
+                    # furniture splits the ladder: rows keep their order
+                    # and pitch but stagger individually around it, and a
+                    # soft-side row may flip across the road when its own
+                    # side is furniture locked
+                    n_lo, n_hi = it["n"]
+                    sides = (sd,) if it["hard"] else (sd, -sd)
+                    ox = oy = None
+                    for s2 in sides:
+                        base_d = (it["dist"] if s2 == sd else
+                                  max(26.0, (10 - n_lo) if s2 > 0
+                                      else (10 + n_hi)))
+                        for _, dp, cand in cands2:
+                            tx, ty, bb = row_bb(it, s2, base_d + dp,
+                                                cand - 24 * it["k"])
+                            if open_spot(bb):
+                                ox, oy = tx, ty
+                                all_boxes.append(bb)
+                                break
+                        if ox is not None:
+                            break
+                    if ox is None:
+                        flip = sd if it["hard"] else -sd
+                        base_d = max(26.0, (10 - n_lo) if flip > 0
+                                     else (10 + n_hi))
+                        ox, oy, bb = row_bb(it, flip, base_d + 72, 0)
+                        all_boxes.append(bb)
+                dxn, dyn = layout.get("nudges", {}).get(
+                    it["cr"].crash_id, (0, 0))
+                svg.append(f'<g transform="translate({ox + dxn:.1f},'
+                           f'{oy + dyn:.1f})">{it["g"]}</g>')
 
     return _sheet(svg, layout, crashes)
 

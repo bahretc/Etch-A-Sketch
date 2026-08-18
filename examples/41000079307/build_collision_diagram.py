@@ -62,13 +62,13 @@ layout = {
         "1,000 (2024)",
         "55 mph",
     ],
-    "route_label_xy": [350, 958],
+    "route_label_xy": [300, 970],
     "notes": [
         {"x": 1340, "y": 690,
          "text": ["Crash #10: Entered SR 1320 turning",
                   "from SR 1387 at the study end"]},
     ],
-    "nudges": {"108052444": [64, -6]},
+    "nudges": {},
     "route_forward": "E",
     "junctions": [
         {"mp": 1.45, "label": "SR 1321 (McInnis Rd)", "side": 1},

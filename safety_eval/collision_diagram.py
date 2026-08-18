@@ -283,13 +283,13 @@ def crashes_from_initial_study(path: str) -> list[DiagramCrash]:
 # Only the cell's rotation and which parts are present change with the
 # crash type, so a sheet reads as one drafted set.
 CELL_SHAFT = 50.0        # tail start to arrow tip, identical for every unit
-CELL_HEAD = 8.6          # arrowhead length, measured inside the shaft
+CELL_HEAD = 13.0         # arrowhead length, measured inside the shaft
 BUBBLE_R = 8.0           # crash number circle
 BUBBLE_GAP = 1.0         # bubble edge to tail start, near enough to touch
 DECOR_S = 9.0            # station along the shaft for the asterisk/letter
 DECOR_N = 7.2            # offset off the shaft for the asterisk/letter
 SEV_GAP = 5.0            # arrow tip to severity circle center
-SEV_R = 3.9
+SEV_R = 2.6
 LANE_SEP = 11.0          # lateral separation of two units drawn side by side
 TICK_H = 5.2             # half length of the point of impact tick
 DEPART_ANG = 26.0        # cell rotation off the travel line for a departure
@@ -302,7 +302,7 @@ def _arrowhead(x, y, ang, night):
     """Vehicle head: open for a daylight crash, filled for a night one."""
     fill = "#000" if night else "#fff"
     h = CELL_HEAD
-    pts = [(0, 0), (-h, 3.0), (-h * 0.80, 0), (-h, -3.0)]
+    pts = [(0, 0), (-h, 3.6), (-h * 0.80, 0), (-h, -3.6)]
     cos, sin = math.cos(ang), math.sin(ang)
     p = " ".join(f"{x + px * cos - py * sin:.1f},{y + px * sin + py * cos:.1f}"
                  for px, py in pts)
@@ -378,10 +378,10 @@ def _unit_cell(tx, ty, ang_deg, unit, night, zigzag=False,
     if zigzag:
         # the break sits late on the shaft, the way the drawn sheets put
         # it, so the speed marks keep a clean run off the tail
-        z0 = shaft - CELL_HEAD - 15.0
-        pts = [P(0.0), P(z0), P(z0 + 4, -6.5), P(z0 + 9, 6.5),
-               P(z0 + 13), P(shaft)]
-        ink += [P(z0 + 4, -6.5), P(z0 + 9, 6.5)]
+        z0 = shaft - CELL_HEAD - 13.0
+        pts = [P(0.0), P(z0), P(z0 + 3.5, -6.0), P(z0 + 7.5, 6.0),
+               P(z0 + 11), P(shaft)]
+        ink += [P(z0 + 3.5, -6.0), P(z0 + 7.5, 6.0)]
         mark_hi = z0 - 2.5
         d = " ".join(f"{px:.1f},{py:.1f}" for px, py in pts)
         out.append(f'<polyline points="{d}" fill="none" stroke="#000" '
@@ -434,6 +434,40 @@ def _badge(x, y, n):
     return (f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{BUBBLE_R}" fill="#fff" '
             'stroke="#000" stroke-width="1.0"/>'
             + _stroke_text(x, y, n, size=8.5))
+
+
+def _mode_mark(x, y, kind, h=11.0):
+    """Pedestrian and bicycle pictograms, animal and train letters, in
+    the blue the TSU sheets use for the non motorist involved."""
+    if kind == "P":
+        r = h * 0.16
+        return (f'<circle cx="{x:.1f}" cy="{y - h * 0.40:.1f}" r="{r:.1f}" '
+                f'fill="none" stroke="{BLUE}" stroke-width="1.1"/>'
+                f'<path d="M {x:.1f} {y - h * 0.24:.1f} L {x:.1f} '
+                f'{y + h * 0.06:.1f} M {x - h * 0.20:.1f} {y + h * 0.42:.1f} '
+                f'L {x:.1f} {y + h * 0.06:.1f} L {x + h * 0.22:.1f} '
+                f'{y + h * 0.42:.1f} M {x - h * 0.22:.1f} {y - h * 0.06:.1f} '
+                f'L {x + h * 0.20:.1f} {y - h * 0.18:.1f}" fill="none" '
+                f'stroke="{BLUE}" stroke-width="1.1" '
+                'stroke-linecap="round"/>')
+    if kind == "B":
+        r = h * 0.22
+        return (f'<circle cx="{x - h * 0.26:.1f}" cy="{y + h * 0.24:.1f}" '
+                f'r="{r:.1f}" fill="none" stroke="{BLUE}" '
+                'stroke-width="1.0"/>'
+                f'<circle cx="{x + h * 0.26:.1f}" cy="{y + h * 0.24:.1f}" '
+                f'r="{r:.1f}" fill="none" stroke="{BLUE}" '
+                'stroke-width="1.0"/>'
+                f'<path d="M {x - h * 0.26:.1f} {y + h * 0.24:.1f} '
+                f'L {x:.1f} {y - h * 0.10:.1f} L {x + h * 0.26:.1f} '
+                f'{y + h * 0.24:.1f} M {x:.1f} {y - h * 0.10:.1f} '
+                f'L {x + h * 0.10:.1f} {y - h * 0.34:.1f}" fill="none" '
+                f'stroke="{BLUE}" stroke-width="1.0" '
+                'stroke-linecap="round"/>'
+                f'<circle cx="{x + h * 0.14:.1f}" cy="{y - h * 0.44:.1f}" '
+                f'r="{h * 0.12:.1f}" fill="none" stroke="{BLUE}" '
+                'stroke-width="1.0"/>')
+    return _stroke_text(x, y, kind, size=12, color=BLUE)
 
 
 def _impact_tick(x, y, ang_deg):
@@ -552,10 +586,10 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
             K(ox, oy, 8)
             front = 16.0
         elif mark:                                    # ped, bike, animal
-            ox, oy = tip[0] + 9 * c, tip[1] + 9 * s
-            parts.append(_stroke_text(ox, oy, mark, size=12, color=BLUE))
-            K(ox, oy, 7)
-            front = 15.0
+            ox, oy = tip[0] + 10 * c, tip[1] + 10 * s
+            parts.append(_mode_mark(ox, oy, mark))
+            K(ox, oy, 8)
+            front = 17.0
         parts.append(sev_at(tip[0] + front * c, tip[1] + front * s, ang))
         parts.append(decor(tail, ang))
         return ("".join(parts),) + extents_of()
@@ -661,8 +695,8 @@ def legend_block(x, y, w=700, h=305):
     rows3 = ["9 MPH OR LESS", "10 MPH TO 19", "20 MPH TO 29", "30 MPH TO 39",
              "40 MPH TO 49", "50 MPH TO 59", "60 MPH TO 69", "70 AND UP",
              "SPEED UNKNOWN"]
-    rows4 = [("A", "ANIMAL", GREEN), ("P", "PEDESTRIAN", GREEN),
-             ("B", "BICYCLE", GREEN), ("T", "TRAIN", GREEN),
+    rows4 = [("P", "PEDESTRIAN", BLUE), ("B", "BICYCLE", BLUE),
+             ("A", "ANIMAL", BLUE), ("T", "TRAIN", BLUE),
              ("*", "DRIVER AT FAULT", MAGENTA), ("D", "DRY", GREEN),
              ("W", "WET", GREEN), ("I", "ICY OR SNOWY", GREEN),
              ("O", "Other", GREEN)]
@@ -772,9 +806,12 @@ def legend_block(x, y, w=700, h=305):
                                 anchor="start"))
     for i, (letter, label, color) in enumerate(rows4):
         ay = yy + i * 27
-        out.append(_stroke_text(x + 576, ay + (2 if letter == "*" else 0),
-                                letter, size=13 if letter == "*" else 11,
-                                color=color))
+        if letter in ("P", "B"):
+            out.append(_mode_mark(x + 576, ay, letter, h=15))
+        else:
+            out.append(_stroke_text(x + 576, ay + (2 if letter == "*" else 0),
+                                    letter, size=13 if letter == "*" else 11,
+                                    color=color))
         out.append(_stroke_text(x + 592, ay, label, size=8.2,
                                 anchor="start"))
     return "".join(out)
@@ -885,15 +922,16 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         if not 0.0 <= t <= 1.0:
             continue
         x, y = road_pt(t)
-        a = road_ang(t) + math.pi / 2
-        up = jn.get("side", -1)
-        ex = x + up * 52 * math.cos(a)
-        ey = y + up * 52 * math.sin(a)
+        ang = math.degrees(road_ang(t))
+        nx, ny = _rot(0, -1, ang)        # +1 is north, as for the crashes
+        up = jn.get("side", 1)
+        ex = x + up * 52 * nx
+        ey = y + up * 52 * ny
         svg.append(f'<line x1="{x:.1f}" y1="{y:.1f}" '
                    f'x2="{ex:.1f}" y2="{ey:.1f}" stroke="#000" '
                    'stroke-width="1.1"/>')
-        lx = ex + 8
-        ly = ey + (14 if up > 0 else -12)
+        lx = ex + 8 + up * 4 * nx        # the name sits beyond the stub,
+        ly = ey + up * 16 * ny           # on the side the road leaves to
         svg.append(_stroke_text(lx, ly, jn["label"], size=11.5,
                                 anchor="start"))
         jn_keep.append((lx - 6, ly - 10,
@@ -949,6 +987,7 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         g, box, n_ext = crash_glyph(cr, base_ang=ang,
                                     route_forward=route_fwd)
         pref, hard = 1, False
+        forced = layout.get("sides", {}).get(cr.crash_id)
         if cr.acc_typ in ROR_TYPES or cr.acc_typ == 19:
             base = ang - _DIR_ANG.get(route_fwd, 0)
             ua = base + _DIR_ANG.get(cr.units[0].direction, -base) \
@@ -957,6 +996,8 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
             fa = math.radians(ua + side * DEPART_ANG)
             pref = 1 if math.cos(fa) * nx + math.sin(fa) * ny > 0 else -1
             hard = True
+        if forced:
+            pref, hard = int(forced), True
         items.append({"cr": cr, "t": t, "bx": bx, "by": by, "g": g,
                       "box": box, "n": n_ext, "pref": pref, "hard": hard})
 

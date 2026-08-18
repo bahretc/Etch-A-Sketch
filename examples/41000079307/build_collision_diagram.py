@@ -47,20 +47,20 @@ layout = {
     "begin_mp": 1.31, "end_mp": 1.80,
     "title": [
         "PH# 77S00141",
-        f"Order# {WO}",
+        f"WO #{WO}",
         "Robeson County",
-        "Study Period",
+        "SR 1320 (Milk Dairy Road) from Stone Drive",
+        "to SR 1387 (Springside Road)",
         "7/1/2021 - 6/30/2026",
     ],
-    "title_x": 420,
+    "title_x": 430,
     "north_x": 856,
     "route_label": [
         "SR 1320 (Milk Dairy Road)",
+        "AADT: 1,000 vpd (2024)",
         "55 mph",
-        "ADT (Year)",
-        "1,000 (2024)",
     ],
-    "route_label_xy": [455, 900],
+    "route_label_xy": [455, 906],
     "notes": [
         {"x": 1330, "y": 660,
          "text": ["Crash #10 coded 0.007 mile east of",
@@ -69,9 +69,17 @@ layout = {
     ],
     "nudges": {},
     "route_forward": "E",
+    # McInnis Road leaves SR 1320 heading 192 degrees, so the stub and
+    # the crashes mileposted onto the junction from it belong south of
+    # the mainline (checked against the OSM centreline for the section)
     "junctions": [
-        {"mp": 1.45, "label": "SR 1321 (McInnis Rd)", "side": 1},
+        {"mp": 1.45, "label": "SR 1321 (McInnis Rd)", "side": -1},
     ],
+    "sides": {
+        "107089722": -1,        # SR 1321 approach crash, south of SR 1320
+        "107666960": -1,        # SR 1321 approach crash, south of SR 1320
+        "108244836": -1,        # engineer's call, ran off to the south side
+    },
     "prepared_by": "Chris Bahret, PE",
     "date": "8/18/2026",
     "logo": "/home/user/Etch-A-Sketch/examples/41000079305/mapdata/"

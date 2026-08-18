@@ -687,15 +687,21 @@ def tsu_block(x, y, prepared_by, date_str, logo_b64, w=300, h=200):
     return "".join(out)
 
 
-def north_needle(x, y, h=170):
-    return (f'<polygon points="{x},{y} {x + 5},{y + h * 0.62} '
-            f'{x},{y + h} {x - 5},{y + h * 0.62}" fill="#fff" '
-            'stroke="#000" stroke-width="1.2"/>'
-            f'<polygon points="{x},{y} {x + 5},{y + h * 0.62} {x},{y + h}" '
-            'fill="#000"/>'
-            f'<circle cx="{x}" cy="{y + h * 0.62}" r="7" fill="#fff" '
-            'stroke="#000"/>'
-            + _stroke_text(x, y + h * 0.62, "N", size=9))
+def north_needle(x, y, h=170, rot=0.0):
+    """The needle tilts with the schematic so it stays true north
+    relative to the drawn roadway bearing."""
+    g = (f'<polygon points="{x},{y} {x + 5},{y + h * 0.62} '
+         f'{x},{y + h} {x - 5},{y + h * 0.62}" fill="#fff" '
+         'stroke="#000" stroke-width="1.2"/>'
+         f'<polygon points="{x},{y} {x + 5},{y + h * 0.62} {x},{y + h}" '
+         'fill="#000"/>'
+         f'<circle cx="{x}" cy="{y + h * 0.62}" r="7" fill="#fff" '
+         'stroke="#000"/>'
+         + _stroke_text(x, y + h * 0.62, "N", size=9))
+    if rot:
+        return (f'<g transform="rotate({rot:.1f} {x} {y + h / 2})">'
+                f'{g}</g>')
+    return g
 
 
 # ------------------------------------------------------------------ sheet
@@ -751,6 +757,8 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         jn_keep.append((lx - 4.2 * len(jn["label"]), ly - 12,
                         lx + 4.2 * len(jn["label"]), ly + 6))
 
+    if "north_rot" not in layout:
+        layout["north_rot"] = math.degrees(road_ang(0.5))
     keep_out = [(892, 10, 1632, 400), (1300, 826, 1632, 1056),
                 (210, 905, 560, 1040), (300, 20, 890, 300),
                 (0, 830, 200, 1056), (1460, 360, 1632, 446)]
@@ -834,7 +842,8 @@ def _sheet(body_svg: list, layout: dict, crashes) -> str:
     for i, line in enumerate(layout.get("title", [])):
         svg.append(_stroke_text(tx, 52 + i * 27, line, size=19.5, sw=1.15))
     svg.append(legend_block(912, 26))
-    svg.append(north_needle(layout.get("north_x", 856), 40))
+    svg.append(north_needle(layout.get("north_x", 856), 40,
+                            rot=layout.get("north_rot", 0.0)))
     rl = layout.get("route_label", [])
     rx, ry = layout.get("route_label_xy", (520, 940))
     for i, line in enumerate(rl):

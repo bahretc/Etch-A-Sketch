@@ -355,7 +355,7 @@ def _unit_arrow(x, y, ang_deg, length, unit, night, zigzag=False):
 
 def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
                 route_forward: str = "E",
-                throw: float = 0.0) -> tuple[str, float]:
+                throw: float = 0.0) -> tuple[str, float, float]:
     """Assemble one crash with the roadway's local bearing as its frame.
 
     ``base_ang`` is the road tangent in page degrees at this crash's
@@ -363,7 +363,9 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
     tangent represents, so a unit coded E travels along the drawn road
     and a unit coded N crosses it, the way the TSU sheets read. The
     local origin (0, 0) is the point of impact or departure; text stays
-    upright. Returns (svg, halfwidth).
+    upright. Returns (svg, halfwidth, reach) where reach is the
+    assembly's largest extent perpendicular to the roadway, so
+    placement can guarantee nothing touches the centerline.
     """
     u1 = cr.units[0] if cr.units else Unit(1, route_forward)
     u2 = cr.units[1] if len(cr.units) > 1 else None
@@ -374,24 +376,46 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
 
     a1 = conv(u1.direction, base)
     parts = []
+    kp: list[tuple[float, float, float]] = []      # (x, y, pad)
     L = 34
 
     def vec(deg):
         r = math.radians(deg)
         return math.cos(r), math.sin(r)
 
+    def K(x, y, pad=4.0):
+        kp.append((x, y, pad))
+
+    def reach_of():
+        rb = math.radians(base_ang)
+        nx_, ny_ = math.sin(rb), -math.cos(rb)
+        return max(abs(px * nx_ + py * ny_) + pad for px, py, pad in kp)
+
     def tail_decor(ax, ay, ang_deg):
+        # the bubble rides inline on the tail axis; the surface letter
+        # sits above the tail and the at-fault asterisk below it, the
+        # way the drawn sheets keep them
         c, s = vec(ang_deg)
         pc, ps = -s, c
-        up = -1 if ps > 0 else 1
-        bx, by = ax - (L + 16) * c, ay - (L + 16) * s
-        deco = _badge(bx + pc * 13 * up, by + ps * 13 * up, cr.seq)
-        mx, my = ax - L * 0.5 * c, ay - L * 0.5 * s
-        deco += _stroke_text(mx + pc * 10 * up, my + ps * 10 * up + 2,
-                             "*", size=12.5, color=MAGENTA, sw=1.05)
-        deco += _stroke_text(mx - pc * 11 * up, my - ps * 11 * up,
+        if ps > 0:
+            pc, ps = -pc, -ps
+        bx, by = ax - (L + 19) * c, ay - (L + 19) * s
+        deco = _badge(bx, by, cr.seq)
+        K(bx, by, 9)
+        mx, my = ax - L * 0.55 * c, ay - L * 0.55 * s
+        deco += _stroke_text(mx + pc * 11, my + ps * 11,
                              cr.road_cond, size=9, color=GREEN)
+        K(mx + pc * 11, my + ps * 11, 6)
+        deco += _stroke_text(mx - pc * 11, my - ps * 11 + 2,
+                             "*", size=12.5, color=MAGENTA, sw=1.05)
+        K(mx - pc * 11, my - ps * 11, 6)
         return deco
+
+    def unit(x, y, ang_deg, length, uu):
+        svg, head = _unit_arrow(x, y, ang_deg, length, uu, cr.night)
+        K(x, y)
+        K(*head, 6)
+        return svg, head
 
     if cr.acc_typ in SINGLE_UNIT_TYPES or u2 is None:
         c, s = vec(a1)
@@ -402,6 +426,7 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
             pc, ps = -s * side, c * side
             t0 = (-(L + 3) * c, -(L + 3) * s)
             t1 = (-3 * c, -3 * s)
+            K(*t0)
             parts.append(f'<line x1="{t0[0]:.1f}" y1="{t0[1]:.1f}" '
                          f'x2="{t1[0]:.1f}" y2="{t1[1]:.1f}" '
                          'stroke="#000" stroke-width="1.1"/>')
@@ -410,65 +435,64 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
             for adv, off in ((7, 9), (14, -6), (21, 10)):
                 zz.append((t1[0] + adv * c + pc * off,
                            t1[1] + adv * s + ps * off))
+                K(*zz[-1])
             fa = a1 + side * 44
             fc, fs = vec(fa)
             run = 20 + throw
             p_end = (zz[-1][0] + run * fc, zz[-1][1] + run * fs)
-            pts = " ".join(f"{px:.1f},{py:.1f}" for px, py in zz)
-            parts.append(f'<polyline points="{pts} {p_end[0]:.1f},'
+            ptxt = " ".join(f"{px:.1f},{py:.1f}" for px, py in zz)
+            parts.append(f'<polyline points="{ptxt} {p_end[0]:.1f},'
                          f'{p_end[1]:.1f}" fill="none" stroke="#000" '
                          'stroke-width="1.1"/>')
             parts.append(_arrowhead(*p_end, math.radians(fa), cr.night))
             sx, sy = p_end[0] + 7 * fc, p_end[1] + 7 * fs
+            K(sx, sy, 7)
             if cr.acc_typ == 18:
                 parts.append(f'<rect x="{sx:.1f}" y="{sy - 5:.1f}" '
                              'width="10" height="10" fill="none" '
                              'stroke="#000" stroke-width="1.1"/>')
             parts.append(_severity_circle(sx, sy, cr.severity))
             parts.append(tail_decor(0, 0, a1))
-            return "".join(parts), L + 46
-        svg, head = _unit_arrow(-L * c, -L * s, a1, L, u1, cr.night)
+            return "".join(parts), L + 46, reach_of()
+        svg, head = unit(-L * c, -L * s, a1, L, u1)
         parts.append(svg)
         parts.append(_severity_circle(head[0] + 4 * c, head[1] + 4 * s,
                                       cr.severity))
         parts.append(tail_decor(0, 0, a1))
-        return "".join(parts), L + 40
+        return "".join(parts), L + 40, reach_of()
     a2 = conv(u2.direction, a1 + 90 if cr.acc_typ == 30 else a1)
     c1, s1 = vec(a1)
     if cr.acc_typ in (21, 22):                       # rear end, inline
-        svg1, _ = _unit_arrow(-(L + 11) * c1, -(L + 11) * s1, a1, L,
-                              u1, cr.night)
-        svg2, _ = _unit_arrow(3 * c1, 3 * s1, a1, L * 0.85, u2, cr.night)
+        svg1, _ = unit(-(L + 11) * c1, -(L + 11) * s1, a1, L, u1)
+        svg2, _ = unit(3 * c1, 3 * s1, a1, L * 0.85, u2)
         parts += [svg1, svg2, _severity_circle(0, 0, cr.severity),
                   tail_decor(-6 * c1, -6 * s1, a1)]
-        return "".join(parts), 2 * L + 26
+        return "".join(parts), 2 * L + 26, reach_of()
     if cr.acc_typ in (27, 29):                       # head on / ss opposite
         off = 6 if cr.acc_typ == 29 else 0
         pc, ps = -s1, c1
-        svg1, _ = _unit_arrow(-(L + 4) * c1 + pc * off,
-                              -(L + 4) * s1 + ps * off, a1, L, u1, cr.night)
-        svg2, _ = _unit_arrow((L + 4) * c1 - pc * off,
-                              (L + 4) * s1 - ps * off, a1 + 180, L,
-                              u2, cr.night)
+        svg1, _ = unit(-(L + 4) * c1 + pc * off,
+                       -(L + 4) * s1 + ps * off, a1, L, u1)
+        svg2, _ = unit((L + 4) * c1 - pc * off,
+                       (L + 4) * s1 - ps * off, a1 + 180, L, u2)
         parts += [svg1, svg2, _severity_circle(0, 0, cr.severity),
                   tail_decor(pc * off, ps * off, a1)]
-        return "".join(parts), 2 * L + 22
+        return "".join(parts), 2 * L + 22, reach_of()
     if cr.acc_typ == 28:                             # sideswipe same dir
         pc, ps = -s1, c1
-        svg1, _ = _unit_arrow(-(L + 4) * c1 + pc * 5,
-                              -(L + 4) * s1 + ps * 5, a1, L, u1, cr.night)
-        svg2, _ = _unit_arrow(-(L + 4) * c1 - pc * 6,
-                              -(L + 4) * s1 - ps * 6, a1 + 9, L,
-                              u2, cr.night)
+        svg1, _ = unit(-(L + 4) * c1 + pc * 5,
+                       -(L + 4) * s1 + ps * 5, a1, L, u1)
+        svg2, _ = unit(-(L + 4) * c1 - pc * 6,
+                       -(L + 4) * s1 - ps * 6, a1 + 9, L, u2)
         parts += [svg1, svg2, _severity_circle(0, 0, cr.severity),
                   tail_decor(pc * 5, ps * 5, a1)]
-        return "".join(parts), 2 * L + 22
+        return "".join(parts), 2 * L + 22, reach_of()
     c2, s2 = vec(a2)
-    svg1, _ = _unit_arrow(-(L + 5) * c1, -(L + 5) * s1, a1, L, u1, cr.night)
-    svg2, _ = _unit_arrow(-(L + 5) * c2, -(L + 5) * s2, a2, L, u2, cr.night)
+    svg1, _ = unit(-(L + 5) * c1, -(L + 5) * s1, a1, L, u1)
+    svg2, _ = unit(-(L + 5) * c2, -(L + 5) * s2, a2, L, u2)
     parts += [svg1, svg2, _severity_circle(0, 0, cr.severity),
               tail_decor(0, 0, a1)]
-    return "".join(parts), 2 * L + 18
+    return "".join(parts), 2 * L + 18, reach_of()
 
 
 def _rot(x, y, deg):
@@ -739,7 +763,7 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
     # ladder on their side of the road, the way the drawn sheets ladder
     # a cluster, with at most a few feet of along-road jitter.
     route_fwd = layout.get("route_forward", "E")
-    placed: list[tuple[float, float, float]] = []
+    placed: list[tuple[float, float, float, float]] = []
     for cr in sorted([c for c in crashes if c.mp is not None],
                      key=lambda c: (c.mp, c.seq)):
         t = (cr.mp - lo) / (hi - lo) if hi > lo else 0.5
@@ -748,7 +772,9 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         ang = math.degrees(road_ang(t))
         nx, ny = _rot(0, -1, ang)
         fx, fy = _rot(1, 0, ang)
-        g, halfw = crash_glyph(cr, base_ang=ang, route_forward=route_fwd)
+        g, halfw, reach = crash_glyph(cr, base_ang=ang,
+                                      route_forward=route_fwd)
+        d0 = max(26.0, reach + 8.0)
         pref = 1
         if cr.acc_typ in (ROR_TYPES | {18, 19}) and cr.units:
             base = ang - _DIR_ANG.get(route_fwd, 0)
@@ -766,18 +792,20 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         cands.sort()
         pick = fallback = None
         for _, k, sh, sd in cands:
-            ox = bx + sd * nx * (26 + 44 * k) + fx * sh
-            oy = by + sd * ny * (26 + 44 * k) + fy * sh
+            ox = bx + sd * nx * (d0 + 44 * k) + fx * sh
+            oy = by + sd * ny * (d0 + 44 * k) + fy * sh
             if not clear(ox, oy, halfw):
                 continue
             if fallback is None:
                 fallback = (ox, oy)
             if not any(abs(ox - px) < (halfw + pw) * 0.66
-                       and abs(oy - py) < 35 for px, py, pw in placed):
+                       and abs(oy - py) < (reach + pr) * 0.55 + 10
+                       for px, py, pw, pr in placed):
                 pick = (ox, oy)
                 break
-        ox, oy = pick or fallback or (bx - nx * 70, by - ny * 70)
-        placed.append((ox, oy, halfw))
+        ox, oy = pick or fallback or (bx - nx * (d0 + 44),
+                                      by - ny * (d0 + 44))
+        placed.append((ox, oy, halfw, reach))
         dx, dy = layout.get("nudges", {}).get(cr.crash_id, (0, 0))
         svg.append(f'<g transform="translate({ox + dx:.1f},'
                    f'{oy + dy:.1f})">{g}</g>')

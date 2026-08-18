@@ -938,9 +938,11 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                    f'x2="{x + 14 * math.cos(a):.1f}" '
                    f'y2="{y + 14 * math.sin(a):.1f}" stroke="#000" '
                    'stroke-width="1.2"/>')
+        # the MP labels sit on the side of the line the terminal side road
+        # does not use, so a stub and its name never fight them
         lbl = "Begin MP:" if t == 0 else "End MP:"
-        lx = max(x, 74) if t == 0 else x - 24
-        ly = y + 46 if t == 0 else y - 62
+        lx = max(x, 74) if t == 0 else x - 150
+        ly = y - 78 if t == 0 else y - 62
         svg.append(_stroke_text(lx, ly - 5, lbl, size=15.5, sw=1.05))
         svg.append(_stroke_text(lx, ly + 15, f"{mp:.2f}", size=15.5,
                                 sw=1.05))
@@ -959,12 +961,14 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         svg.append(f'<line x1="{x:.1f}" y1="{y:.1f}" '
                    f'x2="{ex:.1f}" y2="{ey:.1f}" stroke="#000" '
                    'stroke-width="1.1"/>')
-        lx = ex + 8 + up * 4 * nx        # the name sits beyond the stub,
-        ly = ey + up * 16 * ny           # on the side the road leaves to
+        anchor = jn.get("anchor", "start")
+        lx = ex + up * 4 * nx + jn.get("dx", 8 if anchor == "start" else -8)
+        ly = ey + up * 16 * ny + jn.get("dy", 0)
         svg.append(_stroke_text(lx, ly, jn["label"], size=11.5,
-                                anchor="start"))
-        jn_keep.append((lx - 5, ly - 8,
-                        lx + _text_width(jn["label"], 11.5) + 5, ly + 8))
+                                anchor=anchor))
+        w = _text_width(jn["label"], 11.5)
+        x0 = lx - (w if anchor == "end" else 0)
+        jn_keep.append((x0 - 5, ly - 8, x0 + w + 5, ly + 8))
         jn_keep.append((min(x, ex) - 16, min(y, ey) - 6,
                         max(x, ex) + 16, max(y, ey) + 6))
 
@@ -980,8 +984,8 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
 
     keep_out = [(904, 18, 1620, 345),                    # legend
                 (1300, 826, 1632, 1056),                 # TSU title block
-                (0, 830, 200, 1056),                     # begin MP label
-                (1440, 356, 1632, 452),                  # end MP label
+                (0, 760, 210, 940),                      # begin MP label
+                (1344, 336, 1476, 424),                  # end MP label
                 (784, 18, 928, 232)]                     # north needle
     keep_out.append(text_box(layout.get("title_x", 760), 54,
                              layout.get("title", []), 19.5, 31))

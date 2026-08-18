@@ -96,8 +96,17 @@ layout = {
     "route_forward": "E",
     # McInnis Road leaves SR 1320 heading 192 degrees, so its stub and the
     # crashes remileposted onto the junction from it sit south of the line
+    # Sides checked against the OSM centreline: McInnis Road leaves SR 1320
+    # heading 192 degrees and Springside Road 38 degrees, so one is south
+    # of the line and the other north. The begin junction is the local
+    # street OSM carries as Hucks Drive, leaving to the southwest; TEAAS
+    # names the study from it as Stone Drive.
     "junctions": [
+        {"mp": 1.31, "label": "Stone Drive", "side": -1, "stub": 44,
+         "dx": 10, "dy": 6},
         {"mp": 1.45, "label": "SR 1321 (McInnis Rd)", "side": -1},
+        {"mp": 1.80, "label": "SR 1387", "side": 1,
+         "stub": 44, "anchor": "end", "dx": -12, "dy": -6},
     ],
     # sides the narratives establish, where the coded type alone would put
     # the cell on the wrong side of the centreline

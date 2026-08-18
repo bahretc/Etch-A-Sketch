@@ -368,17 +368,16 @@ REVIEW_BLOCKS = (
 _BANNER_THEME = {"IS": (6, 0.40), "RE": (6, 0.40), "ADD": (6, 0.40),
                  "DEL": (6, 0.40), "?": (6, 0.40),
                  "NIS-R": (0, -0.15), "NIS": (0, -0.35)}
-#: The engineer's banners carry their fill on columns A and M.
-_BANNER_FILL_COLS = (1, 13)
-
-
 def _write_block_banner(ws, r: int, key: str, title: str) -> None:
+    """A block heading reads as one band, so its fill runs the full row."""
     from openpyxl.styles import Color, Font, PatternFill
     cell = ws.cell(row=r, column=1, value=title)
     cell.font = Font(bold=True)
     theme, tint = _BANNER_THEME[key]
     fill = PatternFill("solid", fgColor=Color(theme=theme, tint=tint))
-    for c in _BANNER_FILL_COLS:
+    header = [c for c in range(1, ws.max_column + 1)
+              if ws.cell(row=1, column=c).value not in (None, "")]
+    for c in range(1, (max(header) if header else ws.max_column) + 1):
         ws.cell(row=r, column=c).fill = fill
 
 

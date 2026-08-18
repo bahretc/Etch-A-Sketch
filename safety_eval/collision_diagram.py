@@ -1083,17 +1083,24 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                 ps = [x * fx + y * fy for x in (bx0, bx1) for y in (by0, by1)]
                 return min(ps), max(ps)
 
+            # rows keep milepost order and spread only as far as their ink
+            # needs, then recentre on the stretch they belong to; the
+            # search below only nudges what furniture still blocks
             want = [(it["bx"] - ax) * fx + (it["by"] - ay) * fy
                     for it in members]
             st = list(want)
-            for i in range(1, len(st)):          # keep the ink from touching
+            for i in range(1, len(st)):
                 lo_i = along(members[i])[0]
                 hi_p = along(members[i - 1])[1]
                 need = st[i - 1] + hi_p + 12 - lo_i
                 if st[i] < need:
                     st[i] = need
             drift = sum(st) / len(st) - sum(want) / len(want)
-            st = [v - drift for v in st]         # back onto their mileposts
+            st = [v - drift for v in st]
+            cands = [(0.0, rk, d)
+                     for rk in (0, 1, 2, 3)
+                     for d in (0, -24, 24, -48, 48, -76, 76, -108, 108,
+                               -144, 144, -190, 190)]
 
             def place(it, s_at, rank, sd2, base=None):
                 dist = (d0 if base is None else base) + rank * rowh
@@ -1110,23 +1117,18 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
 
             for it, s_i in zip(members, st):
                 spot = None
-                for rank in (0, 1, 2, 3):
-                    for dsh in (0, -24, 24, -48, 48, -76, 76, -108, 108,
-                                -144, 144, -190, 190):
-                        tx, ty, bb = place(it, s_i + dsh, rank, sd)
-                        if open_spot(bb):
-                            spot = (tx, ty, bb)
-                            break
-                    if spot:
+                for _, rank, dsh in cands:
+                    tx, ty, bb = place(it, s_i + dsh, rank, sd)
+                    if open_spot(bb):
+                        spot = (tx, ty, bb)
                         break
                 if spot is None and not it["hard"]:      # try the far side
-                    for rank in (0, 1, 2):
-                        for dsh in (0, -32, 32, -64, 64, -96, 96):
-                            tx, ty, bb = place(it, s_i + dsh, rank, -sd)
-                            if open_spot(bb):
-                                spot = (tx, ty, bb)
-                                break
-                        if spot:
+                    for _, rank, dsh in cands:
+                        if rank > 2:
+                            continue
+                        tx, ty, bb = place(it, s_i + dsh, rank, -sd)
+                        if open_spot(bb):
+                            spot = (tx, ty, bb)
                             break
                 if spot is None:
                     spot = place(it, s_i, 3, sd)

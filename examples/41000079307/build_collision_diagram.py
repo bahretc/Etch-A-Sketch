@@ -92,7 +92,7 @@ layout = {
          "text": ["Crash #10: second unit was an ATV",
                   "crossing SR 1320 from a dirt road"]},
     ],
-    "nudges": {},
+    "nudges": {"108075100": [24, 168]},   # beside the SR 1387 stub
     "route_forward": "E",
     # McInnis Road leaves SR 1320 heading 192 degrees, so its stub and the
     # crashes remileposted onto the junction from it sit south of the line
@@ -106,7 +106,7 @@ layout = {
          "dx": 10, "dy": 6},
         {"mp": 1.45, "label": "SR 1321 (McInnis Rd)", "side": -1},
         {"mp": 1.80, "label": "SR 1387", "side": 1,
-         "stub": 44, "anchor": "end", "dx": -12, "dy": -6},
+         "stub": 44, "anchor": "end", "dx": -66, "dy": 4},
     ],
     # sides the narratives establish, where the coded type alone would put
     # the cell on the wrong side of the centreline
@@ -115,8 +115,8 @@ layout = {
         "107666960": -1,        # SR 1321 approach, south of SR 1320
         "108244836": -1,        # off to the left while turning right onto
                                 # SR 1321, so the departure is southbound
-        "108075100": -1,        # off to the right through a left turn from
-                                # SR 1387, coming to rest facing east
+        "108075100": 1,         # approached on SR 1387, which leaves to
+                                # the north, so the cell belongs that side
     },
     "prepared_by": "Chris Bahret, PE",
     "date": "8/18/2026",

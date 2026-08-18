@@ -382,7 +382,7 @@ def _speed_marks(x0, y0, x1, y1, speed):
 
 
 def _unit_cell(tx, ty, ang_deg, unit, night, zigzag=False,
-               shaft=CELL_SHAFT, swerve=0.0):
+               shaft=CELL_SHAFT, swerve=0.0, turn=0.0):
     """One vehicle drawn from its tail start toward ``ang_deg``.
 
     The shaft is always ``shaft`` long tail to tip, so cells of different
@@ -401,6 +401,42 @@ def _unit_cell(tx, ty, ang_deg, unit, night, zigzag=False,
     out = []
     ink = [P(0.0)]
     mark_lo, mark_hi = 2.0, shaft - CELL_HEAD - 2.0
+    if turn:
+        # a turning vehicle: it runs up to the corner on its approach
+        # heading, rounds it, and carries the head on the new heading.
+        # The shaft keeps its length, so the cell still matches the rest.
+        a2 = math.radians(ang_deg + turn)
+        c2, s2 = math.cos(a2), math.sin(a2)
+        n2x, n2y = -s2, c2
+        s1 = shaft * 0.45
+        leg = shaft - s1
+
+        def Q(u, v=0.0):
+            cx, cy = P(s1)
+            return (cx + u * c2 + v * n2x, cy + u * s2 + v * n2y)
+
+        r = min(9.0, s1 * 0.4, leg * 0.4)
+        cor = P(s1)
+        d = [f"M {tx:.1f} {ty:.1f}",
+             f"L {P(s1 - r)[0]:.1f} {P(s1 - r)[1]:.1f}",
+             f"Q {cor[0]:.1f} {cor[1]:.1f} {Q(r)[0]:.1f} {Q(r)[1]:.1f}"]
+        if zigzag:
+            z = leg * 0.42
+            for u, v in ((z, 0.0), (z + 3.0, -5.6), (z + 7.0, 5.6),
+                         (z + 10.0, 0.0)):
+                d.append(f"L {Q(u, v)[0]:.1f} {Q(u, v)[1]:.1f}")
+                ink.append(Q(u, v))
+        d.append(f"L {Q(leg)[0]:.1f} {Q(leg)[1]:.1f}")
+        out.append(f'<path d="{" ".join(d)}" fill="none" stroke="#000" '
+                   'stroke-width="1.1"/>')
+        ink += [cor, Q(leg)]
+        mark_hi = s1 - r - 2.0
+        tip = Q(leg)
+        if mark_hi - mark_lo > 4:
+            out.append(_speed_run(tx, ty, c, s, mark_lo, mark_hi,
+                                  unit.speed))
+        out.append(_arrowhead(tip[0], tip[1], a2, night))
+        return "".join(out), tip, ink
     if zigzag:
         # the break sits late on the shaft, the way the drawn sheets put
         # it, so the speed marks keep a clean run off the tail
@@ -599,10 +635,15 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
         # ran off road right leaves right, left leaves left, and straight
         # ahead carries on along the travel line without a deflection
         side = {1: 1, 2: -1, 3: 0}.get(cr.acc_typ, 1)
-        ang = a1 + (side * DEPART_ANG if depart else 0.0)
+        # maneuver 7 is making a right turn, 8 a left turn; a vehicle that
+        # was turning gets the corner drawn rather than a straight run
+        turn = {7: 90.0, 8: -90.0}.get(u1.maneuver, 0.0)
+        ang = a1 + (side * DEPART_ANG if depart and not turn else 0.0)
         c, s = vec(ang)
         tail = (-CELL_SHAFT * c, -CELL_SHAFT * s)
-        svg, tip = draw(tail, ang, u1, zigzag=depart)
+        svg, tip = draw(tail, ang, u1, zigzag=depart, turn=turn)
+        if turn:
+            c, s = vec(ang + turn)      # the front of the cell is the exit
         parts.append(svg)
         mark = {14: "P", 15: "B", 17: "A", 16: "T"}.get(cr.acc_typ)
         front = 0.0
@@ -941,7 +982,7 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         # the MP labels sit on the side of the line the terminal side road
         # does not use, so a stub and its name never fight them
         lbl = "Begin MP:" if t == 0 else "End MP:"
-        lx = max(x, 74) if t == 0 else x - 150
+        lx = max(x, 74) if t == 0 else x - 196
         ly = y - 78 if t == 0 else y - 62
         svg.append(_stroke_text(lx, ly - 5, lbl, size=15.5, sw=1.05))
         svg.append(_stroke_text(lx, ly + 15, f"{mp:.2f}", size=15.5,
@@ -985,7 +1026,7 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
     keep_out = [(904, 18, 1620, 345),                    # legend
                 (1300, 826, 1632, 1056),                 # TSU title block
                 (0, 760, 210, 940),                      # begin MP label
-                (1344, 336, 1476, 424),                  # end MP label
+                (1300, 336, 1436, 424),                  # end MP label
                 (784, 18, 928, 232)]                     # north needle
     keep_out.append(text_box(layout.get("title_x", 760), 54,
                              layout.get("title", []), 19.5, 31))

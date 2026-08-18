@@ -350,16 +350,17 @@ def crash_glyph(cr: DiagramCrash, above: bool) -> tuple[str, float]:
         svg, head = _unit_arrow(ax, ay, a1, L, u1, cr.night, zigzag=zig)
         parts.append(svg)
         if cr.acc_typ in (18, 19):
-            parts.append(f'<rect x="{head[0] + 4:.1f}" y="{head[1] - 5:.1f}" '
+            parts.append(f'<rect x="{head[0] + 7:.1f}" y="{head[1] - 5:.1f}" '
                          'width="10" height="10" fill="none" stroke="#000" '
                          'stroke-width="1.1"/>')
         parts.append(_severity_circle(head[0] + 1, head[1], cr.severity))
         parts.append(tail_decor(0, 0, a1))
         return "".join(parts), L + 60
-    a2 = _DIR_ANG.get(u2.direction, a1)
+    a2 = _DIR_ANG.get(u2.direction,
+                      a1 + 90 if cr.acc_typ == 30 else a1)
     if cr.acc_typ in (21, 22):                       # rear end, inline
-        svg1, h1 = _unit_arrow(-2 * L - 8, 0, 0, L, u1, cr.night)
-        svg2, _ = _unit_arrow(6, 0, 0, L * 0.9, u2, cr.night)
+        svg1, h1 = _unit_arrow(-L - 14, 0, 0, L, u1, cr.night)
+        svg2, _ = _unit_arrow(2, 0, 0, L * 0.85, u2, cr.night)
         rot = f'transform="rotate({a1})"' if a1 else ""
         parts.append(f'<g {rot}>{svg1}{svg2}'
                      f'{_severity_circle(0, 0, cr.severity)}</g>')
@@ -382,7 +383,9 @@ def crash_glyph(cr: DiagramCrash, above: bool) -> tuple[str, float]:
                      f'{_severity_circle(0, 0, cr.severity)}</g>')
         parts.append(tail_decor(*_rot(-6, 5, a1), a1))
         return "".join(parts), 2 * L + 40
-    svg1, h1 = _unit_arrow(-L - 6, 0, a1, L, u1, cr.night)
+    svg1, h1 = _unit_arrow(
+        -(L + 6) * math.cos(math.radians(a1)),
+        -(L + 6) * math.sin(math.radians(a1)), a1, L, u1, cr.night)
     svg2, _ = _unit_arrow(
         -(L + 6) * math.cos(math.radians(a2)),
         -(L + 6) * math.sin(math.radians(a2)) - 8, a2, L, u2, cr.night)
@@ -399,7 +402,7 @@ def _rot(x, y, deg):
 
 
 # ----------------------------------------------------------------- blocks
-def legend_block(x, y, w=530, h=305):
+def legend_block(x, y, w=548, h=305):
     def arrow(ax, ay, ln=42, night=False, extra=""):
         return (f'<line x1="{ax}" y1="{ay}" x2="{ax + ln - 14}" y2="{ay}" '
                 'stroke="#000" stroke-width="1.1"/>' + extra +
@@ -511,19 +514,19 @@ def legend_block(x, y, w=530, h=305):
                    f'{label}</text>')
     for i, label in enumerate(rows3):
         ay = yy + i * 27
-        ax = x + 352
+        ax = x + 344
         spd = (None if label == "SPEED UNKNOWN"
                else 75 if label == "70 AND UP" else i * 10 + 5)
         u = Unit(1, speed=spd)
         svg, _ = _unit_arrow(ax, ay, 0, 40, u, False)
         out.append(svg)
-        out.append(f'<text x="{x + 412}" y="{ay + 3.5}" font-size="9">'
+        out.append(f'<text x="{x + 406}" y="{ay + 3.5}" font-size="8.5">'
                    f'{label}</text>')
     for i, (letter, label, color) in enumerate(rows4):
         ay = yy + i * 27
-        out.append(f'<text x="{x + 478}" y="{ay + 4}" font-size="12" '
+        out.append(f'<text x="{x + 486}" y="{ay + 4}" font-size="12" '
                    f'fill="{color}" text-anchor="middle">{letter}</text>')
-        out.append(f'<text x="{x + 490}" y="{ay + 3.5}" font-size="9">'
+        out.append(f'<text x="{x + 497}" y="{ay + 3.5}" font-size="8.5">'
                    f'{label}</text>')
     return "".join(out)
 
@@ -622,21 +625,46 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         svg.append(f'<text x="{x - 20 if t else x - 30}" y="{y + dyl + 20}" '
                    f'font-size="16" text-anchor="middle">{mp:.2f}</text>')
 
-    placed = []           # (x, halfw, row)
+    keep_out = [(1070, 10, 1632, 400), (1300, 826, 1632, 1056),
+                (240, 880, 700, 1030), (430, 20, 1050, 290),
+                (0, 830, 200, 1056), (1480, 430, 1632, 560)]
+    keep_out += [tuple(r) for r in layout.get("keep_out", [])]
+
+    def clear(ox, oy, halfw):
+        x0, y0 = ox - halfw - 20, oy - 46
+        x1, y1 = ox + halfw + 20, oy + 46
+        return not any(x0 < kx1 and x1 > kx0 and y0 < ky1 and y1 > ky0
+                       for kx0, ky0, kx1, ky1 in keep_out)
+
+    placed = []           # (x, halfw, slot)
     for cr in sorted([c for c in crashes if c.mp is not None],
                      key=lambda c: c.mp):
         t = (cr.mp - lo) / (hi - lo) if hi > lo else 0.5
         t = min(1.0, max(0.0, t))
         bx, by = road_pt(t)
         g, halfw = crash_glyph(cr, above=True)
-        row = 0
-        while any(r == row and abs(bx - px) < halfw + pw + 14
-                  for px, pw, r in placed):
-            row += 1
-        placed.append((bx, halfw, row))
-        nx, ny = _rot(0, -1, math.degrees(road_ang(t)))
-        ox = bx + nx * (58 + row * 62)
-        oy = by + ny * (58 + row * 62)
+        ang = math.degrees(road_ang(t))
+
+        def spot(slot):
+            # slots fan out both sides of the line, each ring stepping
+            # back along the road like the drawn sheets
+            ring, below = slot // 2 + 1, slot % 2 == 1
+            nx, ny = _rot(0, 1 if below else -1, ang)
+            txx, txy = _rot(-1, 0, ang)
+            dist = 46 + (ring - 1) * 56
+            return (bx + nx * dist + txx * (ring - 1) * 44,
+                    by + ny * dist + txy * (ring - 1) * 44)
+
+        slot = 0
+        while slot < 14:
+            ox, oy = spot(slot)
+            if clear(ox, oy, halfw) and not any(
+                    s == slot and abs(bx - px) < halfw + pw + 18
+                    for px, pw, s in placed):
+                break
+            slot += 1
+        placed.append((bx, halfw, slot))
+        ox, oy = spot(slot)
         dx, dy = layout.get("nudges", {}).get(cr.crash_id, (0, 0))
         svg.append(f'<g transform="translate({ox + dx:.1f},'
                    f'{oy + dy:.1f})">{g}</g>')
@@ -652,7 +680,7 @@ def _sheet(body_svg: list, layout: dict, crashes) -> str:
     for i, line in enumerate(layout.get("title", [])):
         svg.append(f'<text x="{tx}" y="{58 + i * 26}" font-size="20" '
                    f'text-anchor="middle">{line}</text>')
-    svg.append(legend_block(1086, 26))
+    svg.append(legend_block(1058, 26))
     svg.append(north_needle(layout.get("north_x", 1010), 40))
     rl = layout.get("route_label", [])
     rx, ry = layout.get("route_label_xy", (520, 940))

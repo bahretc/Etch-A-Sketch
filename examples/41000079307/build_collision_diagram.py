@@ -33,8 +33,11 @@ crashes.append(DiagramCrash(
     crash_id="108075100", mp=1.800, dt="04/05/2025 12:00",
     severity="O", acc_typ=19, road_cond="D", night=False,
     units=[Unit(1, "E", None, 4)]))
+# Strip studies number by milepost then by date; intersection studies
+# number by date (NCDOT Collision Diagrams deck, step 1 method 2).
 from safety_eval.collision_diagram import _sortable_dt  # noqa: E402
-crashes.sort(key=lambda c: _sortable_dt(c.dt))
+crashes.sort(key=lambda c: (c.mp if c.mp is not None else 0.0,
+                            _sortable_dt(c.dt)))
 for i, c in enumerate(crashes, start=1):
     c.seq = i
 
@@ -63,7 +66,7 @@ layout = {
     "route_label_xy": [455, 906],
     "notes": [
         {"x": 1330, "y": 660,
-         "text": ["Crash #10 coded 0.007 mile east of",
+         "text": ["Crash #12 coded 0.007 mile east of",
                   "SR 1387; added at the study end,",
                   "MP 1.800"]},
     ],

@@ -165,8 +165,11 @@ def read_data_csv(path: str) -> list[DiagramCrash]:
                 speed=int(spd) if spd.isdigit() else None,
                 maneuver=int(row.get("MANEUVER") or 0) or None,
             ))
+    # The data file's row order is the plot order. TEAAS writes it that
+    # way on purpose: an intersection study is ordered by date, a strip
+    # study by milepost then date (NCDOT Collision Diagrams deck, step
+    # 1). Re-sorting here would impose one on the other.
     crashes = [by_id[c] for c in order]
-    crashes.sort(key=lambda c: (c.dt and _sortable_dt(c.dt)) or "")
     for i, cr in enumerate(crashes, start=1):
         cr.seq = i
         cr.units.sort(key=lambda u: u.number)
@@ -282,7 +285,7 @@ def crashes_from_initial_study(path: str) -> list[DiagramCrash]:
 # unit, one arrowhead, one bubble, one decor offset, one severity circle.
 # Only the cell's rotation and which parts are present change with the
 # crash type, so a sheet reads as one drafted set.
-CELL_SHAFT = 50.0        # tail start to arrow tip, identical for every unit
+CELL_SHAFT = 56.0        # tail start to arrow tip, identical for every unit
 CELL_HEAD = 13.0         # arrowhead length, measured inside the shaft
 BUBBLE_R = 8.0           # crash number circle
 BUBBLE_GAP = 1.0         # bubble edge to tail start, near enough to touch
@@ -291,11 +294,11 @@ DECOR_N = 7.2            # offset off the shaft for the asterisk/letter
 SEV_GAP = 5.0            # arrow tip to severity circle center
 SEV_R = 2.6
 LANE_SEP = 11.0          # lateral separation of two units drawn side by side
-TICK_H = 5.2             # half length of the point of impact tick
+TICK_H = 6.5             # half length of the point of impact tick
 DEPART_ANG = 26.0        # cell rotation off the travel line for a departure
 ROAD_GAP = 13.0          # clear space between the centerline and any ink
 DOT_R = 1.35
-DOT_PITCH = 7.4
+DOT_MIN_PITCH = 3.2       # dots stay legible on a short run
 
 
 def _arrowhead(x, y, ang, night):
@@ -317,7 +320,8 @@ def _speed_run(x0, y0, cos, sin, s_lo, s_hi, speed):
     themselves in the run they are given (training deck page 25)."""
     mid = (s_lo + s_hi) / 2.0
     if speed is None:
-        return _stroke_text(x0 + mid * cos, y0 + mid * sin, "x", size=9,
+        at = min(max(mid, DECOR_S + 8.0), s_hi - 2.0)
+        return _stroke_text(x0 + at * cos, y0 + at * sin, "x", size=9,
                             color=BLUE)
     try:
         spd = int(speed)
@@ -337,15 +341,22 @@ def _speed_run(x0, y0, cos, sin, s_lo, s_hi, speed):
     n = min(6, spd // 10)
     if n < 1:
         return ""
-    pitch = DOT_PITCH
-    if n > 1:                       # a short run tightens the pitch rather
-        pitch = min(pitch, (s_hi - s_lo) / (n - 1))    # than spilling out
-        pitch = max(pitch, 3.4)
-    first = mid - (n - 1) * pitch / 2.0
+    # the marks spread across the shaft rather than bunching at the tail:
+    # NCDOT's own cells vary the pitch with the count and run the dots
+    # most of the way to the head
+    lo = s_lo + 0.16 * (s_hi - s_lo)
+    hi = s_lo + 0.92 * (s_hi - s_lo)
+    if n == 1:
+        at = [(lo + hi) / 2.0]
+    else:
+        pitch = (hi - lo) / (n - 1)
+        if pitch < DOT_MIN_PITCH:               # a short run keeps them
+            pitch = DOT_MIN_PITCH               # legible and centres them
+            lo = mid - (n - 1) * pitch / 2.0
+        at = [lo + k * pitch for k in range(n)]
     return "".join(
-        f'<circle cx="{x0 + (first + k * pitch) * cos:.1f}" '
-        f'cy="{y0 + (first + k * pitch) * sin:.1f}" '
-        f'r="{DOT_R}" fill="{BLUE}"/>' for k in range(n))
+        f'<circle cx="{x0 + a * cos:.1f}" cy="{y0 + a * sin:.1f}" '
+        f'r="{DOT_R}" fill="{BLUE}"/>' for a in at)
 
 
 def _speed_marks(x0, y0, x1, y1, speed):
@@ -378,10 +389,10 @@ def _unit_cell(tx, ty, ang_deg, unit, night, zigzag=False,
     if zigzag:
         # the break sits late on the shaft, the way the drawn sheets put
         # it, so the speed marks keep a clean run off the tail
-        z0 = shaft - CELL_HEAD - 13.0
-        pts = [P(0.0), P(z0), P(z0 + 3.5, -6.0), P(z0 + 7.5, 6.0),
-               P(z0 + 11), P(shaft)]
-        ink += [P(z0 + 3.5, -6.0), P(z0 + 7.5, 6.0)]
+        z0 = shaft - CELL_HEAD - 10.0
+        pts = [P(0.0), P(z0), P(z0 + 3.0, -5.6), P(z0 + 7.0, 5.6),
+               P(z0 + 10), P(shaft)]
+        ink += [P(z0 + 3.0, -5.6), P(z0 + 7.0, 5.6)]
         mark_hi = z0 - 2.5
         d = " ".join(f"{px:.1f},{py:.1f}" for px, py in pts)
         out.append(f'<polyline points="{d}" fill="none" stroke="#000" '
@@ -601,7 +612,7 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
     # ------------------------------------------------ rear end / backing
     if cr.acc_typ in (21, 22, 31):
         back = cr.acc_typ == 31
-        gap = 3.0                                # the bar stands clear
+        gap = 1.0                                # head tip against the bar
         tail1 = (-(CELL_SHAFT + gap) * c1, -(CELL_SHAFT + gap) * s1)
         svg1, tip1 = draw(tail1, a1, u1)
         lead_ang = a1 + 180 if back else a1
@@ -620,9 +631,9 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
 
     # ------------------------------------------------ head on
     if cr.acc_typ == 27:
-        tail1 = (-(CELL_SHAFT + 3) * c1, -(CELL_SHAFT + 3) * s1)
+        tail1 = (-(CELL_SHAFT + 1) * c1, -(CELL_SHAFT + 1) * s1)
         svg1, _ = draw(tail1, a1, u1)
-        svg2, _ = draw(((CELL_SHAFT + 3) * c1, (CELL_SHAFT + 3) * s1),
+        svg2, _ = draw(((CELL_SHAFT + 1) * c1, (CELL_SHAFT + 1) * s1),
                        a1 + 180, u2)
         parts += [svg1, svg2, _impact_tick(0, 0, a1)]
         K(0, 0, TICK_H + 1)
@@ -925,8 +936,9 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         ang = math.degrees(road_ang(t))
         nx, ny = _rot(0, -1, ang)        # +1 is north, as for the crashes
         up = jn.get("side", 1)
-        ex = x + up * 52 * nx
-        ey = y + up * 52 * ny
+        stub = jn.get("stub", 78)
+        ex = x + up * stub * nx
+        ey = y + up * stub * ny
         svg.append(f'<line x1="{x:.1f}" y1="{y:.1f}" '
                    f'x2="{ex:.1f}" y2="{ey:.1f}" stroke="#000" '
                    'stroke-width="1.1"/>')
@@ -934,8 +946,8 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         ly = ey + up * 16 * ny           # on the side the road leaves to
         svg.append(_stroke_text(lx, ly, jn["label"], size=11.5,
                                 anchor="start"))
-        jn_keep.append((lx - 6, ly - 10,
-                        lx + 8.4 * len(jn["label"]), ly + 10))
+        jn_keep.append((lx - 5, ly - 8,
+                        lx + 6.9 * len(jn["label"]), ly + 8))
         jn_keep.append((min(x, ex) - 16, min(y, ey) - 6,
                         max(x, ex) + 16, max(y, ey) + 6))
 

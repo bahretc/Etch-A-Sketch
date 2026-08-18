@@ -953,7 +953,7 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         ang = math.degrees(road_ang(t))
         nx, ny = _rot(0, -1, ang)        # +1 is north, as for the crashes
         up = jn.get("side", 1)
-        stub = jn.get("stub", 78)
+        stub = jn.get("stub", 100)
         ex = x + up * stub * nx
         ey = y + up * stub * ny
         svg.append(f'<line x1="{x:.1f}" y1="{y:.1f}" '
@@ -983,8 +983,8 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                 (0, 830, 200, 1056),                     # begin MP label
                 (1440, 356, 1632, 452),                  # end MP label
                 (784, 18, 928, 232)]                     # north needle
-    keep_out.append(text_box(layout.get("title_x", 760), 52,
-                             layout.get("title", []), 19.5, 27))
+    keep_out.append(text_box(layout.get("title_x", 760), 54,
+                             layout.get("title", []), 19.5, 31))
     rlx, rly = layout.get("route_label_xy", (520, 940))
     keep_out.append(text_box(rlx, rly, layout.get("route_label", []),
                              16, 25))
@@ -1015,16 +1015,19 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         nx, ny = _rot(0, -1, ang)
         g, box, n_ext = crash_glyph(cr, base_ang=ang,
                                     route_forward=route_fwd)
-        pref, hard = 1, False
+        # A crash is drawn on the side of the centreline its vehicle was
+        # travelling on, the way the sheets separate the two directions:
+        # eastbound below the line, westbound above it. Where it left the
+        # road only shapes the cell, not which side it is drawn on. A unit
+        # crossing the road picks no side, so placement is free to choose.
+        base = ang - _DIR_ANG.get(route_fwd, 0)
+        ua = (base + _DIR_ANG.get(cr.units[0].direction, -base)
+              if cr.units else base)
+        rx, ry = _rot(1.0, 0.0, ua + 90.0)          # right of travel
+        along_n = rx * nx + ry * ny
+        pref = 1 if along_n > 0 else -1
+        hard = abs(along_n) > 0.35
         forced = layout.get("sides", {}).get(cr.crash_id)
-        if cr.acc_typ in ROR_TYPES or cr.acc_typ == 19:
-            base = ang - _DIR_ANG.get(route_fwd, 0)
-            ua = base + _DIR_ANG.get(cr.units[0].direction, -base) \
-                if cr.units else base
-            side = {1: 1, 2: -1, 3: 0}.get(cr.acc_typ, 1)
-            fa = math.radians(ua + side * DEPART_ANG)
-            pref = 1 if math.cos(fa) * nx + math.sin(fa) * ny > 0 else -1
-            hard = side != 0        # straight ahead does not pick a side
         if forced:
             pref, hard = int(forced), True
         items.append({"cr": cr, "t": t, "bx": bx, "by": by, "g": g,
@@ -1075,7 +1078,8 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
             # nearest ink to clear the centerline by ROAD_GAP.
             d0 = max(max(24.0, (ROAD_GAP - it["n"][0]) if sd > 0
                          else (ROAD_GAP + it["n"][1])) for it in members)
-            rowh = max(it["n"][1] - it["n"][0] for it in members) + 10
+            rowh = max(40.0, 0.66 * max(it["n"][1] - it["n"][0]
+                                        for it in members))
 
             def along(it):
                 """Ink extents along the road, measured from the origin."""
@@ -1097,10 +1101,12 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                     st[i] = need
             drift = sum(st) / len(st) - sum(want) / len(want)
             st = [v - drift for v in st]
-            cands = [(0.0, rk, d)
-                     for rk in (0, 1, 2, 3)
-                     for d in (0, -24, 24, -48, 48, -76, 76, -108, 108,
-                               -144, 144, -190, 190)]
+            cands = sorted(
+                ((abs(d) + 70.0 * rk, rk, d)
+                 for rk in (0, 1, 2, 3)
+                 for d in (0, -24, 24, -48, 48, -76, 76, -108, 108,
+                           -144, 144, -190, 190)),
+                key=lambda t: t[0])
 
             def place(it, s_at, rank, sd2, base=None):
                 dist = (d0 if base is None else base) + rank * rowh
@@ -1151,7 +1157,7 @@ def _sheet(body_svg: list, layout: dict, crashes) -> str:
            'stroke-width="2"/>']
     tx = layout.get("title_x", 760)
     for i, line in enumerate(layout.get("title", [])):
-        svg.append(_stroke_text(tx, 52 + i * 27, line, size=19.5, sw=1.15))
+        svg.append(_stroke_text(tx, 54 + i * 31, line, size=19.5, sw=1.15))
     svg.append(legend_block(912, 26))
     svg.append(north_needle(layout.get("north_x", 856), 40,
                             rot=layout.get("north_rot", 0.0)))

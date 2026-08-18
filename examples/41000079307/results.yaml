@@ -1,0 +1,22 @@
+# Results-sheet inputs for 41000079307 (the engineer owns the final text).
+# docs/05 style applies: plain, no em dashes. Items for Discussion carry
+# what the DMV-349 review turned up that the coded data does not show.
+order_id: "41000079307"
+project_id: "77S00141"
+location: "SR 1320 (Milk Dairy Road) from Stone Drive [MP 1.31] to SR 1387 (Springside Road) [MP 1.80]"
+length: "0.49 miles"
+county: "Robeson"
+city: "All and Rural"
+division: "6"
+analysis_criteria: |-
+  Crashes on SR 1320 between MP 1.310 and MP 1.800 for the period
+  7/1/2021 through 6/30/2026, as reviewed against the DMV-349 reports.
+target_crashes: |-
+  Target-1: Run off road crashes.
+  Target-2: Crashes involving a vehicle crossing the centerline.
+items_for_discussion:
+  - "The DMV-349 for crash 108309866 notes a large amount of sand in the roadway at the time of the collision. The crash occurred at MP 1.469, where the vehicle over corrected, crossed the centerline and ran off the road to the left into a ditch. Roadway debris should be considered when evaluating the run off road pattern at this location."
+  - "Nine of the twelve study crashes left the roadway and struck a ditch, and five of those crossed the centerline first. TEAAS codes most of them as fixed object, overturn or other non collision, so the coded crash types understate the run off road pattern."
+  - "Crash 108075100 occurred at the SR 1387 junction at the study terminus. The vehicle disregarded the stop sign on SR 1387 and left the road turning onto SR 1320, so it is carried in the study at MP 1.800."
+  - "Crashes 107089722 and 107666960 approached on SR 1321 and carried through the SR 1320 junction, so both are mileposted at MP 1.450. Crash 106814981 stayed on SR 1321 and is deleted from the section."
+  - "The second unit in crash 107421047 was an ATV crossing SR 1320 from a dirt road."

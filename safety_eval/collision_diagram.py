@@ -275,9 +275,34 @@ def crashes_from_initial_study(path: str) -> list[DiagramCrash]:
 
 
 # -------------------------------------------------------------------- SVG
+# ------------------------------------------------------------ cell sizes
+# Every crash is drawn from the same rigid parts, the way the TSU cell
+# library places them (NCDOT "Collision Diagrams" training deck, rev
+# 1/18/2013, Breakdown of Plotted Crash Components): one shaft length per
+# unit, one arrowhead, one bubble, one decor offset, one severity circle.
+# Only the cell's rotation and which parts are present change with the
+# crash type, so a sheet reads as one drafted set.
+CELL_SHAFT = 50.0        # tail start to arrow tip, identical for every unit
+CELL_HEAD = 8.6          # arrowhead length, measured inside the shaft
+BUBBLE_R = 8.0           # crash number circle
+BUBBLE_GAP = 1.0         # bubble edge to tail start, near enough to touch
+DECOR_S = 9.0            # station along the shaft for the asterisk/letter
+DECOR_N = 7.2            # offset off the shaft for the asterisk/letter
+SEV_GAP = 5.0            # arrow tip to severity circle center
+SEV_R = 3.9
+LANE_SEP = 11.0          # lateral separation of two units drawn side by side
+TICK_H = 5.2             # half length of the point of impact tick
+DEPART_ANG = 26.0        # cell rotation off the travel line for a departure
+ROAD_GAP = 13.0          # clear space between the centerline and any ink
+DOT_R = 1.35
+DOT_PITCH = 7.4
+
+
 def _arrowhead(x, y, ang, night):
+    """Vehicle head: open for a daylight crash, filled for a night one."""
     fill = "#000" if night else "#fff"
-    pts = [(0, 0), (-14, 4), (-11.5, 0), (-14, -4)]
+    h = CELL_HEAD
+    pts = [(0, 0), (-h, 3.0), (-h * 0.80, 0), (-h, -3.0)]
     cos, sin = math.cos(ang), math.sin(ang)
     p = " ".join(f"{x + px * cos - py * sin:.1f},{y + px * sin + py * cos:.1f}"
                  for px, py in pts)
@@ -285,88 +310,162 @@ def _arrowhead(x, y, ang, night):
             'stroke-width="1.1"/>')
 
 
-def _speed_marks(x0, y0, x1, y1, speed):
-    out = []
+def _speed_run(x0, y0, cos, sin, s_lo, s_hi, speed):
+    """Speed band marks on a shaft: one dot per full 10 mph and none
+    under 10, the triple line at 70 and up, a blue x when the speed is
+    unknown. Dots keep one pitch and one radius on every cell and center
+    themselves in the run they are given (training deck page 25)."""
+    mid = (s_lo + s_hi) / 2.0
     if speed is None:
-        mx, my = (x0 + x1) / 2, (y0 + y1) / 2
-        return _stroke_text(mx, my, "x", size=9, color=BLUE)
-    if speed >= 70:
-        dx, dy = x1 - x0, y1 - y0
-        L = math.hypot(dx, dy) or 1
-        nx, ny = -dy / L * 2.1, dx / L * 2.1
+        return _stroke_text(x0 + mid * cos, y0 + mid * sin, "x", size=9,
+                            color=BLUE)
+    try:
+        spd = int(speed)
+    except (TypeError, ValueError):
+        return ""
+    if spd >= 70:
+        nx, ny = -sin * 2.1, cos * 2.1
+        out = []
         for k in (-1, 0, 1):
-            out.append(f'<line x1="{x0 + nx * k:.1f}" y1="{y0 + ny * k:.1f}" '
-                       f'x2="{x1 + nx * k:.1f}" y2="{y1 + ny * k:.1f}" '
-                       f'stroke="{BLUE}" stroke-width="1.4"/>')
+            out.append(
+                f'<line x1="{x0 + s_lo * cos + nx * k:.1f}" '
+                f'y1="{y0 + s_lo * sin + ny * k:.1f}" '
+                f'x2="{x0 + s_hi * cos + nx * k:.1f}" '
+                f'y2="{y0 + s_hi * sin + ny * k:.1f}" '
+                f'stroke="{BLUE}" stroke-width="1.4"/>')
         return "".join(out)
-    n = min(7, speed // 10 + 1)
-    for k in range(1, n + 1):
-        t = k / (n + 1)
-        out.append(f'<circle cx="{x0 + (x1 - x0) * t:.1f}" '
-                   f'cy="{y0 + (y1 - y0) * t:.1f}" r="1.45" fill="{BLUE}"/>')
-    return "".join(out)
+    n = min(6, spd // 10)
+    if n < 1:
+        return ""
+    pitch = DOT_PITCH
+    if n > 1:                       # a short run tightens the pitch rather
+        pitch = min(pitch, (s_hi - s_lo) / (n - 1))    # than spilling out
+        pitch = max(pitch, 3.4)
+    first = mid - (n - 1) * pitch / 2.0
+    return "".join(
+        f'<circle cx="{x0 + (first + k * pitch) * cos:.1f}" '
+        f'cy="{y0 + (first + k * pitch) * sin:.1f}" '
+        f'r="{DOT_R}" fill="{BLUE}"/>' for k in range(n))
+
+
+def _speed_marks(x0, y0, x1, y1, speed):
+    """Speed marks along a drawn segment (used by the legend rows)."""
+    dx, dy = x1 - x0, y1 - y0
+    ln = math.hypot(dx, dy) or 1.0
+    return _speed_run(x0, y0, dx / ln, dy / ln, 0.0, ln, speed)
+
+
+def _unit_cell(tx, ty, ang_deg, unit, night, zigzag=False,
+               shaft=CELL_SHAFT, swerve=0.0):
+    """One vehicle drawn from its tail start toward ``ang_deg``.
+
+    The shaft is always ``shaft`` long tail to tip, so cells of different
+    crash types stack the same. ``zigzag`` breaks the middle of the shaft
+    for a run off road without changing its length, and ``swerve`` jogs
+    the shaft sideways near the head for a sideswipe. Returns the svg,
+    the tip point, and the ink points the caller needs for its bounds.
+    """
+    a = math.radians(ang_deg)
+    c, s = math.cos(a), math.sin(a)
+    nx, ny = -s, c                      # right of travel, page coordinates
+
+    def P(u, v=0.0):
+        return (tx + u * c + v * nx, ty + u * s + v * ny)
+
+    out = []
+    ink = [P(0.0)]
+    mark_lo, mark_hi = 2.0, shaft - CELL_HEAD - 2.0
+    if zigzag:
+        # the break sits late on the shaft, the way the drawn sheets put
+        # it, so the speed marks keep a clean run off the tail
+        z0 = shaft - CELL_HEAD - 15.0
+        pts = [P(0.0), P(z0), P(z0 + 4, -6.5), P(z0 + 9, 6.5),
+               P(z0 + 13), P(shaft)]
+        ink += [P(z0 + 4, -6.5), P(z0 + 9, 6.5)]
+        mark_hi = z0 - 2.5
+        d = " ".join(f"{px:.1f},{py:.1f}" for px, py in pts)
+        out.append(f'<polyline points="{d}" fill="none" stroke="#000" '
+                   'stroke-width="1.1"/>')
+        tip = P(shaft)
+    elif swerve:
+        pts = [P(0.0), P(shaft * 0.5), P(shaft * 0.66, swerve),
+               P(shaft, swerve)]
+        ink.append(P(shaft * 0.66, swerve))
+        mark_hi = shaft * 0.46
+        d = " ".join(f"{px:.1f},{py:.1f}" for px, py in pts)
+        out.append(f'<polyline points="{d}" fill="none" stroke="#000" '
+                   'stroke-width="1.1"/>')
+        tip = P(shaft, swerve)
+    else:
+        tip = P(shaft)
+        out.append(f'<line x1="{tx:.1f}" y1="{ty:.1f}" x2="{tip[0]:.1f}" '
+                   f'y2="{tip[1]:.1f}" stroke="#000" stroke-width="1.1"/>')
+    if mark_hi - mark_lo > 4:
+        out.append(_speed_run(tx, ty, c, s, mark_lo, mark_hi, unit.speed))
+    out.append(_arrowhead(tip[0], tip[1], a, night))
+    ink.append(tip)
+    return "".join(out), tip, ink
+
+
+def _unit_arrow(x, y, ang_deg, length, unit, night, zigzag=False):
+    """Back compatible wrapper: svg and tip for one unit."""
+    svg, tip, _ = _unit_cell(x, y, ang_deg, unit, night, zigzag=zigzag,
+                             shaft=length)
+    return svg, tip
 
 
 def _severity_circle(x, y, sev):
+    """Injury indicator at the front of the cell: open for a non severe
+    injury, half filled for a severe one, solid for a fatality."""
     if sev == "O":
         return ""
     if sev == "K":
-        return f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.9" fill="{RED}"/>'
+        return f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{SEV_R}" fill="{RED}"/>'
     if sev == "A":
-        return (f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.9" fill="#fff" '
+        return (f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{SEV_R}" fill="#fff" '
                 f'stroke="{RED}" stroke-width="1.5"/>'
-                f'<path d="M {x - 3.9:.1f} {y:.1f} A 3.9 3.9 0 0 0 '
-                f'{x + 3.9:.1f} {y:.1f} Z" fill="{RED}"/>')
-    return (f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.9" fill="#fff" '
+                f'<path d="M {x - SEV_R:.1f} {y:.1f} A {SEV_R} {SEV_R} 0 0 0 '
+                f'{x + SEV_R:.1f} {y:.1f} Z" fill="{RED}"/>')
+    return (f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{SEV_R}" fill="#fff" '
             f'stroke="{RED}" stroke-width="1.5"/>')
 
 
 def _badge(x, y, n):
-    return (f'<circle cx="{x:.1f}" cy="{y:.1f}" r="8" fill="#fff" '
+    return (f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{BUBBLE_R}" fill="#fff" '
             'stroke="#000" stroke-width="1.0"/>'
             + _stroke_text(x, y, n, size=8.5))
+
+
+def _impact_tick(x, y, ang_deg):
+    """Point of impact bar, drawn across the travel line."""
+    a = math.radians(ang_deg)
+    nx, ny = -math.sin(a) * TICK_H, math.cos(a) * TICK_H
+    return (f'<line x1="{x - nx:.1f}" y1="{y - ny:.1f}" '
+            f'x2="{x + nx:.1f}" y2="{y + ny:.1f}" stroke="#000" '
+            'stroke-width="1.1"/>')
 
 
 _DIR_ANG = {"E": 0, "NE": -45, "N": -90, "NW": -135,
             "W": 180, "SW": 135, "S": 90, "SE": 45}
 
 
-def _unit_arrow(x, y, ang_deg, length, unit, night, zigzag=False):
-    """One unit: tail (optionally ran-off-road zigzag), speed marks, head."""
-    a = math.radians(ang_deg)
-    cos, sin = math.cos(a), math.sin(a)
-    out = []
-    x0, y0 = x, y
-    if zigzag:
-        seg = 9
-        pts = [(0, 0), (seg, 7), (2 * seg, -7), (3 * seg, 7), (4 * seg, 0)]
-        d = " ".join(f"{x + px * cos - py * sin:.1f},"
-                     f"{y + px * sin + py * cos:.1f}" for px, py in pts)
-        out.append(f'<polyline points="{d}" fill="none" stroke="#000" '
-                   'stroke-width="1.1"/>')
-        x0, y0 = x + 4 * seg * cos, y + 4 * seg * sin
-    x1, y1 = x0 + length * cos, y0 + length * sin
-    out.append(f'<line x1="{x0:.1f}" y1="{y0:.1f}" x2="{x1:.1f}" '
-               f'y2="{y1:.1f}" stroke="#000" stroke-width="1.1"/>')
-    out.append(_speed_marks(x0, y0, x1, y1, unit.speed))
-    out.append(_arrowhead(x1, y1, a, night))
-    return "".join(out), (x1, y1)
-
-
 def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
                 route_forward: str = "E",
                 throw: float = 0.0) -> tuple[str, tuple, tuple]:
-    """Assemble one crash with the roadway's local bearing as its frame.
+    """Assemble one crash from the standard parts in the roadway's frame.
 
     ``base_ang`` is the road tangent in page degrees at this crash's
     milepost and ``route_forward`` names the compass direction that
     tangent represents, so a unit coded E travels along the drawn road
-    and a unit coded N crosses it, the way the TSU sheets read. The
-    local origin (0, 0) is the point of impact or departure; text stays
-    upright. Returns (svg, box, normal_extents): box is the assembly's
-    ink bounding box in local page coordinates and normal_extents its
-    signed extents along the road normal, so placement can test true
-    ink overlap and guarantee nothing touches the centerline.
+    and a unit coded N crosses it, the way the TSU sheets read.
+
+    The cell is rigid. Unit one always runs CELL_SHAFT from its tail
+    start to its tip; the numbered bubble always sits on the tail axis
+    one gap behind that tail; the at fault asterisk always sits DECOR_S
+    along the shaft and DECOR_N to the left of travel with the road
+    surface letter opposite it; the injury circle always sits SEV_GAP
+    past the front of the assembly. Text stays upright. The local origin
+    is the point of impact or rest. Returns (svg, box, normal_extents).
     """
     u1 = cr.units[0] if cr.units else Unit(1, route_forward)
     u2 = cr.units[1] if len(cr.units) > 1 else None
@@ -376,16 +475,15 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
         return base + _DIR_ANG.get(d, fallback - base)
 
     a1 = conv(u1.direction, base)
-    parts = []
+    parts: list[str] = []
     kp: list[tuple[float, float, float]] = []      # (x, y, pad)
-    L = 34
+
+    def K(x, y, pad=4.0):
+        kp.append((x, y, pad))
 
     def vec(deg):
         r = math.radians(deg)
         return math.cos(r), math.sin(r)
-
-    def K(x, y, pad=4.0):
-        kp.append((x, y, pad))
 
     def extents_of():
         rb = math.radians(base_ang)
@@ -398,107 +496,149 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
         return box, (min(pr - pad for pr, pad in projs),
                      max(pr + pad for pr, pad in projs))
 
-    def tail_decor(ax, ay, ang_deg):
-        # the bubble rides inline on the tail axis; the surface letter
-        # sits above the tail and the at-fault asterisk below it, the
-        # way the drawn sheets keep them
-        c, s = vec(ang_deg)
-        pc, ps = -s, c
-        if ps > 0:
-            pc, ps = -pc, -ps
-        bx, by = ax - (L + 19) * c, ay - (L + 19) * s
-        deco = _badge(bx, by, cr.seq)
-        K(bx, by, 9)
-        mx, my = ax - L * 0.55 * c, ay - L * 0.55 * s
-        deco += _stroke_text(mx + pc * 11, my + ps * 11,
-                             cr.road_cond, size=9, color=GREEN)
-        K(mx + pc * 11, my + ps * 11, 6)
-        deco += _stroke_text(mx - pc * 11, my - ps * 11 + 2,
-                             "*", size=12.5, color=MAGENTA, sw=1.05)
-        K(mx - pc * 11, my - ps * 11, 6)
-        return deco
+    def draw(tail, ang, uu, **kw):
+        svg, tip, ink = _unit_cell(tail[0], tail[1], ang, uu, cr.night, **kw)
+        for px, py in ink:
+            K(px, py, 4.0)
+        return svg, tip
 
-    def unit(x, y, ang_deg, length, uu):
-        svg, head = _unit_arrow(x, y, ang_deg, length, uu, cr.night)
-        K(x, y)
-        K(*head, 6)
-        return svg, head
+    def decor(tail, ang, right_extra=0.0):
+        """Bubble, at fault asterisk and surface letter on one tail.
 
-    if cr.acc_typ in SINGLE_UNIT_TYPES or u2 is None:
-        c, s = vec(a1)
-        if cr.acc_typ in ROR_TYPES or cr.acc_typ in (18, 19):
-            # departure trajectory: dotted tail on the road, zigzag off
-            # to the coded side, short run to rest
-            side = -1 if cr.acc_typ == 2 else 1
-            pc, ps = -s * side, c * side
-            t0 = (-(L + 3) * c, -(L + 3) * s)
-            t1 = (-3 * c, -3 * s)
-            K(*t0)
-            parts.append(f'<line x1="{t0[0]:.1f}" y1="{t0[1]:.1f}" '
-                         f'x2="{t1[0]:.1f}" y2="{t1[1]:.1f}" '
-                         'stroke="#000" stroke-width="1.1"/>')
-            parts.append(_speed_marks(*t0, *t1, u1.speed))
-            zz = [t1]
-            for adv, off in ((7, 9), (14, -6), (21, 10)):
-                zz.append((t1[0] + adv * c + pc * off,
-                           t1[1] + adv * s + ps * off))
-                K(*zz[-1])
-            fa = a1 + side * 44
-            fc, fs = vec(fa)
-            run = 20 + throw
-            p_end = (zz[-1][0] + run * fc, zz[-1][1] + run * fs)
-            ptxt = " ".join(f"{px:.1f},{py:.1f}" for px, py in zz)
-            parts.append(f'<polyline points="{ptxt} {p_end[0]:.1f},'
-                         f'{p_end[1]:.1f}" fill="none" stroke="#000" '
-                         'stroke-width="1.1"/>')
-            parts.append(_arrowhead(*p_end, math.radians(fa), cr.night))
-            sx, sy = p_end[0] + 7 * fc, p_end[1] + 7 * fs
-            K(sx, sy, 7)
-            if cr.acc_typ == 18:
-                parts.append(f'<rect x="{sx:.1f}" y="{sy - 5:.1f}" '
-                             'width="10" height="10" fill="none" '
-                             'stroke="#000" stroke-width="1.1"/>')
-            parts.append(_severity_circle(sx, sy, cr.severity))
-            parts.append(tail_decor(0, 0, a1))
-            return ("".join(parts),) + extents_of()
-        svg, head = unit(-L * c, -L * s, a1, L, u1)
+        ``right_extra`` pushes the surface letter past a second vehicle
+        drawn alongside on that side, so the pair keeps the asterisk left
+        of travel and the letter right of it without either landing on
+        the other vehicle.
+        """
+        c, s = vec(ang)
+        lx, ly = s, -c                       # left of travel, page frame
+        bx = tail[0] - (BUBBLE_R + BUBBLE_GAP) * c
+        by = tail[1] - (BUBBLE_R + BUBBLE_GAP) * s
+        out = _badge(bx, by, cr.seq)
+        K(bx, by, BUBBLE_R + 1)
+        sx = tail[0] + DECOR_S * c + DECOR_N * lx
+        sy = tail[1] + DECOR_S * s + DECOR_N * ly
+        out += _stroke_text(sx, sy + 1.5, "*", size=12.5, color=MAGENTA,
+                            sw=1.05)
+        K(sx, sy, 6)
+        cx = tail[0] + DECOR_S * c - (DECOR_N + right_extra) * lx
+        cy = tail[1] + DECOR_S * s - (DECOR_N + right_extra) * ly
+        out += _stroke_text(cx, cy, cr.road_cond, size=9, color=GREEN)
+        K(cx, cy, 6)
+        return out
+
+    def sev_at(x, y, ang):
+        c, s = vec(ang)
+        px, py = x + SEV_GAP * c, y + SEV_GAP * s
+        K(px, py, SEV_R + 2)
+        return _severity_circle(px, py, cr.severity)
+
+    # ------------------------------------------------ one unit involved
+    if u2 is None or cr.acc_typ in SINGLE_UNIT_TYPES:
+        depart = cr.acc_typ in ROR_TYPES or cr.acc_typ == 19
+        side = -1 if cr.acc_typ == 2 else 1          # ROR left leaves left
+        ang = a1 + (side * DEPART_ANG if depart else 0.0)
+        c, s = vec(ang)
+        tail = (-CELL_SHAFT * c, -CELL_SHAFT * s)
+        svg, tip = draw(tail, ang, u1, zigzag=depart)
         parts.append(svg)
-        parts.append(_severity_circle(head[0] + 4 * c, head[1] + 4 * s,
-                                      cr.severity))
-        parts.append(tail_decor(0, 0, a1))
+        mark = {14: "P", 15: "B", 17: "A", 16: "T"}.get(cr.acc_typ)
+        front = 0.0
+        if cr.acc_typ == 18:                          # movable object struck
+            ox, oy = tip[0] + 10 * c, tip[1] + 10 * s
+            parts.append(f'<rect x="{ox - 5.5:.1f}" y="{oy - 5.5:.1f}" '
+                         'width="11" height="11" fill="none" stroke="#000" '
+                         'stroke-width="1.0" stroke-dasharray="2.4 2"/>')
+            K(ox, oy, 8)
+            front = 16.0
+        elif mark:                                    # ped, bike, animal
+            ox, oy = tip[0] + 9 * c, tip[1] + 9 * s
+            parts.append(_stroke_text(ox, oy, mark, size=12, color=BLUE))
+            K(ox, oy, 7)
+            front = 15.0
+        parts.append(sev_at(tip[0] + front * c, tip[1] + front * s, ang))
+        parts.append(decor(tail, ang))
         return ("".join(parts),) + extents_of()
+
     a2 = conv(u2.direction, a1 + 90 if cr.acc_typ == 30 else a1)
     c1, s1 = vec(a1)
-    if cr.acc_typ in (21, 22):                       # rear end, inline
-        svg1, _ = unit(-(L + 11) * c1, -(L + 11) * s1, a1, L, u1)
-        svg2, _ = unit(3 * c1, 3 * s1, a1, L * 0.85, u2)
-        parts += [svg1, svg2, _severity_circle(0, 0, cr.severity),
-                  tail_decor(-6 * c1, -6 * s1, a1)]
+    lx, ly = s1, -c1
+
+    # ------------------------------------------------ rear end / backing
+    if cr.acc_typ in (21, 22, 31):
+        back = cr.acc_typ == 31
+        gap = 3.0                                # the bar stands clear
+        tail1 = (-(CELL_SHAFT + gap) * c1, -(CELL_SHAFT + gap) * s1)
+        svg1, tip1 = draw(tail1, a1, u1)
+        lead_ang = a1 + 180 if back else a1
+        if back:
+            far = (CELL_SHAFT + gap) * c1, (CELL_SHAFT + gap) * s1
+            svg2, tip2 = draw(far, lead_ang, u2)
+            front = far
+        else:
+            svg2, tip2 = draw((gap * c1, gap * s1), lead_ang, u2)
+            front = tip2
+        parts += [svg1, svg2, _impact_tick(0, 0, a1)]
+        K(0, 0, TICK_H + 1)
+        parts.append(sev_at(front[0], front[1], a1))
+        parts.append(decor(tail1, a1))
         return ("".join(parts),) + extents_of()
-    if cr.acc_typ in (27, 29):                       # head on / ss opposite
-        off = 6 if cr.acc_typ == 29 else 0
-        pc, ps = -s1, c1
-        svg1, _ = unit(-(L + 4) * c1 + pc * off,
-                       -(L + 4) * s1 + ps * off, a1, L, u1)
-        svg2, _ = unit((L + 4) * c1 - pc * off,
-                       (L + 4) * s1 - ps * off, a1 + 180, L, u2)
-        parts += [svg1, svg2, _severity_circle(0, 0, cr.severity),
-                  tail_decor(pc * off, ps * off, a1)]
+
+    # ------------------------------------------------ head on
+    if cr.acc_typ == 27:
+        tail1 = (-(CELL_SHAFT + 3) * c1, -(CELL_SHAFT + 3) * s1)
+        svg1, _ = draw(tail1, a1, u1)
+        svg2, _ = draw(((CELL_SHAFT + 3) * c1, (CELL_SHAFT + 3) * s1),
+                       a1 + 180, u2)
+        parts += [svg1, svg2, _impact_tick(0, 0, a1)]
+        K(0, 0, TICK_H + 1)
+        px, py = lx * (TICK_H + SEV_R + 3), ly * (TICK_H + SEV_R + 3)
+        parts.append(_severity_circle(px, py, cr.severity))
+        K(px, py, SEV_R + 2)
+        parts.append(decor(tail1, a1))
         return ("".join(parts),) + extents_of()
-    if cr.acc_typ == 28:                             # sideswipe same dir
-        pc, ps = -s1, c1
-        svg1, _ = unit(-(L + 4) * c1 + pc * 5,
-                       -(L + 4) * s1 + ps * 5, a1, L, u1)
-        svg2, _ = unit(-(L + 4) * c1 - pc * 6,
-                       -(L + 4) * s1 - ps * 6, a1 + 9, L, u2)
-        parts += [svg1, svg2, _severity_circle(0, 0, cr.severity),
-                  tail_decor(pc * 5, ps * 5, a1)]
+
+    # ------------------------------------------------ sideswipes
+    if cr.acc_typ == 28:                             # sideswipe, same way
+        half = LANE_SEP / 2
+        tail1 = (-CELL_SHAFT * c1 + lx * half, -CELL_SHAFT * s1 + ly * half)
+        svg1, tip1 = draw(tail1, a1, u1)
+        tail2 = (-CELL_SHAFT * c1 - lx * half, -CELL_SHAFT * s1 - ly * half)
+        svg2, _ = draw(tail2, a1, u2, swerve=-LANE_SEP * 0.55)
+        parts += [svg1, svg2]
+        parts.append(sev_at(tip1[0], tip1[1], a1))
+        parts.append(decor(tail1, a1, right_extra=LANE_SEP + 2))
         return ("".join(parts),) + extents_of()
+
+    if cr.acc_typ == 29:                             # sideswipe, opposing
+        # the two run alongside each other over the same stretch and pass,
+        # one drifting into the other. They do not meet head to head; that
+        # is the head on cell, which carries the point of impact bar.
+        half = LANE_SEP / 2
+        h2 = CELL_SHAFT / 2
+        tail1 = (-h2 * c1 + lx * half, -h2 * s1 + ly * half)
+        svg1, tip1 = draw(tail1, a1, u1, swerve=LANE_SEP * 0.55)
+        stag = 7.0                       # they pass staggered, not level
+        tail2 = ((h2 + stag) * c1 - lx * half, (h2 + stag) * s1 - ly * half)
+        svg2, _ = draw(tail2, a1 + 180, u2)
+        parts += [svg1, svg2]
+        parts.append(sev_at(tip1[0], tip1[1], a1))
+        parts.append(decor(tail1, a1, right_extra=LANE_SEP + 2))
+        return ("".join(parts),) + extents_of()
+
+    # ------------------------------------------------ angle and turning
     c2, s2 = vec(a2)
-    svg1, _ = unit(-(L + 5) * c1, -(L + 5) * s1, a1, L, u1)
-    svg2, _ = unit(-(L + 5) * c2, -(L + 5) * s2, a2, L, u2)
-    parts += [svg1, svg2, _severity_circle(0, 0, cr.severity),
-              tail_decor(0, 0, a1)]
+    tail1 = (-CELL_SHAFT * c1, -CELL_SHAFT * s1)
+    tail2 = (-CELL_SHAFT * c2, -CELL_SHAFT * s2)
+    svg1, tip1 = draw(tail1, a1, u1)
+    svg2, _ = draw(tail2, a2, u2)
+    parts += [svg1, svg2]
+    bis = a1 + ((a2 - a1 + 540) % 360 - 180) / 2.0
+    bc, bs = vec(bis)
+    px, py = (SEV_GAP + 3) * bc, (SEV_GAP + 3) * bs
+    parts.append(_severity_circle(px, py, cr.severity))
+    K(px, py, SEV_R + 2)
+    parts.append(decor(tail1, a1))
     return ("".join(parts),) + extents_of()
 
 
@@ -763,9 +903,27 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
 
     if "north_rot" not in layout:
         layout["north_rot"] = math.degrees(road_ang(0.5))
-    keep_out = [(892, 10, 1632, 400), (1300, 826, 1632, 1056),
-                (140, 915, 470, 1040), (300, 20, 890, 300),
-                (0, 830, 200, 1056), (1460, 360, 1632, 446)]
+    # furniture keep-outs, measured off what the sheet actually draws so
+    # a block that moves or gains a line still holds its own space
+    def text_box(cx, cy, lines, size, lead, anchor="middle"):
+        w = max((len(t) for t in lines), default=0) * size * 0.60
+        x0 = cx - w / 2 if anchor == "middle" else cx
+        return (x0 - 12, cy - size, x0 + w + 12,
+                cy + lead * (len(lines) - 1) + size)
+
+    keep_out = [(904, 18, 1620, 345),                    # legend
+                (1300, 826, 1632, 1056),                 # TSU title block
+                (0, 830, 200, 1056),                     # begin MP label
+                (1440, 356, 1632, 452),                  # end MP label
+                (784, 18, 928, 232)]                     # north needle
+    keep_out.append(text_box(layout.get("title_x", 760), 52,
+                             layout.get("title", []), 19.5, 27))
+    rlx, rly = layout.get("route_label_xy", (520, 940))
+    keep_out.append(text_box(rlx, rly, layout.get("route_label", []),
+                             16, 25))
+    for note in layout.get("notes", []):
+        keep_out.append(text_box(note["x"], note["y"], note["text"], 12.5,
+                                 18, anchor="middle"))
     keep_out += jn_keep
     keep_out += [tuple(r) for r in layout.get("keep_out", [])]
 
@@ -775,11 +933,11 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         return not any(x0 < kx1 and x1 > kx0 and y0 < ky1 and y1 > ky0
                        for kx0, ky0, kx1, ky1 in keep_out)
 
-    # clusters compose as drafted ladders, the way the reference sheets
-    # stack a location: crashes within a stretch group into one ladder
-    # per side of the road, rows ordered so the bubbles read in crash
-    # order from the outside in, pitch set by each row's true ink
-    # extents, every row stepping back by the same stagger
+    # crashes stand at their own milepost, one uniform standoff off the
+    # centerline for the whole side, and spread along the road only as
+    # far as they must to keep their ink apart. That is how the drawn
+    # sheets read: same standoff, same pitch, bubbles in crash order, and
+    # nothing wandering away from the station it happened at.
     route_fwd = layout.get("route_forward", "E")
     items = []
     for cr in sorted([c for c in crashes if c.mp is not None],
@@ -791,11 +949,12 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         g, box, n_ext = crash_glyph(cr, base_ang=ang,
                                     route_forward=route_fwd)
         pref, hard = 1, False
-        if cr.acc_typ in (ROR_TYPES | {18, 19}) and cr.units:
+        if cr.acc_typ in ROR_TYPES or cr.acc_typ == 19:
             base = ang - _DIR_ANG.get(route_fwd, 0)
-            ua = base + _DIR_ANG.get(cr.units[0].direction, -base)
+            ua = base + _DIR_ANG.get(cr.units[0].direction, -base) \
+                if cr.units else base
             side = -1 if cr.acc_typ == 2 else 1
-            fa = math.radians(ua + side * 44)
+            fa = math.radians(ua + side * DEPART_ANG)
             pref = 1 if math.cos(fa) * nx + math.sin(fa) * ny > 0 else -1
             hard = True
         items.append({"cr": cr, "t": t, "bx": bx, "by": by, "g": g,
@@ -809,8 +968,19 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
             clusters.append([it])
     all_boxes: list[tuple[float, float, float, float]] = []
 
+    road_pts = [road_pt(i / 240.0) for i in range(241)]
+
+    def road_far(bb):
+        """True when no part of the box comes inside ROAD_GAP of the road."""
+        for rx, ry in road_pts:
+            dx = max(bb[0] - rx, 0.0, rx - bb[2])
+            dy = max(bb[1] - ry, 0.0, ry - bb[3])
+            if dx * dx + dy * dy < ROAD_GAP * ROAD_GAP:
+                return False
+        return True
+
     def open_spot(bb):
-        return clear(*bb) and not any(
+        return clear(*bb) and road_far(bb) and not any(
             bb[0] < r[2] and bb[2] > r[0] and bb[1] < r[3] and bb[3] > r[1]
             for r in all_boxes)
 
@@ -828,79 +998,77 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         for sd, members in ((1, above), (-1, below)):
             if not members:
                 continue
-            members.sort(key=lambda it: it["cr"].seq)
-            rows = members[::-1] if sd > 0 else members
-            dist = prev_lo = prev_hi = None
-            for k, it in enumerate(rows):
-                n_lo, n_hi = it["n"]
-                if dist is None:
-                    dist = max(26.0, (10 - n_lo) if sd > 0
-                               else (10 + n_hi))
-                elif sd > 0:
-                    dist = dist + prev_hi - n_lo + 14
-                else:
-                    dist = dist - prev_lo + n_hi + 14
-                prev_lo, prev_hi = n_lo, n_hi
-                it["dist"], it["k"] = dist, k
-            # slide the ladder along the road; when furniture sits
-            # mid-cluster and no slide can clear it, step the whole
-            # ladder outward instead
-            cands2 = sorted(
-                (depth * 0.02 + abs(sh) * 0.01, depth, sh)
-                for depth in (0, 36, 72, 108)
-                for sh in (0, -44, 44, -88, 88, -132, 132, -176, 176))
-            def row_bb(it, s2, dist, sx):
-                tx = ax + s2 * nx * dist + fx * sx
-                ty = ay + s2 * ny * dist + fy * sx
-                return (tx, ty, (tx + it["box"][0] - 4,
-                                 ty + it["box"][2] - 4,
-                                 tx + it["box"][1] + 4,
-                                 ty + it["box"][3] + 4))
+            members.sort(key=lambda it: (it["cr"].mp, it["cr"].seq))
+            # one standoff for the whole side. n_lo/n_hi are the assembly's
+            # signed ink extents along the road normal measured from its
+            # own origin, so the origin has to stand this far out for the
+            # nearest ink to clear the centerline by ROAD_GAP.
+            d0 = max(max(24.0, (ROAD_GAP - it["n"][0]) if sd > 0
+                         else (ROAD_GAP + it["n"][1])) for it in members)
+            rowh = max(it["n"][1] - it["n"][0] for it in members) + 10
 
-            rigid = None
-            for _, dp, cand in cands2:
-                if all(open_spot(row_bb(it, sd, it["dist"] + dp,
-                                        cand - 24 * it["k"])[2])
-                       for it in rows):
-                    rigid = (cand, dp)
-                    break
-            for it in rows:
-                if rigid is not None:
-                    cand, dp = rigid
-                    ox, oy, bb = row_bb(it, sd, it["dist"] + dp,
-                                        cand - 24 * it["k"])
-                    all_boxes.append(bb)
-                else:
-                    # furniture splits the ladder: rows keep their order
-                    # and pitch but stagger individually around it, and a
-                    # soft-side row may flip across the road when its own
-                    # side is furniture locked
-                    n_lo, n_hi = it["n"]
-                    sides = (sd,) if it["hard"] else (sd, -sd)
-                    ox = oy = None
-                    for s2 in sides:
-                        base_d = (it["dist"] if s2 == sd else
-                                  max(26.0, (10 - n_lo) if s2 > 0
-                                      else (10 + n_hi)))
-                        for _, dp, cand in cands2:
-                            tx, ty, bb = row_bb(it, s2, base_d + dp,
-                                                cand - 24 * it["k"])
-                            if open_spot(bb):
-                                ox, oy = tx, ty
-                                all_boxes.append(bb)
-                                break
-                        if ox is not None:
+            def along(it):
+                """Ink extents along the road, measured from the origin."""
+                bx0, bx1, by0, by1 = it["box"]
+                ps = [x * fx + y * fy for x in (bx0, bx1) for y in (by0, by1)]
+                return min(ps), max(ps)
+
+            want = [(it["bx"] - ax) * fx + (it["by"] - ay) * fy
+                    for it in members]
+            st = list(want)
+            for i in range(1, len(st)):          # keep the ink from touching
+                lo_i = along(members[i])[0]
+                hi_p = along(members[i - 1])[1]
+                need = st[i - 1] + hi_p + 12 - lo_i
+                if st[i] < need:
+                    st[i] = need
+            drift = sum(st) / len(st) - sum(want) / len(want)
+            st = [v - drift for v in st]         # back onto their mileposts
+
+            def place(it, s_at, rank, sd2, base=None):
+                dist = (d0 if base is None else base) + rank * rowh
+                tx = ax + fx * s_at + nx * sd2 * dist
+                ty = ay + fy * s_at + ny * sd2 * dist
+                return tx, ty, (tx + it["box"][0] - 4, ty + it["box"][2] - 4,
+                                tx + it["box"][1] + 4, ty + it["box"][3] + 4)
+
+            for _ in range(14):              # the road curves away from the
+                if all(road_far(place(it, s_i, 0, sd, d0)[2])
+                       for it, s_i in zip(members, st)):
+                    break                        # tangent; step the rank out
+                d0 += 4.0                        # until the whole side clears
+
+            for it, s_i in zip(members, st):
+                spot = None
+                for rank in (0, 1, 2, 3):
+                    for dsh in (0, -24, 24, -48, 48, -76, 76, -108, 108,
+                                -144, 144, -190, 190):
+                        tx, ty, bb = place(it, s_i + dsh, rank, sd)
+                        if open_spot(bb):
+                            spot = (tx, ty, bb)
                             break
-                    if ox is None:
-                        flip = sd if it["hard"] else -sd
-                        base_d = max(26.0, (10 - n_lo) if flip > 0
-                                     else (10 + n_hi))
-                        ox, oy, bb = row_bb(it, flip, base_d + 72, 0)
-                        all_boxes.append(bb)
+                    if spot:
+                        break
+                if spot is None and not it["hard"]:      # try the far side
+                    for rank in (0, 1, 2):
+                        for dsh in (0, -32, 32, -64, 64, -96, 96):
+                            tx, ty, bb = place(it, s_i + dsh, rank, -sd)
+                            if open_spot(bb):
+                                spot = (tx, ty, bb)
+                                break
+                        if spot:
+                            break
+                if spot is None:
+                    spot = place(it, s_i, 3, sd)
+                ox, oy, bb = spot
+                all_boxes.append(bb)
                 dxn, dyn = layout.get("nudges", {}).get(
                     it["cr"].crash_id, (0, 0))
-                svg.append(f'<g transform="translate({ox + dxn:.1f},'
-                           f'{oy + dyn:.1f})">{it["g"]}</g>')
+                svg.append(
+                    f'<g data-crash="{it["cr"].crash_id}" '
+                    f'data-seq="{it["cr"].seq}" '
+                    f'transform="translate({ox + dxn:.1f},'
+                    f'{oy + dyn:.1f})">{it["g"]}</g>')
 
     return _sheet(svg, layout, crashes)
 

@@ -1,4 +1,5 @@
 import json
+import math
 import re
 
 import pytest
@@ -93,6 +94,124 @@ def test_section_sheet_places_every_crash_on_page(tmp_path):
     assert len([g for g in groups]) >= 8
     for x, y in crash_groups:
         assert 20 < x < cd.PAGE_W - 20 and 20 < y < cd.PAGE_H - 20
+
+
+def _sheet_with(crashes, tmp_path, **layout_extra):
+    data = tmp_path / "data.txt"
+    cd.write_data_csv(str(data), crashes)
+    layout = {"type": "section", "begin_mp": 1.31, "end_mp": 1.80,
+              "title": ["t"], "route_label": ["r"],
+              "prepared_by": "x", "date": "1/1/2026"}
+    layout.update(layout_extra)
+    lp = tmp_path / "layout.json"
+    lp.write_text(json.dumps(layout))
+    out = tmp_path / "sheet.html"
+    cd.build_section_diagram(str(out), str(data), str(lp))
+    return out.read_text()
+
+
+def test_every_cell_uses_the_same_parts():
+    """Sizes are standard across the parts of every crash symbol."""
+    kinds = [
+        make_crash(acc_typ=19, units=[cd.Unit(1, "E", 45)]),          # ROR
+        make_crash(acc_typ=5, units=[cd.Unit(1, "W", 60)]),           # rollover
+        make_crash(acc_typ=21, units=[cd.Unit(1, "E", 55),
+                                      cd.Unit(2, "E", 0)]),           # rear end
+        make_crash(acc_typ=27, units=[cd.Unit(1, "E", 50),
+                                      cd.Unit(2, "W", 50)]),          # head on
+        make_crash(acc_typ=28, units=[cd.Unit(1, "E", 45),
+                                      cd.Unit(2, "E", 45)]),          # SSSD
+        make_crash(acc_typ=29, units=[cd.Unit(1, "E", 45),
+                                      cd.Unit(2, "W", 45)]),          # SSOD
+        make_crash(acc_typ=30, units=[cd.Unit(1, "S", 55),
+                                      cd.Unit(2, "E", 35)]),          # angle
+        make_crash(acc_typ=14, units=[cd.Unit(1, "E", 25)]),          # ped
+    ]
+    heads, bubbles, dots = set(), set(), set()
+    for cr in kinds:
+        svg, _, _ = cd.crash_glyph(cr, base_ang=0.0)
+        for pts in re.findall(r'<polygon points="([^"]+)"', svg):
+            p = [tuple(float(v) for v in t.split(",")) for t in pts.split()]
+            assert len(p) == 4, "an arrowhead is always four points"
+            length = round(math.dist(p[0], p[2]) / 0.80, 1)
+            width = round(math.dist(p[1], p[3]), 1)
+            heads.add((length, width))
+        bubbles.update(re.findall(r'circle cx="[-\d.]+" cy="[-\d.]+" '
+                                  r'r="([\d.]+)" fill="#fff" stroke="#000"',
+                                  svg))
+        dots.update(re.findall(r'r="([\d.]+)" fill="#2222CC"', svg))
+    assert len(heads) == 1, f"arrowheads differ between cells: {heads}"
+    assert heads.pop()[0] == pytest.approx(cd.CELL_HEAD, abs=0.15)
+    assert bubbles == {str(cd.BUBBLE_R)}
+    assert dots == {str(cd.DOT_R)}
+
+
+def test_bubble_sits_on_the_tail_axis_of_every_cell():
+    """The numbered circle connects to the same point on every symbol."""
+    for typ, units in ((19, [cd.Unit(1, "E", 45)]),
+                       (21, [cd.Unit(1, "E", 55), cd.Unit(2, "E", 0)]),
+                       (29, [cd.Unit(1, "E", 45), cd.Unit(2, "W", 45)]),
+                       (30, [cd.Unit(1, "S", 55), cd.Unit(2, "E", 35)])):
+        for ang in (0.0, -15.0, 90.0, 200.0):
+            cr = make_crash(acc_typ=typ, units=units)
+            svg, _, _ = cd.crash_glyph(cr, base_ang=ang)
+            bub = re.search(r'circle cx="([-\d.]+)" cy="([-\d.]+)" '
+                            r'r="8.0" fill="#fff"', svg)
+            assert bub, f"no bubble on type {typ}"
+            bx, by = float(bub.group(1)), float(bub.group(2))
+            ends = [(float(a), float(b)) for a, b in
+                    re.findall(r'<line x1="([-\d.]+)" y1="([-\d.]+)"', svg)]
+            for pts in re.findall(r'<polyline points="([^"]+)"', svg):
+                a, b = pts.split()[0].split(",")
+                ends.append((float(a), float(b)))
+            near = min(math.hypot(bx - x, by - y) for x, y in ends)
+            assert near == pytest.approx(cd.BUBBLE_R + cd.BUBBLE_GAP,
+                                         abs=0.3), \
+                f"type {typ} at {ang} deg hangs the bubble {near:.1f} out"
+
+
+def test_speed_marks_follow_the_ten_mph_bands():
+    for speed, want in ((None, 0), (5, 0), (9, 0), (10, 1), (45, 4),
+                        (55, 5), (69, 6), (95, 0)):
+        cr = make_crash(units=[cd.Unit(1, "E", speed)], acc_typ=13)
+        svg, _, _ = cd.crash_glyph(cr, base_ang=0.0)
+        got = len(re.findall(r'r="[\d.]+" fill="#2222CC"', svg))
+        assert got == want, f"{speed} mph drew {got} dots, expected {want}"
+    unknown = cd.crash_glyph(make_crash(units=[cd.Unit(1, "E", None)],
+                                        acc_typ=13), base_ang=0.0)[0]
+    assert cd.BLUE in unknown          # the unknown-speed x is still drawn
+
+
+def test_nothing_touches_the_centreline_or_another_crash(tmp_path):
+    crashes = [make_crash(crash_id=str(100000000 + i), mp=1.45,
+                          dt=f"01/{i + 1:02d}/2024 12:00",
+                          acc_typ=(19 if i % 2 else 21),
+                          units=([cd.Unit(1, "E", 45)] if i % 2 else
+                                 [cd.Unit(1, "W", 55), cd.Unit(2, "W", 0)]))
+               for i in range(9)]
+    html = _sheet_with(crashes, tmp_path,
+                       junctions=[{"mp": 1.45, "label": "SR 1321",
+                                   "side": 1}])
+    boxes = []
+    for m in re.finditer(r'<g data-crash="(\d+)" data-seq="\d+" '
+                         r'transform="translate\(([-\d.]+),([-\d.]+)\)">',
+                         html):
+        ox, oy = float(m.group(2)), float(m.group(3))
+        body = html[m.end():html.index("</g>", m.end())]
+        xs = [float(v) for v in re.findall(r'(?:cx|x1|x2)="([-\d.]+)"', body)]
+        ys = [float(v) for v in re.findall(r'(?:cy|y1|y2)="([-\d.]+)"', body)]
+        if not xs:
+            continue
+        boxes.append((ox + min(xs), oy + min(ys), ox + max(xs), oy + max(ys)))
+    assert len(boxes) == 9
+    for i, b in enumerate(boxes):
+        assert 20 < b[0] and b[2] < cd.PAGE_W - 20
+        assert 20 < b[1] and b[3] < cd.PAGE_H - 20
+        for j in range(i + 1, len(boxes)):
+            o = boxes[j]
+            assert not (b[0] < o[2] and b[2] > o[0]
+                        and b[1] < o[3] and b[3] > o[1]), \
+                f"assemblies {i} and {j} overlap"
 
 
 def test_stroke_text_renders_strokes_or_falls_back():

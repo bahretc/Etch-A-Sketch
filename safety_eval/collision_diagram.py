@@ -48,6 +48,45 @@ MAGENTA = "#FF00C8"
 GREEN = "#007A00"
 BLUE = "#2222CC"
 
+try:
+    from HersheyFonts import HersheyFonts as _HersheyFonts
+    _HFONT = _HersheyFonts()
+    _HFONT.load_default_font("futural")
+except Exception:                                    # pragma: no cover
+    _HFONT = None
+
+
+def _stroke_text(x, y, text, size=14, anchor="middle", color="#000",
+                 sw=None, slant=0.0):
+    """Lettering as pen strokes (Hershey simplex), the plotter look of
+    MicroStation font 3 on the TSU sheets. ``y`` is the vertical center
+    of the rendered line. Falls back to plain SVG text without the
+    optional HersheyFonts dependency."""
+    text = str(text)
+    if _HFONT is None or not text.strip():
+        return (f'<text x="{x:.1f}" y="{y + size * 0.36:.1f}" '
+                f'font-size="{size}" fill="{color}" '
+                f'text-anchor="{anchor}">{text}</text>')
+    _HFONT.normalize_rendering(size * 1.28)
+    segs = list(_HFONT.lines_for_text(text))
+    if not segs:
+        return ""
+    segs = [((x1, -y1), (x2, -y2)) for (x1, y1), (x2, y2) in segs]
+    xs = [c for sg in segs for c in (sg[0][0], sg[1][0])]
+    ys = [c for sg in segs for c in (sg[0][1], sg[1][1])]
+    w = max(xs) - min(xs)
+    dx = -min(xs) + (-w / 2 if anchor == "middle"
+                     else -w if anchor == "end" else 0)
+    dy = -(min(ys) + max(ys)) / 2
+    d = " ".join(f"M{x1 + dx:.1f} {y1 + dy:.1f} L{x2 + dx:.1f} "
+                 f"{y2 + dy:.1f}" for (x1, y1), (x2, y2) in segs)
+    sk = f" skewX({-slant})" if slant else ""
+    return (f'<g transform="translate({x:.1f},{y:.1f}){sk}">'
+            f'<path d="{d}" stroke="{color}" '
+            f'stroke-width="{sw if sw is not None else max(0.8, size / 15):.2f}" '
+            'stroke-linecap="round" fill="none"/></g>')
+
+
 ROR_TYPES = {1, 2, 3, 4, 5}
 SINGLE_UNIT_TYPES = ROR_TYPES | {13, 17, 18, 19, 20, 32}
 TURN_TYPES = {22, 23, 24, 25, 26}
@@ -238,7 +277,7 @@ def crashes_from_initial_study(path: str) -> list[DiagramCrash]:
 # -------------------------------------------------------------------- SVG
 def _arrowhead(x, y, ang, night):
     fill = "#000" if night else "#fff"
-    pts = [(0, 0), (-16, 5.5), (-13, 0), (-16, -5.5)]
+    pts = [(0, 0), (-18, 5), (-14.5, 0), (-18, -5)]
     cos, sin = math.cos(ang), math.sin(ang)
     p = " ".join(f"{x + px * cos - py * sin:.1f},{y + px * sin + py * cos:.1f}"
                  for px, py in pts)
@@ -250,8 +289,7 @@ def _speed_marks(x0, y0, x1, y1, speed):
     out = []
     if speed is None:
         mx, my = (x0 + x1) / 2, (y0 + y1) / 2
-        return (f'<text x="{mx:.1f}" y="{my + 3:.1f}" font-size="9" '
-                f'fill="{BLUE}" text-anchor="middle">x</text>')
+        return _stroke_text(mx, my, "x", size=9, color=BLUE)
     if speed >= 70:
         dx, dy = x1 - x0, y1 - y0
         L = math.hypot(dx, dy) or 1
@@ -284,10 +322,9 @@ def _severity_circle(x, y, sev):
 
 
 def _badge(x, y, n):
-    return (f'<circle cx="{x:.1f}" cy="{y:.1f}" r="9.5" fill="#fff" '
+    return (f'<circle cx="{x:.1f}" cy="{y:.1f}" r="10" fill="#fff" '
             'stroke="#000" stroke-width="1.1"/>'
-            f'<text x="{x:.1f}" y="{y + 3.6:.1f}" font-size="10.5" '
-            f'text-anchor="middle">{n}</text>')
+            + _stroke_text(x, y, n, size=10.5))
 
 
 _DIR_ANG = {"E": 0, "NE": -45, "N": -90, "NW": -135,
@@ -349,12 +386,10 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
         bx, by = ax - (L + 20) * c, ay - (L + 20) * s
         deco = _badge(bx + pc * 16 * up, by + ps * 16 * up, cr.seq)
         mx, my = ax - L * 0.55 * c, ay - L * 0.55 * s
-        deco += (f'<text x="{mx + pc * 11 * up:.1f}" '
-                 f'y="{my + ps * 11 * up + 4:.1f}" font-size="12" '
-                 f'fill="{MAGENTA}" text-anchor="middle">*</text>')
-        deco += (f'<text x="{mx - pc * 11 * up:.1f}" '
-                 f'y="{my - ps * 11 * up + 3:.1f}" font-size="10" '
-                 f'fill="{GREEN}" text-anchor="middle">{cr.road_cond}</text>')
+        deco += _stroke_text(mx + pc * 12 * up, my + ps * 12 * up + 2,
+                             "*", size=15, color=MAGENTA, sw=1.15)
+        deco += _stroke_text(mx - pc * 13 * up, my - ps * 13 * up,
+                             cr.road_cond, size=10.5, color=GREEN)
         return deco
 
     if cr.acc_typ in SINGLE_UNIT_TYPES or u2 is None:
@@ -440,7 +475,7 @@ def _rot(x, y, deg):
 
 
 # ----------------------------------------------------------------- blocks
-def legend_block(x, y, w=548, h=305):
+def legend_block(x, y, w=700, h=305):
     def arrow(ax, ay, ln=42, night=False, extra=""):
         return (f'<line x1="{ax}" y1="{ay}" x2="{ax + ln - 14}" y2="{ay}" '
                 'stroke="#000" stroke-width="1.1"/>' + extra +
@@ -460,9 +495,11 @@ def legend_block(x, y, w=548, h=305):
              ("O", "Other", GREEN)]
     out = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="#fff" '
            'stroke="#000" stroke-width="1.6"/>',
-           f'<text x="{x + w / 2}" y="{y + 30}" font-size="26" '
-           'font-style="italic" text-anchor="middle" '
-           f'text-decoration="underline">LEGEND</text>']
+           _stroke_text(x + w / 2, y + 24, "LEGEND", size=24, slant=10,
+                        sw=1.3)
+           + f'<line x1="{x + w / 2 - 68}" y1="{y + 40}" '
+             f'x2="{x + w / 2 + 68}" y2="{y + 40}" stroke="#000" '
+             'stroke-width="1.2"/>']
     yy = y + 62
     for i, label in enumerate(rows1):
         ay = yy + i * 27
@@ -511,11 +548,11 @@ def legend_block(x, y, w=548, h=305):
         else:
             g = arrow(ax, ay, 42)
         out.append(g)
-        out.append(f'<text x="{x + 92}" y="{ay + 3.5}" font-size="9.5">'
-                   f'{label}</text>')
+        out.append(_stroke_text(x + 92, ay, label, size=8.6,
+                                anchor="start"))
     for i, label in enumerate(rows2):
         ay = yy + 10 + i * 34
-        ax = x + 210
+        ax = x + 228
         if label == "ANGLE":
             g = (f'<line x1="{ax + 22}" y1="{ay - 22}" x2="{ax + 22}" '
                  f'y2="{ay - 4}" stroke="#000"/>' +
@@ -548,24 +585,25 @@ def legend_block(x, y, w=548, h=305):
                  'stroke="#000"/>' + _arrowhead(ax + 38, ay, 0, False) +
                  _severity_circle(ax + 46, ay, sev))
         out.append(g)
-        out.append(f'<text x="{x + 268}" y="{ay + 3.5}" font-size="9.5">'
-                   f'{label}</text>')
+        out.append(_stroke_text(x + 288, ay, label, size=8.6,
+                                anchor="start"))
     for i, label in enumerate(rows3):
         ay = yy + i * 27
-        ax = x + 344
+        ax = x + 396
         spd = (None if label == "SPEED UNKNOWN"
                else 75 if label == "70 AND UP" else i * 10 + 5)
         u = Unit(1, speed=spd)
         svg, _ = _unit_arrow(ax, ay, 0, 40, u, False)
         out.append(svg)
-        out.append(f'<text x="{x + 406}" y="{ay + 3.5}" font-size="8.5">'
-                   f'{label}</text>')
+        out.append(_stroke_text(x + 458, ay, label, size=8.2,
+                                anchor="start"))
     for i, (letter, label, color) in enumerate(rows4):
         ay = yy + i * 27
-        out.append(f'<text x="{x + 486}" y="{ay + 4}" font-size="12" '
-                   f'fill="{color}" text-anchor="middle">{letter}</text>')
-        out.append(f'<text x="{x + 497}" y="{ay + 3.5}" font-size="8.5">'
-                   f'{label}</text>')
+        out.append(_stroke_text(x + 576, ay + (2 if letter == "*" else 0),
+                                letter, size=13 if letter == "*" else 11,
+                                color=color))
+        out.append(_stroke_text(x + 592, ay, label, size=8.2,
+                                anchor="start"))
     return "".join(out)
 
 
@@ -624,8 +662,7 @@ def north_needle(x, y, h=170):
             'fill="#000"/>'
             f'<circle cx="{x}" cy="{y + h * 0.62}" r="7" fill="#fff" '
             'stroke="#000"/>'
-            f'<text x="{x}" y="{y + h * 0.62 + 3.5}" font-size="9" '
-            'text-anchor="middle">N</text>')
+            + _stroke_text(x, y + h * 0.62, "N", size=9))
 
 
 # ------------------------------------------------------------------ sheet
@@ -660,10 +697,9 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         lbl = "Begin MP:" if t == 0 else "End MP:"
         lx = max(x, 74) if t == 0 else x - 24
         ly = y + 46 if t == 0 else y - 62
-        svg.append(f'<text x="{lx}" y="{ly}" font-size="16" '
-                   f'text-anchor="middle">{lbl}</text>')
-        svg.append(f'<text x="{lx}" y="{ly + 20}" font-size="16" '
-                   f'text-anchor="middle">{mp:.2f}</text>')
+        svg.append(_stroke_text(lx, ly - 5, lbl, size=15.5, sw=1.05))
+        svg.append(_stroke_text(lx, ly + 15, f"{mp:.2f}", size=15.5,
+                                sw=1.05))
     jn_keep = []
     for jn in layout.get("junctions", []):
         t = (jn["mp"] - lo) / (hi - lo) if hi > lo else 0.5
@@ -678,13 +714,12 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                    'stroke-width="1.1"/>')
         lx = x + up * 62 * math.cos(a)
         ly = y + up * 62 * math.sin(a) + (0 if up < 0 else 12)
-        svg.append(f'<text x="{lx:.1f}" y="{ly:.1f}" font-size="12" '
-                   f'text-anchor="middle">{jn["label"]}</text>')
+        svg.append(_stroke_text(lx, ly - 4, jn["label"], size=11.5))
         jn_keep.append((lx - 4.2 * len(jn["label"]), ly - 12,
                         lx + 4.2 * len(jn["label"]), ly + 6))
 
-    keep_out = [(1040, 10, 1632, 400), (1300, 826, 1632, 1056),
-                (210, 905, 560, 1040), (430, 20, 1050, 280),
+    keep_out = [(892, 10, 1632, 400), (1300, 826, 1632, 1056),
+                (210, 905, 560, 1040), (300, 20, 890, 300),
                 (0, 830, 200, 1056), (1460, 360, 1632, 446)]
     keep_out += jn_keep
     keep_out += [tuple(r) for r in layout.get("keep_out", [])]
@@ -766,19 +801,17 @@ def _sheet(body_svg: list, layout: dict, crashes) -> str:
            'stroke-width="2"/>']
     tx = layout.get("title_x", 760)
     for i, line in enumerate(layout.get("title", [])):
-        svg.append(f'<text x="{tx}" y="{58 + i * 26}" font-size="20" '
-                   f'text-anchor="middle">{line}</text>')
-    svg.append(legend_block(1058, 26))
-    svg.append(north_needle(layout.get("north_x", 1010), 40))
+        svg.append(_stroke_text(tx, 52 + i * 27, line, size=19.5, sw=1.15))
+    svg.append(legend_block(912, 26))
+    svg.append(north_needle(layout.get("north_x", 856), 40))
     rl = layout.get("route_label", [])
     rx, ry = layout.get("route_label_xy", (520, 940))
     for i, line in enumerate(rl):
-        svg.append(f'<text x="{rx}" y="{ry + i * 24}" font-size="17" '
-                   f'text-anchor="middle">{line}</text>')
+        svg.append(_stroke_text(rx, ry + i * 25, line, size=16, sw=1.05))
     for note in layout.get("notes", []):
         for i, line in enumerate(note["text"]):
-            svg.append(f'<text x="{note["x"]}" y="{note["y"] + i * 17}" '
-                       f'font-size="13" text-anchor="middle">{line}</text>')
+            svg.append(_stroke_text(note["x"], note["y"] + i * 18, line,
+                                    size=12.5))
     svg.append(tsu_block(1318, 842, layout.get("prepared_by", ""),
                          layout.get("date", ""),
                          layout.get("logo_b64", "")))

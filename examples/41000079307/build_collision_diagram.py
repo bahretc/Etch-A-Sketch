@@ -54,8 +54,8 @@ layout = {
         "(Springside Road) [MP 1.80]",
         "7/1/2021 - 6/30/2026",
     ],
-    "title_x": 700,
-    "north_x": 990,
+    "title_x": 560,
+    "north_x": 856,
     "route_label": [
         "SR 1320 (Milk Dairy Road)",
         "AADT (Year)",
@@ -63,7 +63,11 @@ layout = {
         "55 mph",
     ],
     "route_label_xy": [350, 958],
-    "notes": [],
+    "notes": [
+        {"x": 1340, "y": 690,
+         "text": ["Crash #10: Entered SR 1320 turning",
+                  "from SR 1387 at the study end"]},
+    ],
     "nudges": {},
     "route_forward": "E",
     "junctions": [

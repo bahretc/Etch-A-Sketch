@@ -13,6 +13,8 @@ dependencies = [
     "openpyxl>=3.1",
     # Outlook .msg assignment emails (pure-python OLE reader, no transitive deps)
     "olefile>=0.46",
+    # plotter-style stroke lettering on collision diagram sheets
+    "Hershey-Fonts>=2.0",
 ]
 
 [project.optional-dependencies]

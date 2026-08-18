@@ -68,7 +68,7 @@ layout = {
          "text": ["Crash #10: Entered SR 1320 turning",
                   "from SR 1387 at the study end"]},
     ],
-    "nudges": {},
+    "nudges": {"108075100": [-180, -130], "108244836": [-14, -100]},
     "route_forward": "E",
     "junctions": [
         {"mp": 1.45, "label": "SR 1321 (McInnis Rd)", "side": 1},

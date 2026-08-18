@@ -371,14 +371,12 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
                          'stroke="#000" stroke-width="1.1"/>')
             parts.append(_speed_marks(*t0, *t1, u1.speed))
             zz = [t1]
-            for k, (adv, off) in enumerate(((10, 9), (20, -4), (30, 11))):
-                zz.append((t1[0] + adv * c + (pc * off if k % 2 == 0
-                                              else -pc * off * 0.4),
-                           t1[1] + adv * s + (ps * off if k % 2 == 0
-                                              else -ps * off * 0.4)))
-            fa = a1 + side * 40
+            for adv, off in ((9, 11), (18, -7), (27, 13)):
+                zz.append((t1[0] + adv * c + pc * off,
+                           t1[1] + adv * s + ps * off))
+            fa = a1 + side * 42
             fc, fs = vec(fa)
-            p_end = (zz[-1][0] + 24 * fc, zz[-1][1] + 24 * fs)
+            p_end = (zz[-1][0] + 30 * fc, zz[-1][1] + 30 * fs)
             pts = " ".join(f"{px:.1f},{py:.1f}" for px, py in zz)
             parts.append(f'<polyline points="{pts} {p_end[0]:.1f},'
                          f'{p_end[1]:.1f}" fill="none" stroke="#000" '
@@ -666,6 +664,7 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                    f'text-anchor="middle">{lbl}</text>')
         svg.append(f'<text x="{lx}" y="{ly + 20}" font-size="16" '
                    f'text-anchor="middle">{mp:.2f}</text>')
+    jn_keep = []
     for jn in layout.get("junctions", []):
         t = (jn["mp"] - lo) / (hi - lo) if hi > lo else 0.5
         if not 0.0 <= t <= 1.0:
@@ -677,18 +676,24 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                    f'x2="{x + up * 52 * math.cos(a):.1f}" '
                    f'y2="{y + up * 52 * math.sin(a):.1f}" stroke="#000" '
                    'stroke-width="1.1"/>')
-        svg.append(f'<text x="{x + up * 62 * math.cos(a):.1f}" '
-                   f'y="{y + up * 62 * math.sin(a) + (0 if up < 0 else 12):.1f}" '
-                   f'font-size="12" text-anchor="middle">{jn["label"]}</text>')
+        lx = x + up * 62 * math.cos(a)
+        ly = y + up * 62 * math.sin(a) + (0 if up < 0 else 12)
+        svg.append(f'<text x="{lx:.1f}" y="{ly:.1f}" font-size="12" '
+                   f'text-anchor="middle">{jn["label"]}</text>')
+        jn_keep.append((lx - 4.2 * len(jn["label"]), ly - 12,
+                        lx + 4.2 * len(jn["label"]), ly + 6))
 
     keep_out = [(1040, 10, 1632, 400), (1300, 826, 1632, 1056),
                 (210, 905, 560, 1040), (430, 20, 1050, 280),
-                (0, 830, 200, 1056), (1470, 400, 1632, 560)]
+                (0, 830, 200, 1056), (1460, 360, 1632, 446)]
+    keep_out += jn_keep
     keep_out += [tuple(r) for r in layout.get("keep_out", [])]
 
     def clear(ox, oy, halfw):
         x0, y0 = ox - halfw - 16, oy - 40
         x1, y1 = ox + halfw + 16, oy + 40
+        if x0 < 26 or x1 > PAGE_W - 26 or y0 < 26 or y1 > PAGE_H - 26:
+            return False
         return not any(x0 < kx1 and x1 > kx0 and y0 < ky1 and y1 > ky0
                        for kx0, ky0, kx1, ky1 in keep_out)
 
@@ -709,16 +714,31 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         nx, ny = _rot(0, -1, ang)
         txx, txy = _rot(-1, 0, ang)
 
-        def spot(slot):
-            ring, below = slot // 2, slot % 2 == 1
-            dist = 34 + ring * 58
-            sgn = 1 if below else -1
-            return (bx - sgn * nx * dist + txx * ring * 74,
-                    by - sgn * ny * dist + txy * ring * 74)
+        pref = 0
+        if cr.acc_typ in (ROR_TYPES | {18, 19}) and cr.units:
+            base = ang - _DIR_ANG.get(layout.get("route_forward", "E"), 0)
+            ua = base + _DIR_ANG.get(cr.units[0].direction, -base)
+            side = -1 if cr.acc_typ == 2 else 1
+            fa = math.radians(ua + side * 42)
+            pref = 1 if math.cos(fa) * nx + math.sin(fa) * ny > 0 else -1
+        cands = []
+        for v in range(5):
+            for h in (0, -1, 1, -2, 2, -3, 3):
+                for sd in (1, -1):
+                    cands.append((v + abs(h) * 0.8 +
+                                  (0.05 if sd < 0 else 0) +
+                                  (2.5 if pref and sd != pref else 0),
+                                  v, h, sd))
+        cands.sort()
+
+        def spot(v, h, sd):
+            dist = 34 + v * 58
+            return (bx + sd * nx * dist - txx * h * 84,
+                    by + sd * ny * dist - txy * h * 84)
 
         pick = fallback = None
-        for slot in range(20):
-            ox, oy = spot(slot)
+        for _, v, h, sd in cands:
+            ox, oy = spot(v, h, sd)
             if not clear(ox, oy, halfw):
                 continue
             if fallback is None:
@@ -729,7 +749,7 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                 break
         if pick is None:
             overflow.append(cr.crash_id)
-        ox, oy = pick or fallback or spot(0)
+        ox, oy = pick or fallback or spot(0, 0, 1)
         placed.append((ox, oy, halfw))
         dx, dy = layout.get("nudges", {}).get(cr.crash_id, (0, 0))
         svg.append(f'<g transform="translate({ox + dx:.1f},'

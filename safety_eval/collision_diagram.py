@@ -316,84 +316,124 @@ def _unit_arrow(x, y, ang_deg, length, unit, night, zigzag=False):
     return "".join(out), (x1, y1)
 
 
-def crash_glyph(cr: DiagramCrash, above: bool) -> tuple[str, float]:
-    """Assemble one crash at local origin (0,0) = impact point.
+def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
+                route_forward: str = "E") -> tuple[str, float]:
+    """Assemble one crash with the roadway's local bearing as its frame.
 
-    Returns (svg, halfwidth). Layout follows the deliverable idiom: the
-    numbered badge, at-fault asterisk and surface letter ride the unit 1
-    tail; the severity circle sits at the point of impact.
+    ``base_ang`` is the road tangent in page degrees at this crash's
+    milepost and ``route_forward`` names the compass direction that
+    tangent represents, so a unit coded E travels along the drawn road
+    and a unit coded N crosses it, the way the TSU sheets read. The
+    local origin (0, 0) is the point of impact or departure; text stays
+    upright. Returns (svg, halfwidth).
     """
-    u1 = cr.units[0] if cr.units else Unit(1, "E")
+    u1 = cr.units[0] if cr.units else Unit(1, route_forward)
     u2 = cr.units[1] if len(cr.units) > 1 else None
-    a1 = _DIR_ANG.get(u1.direction, 0)
+    base = base_ang - _DIR_ANG.get(route_forward, 0)
+
+    def conv(d, fallback):
+        return base + _DIR_ANG.get(d, fallback - base)
+
+    a1 = conv(u1.direction, base)
     parts = []
-    L = 52
-    sgn = -1 if above else 1
+    L = 46
+
+    def vec(deg):
+        r = math.radians(deg)
+        return math.cos(r), math.sin(r)
 
     def tail_decor(ax, ay, ang_deg):
-        a = math.radians(ang_deg)
-        bx = ax - (L + 22) * math.cos(a)
-        by = ay - (L + 22) * math.sin(a)
-        deco = _badge(bx, by, cr.seq)
-        sx, sy = ax - L * 0.72 * math.cos(a), ay - L * 0.72 * math.sin(a)
-        deco += (f'<text x="{sx:.1f}" y="{sy + (12 * sgn) + 3:.1f}" '
-                 f'font-size="12" fill="{MAGENTA}" '
-                 'text-anchor="middle">*</text>')
-        deco += (f'<text x="{sx - 14:.1f}" y="{sy - (9 * sgn) + 3:.1f}" '
-                 f'font-size="10" fill="{GREEN}" '
-                 f'text-anchor="middle">{cr.road_cond}</text>')
+        c, s = vec(ang_deg)
+        pc, ps = -s, c
+        up = -1 if ps > 0 else 1
+        bx, by = ax - (L + 20) * c, ay - (L + 20) * s
+        deco = _badge(bx + pc * 16 * up, by + ps * 16 * up, cr.seq)
+        mx, my = ax - L * 0.55 * c, ay - L * 0.55 * s
+        deco += (f'<text x="{mx + pc * 11 * up:.1f}" '
+                 f'y="{my + ps * 11 * up + 4:.1f}" font-size="12" '
+                 f'fill="{MAGENTA}" text-anchor="middle">*</text>')
+        deco += (f'<text x="{mx - pc * 11 * up:.1f}" '
+                 f'y="{my - ps * 11 * up + 3:.1f}" font-size="10" '
+                 f'fill="{GREEN}" text-anchor="middle">{cr.road_cond}</text>')
         return deco
 
     if cr.acc_typ in SINGLE_UNIT_TYPES or u2 is None:
-        zig = cr.acc_typ in ROR_TYPES
-        ax, ay = -(L + (36 if zig else 0)), 0
-        svg, head = _unit_arrow(ax, ay, a1, L, u1, cr.night, zigzag=zig)
-        parts.append(svg)
-        if cr.acc_typ in (18, 19):
-            parts.append(f'<rect x="{head[0] + 7:.1f}" y="{head[1] - 5:.1f}" '
-                         'width="10" height="10" fill="none" stroke="#000" '
+        c, s = vec(a1)
+        if cr.acc_typ in ROR_TYPES or cr.acc_typ in (18, 19):
+            # departure trajectory: dotted tail on the road, zigzag off
+            # to the coded side, short run to rest
+            side = -1 if cr.acc_typ == 2 else 1
+            pc, ps = -s * side, c * side
+            t0 = (-(L + 4) * c, -(L + 4) * s)
+            t1 = (-4 * c, -4 * s)
+            parts.append(f'<line x1="{t0[0]:.1f}" y1="{t0[1]:.1f}" '
+                         f'x2="{t1[0]:.1f}" y2="{t1[1]:.1f}" '
+                         'stroke="#000" stroke-width="1.1"/>')
+            parts.append(_speed_marks(*t0, *t1, u1.speed))
+            zz = [t1]
+            for k, (adv, off) in enumerate(((10, 9), (20, -4), (30, 11))):
+                zz.append((t1[0] + adv * c + (pc * off if k % 2 == 0
+                                              else -pc * off * 0.4),
+                           t1[1] + adv * s + (ps * off if k % 2 == 0
+                                              else -ps * off * 0.4)))
+            fa = a1 + side * 40
+            fc, fs = vec(fa)
+            p_end = (zz[-1][0] + 24 * fc, zz[-1][1] + 24 * fs)
+            pts = " ".join(f"{px:.1f},{py:.1f}" for px, py in zz)
+            parts.append(f'<polyline points="{pts} {p_end[0]:.1f},'
+                         f'{p_end[1]:.1f}" fill="none" stroke="#000" '
                          'stroke-width="1.1"/>')
-        parts.append(_severity_circle(head[0] + 1, head[1], cr.severity))
+            parts.append(_arrowhead(*p_end, math.radians(fa), cr.night))
+            sx, sy = p_end[0] + 7 * fc, p_end[1] + 7 * fs
+            if cr.acc_typ == 18:
+                parts.append(f'<rect x="{sx:.1f}" y="{sy - 5:.1f}" '
+                             'width="10" height="10" fill="none" '
+                             'stroke="#000" stroke-width="1.1"/>')
+            parts.append(_severity_circle(sx, sy, cr.severity))
+            parts.append(tail_decor(0, 0, a1))
+            return "".join(parts), L + 58
+        svg, head = _unit_arrow(-L * c, -L * s, a1, L, u1, cr.night)
+        parts.append(svg)
+        parts.append(_severity_circle(head[0] + 4 * c, head[1] + 4 * s,
+                                      cr.severity))
         parts.append(tail_decor(0, 0, a1))
-        return "".join(parts), L + 60
-    a2 = _DIR_ANG.get(u2.direction,
-                      a1 + 90 if cr.acc_typ == 30 else a1)
+        return "".join(parts), L + 46
+    a2 = conv(u2.direction, a1 + 90 if cr.acc_typ == 30 else a1)
+    c1, s1 = vec(a1)
     if cr.acc_typ in (21, 22):                       # rear end, inline
-        svg1, h1 = _unit_arrow(-L - 14, 0, 0, L, u1, cr.night)
-        svg2, _ = _unit_arrow(2, 0, 0, L * 0.85, u2, cr.night)
-        rot = f'transform="rotate({a1})"' if a1 else ""
-        parts.append(f'<g {rot}>{svg1}{svg2}'
-                     f'{_severity_circle(0, 0, cr.severity)}</g>')
-        parts.append(tail_decor(*_rot(-L - 8, 0, a1), a1))
-        return "".join(parts), 2 * L + 40
+        svg1, _ = _unit_arrow(-(L + 14) * c1, -(L + 14) * s1, a1, L,
+                              u1, cr.night)
+        svg2, _ = _unit_arrow(4 * c1, 4 * s1, a1, L * 0.85, u2, cr.night)
+        parts += [svg1, svg2, _severity_circle(0, 0, cr.severity),
+                  tail_decor(-8 * c1, -8 * s1, a1)]
+        return "".join(parts), 2 * L + 34
     if cr.acc_typ in (27, 29):                       # head on / ss opposite
-        off = 7 if cr.acc_typ == 29 else 0
-        svg1, h1 = _unit_arrow(-L - 6, off, 0, L, u1, cr.night)
-        svg2, _ = _unit_arrow(L + 6, -off, 180, L, u2, cr.night)
-        rot = f'transform="rotate({a1})"' if a1 else ""
-        parts.append(f'<g {rot}>{svg1}{svg2}'
-                     f'{_severity_circle(0, 0, cr.severity)}</g>')
-        parts.append(tail_decor(*_rot(-6, off, a1), a1))
-        return "".join(parts), 2 * L + 40
+        off = 6 if cr.acc_typ == 29 else 0
+        pc, ps = -s1, c1
+        svg1, _ = _unit_arrow(-(L + 5) * c1 + pc * off,
+                              -(L + 5) * s1 + ps * off, a1, L, u1, cr.night)
+        svg2, _ = _unit_arrow((L + 5) * c1 - pc * off,
+                              (L + 5) * s1 - ps * off, a1 + 180, L,
+                              u2, cr.night)
+        parts += [svg1, svg2, _severity_circle(0, 0, cr.severity),
+                  tail_decor(pc * off, ps * off, a1)]
+        return "".join(parts), 2 * L + 30
     if cr.acc_typ == 28:                             # sideswipe same dir
-        svg1, _ = _unit_arrow(-L - 6, 5, 0, L, u1, cr.night)
-        svg2, _ = _unit_arrow(-L - 6, -8, 8, L, u2, cr.night)
-        rot = f'transform="rotate({a1})"' if a1 else ""
-        parts.append(f'<g {rot}>{svg1}{svg2}'
-                     f'{_severity_circle(0, 0, cr.severity)}</g>')
-        parts.append(tail_decor(*_rot(-6, 5, a1), a1))
-        return "".join(parts), 2 * L + 40
-    svg1, h1 = _unit_arrow(
-        -(L + 6) * math.cos(math.radians(a1)),
-        -(L + 6) * math.sin(math.radians(a1)), a1, L, u1, cr.night)
-    svg2, _ = _unit_arrow(
-        -(L + 6) * math.cos(math.radians(a2)),
-        -(L + 6) * math.sin(math.radians(a2)) - 8, a2, L, u2, cr.night)
-    parts.append(svg1)
-    parts.append(svg2)
-    parts.append(_severity_circle(0, -2, cr.severity))
-    parts.append(tail_decor(0, 0, a1))
-    return "".join(parts), 2 * L + 30
+        pc, ps = -s1, c1
+        svg1, _ = _unit_arrow(-(L + 5) * c1 + pc * 6,
+                              -(L + 5) * s1 + ps * 6, a1, L, u1, cr.night)
+        svg2, _ = _unit_arrow(-(L + 5) * c1 - pc * 7,
+                              -(L + 5) * s1 - ps * 7, a1 + 9, L,
+                              u2, cr.night)
+        parts += [svg1, svg2, _severity_circle(0, 0, cr.severity),
+                  tail_decor(pc * 6, ps * 6, a1)]
+        return "".join(parts), 2 * L + 30
+    c2, s2 = vec(a2)
+    svg1, _ = _unit_arrow(-(L + 6) * c1, -(L + 6) * s1, a1, L, u1, cr.night)
+    svg2, _ = _unit_arrow(-(L + 6) * c2, -(L + 6) * s2, a2, L, u2, cr.night)
+    parts += [svg1, svg2, _severity_circle(0, 0, cr.severity),
+              tail_decor(0, 0, a1)]
+    return "".join(parts), 2 * L + 24
 
 
 def _rot(x, y, deg):
@@ -611,7 +651,7 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
 
     svg = [f'<path d="M {p0[0]} {p0[1]} Q {p1[0]} {p1[1]} {p2[0]} {p2[1]}" '
            'fill="none" stroke="#000" stroke-width="1.3"/>']
-    for t, mp, anchor, dyl in ((0.0, lo, "start", 60), (1.0, hi, "end", -40)):
+    for t, mp in ((0.0, lo), (1.0, hi)):
         x, y = road_pt(t)
         a = road_ang(t) + math.pi / 2
         svg.append(f'<line x1="{x - 14 * math.cos(a):.1f}" '
@@ -620,55 +660,83 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                    f'y2="{y + 14 * math.sin(a):.1f}" stroke="#000" '
                    'stroke-width="1.2"/>')
         lbl = "Begin MP:" if t == 0 else "End MP:"
-        svg.append(f'<text x="{x - 20 if t else x - 30}" y="{y + dyl}" '
-                   f'font-size="16" text-anchor="middle">{lbl}</text>')
-        svg.append(f'<text x="{x - 20 if t else x - 30}" y="{y + dyl + 20}" '
-                   f'font-size="16" text-anchor="middle">{mp:.2f}</text>')
+        lx = max(x, 74) if t == 0 else x - 24
+        ly = y + 46 if t == 0 else y - 62
+        svg.append(f'<text x="{lx}" y="{ly}" font-size="16" '
+                   f'text-anchor="middle">{lbl}</text>')
+        svg.append(f'<text x="{lx}" y="{ly + 20}" font-size="16" '
+                   f'text-anchor="middle">{mp:.2f}</text>')
+    for jn in layout.get("junctions", []):
+        t = (jn["mp"] - lo) / (hi - lo) if hi > lo else 0.5
+        if not 0.0 <= t <= 1.0:
+            continue
+        x, y = road_pt(t)
+        a = road_ang(t) + math.pi / 2
+        up = jn.get("side", -1)
+        svg.append(f'<line x1="{x:.1f}" y1="{y:.1f}" '
+                   f'x2="{x + up * 52 * math.cos(a):.1f}" '
+                   f'y2="{y + up * 52 * math.sin(a):.1f}" stroke="#000" '
+                   'stroke-width="1.1"/>')
+        svg.append(f'<text x="{x + up * 62 * math.cos(a):.1f}" '
+                   f'y="{y + up * 62 * math.sin(a) + (0 if up < 0 else 12):.1f}" '
+                   f'font-size="12" text-anchor="middle">{jn["label"]}</text>')
 
-    keep_out = [(1070, 10, 1632, 400), (1300, 826, 1632, 1056),
-                (240, 880, 700, 1030), (430, 20, 1050, 290),
-                (0, 830, 200, 1056), (1480, 430, 1632, 560)]
+    keep_out = [(1040, 10, 1632, 400), (1300, 826, 1632, 1056),
+                (210, 905, 560, 1040), (430, 20, 1050, 280),
+                (0, 830, 200, 1056), (1470, 400, 1632, 560)]
     keep_out += [tuple(r) for r in layout.get("keep_out", [])]
 
     def clear(ox, oy, halfw):
-        x0, y0 = ox - halfw - 20, oy - 46
-        x1, y1 = ox + halfw + 20, oy + 46
+        x0, y0 = ox - halfw - 16, oy - 40
+        x1, y1 = ox + halfw + 16, oy + 40
         return not any(x0 < kx1 and x1 > kx0 and y0 < ky1 and y1 > ky0
                        for kx0, ky0, kx1, ky1 in keep_out)
 
-    placed = []           # (x, halfw, slot)
+    # crashes anchor to the roadway: assemblies sit in a tight ladder just
+    # off the line at their milepost, stepping back along the road when a
+    # milepost stacks several, the way the drawn sheets arrange them
+    overflow: list[str] = []
+    placed = []           # (x, y, halfw)
     for cr in sorted([c for c in crashes if c.mp is not None],
-                     key=lambda c: c.mp):
+                     key=lambda c: (c.mp, c.seq)):
         t = (cr.mp - lo) / (hi - lo) if hi > lo else 0.5
         t = min(1.0, max(0.0, t))
         bx, by = road_pt(t)
-        g, halfw = crash_glyph(cr, above=True)
         ang = math.degrees(road_ang(t))
+        g, halfw = crash_glyph(cr, base_ang=ang,
+                               route_forward=layout.get("route_forward",
+                                                        "E"))
+        nx, ny = _rot(0, -1, ang)
+        txx, txy = _rot(-1, 0, ang)
 
         def spot(slot):
-            # slots fan out both sides of the line, each ring stepping
-            # back along the road like the drawn sheets
-            ring, below = slot // 2 + 1, slot % 2 == 1
-            nx, ny = _rot(0, 1 if below else -1, ang)
-            txx, txy = _rot(-1, 0, ang)
-            dist = 46 + (ring - 1) * 56
-            return (bx + nx * dist + txx * (ring - 1) * 44,
-                    by + ny * dist + txy * (ring - 1) * 44)
+            ring, below = slot // 2, slot % 2 == 1
+            dist = 34 + ring * 58
+            sgn = 1 if below else -1
+            return (bx - sgn * nx * dist + txx * ring * 74,
+                    by - sgn * ny * dist + txy * ring * 74)
 
-        slot = 0
-        while slot < 14:
+        pick = fallback = None
+        for slot in range(20):
             ox, oy = spot(slot)
-            if clear(ox, oy, halfw) and not any(
-                    s == slot and abs(bx - px) < halfw + pw + 18
-                    for px, pw, s in placed):
+            if not clear(ox, oy, halfw):
+                continue
+            if fallback is None:
+                fallback = (ox, oy)
+            if not any(abs(ox - px) < (halfw + pw) * 0.72
+                       and abs(oy - py) < 50 for px, py, pw in placed):
+                pick = (ox, oy)
                 break
-            slot += 1
-        placed.append((bx, halfw, slot))
-        ox, oy = spot(slot)
+        if pick is None:
+            overflow.append(cr.crash_id)
+        ox, oy = pick or fallback or spot(0)
+        placed.append((ox, oy, halfw))
         dx, dy = layout.get("nudges", {}).get(cr.crash_id, (0, 0))
         svg.append(f'<g transform="translate({ox + dx:.1f},'
                    f'{oy + dy:.1f})">{g}</g>')
 
+    if overflow:
+        print(f"  placement overflow (overdrawn): {overflow}")
     return _sheet(svg, layout, crashes)
 
 

@@ -62,10 +62,13 @@ layout = {
         "1,000 (2024)",
         "55 mph",
     ],
-    "route_label_xy": [430, 930],
+    "route_label_xy": [350, 958],
     "notes": [],
-    "nudges": {"107089722": [52, 0], "108244836": [-30, -12],
-               "108052444": [-6, -30], "108075100": [34, 22]},
+    "nudges": {},
+    "route_forward": "E",
+    "junctions": [
+        {"mp": 1.45, "label": "SR 1321 (McInnis Rd)", "side": 1},
+    ],
     "prepared_by": "Chris Bahret, PE",
     "date": "8/18/2026",
     "logo": "/home/user/Etch-A-Sketch/examples/41000079305/mapdata/"

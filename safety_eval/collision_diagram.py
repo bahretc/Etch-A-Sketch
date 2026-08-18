@@ -355,7 +355,7 @@ def _unit_arrow(x, y, ang_deg, length, unit, night, zigzag=False):
 
 def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
                 route_forward: str = "E",
-                throw: float = 0.0) -> tuple[str, float, float]:
+                throw: float = 0.0) -> tuple[str, tuple, tuple]:
     """Assemble one crash with the roadway's local bearing as its frame.
 
     ``base_ang`` is the road tangent in page degrees at this crash's
@@ -363,9 +363,10 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
     tangent represents, so a unit coded E travels along the drawn road
     and a unit coded N crosses it, the way the TSU sheets read. The
     local origin (0, 0) is the point of impact or departure; text stays
-    upright. Returns (svg, halfwidth, reach) where reach is the
-    assembly's largest extent perpendicular to the roadway, so
-    placement can guarantee nothing touches the centerline.
+    upright. Returns (svg, box, normal_extents): box is the assembly's
+    ink bounding box in local page coordinates and normal_extents its
+    signed extents along the road normal, so placement can test true
+    ink overlap and guarantee nothing touches the centerline.
     """
     u1 = cr.units[0] if cr.units else Unit(1, route_forward)
     u2 = cr.units[1] if len(cr.units) > 1 else None
@@ -386,10 +387,16 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
     def K(x, y, pad=4.0):
         kp.append((x, y, pad))
 
-    def reach_of():
+    def extents_of():
         rb = math.radians(base_ang)
         nx_, ny_ = math.sin(rb), -math.cos(rb)
-        return max(abs(px * nx_ + py * ny_) + pad for px, py, pad in kp)
+        box = (min(px - pad for px, py, pad in kp),
+               max(px + pad for px, py, pad in kp),
+               min(py - pad for px, py, pad in kp),
+               max(py + pad for px, py, pad in kp))
+        projs = [(px * nx_ + py * ny_, pad) for px, py, pad in kp]
+        return box, (min(pr - pad for pr, pad in projs),
+                     max(pr + pad for pr, pad in projs))
 
     def tail_decor(ax, ay, ang_deg):
         # the bubble rides inline on the tail axis; the surface letter
@@ -453,13 +460,13 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
                              'stroke="#000" stroke-width="1.1"/>')
             parts.append(_severity_circle(sx, sy, cr.severity))
             parts.append(tail_decor(0, 0, a1))
-            return "".join(parts), L + 46, reach_of()
+            return ("".join(parts),) + extents_of()
         svg, head = unit(-L * c, -L * s, a1, L, u1)
         parts.append(svg)
         parts.append(_severity_circle(head[0] + 4 * c, head[1] + 4 * s,
                                       cr.severity))
         parts.append(tail_decor(0, 0, a1))
-        return "".join(parts), L + 40, reach_of()
+        return ("".join(parts),) + extents_of()
     a2 = conv(u2.direction, a1 + 90 if cr.acc_typ == 30 else a1)
     c1, s1 = vec(a1)
     if cr.acc_typ in (21, 22):                       # rear end, inline
@@ -467,7 +474,7 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
         svg2, _ = unit(3 * c1, 3 * s1, a1, L * 0.85, u2)
         parts += [svg1, svg2, _severity_circle(0, 0, cr.severity),
                   tail_decor(-6 * c1, -6 * s1, a1)]
-        return "".join(parts), 2 * L + 26, reach_of()
+        return ("".join(parts),) + extents_of()
     if cr.acc_typ in (27, 29):                       # head on / ss opposite
         off = 6 if cr.acc_typ == 29 else 0
         pc, ps = -s1, c1
@@ -477,7 +484,7 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
                        (L + 4) * s1 - ps * off, a1 + 180, L, u2)
         parts += [svg1, svg2, _severity_circle(0, 0, cr.severity),
                   tail_decor(pc * off, ps * off, a1)]
-        return "".join(parts), 2 * L + 22, reach_of()
+        return ("".join(parts),) + extents_of()
     if cr.acc_typ == 28:                             # sideswipe same dir
         pc, ps = -s1, c1
         svg1, _ = unit(-(L + 4) * c1 + pc * 5,
@@ -486,13 +493,13 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
                        -(L + 4) * s1 - ps * 6, a1 + 9, L, u2)
         parts += [svg1, svg2, _severity_circle(0, 0, cr.severity),
                   tail_decor(pc * 5, ps * 5, a1)]
-        return "".join(parts), 2 * L + 22, reach_of()
+        return ("".join(parts),) + extents_of()
     c2, s2 = vec(a2)
     svg1, _ = unit(-(L + 5) * c1, -(L + 5) * s1, a1, L, u1)
     svg2, _ = unit(-(L + 5) * c2, -(L + 5) * s2, a2, L, u2)
     parts += [svg1, svg2, _severity_circle(0, 0, cr.severity),
               tail_decor(0, 0, a1)]
-    return "".join(parts), 2 * L + 18, reach_of()
+    return ("".join(parts),) + extents_of()
 
 
 def _rot(x, y, deg):
@@ -750,9 +757,7 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
     keep_out += jn_keep
     keep_out += [tuple(r) for r in layout.get("keep_out", [])]
 
-    def clear(ox, oy, halfw):
-        x0, y0 = ox - halfw - 16, oy - 40
-        x1, y1 = ox + halfw + 16, oy + 40
+    def clear(x0, y0, x1, y1):
         if x0 < 26 or x1 > PAGE_W - 26 or y0 < 26 or y1 > PAGE_H - 26:
             return False
         return not any(x0 < kx1 and x1 > kx0 and y0 < ky1 and y1 > ky0
@@ -761,9 +766,10 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
     # every crash stays at its true milepost. The first assembly at a
     # location sits just off the line and stacked ones climb a tight
     # ladder on their side of the road, the way the drawn sheets ladder
-    # a cluster, with at most a few feet of along-road jitter.
+    # a cluster. Separation and centerline clearance both test the
+    # assembly's true ink extents, never its origin alone.
     route_fwd = layout.get("route_forward", "E")
-    placed: list[tuple[float, float, float, float]] = []
+    placed: list[tuple[float, float, float, float]] = []   # ink boxes
     for cr in sorted([c for c in crashes if c.mp is not None],
                      key=lambda c: (c.mp, c.seq)):
         t = (cr.mp - lo) / (hi - lo) if hi > lo else 0.5
@@ -772,40 +778,47 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         ang = math.degrees(road_ang(t))
         nx, ny = _rot(0, -1, ang)
         fx, fy = _rot(1, 0, ang)
-        g, halfw, reach = crash_glyph(cr, base_ang=ang,
-                                      route_forward=route_fwd)
-        d0 = max(26.0, reach + 8.0)
-        pref = 1
+        g, box, n_ext = crash_glyph(cr, base_ang=ang,
+                                    route_forward=route_fwd)
+        pref, hard_side = 1, False
         if cr.acc_typ in (ROR_TYPES | {18, 19}) and cr.units:
+            # a departure trajectory must stay on the side of the road
+            # the vehicle actually left toward
             base = ang - _DIR_ANG.get(route_fwd, 0)
             ua = base + _DIR_ANG.get(cr.units[0].direction, -base)
             side = -1 if cr.acc_typ == 2 else 1
             fa = math.radians(ua + side * 44)
             pref = 1 if math.cos(fa) * nx + math.sin(fa) * ny > 0 else -1
+            hard_side = True
         cands = []
-        for sd in (pref, -pref):
+        for sd in ((pref,) if hard_side else (pref, -pref)):
+            d0 = max(26.0, (10 - n_ext[0]) if sd > 0 else (10 + n_ext[1]))
             for k in range(5):
                 for j, sh in enumerate((0, -16, 16, -34, 34, -52, 52,
-                                        -70, 70)):
-                    cands.append((k + 0.22 * j +
-                                  (1.6 if sd != pref else 0), k, sh, sd))
+                                        -70, 70, -88, 88, -106, 106)):
+                    cands.append((k + 0.2 * j +
+                                  (1.6 if sd != pref else 0),
+                                  d0, k, sh, sd))
         cands.sort()
         pick = fallback = None
-        for _, k, sh, sd in cands:
+        for _, d0, k, sh, sd in cands:
             ox = bx + sd * nx * (d0 + 44 * k) + fx * sh
             oy = by + sd * ny * (d0 + 44 * k) + fy * sh
-            if not clear(ox, oy, halfw):
+            bb = (ox + box[0] - 5, oy + box[2] - 5,
+                  ox + box[1] + 5, oy + box[3] + 5)
+            if not clear(*bb):
                 continue
             if fallback is None:
-                fallback = (ox, oy)
-            if not any(abs(ox - px) < (halfw + pw) * 0.66
-                       and abs(oy - py) < (reach + pr) * 0.55 + 10
-                       for px, py, pw, pr in placed):
-                pick = (ox, oy)
+                fallback = (ox, oy, bb)
+            if not any(bb[0] < px1 and bb[2] > px0
+                       and bb[1] < py1 and bb[3] > py0
+                       for px0, py0, px1, py1 in placed):
+                pick = (ox, oy, bb)
                 break
-        ox, oy = pick or fallback or (bx - nx * (d0 + 44),
-                                      by - ny * (d0 + 44))
-        placed.append((ox, oy, halfw, reach))
+        ox, oy, bb = pick or fallback or (
+            bx - nx * 90, by - ny * 90,
+            (bx + box[0], by + box[2], bx + box[1], by + box[3]))
+        placed.append(bb)
         dx, dy = layout.get("nudges", {}).get(cr.crash_id, (0, 0))
         svg.append(f'<g transform="translate({ox + dx:.1f},'
                    f'{oy + dy:.1f})">{g}</g>')

@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "mcp__Google_Drive__search_files",
+      "mcp__Google_Drive__get_file_metadata",
+      "mcp__Google_Drive__read_file_content",
+      "mcp__Google_Drive__download_file_content",
+      "Bash(python3 *)",
+      "Bash(python *)",
+      "Bash(pytest *)",
+      "Bash(.venv/bin/pytest *)",
+      "Bash(/home/user/Etch-A-Sketch/.venv/bin/pytest *)",
+      "Bash(.venv/bin/safety-eval *)",
+      "Bash(/home/user/Etch-A-Sketch/.venv/bin/safety-eval *)",
+      "Bash(git fetch *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push -u origin claude/*)",
+      "Bash(git push origin claude/*)",
+      "Bash(git reset --hard origin/claude/*)",
+      "Bash(pip install *)",
+      "Bash(pdftotext *)",
+      "Bash(pdftoppm *)",
+      "Bash(pdfinfo *)",
+      "Bash(tesseract *)",
+      "Bash(soffice *)",
+      "Bash(libreoffice *)",
+      "Bash(curl *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(rm *)",
+      "Bash(unzip *)",
+      "Bash(convert *)",
+      "Bash(identify *)"
+    ]
+  }
+}

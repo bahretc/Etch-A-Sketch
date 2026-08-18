@@ -33,7 +33,8 @@ crashes.append(DiagramCrash(
     crash_id="108075100", mp=1.800, dt="04/05/2025 12:00",
     severity="O", acc_typ=19, road_cond="D", night=False,
     units=[Unit(1, "E", None, 4)]))
-crashes.sort(key=lambda c: c.dt)
+from safety_eval.collision_diagram import _sortable_dt  # noqa: E402
+crashes.sort(key=lambda c: _sortable_dt(c.dt))
 for i, c in enumerate(crashes, start=1):
     c.seq = i
 

@@ -87,6 +87,21 @@ def _stroke_text(x, y, text, size=14, anchor="middle", color="#000",
             'stroke-linecap="round" fill="none"/></g>')
 
 
+def _text_width(text, size) -> float:
+    """Rendered width of a stroke label, so keep-outs match the ink."""
+    text = str(text)
+    if not text.strip():
+        return 0.0
+    if _HFONT is None:                                # pragma: no cover
+        return len(text) * size * 0.62
+    _HFONT.normalize_rendering(size * 1.28)
+    segs = list(_HFONT.lines_for_text(text))
+    if not segs:
+        return 0.0
+    xs = [c for sg in segs for c in (sg[0][0], sg[1][0])]
+    return max(xs) - min(xs)
+
+
 ROR_TYPES = {1, 2, 3, 4, 5}
 SINGLE_UNIT_TYPES = ROR_TYPES | {13, 17, 18, 19, 20, 32}
 TURN_TYPES = {22, 23, 24, 25, 26}
@@ -581,7 +596,9 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
     # ------------------------------------------------ one unit involved
     if u2 is None or cr.acc_typ in SINGLE_UNIT_TYPES:
         depart = cr.acc_typ in ROR_TYPES or cr.acc_typ == 19
-        side = -1 if cr.acc_typ == 2 else 1          # ROR left leaves left
+        # ran off road right leaves right, left leaves left, and straight
+        # ahead carries on along the travel line without a deflection
+        side = {1: 1, 2: -1, 3: 0}.get(cr.acc_typ, 1)
         ang = a1 + (side * DEPART_ANG if depart else 0.0)
         c, s = vec(ang)
         tail = (-CELL_SHAFT * c, -CELL_SHAFT * s)
@@ -947,7 +964,7 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         svg.append(_stroke_text(lx, ly, jn["label"], size=11.5,
                                 anchor="start"))
         jn_keep.append((lx - 5, ly - 8,
-                        lx + 6.9 * len(jn["label"]), ly + 8))
+                        lx + _text_width(jn["label"], 11.5) + 5, ly + 8))
         jn_keep.append((min(x, ex) - 16, min(y, ey) - 6,
                         max(x, ex) + 16, max(y, ey) + 6))
 
@@ -956,7 +973,7 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
     # furniture keep-outs, measured off what the sheet actually draws so
     # a block that moves or gains a line still holds its own space
     def text_box(cx, cy, lines, size, lead, anchor="middle"):
-        w = max((len(t) for t in lines), default=0) * size * 0.60
+        w = max((_text_width(t, size) for t in lines), default=0.0)
         x0 = cx - w / 2 if anchor == "middle" else cx
         return (x0 - 12, cy - size, x0 + w + 12,
                 cy + lead * (len(lines) - 1) + size)
@@ -1004,10 +1021,10 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
             base = ang - _DIR_ANG.get(route_fwd, 0)
             ua = base + _DIR_ANG.get(cr.units[0].direction, -base) \
                 if cr.units else base
-            side = -1 if cr.acc_typ == 2 else 1
+            side = {1: 1, 2: -1, 3: 0}.get(cr.acc_typ, 1)
             fa = math.radians(ua + side * DEPART_ANG)
             pref = 1 if math.cos(fa) * nx + math.sin(fa) * ny > 0 else -1
-            hard = True
+            hard = side != 0        # straight ahead does not pick a side
         if forced:
             pref, hard = int(forced), True
         items.append({"cr": cr, "t": t, "bx": bx, "by": by, "g": g,

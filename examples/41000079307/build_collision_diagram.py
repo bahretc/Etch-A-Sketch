@@ -29,6 +29,24 @@ crashes = [c for c in crashes if c.crash_id != "106814981"]
 for c in crashes:
     if c.crash_id in ("107089722", "107666960"):
         c.mp = 1.450
+# The DMV-349 narratives correct several TEAAS types before plotting, the
+# way the NCDOT deck requires: a ditch is not a fixed object cell, an
+# overturn after leaving the road plots as ran off road, and Other Non
+# Collision has no cell at all. Direction of departure comes from the
+# narrative, which also sets which side of the line the cell belongs on.
+RETYPE = {
+    "107822778": 2,   # WB, crossed centreline, ran off road to the LEFT
+    "108067609": 2,   # WB, ran off road to the LEFT, struck ditch
+    "107089722": 3,   # EB on SR 1321, ran off roadway STRAIGHT AHEAD
+    "107666960": 3,   # NB on SR 1321, ran off road STRAIGHT AHEAD
+    "106918221": 2,   # EB, crossed centreline, ran off road to the LEFT
+    "108052444": 1,   # WB, ran off road to the RIGHT, struck ditch
+    "108309866": 2,   # EB, over corrected, ran off road to the LEFT
+}
+for c in crashes:
+    if c.crash_id in RETYPE:
+        c.acc_typ = RETYPE[c.crash_id]
+
 crashes.append(DiagramCrash(
     crash_id="108075100", mp=1.800, dt="04/05/2025 12:00",
     severity="O", acc_typ=19, road_cond="D", night=False,
@@ -65,10 +83,13 @@ layout = {
     ],
     "route_label_xy": [455, 906],
     "notes": [
-        {"x": 1330, "y": 660,
+        {"x": 1330, "y": 640,
          "text": ["Crash #12 coded 0.007 mile east of",
                   "SR 1387; added at the study end,",
                   "MP 1.800"]},
+        {"x": 1330, "y": 726,
+         "text": ["Crash #10: second unit was an ATV",
+                  "crossing SR 1320 from a dirt road"]},
     ],
     "nudges": {},
     "route_forward": "E",
@@ -78,10 +99,13 @@ layout = {
     "junctions": [
         {"mp": 1.45, "label": "SR 1321 (McInnis Rd)", "side": -1},
     ],
+    # sides the narratives establish, where the coded type alone would
+    # put the cell on the wrong side of the centreline
     "sides": {
-        "107089722": -1,        # SR 1321 approach crash, south of SR 1320
-        "107666960": -1,        # SR 1321 approach crash, south of SR 1320
-        "108244836": -1,        # engineer's call, ran off to the south side
+        "107089722": -1,        # SR 1321 approach, south of SR 1320
+        "107666960": -1,        # SR 1321 approach, south of SR 1320
+        "108244836": -1,        # off to the left while turning right onto
+                                # SR 1321, so the departure is southbound
     },
     "prepared_by": "Chris Bahret, PE",
     "date": "8/18/2026",

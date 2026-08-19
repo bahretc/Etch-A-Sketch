@@ -402,39 +402,34 @@ def _unit_cell(tx, ty, ang_deg, unit, night, zigzag=False,
     ink = [P(0.0)]
     mark_lo, mark_hi = 2.0, shaft - CELL_HEAD - 2.0
     if turn:
-        # a turning vehicle: it runs up to the corner on its approach
-        # heading, rounds it, and carries the head on the new heading.
-        # The shaft keeps its length, so the cell still matches the rest.
-        a2 = math.radians(ang_deg + turn)
+        # a vehicle that was turning when it left the road: the normal run
+        # off road cell, with the far end of the shaft bent toward the road
+        # it was turning onto. A full square corner does not fit alongside
+        # the break and the head in one shaft length.
+        bend = turn * 0.42
+        a2 = math.radians(ang_deg + bend)
         c2, s2 = math.cos(a2), math.sin(a2)
         n2x, n2y = -s2, c2
-        s1 = shaft * 0.40
-        leg = shaft - s1
+        zb = shaft * 0.62                       # where the shaft bends
 
         def Q(u, v=0.0):
-            cx, cy = P(s1)
-            return (cx + u * c2 + v * n2x, cy + u * s2 + v * n2y)
+            bx, by = P(zb)
+            return (bx + u * c2 + v * n2x, by + u * s2 + v * n2y)
 
-        r = min(9.0, s1 * 0.4, leg * 0.4)
-        cor = P(s1)
-        d = [f"M {tx:.1f} {ty:.1f}",
-             f"L {P(s1 - r)[0]:.1f} {P(s1 - r)[1]:.1f}",
-             f"Q {cor[0]:.1f} {cor[1]:.1f} {Q(r)[0]:.1f} {Q(r)[1]:.1f}"]
+        leg = shaft - zb
+        path = [P(0.0)]
         if zigzag:
-            # the break has to finish before the head starts, or the last
-            # tooth is drawn straight through the arrowhead
-            zlen = 10.0
-            z = max(1.5, leg - CELL_HEAD - zlen - 2.5)
-            for u, v in ((z, 0.0), (z + 3.0, -5.6), (z + 7.0, 5.6),
-                         (z + zlen, 0.0)):
-                d.append(f"L {Q(u, v)[0]:.1f} {Q(u, v)[1]:.1f}")
-                ink.append(Q(u, v))
-        d.append(f"L {Q(leg)[0]:.1f} {Q(leg)[1]:.1f}")
-        out.append(f'<path d="{" ".join(d)}" fill="none" stroke="#000" '
-                   'stroke-width="1.1"/>')
-        ink += [cor, Q(leg)]
-        mark_hi = s1 - r - 2.0
+            z0 = zb - 13.0
+            path += [P(z0), P(z0 + 3.0, -5.6), P(z0 + 7.0, 5.6),
+                     P(z0 + 10.0)]
+            ink += [P(z0 + 3.0, -5.6), P(z0 + 7.0, 5.6)]
+            mark_hi = z0 - 2.5
+        path += [P(zb), Q(leg)]
         tip = Q(leg)
+        ink += [P(zb), tip]
+        d = " ".join(f"{px:.1f},{py:.1f}" for px, py in path)
+        out.append(f'<polyline points="{d}" fill="none" stroke="#000" '
+                   'stroke-width="1.1"/>')
         if mark_hi - mark_lo > 4:
             out.append(_speed_run(tx, ty, c, s, mark_lo, mark_hi,
                                   unit.speed))
@@ -662,7 +657,7 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
         # a turn and a run off road break will not both fit legibly in one
         # cell: the deck's answer is to plot the cell that fits and note
         # the rest, so a turning cell keeps the corner and drops the break
-        svg, tip = draw(tail, ang, u1, zigzag=depart and not turn, turn=turn)
+        svg, tip = draw(tail, ang, u1, zigzag=depart, turn=turn)
         if turn:
             c, s = vec(ang + turn)      # the front of the cell is the exit
         parts.append(svg)

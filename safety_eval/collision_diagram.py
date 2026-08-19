@@ -1396,15 +1396,16 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                     st[i] = need
             drift = sum(st) / len(st) - sum(want) / len(want)
             st = [v - drift for v in st]
-            # Cost of a spot: how far it walks the cell off its milepost,
-            # against how far out it stacks. Sliding used to be the cheap
-            # move, which put cells a couple of hundred feet from the
-            # station they happened at. A row out is the cheaper answer.
+            # Cost of a spot: how far it walks the cell off its milepost
+            # against how far out it stacks. A cell that reads off the
+            # line is worth more than one that reads at exactly the right
+            # station, so a row out is dear and a slide is cheap: a cell
+            # slides most of a row's worth before it stands out at all.
             cands = sorted(
-                ((abs(d) * 1.35 + 44.0 * rk, rk, d)
+                ((abs(d) * 0.75 + 55.0 * rk, rk, d)
                  for rk in (0, 1, 2, 3)
-                 for d in (0, -16, 16, -32, 32, -52, 52, -76, 76,
-                           -108, 108, -144, 144)),
+                 for d in (0, -14, 14, -28, 28, -46, 46, -68, 68,
+                           -96, 96, -130, 130, -170, 170)),
                 key=lambda t: t[0])
 
             def place(it, s_at, rank, sd2, extra=0.0):
@@ -1469,7 +1470,7 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                     # a fact about the crash, not a placement convenience.
                     # Only a crash with no side to keep may cross over.
                     wide = sorted(
-                        ((abs(d) * 1.35 + 44.0 * rk, rk, d)
+                        ((abs(d) * 0.75 + 55.0 * rk, rk, d)
                          for rk in (0, 1, 2, 3, 4, 5, 6)
                          for d in range(-320, 321, 10)),
                         key=lambda t: t[0])

@@ -94,13 +94,13 @@ layout = {
     # Each note sits by the crash it explains, so nothing has to be read
     # off a list in the corner.
     "notes": [
-        {"x": 430, "y": 935,
-         "text": ["Crash #6: eastbound, left the road to the",
-                  "left while turning right onto SR 1321"]},
-        {"x": 1120, "y": 880,
+        {"x": 400, "y": 925,
+         "text": ["Crash #6: eastbound vehicle turning right onto",
+                  "SR 1321 ran off the road to the left"]},
+        {"x": 1120, "y": 720,
          "text": ["Crash #10: second unit was an ATV",
                   "crossing SR 1320 from a dirt road"]},
-        {"x": 1120, "y": 950,
+        {"x": 1290, "y": 775,
          "text": ["Crash #12: ran the stop sign on SR 1387 and",
                   "left the road to the right while turning",
                   "onto SR 1320. Carried at the end, MP 1.800"]},
@@ -143,13 +143,17 @@ layout = {
     # the SR 1321 station.
     "at": {
         "107829164": [305, 625],
+        "107089722": [480, 670],
+        "107304540": [614, 670],
+        "107666960": [452, 738],
+        "108244836": [422, 762],
+        "108309866": [645, 715],
         "108052444": [1360, 588],
-        "107666960": [462, 738],
-        "108244836": [530, 776],
-        "108309866": [624, 732],
         "108075100": [1425, 720],
     },
     "headings": {
+        "107666960": -78,       # northbound on SR 1321, so the cell runs
+                                # parallel to that leg, not square to it
         "108244836": 38,        # eastbound into the SR 1321 turn, SE quad
         "108075100": 120,       # down SR 1387 toward SR 1320, SW
     },
@@ -162,7 +166,7 @@ layout = {
                                 # onto SR 1320, so it ends south of it
     },
     "prepared_by": "Chris Bahret, PE",
-    "date": "8/18/2026",
+    "date": "8/20/2026",
     "logo": "/home/user/Etch-A-Sketch/examples/41000079305/mapdata/"
             "vhb_logo.png",
 }

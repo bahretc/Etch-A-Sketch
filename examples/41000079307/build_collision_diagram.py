@@ -113,8 +113,6 @@ layout = {
     # projected and drawn north up.
     "centerline": CENTERLINE,
     "road_box": [150, 330, 1470, 800],
-    "begin_label_xy": [105, 330],
-    "end_label_xy": [1390, 745],
     # McInnis Road leaves SR 1320 heading 192 degrees, so its stub and the
     # crashes remileposted onto the junction from it sit south of the line
     # Sides checked against the OSM centreline: McInnis Road leaves SR 1320
@@ -144,21 +142,24 @@ layout = {
     # 108309866 stacks out of reach of the line among the five that share
     # the SR 1321 station.
     "at": {
-        "108244836": [492, 768],
-        "108309866": [566, 772],
-        "108075100": [1430, 600],
+        "107829164": [305, 625],
+        "108052444": [1360, 588],
+        "107666960": [462, 738],
+        "108244836": [530, 776],
+        "108309866": [624, 732],
+        "108075100": [1425, 720],
     },
     "headings": {
         "108244836": 38,        # eastbound into the SR 1321 turn, SE quad
         "108075100": 120,       # down SR 1387 toward SR 1320, SW
     },
     "sides": {
-        "107089722": -1,        # SR 1321 approach, south of SR 1320
-        "107666960": -1,        # SR 1321 approach, south of SR 1320
+        "107666960": -1,        # northbound SR 1321, so on the east half
+                                # of that approach, south of SR 1320
         "108244836": -1,        # off to the left while turning right onto
                                 # SR 1321, so the departure is southbound
-        "108075100": 1,         # approached on SR 1387, which leaves to
-                                # the north, so the cell belongs that side
+        "108075100": -1,        # left the road to the right off the turn
+                                # onto SR 1320, so it ends south of it
     },
     "prepared_by": "Chris Bahret, PE",
     "date": "8/18/2026",

@@ -325,6 +325,9 @@ TICK_H = 6.5             # half length of the point of impact tick
 DEPART_ANG = 26.0        # cell rotation off the travel line for a departure
 ROAD_GAP = 11.0          # clear space between the centerline and any ink
 STUB_LEN = 150.0         # side road leg, long enough to read as a road
+JN_SIZE = 11.5           # side road name at the end of its leg
+MP_SIZE = 13.5           # milepost callout, two sizes up from the name
+MP_LEAD = 21.0
 DOT_R = 1.75
 DOT_MIN_PITCH = 5.6       # dots always read as separate marks
 # NCDOT's own printing note is to drop the crash cells to line weight 0 so
@@ -1163,20 +1166,8 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                    f'x2="{x + 14 * math.cos(a):.1f}" '
                    f'y2="{y + 14 * math.sin(a):.1f}" stroke="#000" '
                    'stroke-width="1.2"/>')
-        # the MP labels sit on the side of the line the terminal side road
-        # does not use, so a stub and its name never fight them
-        lbl = f"Begin MP {mp:.2f}" if t == 0 else f"End MP {mp:.2f}"
-        key = "begin_label_xy" if t == 0 else "end_label_xy"
-        # the terminal side road takes one side of the line, so the
-        # milepost sits on the other unless the layout says otherwise
-        if layout.get(key):
-            lx, ly = layout[key]
-        else:
-            lx = max(x, 112) if t == 0 else x - 176
-            ly = y - 72 if t == 0 else y - 58
-        svg.append(_stroke_text(lx, ly, lbl, size=15.5, sw=1.05))
-        mp_keep.append((lx - 100, ly - 16, lx + 100, ly + 16))
     jn_keep = []
+    jn_label = {}
     for jn in layout.get("junctions", []):
         t = (jn["mp"] - lo) / (hi - lo) if hi > lo else 0.5
         if not 0.0 <= t <= 1.0:
@@ -1205,20 +1196,46 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         anchor = jn.get("anchor", "middle")
         lx = ex + 18 * dx + jn.get("dx", 0)
         ly = ey + 18 * dy + jn.get("dy", 0)
-        svg.append(_stroke_text(lx, ly, jn["label"], size=11.5,
+        svg.append(_stroke_text(lx, ly, jn["label"], size=JN_SIZE,
                                 anchor=anchor))
-        w = _text_width(jn["label"], 11.5)
+        w = _text_width(jn["label"], JN_SIZE)
         x0 = lx - (w / 2 if anchor == "middle"
                    else w if anchor == "end" else 0)
         shift = max(0.0, 30.0 - x0) - max(0.0, x0 + w - (PAGE_W - 30.0))
         if shift:                      # a name near the edge slides inboard
             lx += shift
             x0 += shift
-            svg[-1] = _stroke_text(lx, ly, jn["label"], size=11.5,
+            svg[-1] = _stroke_text(lx, ly, jn["label"], size=JN_SIZE,
                                    anchor=anchor)
         jn_keep.append((x0 - 5, ly - 8, x0 + w + 5, ly + 8))
         jn_keep.append((min(x, ex) - 16, min(y, ey) - 6,
                         max(x, ex) + 16, max(y, ey) + 6))
+        jn_label[round(jn["mp"], 3)] = (lx, ly, anchor, dy)
+
+    # The milepost that ends the study is written under the name of the
+    # side road it ends at, so the two read as one callout instead of the
+    # milepost floating on its own somewhere near the end of the line.
+    for t, mp in ((0.0, lo), (1.0, hi)):
+        x, y = road_pt(t)
+        lbl = f"Begin MP {mp:.2f}" if t == 0 else f"End MP {mp:.2f}"
+        key = "begin_label_xy" if t == 0 else "end_label_xy"
+        anchor = "middle"
+        if layout.get(key):
+            lx, ly = layout[key]
+        elif round(mp, 3) in jn_label:
+            lx, ly, anchor, sdy = jn_label[round(mp, 3)]
+            # the callout stacks away from the roadway, so a leg that runs
+            # up the sheet never has its own tip through the milepost
+            ly += MP_LEAD if sdy > 0 else -MP_LEAD
+        else:
+            lx = max(x, 112) if t == 0 else x - 176
+            ly = y - 72 if t == 0 else y - 58
+        svg.append(_stroke_text(lx, ly, lbl, size=MP_SIZE, sw=1.05,
+                                anchor=anchor))
+        w = _text_width(lbl, MP_SIZE)
+        x0 = lx - (w / 2 if anchor == "middle"
+                   else w if anchor == "end" else 0)
+        mp_keep.append((x0 - 10, ly - 14, x0 + w + 10, ly + 14))
 
     if "north_rot" not in layout:
         # A sheet drawn off the real alignment is drawn north up, so the
@@ -1368,6 +1385,8 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
             # search below only nudges what furniture still blocks
             want = [(it["bx"] - ax) * fx + (it["by"] - ay) * fy
                     for it in members]
+            for it, w in zip(members, want):
+                it["s0"] = w
             st = list(want)
             for i in range(1, len(st)):
                 lo_i = along(members[i])[0]
@@ -1389,9 +1408,17 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                 key=lambda t: t[0])
 
             def place(it, s_at, rank, sd2, extra=0.0):
+                """A cell stands off its own station on its own normal.
+                One frame for the whole cluster is fine on a straight run
+                and wrong at a corner, where the same 'north' points half
+                the group across the road it belongs beside."""
+                ang_i = math.degrees(road_ang(it["t"]))
+                fxi, fyi = _rot(1.0, 0.0, ang_i)
+                nxi, nyi = _rot(0.0, -1.0, ang_i)
+                off = s_at - it["s0"]
                 dist = base_dist(it, sd2) + extra + rank * rowh
-                tx = ax + fx * s_at + nx * sd2 * dist
-                ty = ay + fy * s_at + ny * sd2 * dist
+                tx = it["bx"] + fxi * off + nxi * sd2 * dist
+                ty = it["by"] + fyi * off + nyi * sd2 * dist
                 return tx, ty, (tx + it["box"][0] - 4, ty + it["box"][2] - 4,
                                 tx + it["box"][1] + 4, ty + it["box"][3] + 4)
 
@@ -1429,19 +1456,24 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                     extra += 3.0
                 for _, rank, dsh in cands:
                     tx, ty, bb = place(it, s_i + dsh, rank, sd, extra)
-                    if open_spot(bb):
+                    # clearance is tested at the spot actually taken: the
+                    # standoff is trimmed at the cell's own station, and a
+                    # shift along a bend puts it nearer the line again
+                    if open_spot(bb) and road_ok(it, tx, ty):
                         spot = (tx, ty, bb)
                         break
                 if spot is None:
-                    # nothing on its own side: widen the sweep, then take
-                    # the other side rather than drop the cell on top of
-                    # the furniture, which is what a blind fallback did
+                    # nothing in the near sweep: widen it. A crash whose
+                    # travel direction fixes its side keeps that side, all
+                    # the way out; the side of the line a vehicle was on is
+                    # a fact about the crash, not a placement convenience.
+                    # Only a crash with no side to keep may cross over.
                     wide = sorted(
                         ((abs(d) * 1.35 + 44.0 * rk, rk, d)
-                         for rk in (0, 1, 2, 3, 4)
-                         for d in range(-260, 261, 12)),
+                         for rk in (0, 1, 2, 3, 4, 5, 6)
+                         for d in range(-320, 321, 10)),
                         key=lambda t: t[0])
-                    for s2 in (sd, -sd):
+                    for s2 in ((sd,) if it["hard"] else (sd, -sd)):
                         for _, rank, dsh in wide:
                             tx, ty, bb = place(it, s_i + dsh, rank, s2)
                             if open_spot(bb) and road_ok(it, tx, ty):
@@ -1450,7 +1482,16 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                         if spot:
                             break
                 if spot is None:
-                    spot = place(it, s_i, 3, sd, extra)
+                    # last resort still clears the centreline: step the
+                    # cell straight out until its own ink is off the road,
+                    # rather than dropping it wherever rank three lands
+                    for rk in range(2, 14):
+                        tx, ty, bb = place(it, s_i, rk, sd, extra)
+                        if road_ok(it, tx, ty):
+                            spot = (tx, ty, bb)
+                            break
+                    else:
+                        spot = place(it, s_i, 3, sd, extra)
                 ox, oy, bb = spot
                 all_boxes.append(bb)
                 dxn, dyn = layout.get("nudges", {}).get(

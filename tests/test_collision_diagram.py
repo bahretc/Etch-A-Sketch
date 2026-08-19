@@ -344,3 +344,55 @@ def test_a_side_road_leaves_at_its_own_bearing(tmp_path):
     x0, y0, x1, y1 = max(segs, key=lambda s: math.hypot(s[2] - s[0],
                                                         s[3] - s[1]))
     assert math.hypot(x1 - x0, y1 - y0) >= cd.STUB_LEN - 1
+
+
+def _sides(html, layout):
+    """Which side of the drawn road each crash landed on."""
+    line = cd.road_line(layout)
+    road = [line.at(i / 400.0) for i in range(401)]
+    out = {}
+    for cid, x, y in re.findall(
+            r'data-crash="(\d+)"[^>]*translate\(([-\d.]+),([-\d.]+)\)', html):
+        x, y = float(x), float(y)
+        i = min(range(401),
+                key=lambda k: (road[k][0] - x) ** 2 + (road[k][1] - y) ** 2)
+        nx, ny = cd._rot(0, -1, math.degrees(line.tangent(i / 400.0)))
+        out[cid] = (x - road[i][0]) * nx + (y - road[i][1]) * ny
+    return out
+
+
+def test_a_crowded_side_never_pushes_a_crash_across_the_road(tmp_path):
+    """Which side of the line a vehicle was on is a fact about the crash.
+    Eight westbound crashes at one milepost all stay north of it, however
+    far out the eighth has to stand."""
+    crashes = [make_crash(crash_id=str(100000000 + i), mp=1.55, acc_typ=2,
+                          dt=f"01/{i + 1:02d}/2024 12:00",
+                          units=[cd.Unit(1, "W", 45, 4)])
+               for i in range(8)]
+    layout = {"type": "section", "begin_mp": 1.31, "end_mp": 1.80,
+              "title": ["t"], "route_label": ["r"],
+              "prepared_by": "x", "date": "1/1/2026"}
+    html = _sheet_with(crashes, tmp_path, **{k: v for k, v in layout.items()
+                                             if k not in ("type",)})
+    sides = _sides(html, layout)
+    assert len(sides) == 8
+    assert all(v > 0 for v in sides.values()), sides
+
+
+def test_a_bend_does_not_throw_a_cell_to_the_wrong_side(tmp_path):
+    """Cells around a corner stand off their own station. Sharing one
+    frame across the whole cluster pointed the standoff along the road for
+    members past the bend, which put them over the line."""
+    geo = ([[34.8190 - 0.00018 * i, -79.2180 + 0.00018 * i]
+            for i in range(26)]
+           + [[34.8145, -79.2135 + 0.00035 * i] for i in range(1, 40)])
+    layout = {"type": "section", "begin_mp": 1.31, "end_mp": 1.80,
+              "title": ["t"], "route_label": ["r"], "centerline": geo,
+              "prepared_by": "x", "date": "1/1/2026"}
+    crashes = [make_crash(crash_id=str(100000000 + i), mp=mp, acc_typ=2,
+                          dt=f"03/{i + 1:02d}/2024 12:00",
+                          units=[cd.Unit(1, "W", 45, 4)])
+               for i, mp in enumerate([1.40, 1.42, 1.44, 1.46, 1.48, 1.50])]
+    html = _sheet_with(crashes, tmp_path, centerline=geo)
+    sides = _sides(html, layout)
+    assert all(v > 0 for v in sides.values()), sides

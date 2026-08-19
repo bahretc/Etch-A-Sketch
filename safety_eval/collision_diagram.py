@@ -659,7 +659,10 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
         ang = a1 + (side * DEPART_ANG if depart and not turn else 0.0)
         c, s = vec(ang)
         tail = (-CELL_SHAFT * c, -CELL_SHAFT * s)
-        svg, tip = draw(tail, ang, u1, zigzag=depart, turn=turn)
+        # a turn and a run off road break will not both fit legibly in one
+        # cell: the deck's answer is to plot the cell that fits and note
+        # the rest, so a turning cell keeps the corner and drops the break
+        svg, tip = draw(tail, ang, u1, zigzag=depart and not turn, turn=turn)
         if turn:
             c, s = vec(ang + turn)      # the front of the cell is the exit
         parts.append(svg)

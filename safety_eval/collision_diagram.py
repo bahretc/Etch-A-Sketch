@@ -1179,6 +1179,21 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
             clusters.append([it])
     all_boxes: list[tuple[float, float, float, float]] = []
 
+    def fixed_box(it, xy):
+        tx, ty = float(xy[0]), float(xy[1])
+        return tx, ty, (tx + it["box"][0] - 4, ty + it["box"][2] - 4,
+                        tx + it["box"][1] + 4, ty + it["box"][3] + 4)
+
+    # A crash can be pinned outright. Junction crashes belong on the leg
+    # and in the quadrant they happened in, which no amount of milepost
+    # arithmetic will work out on its own. Pinned boxes are booked before
+    # the search runs so everything else places around them.
+    pinned = layout.get("at", {})
+    for it in items:
+        xy = pinned.get(it["cr"].crash_id)
+        if xy:
+            all_boxes.append(fixed_box(it, xy)[2])
+
     road_pts = [road_pt(i / 240.0) for i in range(241)]
 
     def road_far(bb):
@@ -1217,7 +1232,7 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
             def base_dist(it, s2):
                 n_lo, n_hi = it["n"]
                 return (ROAD_GAP - n_lo) if s2 > 0 else (ROAD_GAP + n_hi)
-            rowh = max(40.0, 0.66 * max(it["n"][1] - it["n"][0]
+            rowh = max(33.0, 0.55 * max(it["n"][1] - it["n"][0]
                                         for it in members))
 
             def along(it):
@@ -1235,16 +1250,20 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
             for i in range(1, len(st)):
                 lo_i = along(members[i])[0]
                 hi_p = along(members[i - 1])[1]
-                need = st[i - 1] + hi_p + 12 - lo_i
+                need = st[i - 1] + hi_p + 7 - lo_i
                 if st[i] < need:
                     st[i] = need
             drift = sum(st) / len(st) - sum(want) / len(want)
             st = [v - drift for v in st]
+            # Cost of a spot: how far it walks the cell off its milepost,
+            # against how far out it stacks. Sliding used to be the cheap
+            # move, which put cells a couple of hundred feet from the
+            # station they happened at. A row out is the cheaper answer.
             cands = sorted(
-                ((abs(d) + 70.0 * rk, rk, d)
+                ((abs(d) * 1.35 + 44.0 * rk, rk, d)
                  for rk in (0, 1, 2, 3)
-                 for d in (0, -24, 24, -48, 48, -76, 76, -108, 108,
-                           -144, 144, -190, 190)),
+                 for d in (0, -16, 16, -32, 32, -52, 52, -76, 76,
+                           -108, 108, -144, 144)),
                 key=lambda t: t[0])
 
             def place(it, s_at, rank, sd2, extra=0.0):
@@ -1266,6 +1285,17 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
 
 
             for it, s_i in zip(members, st):
+                xy = pinned.get(it["cr"].crash_id)
+                if xy:
+                    ox, oy, _bb = fixed_box(it, xy)
+                    dxn, dyn = layout.get("nudges", {}).get(
+                        it["cr"].crash_id, (0, 0))
+                    svg.append(
+                        f'<g data-crash="{it["cr"].crash_id}" '
+                        f'data-seq="{it["cr"].seq}" '
+                        f'transform="translate({ox + dxn:.1f},'
+                        f'{oy + dyn:.1f})">{it["g"]}</g>')
+                    continue
                 spot = None
                 # the road curves away from the tangent, so a cell may need
                 # a little more than its own clearance to stay off the line
@@ -1285,9 +1315,9 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                     # the other side rather than drop the cell on top of
                     # the furniture, which is what a blind fallback did
                     wide = sorted(
-                        ((abs(d) + 70.0 * rk, rk, d)
+                        ((abs(d) * 1.35 + 44.0 * rk, rk, d)
                          for rk in (0, 1, 2, 3, 4)
-                         for d in range(-260, 261, 20)),
+                         for d in range(-260, 261, 12)),
                         key=lambda t: t[0])
                     for s2 in (sd, -sd):
                         for _, rank, dsh in wide:

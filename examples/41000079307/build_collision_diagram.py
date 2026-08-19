@@ -82,7 +82,9 @@ layout = {
         "AADT: 1,000 vpd (2024)",
         "55 mph",
     ],
-    "route_label_xy": [250, 604],
+    # The road label sits by the road it names, the way the NCDOT
+    # examples letter each approach.
+    "route_label_xy": [1000, 515],
     # Both turning crashes left the road during the turn, which the cell
     # cannot show alongside the corner, so each carries a note.
     # Each note sits by the crash it explains, so nothing has to be read
@@ -111,7 +113,10 @@ layout = {
     "junctions": [
         {"mp": 1.31, "label": "Stone Drive", "side": -1, "stub": 44,
          "dx": 10, "dy": 6},
-        {"mp": 1.45, "label": "SR 1321 (McInnis Rd)", "side": -1},
+        # the name slides east of its stub to leave the approach clear
+        # for the two crashes carried onto the junction from it
+        {"mp": 1.45, "label": "SR 1321 (McInnis Rd)", "side": -1,
+         "dx": 86},
         {"mp": 1.80, "label": "SR 1387 (Springside Rd)", "side": 1,
          "stub": 66},
     ],
@@ -119,6 +124,15 @@ layout = {
     # the cell on the wrong side of the centreline
     # approach headings for the two crashes that came in off a side road,
     # where the cardinal direction code cannot say which leg they used
+    # Junction crashes pinned to the leg and quadrant they happened in.
+    # 107089722 came up the SR 1321 approach, 108244836 left the road in
+    # the southeast quadrant turning onto it; neither belongs where a
+    # milepost search puts them once five crashes share one station.
+    "at": {
+        "107089722": [500, 930],
+        "107666960": [455, 878],
+        "108244836": [620, 800],
+    },
     "headings": {
         "108244836": 38,        # eastbound into the SR 1321 turn, SE quad
         "108075100": 120,       # down SR 1387 toward SR 1320, SW

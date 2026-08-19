@@ -253,3 +253,16 @@ def test_notes_are_the_smallest_lettering_and_carry_no_heading(tmp_path):
     html = _sheet_with([make_crash()], tmp_path,
                        notes=[{"x": 800, "y": 900, "text": ["Crash #1: x"]}])
     assert "NOTES" not in html
+
+
+def test_a_pinned_crash_lands_where_it_was_pinned(tmp_path):
+    """A junction crash can be put on the leg it happened on, and the
+    search places everything else around it."""
+    crashes = [make_crash(crash_id=str(100000000 + i), mp=1.45,
+                          dt=f"01/{i + 1:02d}/2024 12:00")
+               for i in range(4)]
+    html = _sheet_with(crashes, tmp_path, at={"100000002": [640, 930]})
+    m = re.search(r'data-crash="100000002"[^>]*'
+                  r'translate\(([-\d.]+),([-\d.]+)\)', html)
+    assert m, "pinned crash never drawn"
+    assert (float(m.group(1)), float(m.group(2))) == (640.0, 930.0)

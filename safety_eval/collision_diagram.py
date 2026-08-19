@@ -311,7 +311,7 @@ SEV_R = 2.6
 LANE_SEP = 11.0          # lateral separation of two units drawn side by side
 TICK_H = 6.5             # half length of the point of impact tick
 DEPART_ANG = 26.0        # cell rotation off the travel line for a departure
-ROAD_GAP = 13.0          # clear space between the centerline and any ink
+ROAD_GAP = 11.0          # clear space between the centerline and any ink
 DOT_R = 1.35
 DOT_MIN_PITCH = 3.2       # dots stay legible on a short run
 
@@ -544,6 +544,21 @@ def _impact_tick(x, y, ang_deg):
             'stroke-width="1.1"/>')
 
 
+class _Box(tuple):
+    """An ink bounding box that still knows the points it came from.
+
+    Placement tests the box for overlaps, which is cheap and safe, but a
+    box is a poor stand-in for a cell drawn on a diagonal when the question
+    is how close it comes to the roadway line. ``ink`` keeps the keypoints
+    so that test can use the drawing itself.
+    """
+
+    def __new__(cls, vals, ink=()):
+        self = super().__new__(cls, vals)
+        self.ink = tuple(ink)
+        return self
+
+
 _DIR_ANG = {"E": 0, "NE": -45, "N": -90, "NW": -135,
             "W": 180, "SW": 135, "S": 90, "SE": 45}
 
@@ -587,10 +602,10 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
     def extents_of():
         rb = math.radians(base_ang)
         nx_, ny_ = math.sin(rb), -math.cos(rb)
-        box = (min(px - pad for px, py, pad in kp),
-               max(px + pad for px, py, pad in kp),
-               min(py - pad for px, py, pad in kp),
-               max(py + pad for px, py, pad in kp))
+        box = _Box((min(px - pad for px, py, pad in kp),
+                    max(px + pad for px, py, pad in kp),
+                    min(py - pad for px, py, pad in kp),
+                    max(py + pad for px, py, pad in kp)), ink=kp)
         projs = [(px * nx_ + py * ny_, pad) for px, py, pad in kp]
         return box, (min(pr - pad for pr, pad in projs),
                      max(pr + pad for pr, pad in projs))
@@ -1101,7 +1116,7 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         return True
 
     def open_spot(bb):
-        return clear(*bb) and road_far(bb) and not any(
+        return clear(*bb) and not any(
             bb[0] < r[2] and bb[2] > r[0] and bb[1] < r[3] and bb[3] > r[1]
             for r in all_boxes)
 
@@ -1120,12 +1135,13 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
             if not members:
                 continue
             members.sort(key=lambda it: (it["cr"].mp, it["cr"].seq))
-            # one standoff for the whole side. n_lo/n_hi are the assembly's
-            # signed ink extents along the road normal measured from its
-            # own origin, so the origin has to stand this far out for the
-            # nearest ink to clear the centerline by ROAD_GAP.
-            d0 = max(max(24.0, (ROAD_GAP - it["n"][0]) if sd > 0
-                         else (ROAD_GAP + it["n"][1])) for it in members)
+            # Cells line up by their near edge, not by their origins: each
+            # one stands out far enough that its own nearest ink clears the
+            # centerline by ROAD_GAP. A side-wide standoff taken from the
+            # deepest cell pushed every shallow one out with it.
+            def base_dist(it, s2):
+                n_lo, n_hi = it["n"]
+                return (ROAD_GAP - n_lo) if s2 > 0 else (ROAD_GAP + n_hi)
             rowh = max(40.0, 0.66 * max(it["n"][1] - it["n"][0]
                                         for it in members))
 
@@ -1156,36 +1172,58 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                            -144, 144, -190, 190)),
                 key=lambda t: t[0])
 
-            def place(it, s_at, rank, sd2, base=None):
-                dist = (d0 if base is None else base) + rank * rowh
+            def place(it, s_at, rank, sd2, extra=0.0):
+                dist = base_dist(it, sd2) + extra + rank * rowh
                 tx = ax + fx * s_at + nx * sd2 * dist
                 ty = ay + fy * s_at + ny * sd2 * dist
                 return tx, ty, (tx + it["box"][0] - 4, ty + it["box"][2] - 4,
                                 tx + it["box"][1] + 4, ty + it["box"][3] + 4)
 
-            for _ in range(14):              # the road curves away from the
-                if all(road_far(place(it, s_i, 0, sd, d0)[2])
-                       for it, s_i in zip(members, st)):
-                    break                        # tangent; step the rank out
-                d0 += 4.0                        # until the whole side clears
+            def road_ok(it, tx, ty):
+                """Clearance measured on the drawing, not on its box."""
+                for px, py, pad in getattr(it["box"], "ink", ()):
+                    x, y = tx + px, ty + py
+                    want = (ROAD_GAP + pad * 0.5) ** 2
+                    for rx, ry in road_pts:
+                        if (x - rx) ** 2 + (y - ry) ** 2 < want:
+                            return False
+                return True
+
 
             for it, s_i in zip(members, st):
                 spot = None
+                # the road curves away from the tangent, so a cell may need
+                # a little more than its own clearance to stay off the line
+                extra = 0.0
+                for _ in range(12):
+                    tx0, ty0, _bb = place(it, s_i, 0, sd, extra)
+                    if road_ok(it, tx0, ty0):
+                        break
+                    extra += 3.0
                 for _, rank, dsh in cands:
-                    tx, ty, bb = place(it, s_i + dsh, rank, sd)
+                    tx, ty, bb = place(it, s_i + dsh, rank, sd, extra)
                     if open_spot(bb):
                         spot = (tx, ty, bb)
                         break
-                if spot is None and not it["hard"]:      # try the far side
-                    for _, rank, dsh in cands:
-                        if rank > 2:
-                            continue
-                        tx, ty, bb = place(it, s_i + dsh, rank, -sd)
-                        if open_spot(bb):
-                            spot = (tx, ty, bb)
+                if spot is None:
+                    # nothing on its own side: widen the sweep, then take
+                    # the other side rather than drop the cell on top of
+                    # the furniture, which is what a blind fallback did
+                    wide = sorted(
+                        ((abs(d) + 70.0 * rk, rk, d)
+                         for rk in (0, 1, 2, 3, 4)
+                         for d in range(-260, 261, 20)),
+                        key=lambda t: t[0])
+                    for s2 in (sd, -sd):
+                        for _, rank, dsh in wide:
+                            tx, ty, bb = place(it, s_i + dsh, rank, s2)
+                            if open_spot(bb) and road_ok(it, tx, ty):
+                                spot = (tx, ty, bb)
+                                break
+                        if spot:
                             break
                 if spot is None:
-                    spot = place(it, s_i, 3, sd)
+                    spot = place(it, s_i, 3, sd, extra)
                 ox, oy, bb = spot
                 all_boxes.append(bb)
                 dxn, dyn = layout.get("nudges", {}).get(

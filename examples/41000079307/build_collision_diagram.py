@@ -92,7 +92,7 @@ layout = {
          "text": ["Crash #10: second unit was an ATV",
                   "crossing SR 1320 from a dirt road"]},
     ],
-    "nudges": {"108075100": [24, 168]},   # beside the SR 1387 stub
+    "nudges": {},
     "route_forward": "E",
     # McInnis Road leaves SR 1320 heading 192 degrees, so its stub and the
     # crashes remileposted onto the junction from it sit south of the line

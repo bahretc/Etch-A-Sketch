@@ -85,14 +85,16 @@ layout = {
     "route_label_xy": [250, 604],
     # Both turning crashes left the road during the turn, which the cell
     # cannot show alongside the corner, so each carries a note.
+    # Each note sits by the crash it explains, so nothing has to be read
+    # off a list in the corner.
     "notes": [
-        {"x": 1330, "y": 596,
+        {"x": 838, "y": 906,
          "text": ["Crash #6: eastbound, left the road to the",
                   "left while turning right onto SR 1321"]},
-        {"x": 1330, "y": 664,
+        {"x": 1330, "y": 620,
          "text": ["Crash #10: second unit was an ATV",
                   "crossing SR 1320 from a dirt road"]},
-        {"x": 1330, "y": 732,
+        {"x": 1330, "y": 690,
          "text": ["Crash #12: ran the stop sign on SR 1387 and",
                   "left the road to the right while turning",
                   "onto SR 1320. Carried at the end, MP 1.800"]},

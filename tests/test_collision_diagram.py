@@ -229,3 +229,27 @@ def test_sheet_prints_as_one_page(tmp_path):
     assert "svg{display:block}" in head, "svg must not sit on a baseline"
     assert "overflow:hidden" in head
     assert f"width:{cd.PAGE_W}px;height:{cd.PAGE_H}px" in head
+
+
+def test_legend_groups_never_run_into_each_other():
+    """Every legend group holds its own column: the longest label in one
+    group stops clear of the next group's drawings, and the last group
+    ends inside the box."""
+    widths = [40.0, 130.0, 90.0, 95.0]
+    stops = cd.legend_stops(cd.LEGEND_X, cd.LEGEND_W, widths)
+    assert len(stops) == 4
+    for i, (sym, lbl) in enumerate(stops):
+        assert lbl - sym == cd.LEGEND_SYM_W[i]
+        end = lbl + widths[i]
+        nxt = (stops[i + 1][0] if i + 1 < len(stops)
+               else cd.LEGEND_X + cd.LEGEND_W)
+        assert end <= nxt, f"legend group {i} runs into the next"
+
+
+def test_notes_are_the_smallest_lettering_and_carry_no_heading(tmp_path):
+    """Notes sit by their crash, unlabelled, below the route label, which
+    in turn sits below the study header."""
+    assert cd.NOTE_SIZE < cd.ROUTE_SIZE < cd.TITLE_SIZE
+    html = _sheet_with([make_crash()], tmp_path,
+                       notes=[{"x": 800, "y": 900, "text": ["Crash #1: x"]}])
+    assert "NOTES" not in html

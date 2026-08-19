@@ -43,6 +43,18 @@ from dataclasses import dataclass, field
 
 PAGE_W, PAGE_H = 1632, 1056
 
+# Sheet lettering. The study header is the largest text on the page, the
+# route label sits below it, and notes are the smallest thing that is not
+# part of a crash cell.
+TITLE_SIZE, TITLE_LEAD = 19.5, 31
+ROUTE_SIZE, ROUTE_LEAD = 14.0, 22
+NOTE_SIZE, NOTE_LEAD = 11.0, 16
+
+# Legend box, proportioned off the completed example sheet in the NCDOT
+# deck: wide and short in the top right corner, four groups across.
+LEGEND_X, LEGEND_Y = 940, 26
+LEGEND_W, LEGEND_H = 672, 262
+
 RED = "#E10000"
 MAGENTA = "#FF00C8"
 GREEN = "#007A00"
@@ -774,36 +786,79 @@ def _rot(x, y, deg):
 
 
 # ----------------------------------------------------------------- blocks
-def legend_block(x, y, w=700, h=305):
+LEGEND_LABEL = 7.6            # label lettering inside the legend box
+LEGEND_SYM_W = (80, 68, 56, 22)  # drawing width each group needs
+LEGEND_MARGIN = 12
+
+
+def legend_stops(x, w, widths):
+    """Left edge of each of the eight legend columns. The symbol width of
+    a group is fixed by its drawings, the label width by the longest
+    label in it, and what is left over is split evenly between groups, so
+    a longer label pushes the box apart instead of running into the group
+    beside it."""
+    content = sum(LEGEND_SYM_W) + sum(widths)
+    gut = max(8.0, (w - 2 * LEGEND_MARGIN - content) / 3)
+    stops, at = [], x + LEGEND_MARGIN
+    for sym, lbl in zip(LEGEND_SYM_W, widths):
+        stops.append((at, at + sym))
+        at += sym + lbl + gut
+    return stops
+
+
+def legend_block(x, y, w=LEGEND_W, h=LEGEND_H):
+    """The standard TSU legend block: four groups across a wide, short
+    box, eight, seven, nine and seven rows, exactly as it comes out on a
+    completed sheet."""
     def arrow(ax, ay, ln=42, night=False, extra=""):
         return (f'<line x1="{ax}" y1="{ay}" x2="{ax + ln - 14}" y2="{ay}" '
                 'stroke="#000" stroke-width="1.1"/>' + extra +
                 _arrowhead(ax + ln, ay, 0, night))
-    rows1 = ["MOVING VEHICLE", "PARKED VEHICLE", "PARKING VEHICLE",
-             "MOVABLE OBJECT", "HEAD ON", "REAR END", "RAN OFF ROAD",
-             "DAYLIGHT CRASH", "NIGHT CRASH"]
+
+    rows1 = ["MOVING VEHICLE", "NIGHT CRASH", "PARKED VEHICLE",
+             "PARKING VEHICLE", "MOVABLE OBJECT", "HEAD ON", "REAR END",
+             "RAN OFF ROAD"]
     rows2 = ["ANGLE", "TURNING", "BACKING", "SIDESWIPE",
              "NON-SEVERE INJURY", "SEVERE INJURY", "FATALITY"]
     rows3 = ["9 MPH OR LESS", "10 MPH TO 19", "20 MPH TO 29", "30 MPH TO 39",
              "40 MPH TO 49", "50 MPH TO 59", "60 MPH TO 69", "70 AND UP",
              "SPEED UNKNOWN"]
-    rows4 = [("P", "PEDESTRIAN", BLUE), ("B", "BICYCLE", BLUE),
-             ("A", "ANIMAL", BLUE), ("T", "TRAIN", BLUE),
+    rows4 = [("P", "PEDESTRIAN", BLUE), ("T", "TRAIN", BLUE),
              ("*", "DRIVER AT FAULT", MAGENTA), ("D", "DRY", GREEN),
              ("W", "WET", GREEN), ("I", "ICY OR SNOWY", GREEN),
-             ("O", "Other", GREEN)]
+             ("O", "OTHER", GREEN)]
+
+    widths = [max(_text_width(t, LEGEND_LABEL) for t in rows)
+              for rows in (rows1, rows2, rows3,
+                           [lbl for _, lbl, _ in rows4])]
+    stops = legend_stops(x, w, widths)
+
+    def col(group, part):
+        return stops[group][part]
+
+    top, bot = y + 0.235 * h, y + 0.95 * h
+    span = bot - top
+
+    def band(rows):
+        return span / (rows - 1)
+
     out = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="#fff" '
            'stroke="#000" stroke-width="1.6"/>',
-           _stroke_text(x + w / 2, y + 24, "LEGEND", size=24, slant=10,
-                        sw=1.3)
-           + f'<line x1="{x + w / 2 - 68}" y1="{y + 40}" '
-             f'x2="{x + w / 2 + 68}" y2="{y + 40}" stroke="#000" '
+           _stroke_text(x + w / 2, y + 0.105 * h, "LEGEND", size=22,
+                        slant=10, sw=1.3)
+           # the rule clears the bottom bar of the E, which otherwise
+           # merges into it and leaves the word reading LFGFND
+           + f'<line x1="{x + w / 2 - 62}" y1="{y + 0.180 * h}" '
+             f'x2="{x + w / 2 + 62}" y2="{y + 0.180 * h}" stroke="#000" '
              'stroke-width="1.2"/>']
-    yy = y + 62
+
+    pitch = band(len(rows1))
     for i, label in enumerate(rows1):
-        ay = yy + i * 27
-        ax = x + 18
-        if label == "PARKED VEHICLE":
+        ay = top + i * pitch
+        ax = col(0, 0)
+        if label == "NIGHT CRASH":
+            g = arrow(ax, ay, 42, night=True)
+        elif label == "PARKED VEHICLE":
             g = (f'<rect x="{ax}" y="{ay - 6}" width="26" height="12" '
                  'fill="none" stroke="#000"/>'
                  f'<line x1="{ax}" y1="{ay - 6}" x2="{ax + 26}" '
@@ -819,7 +874,7 @@ def legend_block(x, y, w=700, h=305):
                  'stroke="#000"/>' +
                  f'<line x1="{ax + 24}" y1="{ay + 2}" x2="{ax + 34}" '
                  f'y2="{ay - 4}" stroke="#000"/>' +
-                 _arrowhead(x + 18 + 38, ay - 6, -0.5, False))
+                 _arrowhead(ax + 38, ay - 6, -0.5, False))
         elif label == "MOVABLE OBJECT":
             g = arrow(ax, ay, 34) + (
                 f'<path d="M {ax + 40} {ay - 6} h 10 v 12 h -10" '
@@ -842,18 +897,18 @@ def legend_block(x, y, w=700, h=305):
                  'fill="none" stroke="#000"/>'
                  f'<line x1="{ax + 32}" y1="{ay}" x2="{ax + 46}" y2="{ay}" '
                  'stroke="#000"/>' + _arrowhead(ax + 58, ay, 0, False))
-        elif label == "NIGHT CRASH":
-            g = arrow(ax, ay, 42, night=True)
         else:
             g = arrow(ax, ay, 42)
         out.append(g)
-        out.append(_stroke_text(x + 92, ay, label, size=8.6,
+        out.append(_stroke_text(col(0, 1), ay, label, size=LEGEND_LABEL,
                                 anchor="start"))
+
+    pitch = band(len(rows2))
     for i, label in enumerate(rows2):
-        ay = yy + 10 + i * 34
-        ax = x + 228
+        ay = top + i * pitch
+        ax = col(1, 0)
         if label == "ANGLE":
-            g = (f'<line x1="{ax + 22}" y1="{ay - 22}" x2="{ax + 22}" '
+            g = (f'<line x1="{ax + 22}" y1="{ay - 20}" x2="{ax + 22}" '
                  f'y2="{ay - 4}" stroke="#000"/>' +
                  _arrowhead(ax + 22, ay + 4, math.pi / 2, False) +
                  f'<line x1="{ax}" y1="{ay + 6}" x2="{ax + 12}" '
@@ -884,27 +939,31 @@ def legend_block(x, y, w=700, h=305):
                  'stroke="#000"/>' + _arrowhead(ax + 38, ay, 0, False) +
                  _severity_circle(ax + 46, ay, sev))
         out.append(g)
-        out.append(_stroke_text(x + 288, ay, label, size=8.6,
+        out.append(_stroke_text(col(1, 1), ay, label, size=LEGEND_LABEL,
                                 anchor="start"))
+
+    pitch = band(len(rows3))
     for i, label in enumerate(rows3):
-        ay = yy + i * 27
-        ax = x + 396
+        ay = top + i * pitch
         spd = (None if label == "SPEED UNKNOWN"
                else 75 if label == "70 AND UP" else i * 10 + 5)
-        u = Unit(1, speed=spd)
-        svg, _ = _unit_arrow(ax, ay, 0, 40, u, False)
+        svg, _ = _unit_arrow(col(2, 0), ay, 0, 40, Unit(1, speed=spd),
+                             False)
         out.append(svg)
-        out.append(_stroke_text(x + 458, ay, label, size=8.2,
+        out.append(_stroke_text(col(2, 1), ay, label, size=LEGEND_LABEL,
                                 anchor="start"))
+
+    pitch = band(len(rows4))
     for i, (letter, label, color) in enumerate(rows4):
-        ay = yy + i * 27
-        if letter in ("P", "B"):
-            out.append(_mode_mark(x + 576, ay, letter, h=15))
+        ay = top + i * pitch
+        if letter == "P":
+            out.append(_mode_mark(col(3, 0) + 4, ay, letter, h=15))
         else:
-            out.append(_stroke_text(x + 576, ay + (2 if letter == "*" else 0),
+            out.append(_stroke_text(col(3, 0) + 4,
+                                    ay + (2 if letter == "*" else 0),
                                     letter, size=13 if letter == "*" else 11,
                                     color=color))
-        out.append(_stroke_text(x + 592, ay, label, size=8.2,
+        out.append(_stroke_text(col(3, 1), ay, label, size=LEGEND_LABEL,
                                 anchor="start"))
     return "".join(out)
 
@@ -1052,19 +1111,21 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         return (x0 - 12, cy - size, x0 + w + 12,
                 cy + lead * (len(lines) - 1) + size)
 
-    keep_out = [(904, 18, 1620, 345),                    # legend
+    keep_out = [(LEGEND_X - 8, LEGEND_Y - 8,                 # legend
+                 LEGEND_X + LEGEND_W + 8, LEGEND_Y + LEGEND_H + 8),
                 (1300, 826, 1632, 1056),                 # TSU title block
                 (0, 760, 210, 940),                      # begin MP label
                 (1300, 336, 1436, 424),                  # end MP label
                 (784, 18, 928, 232)]                     # north needle
     keep_out.append(text_box(layout.get("title_x", 760), 54,
-                             layout.get("title", []), 19.5, 31))
+                             layout.get("title", []), TITLE_SIZE,
+                             TITLE_LEAD))
     rlx, rly = layout.get("route_label_xy", (520, 940))
     keep_out.append(text_box(rlx, rly, layout.get("route_label", []),
-                             16, 25))
+                             ROUTE_SIZE, ROUTE_LEAD))
     for note in layout.get("notes", []):
-        keep_out.append(text_box(note["x"], note["y"], note["text"], 12.5,
-                                 18, anchor="middle"))
+        keep_out.append(text_box(note["x"], note["y"], note["text"],
+                                 NOTE_SIZE, NOTE_LEAD, anchor="middle"))
     keep_out += jn_keep
     keep_out += [tuple(r) for r in layout.get("keep_out", [])]
 
@@ -1257,24 +1318,21 @@ def _sheet(body_svg: list, layout: dict, crashes) -> str:
            'stroke-width="2"/>']
     tx = layout.get("title_x", 760)
     for i, line in enumerate(layout.get("title", [])):
-        svg.append(_stroke_text(tx, 54 + i * 31, line, size=19.5, sw=1.15))
-    svg.append(legend_block(912, 26))
+        svg.append(_stroke_text(tx, 54 + i * TITLE_LEAD, line,
+                                size=TITLE_SIZE, sw=1.15))
+    svg.append(legend_block(LEGEND_X, LEGEND_Y))
     svg.append(north_needle(layout.get("north_x", 856), 40,
                             rot=layout.get("north_rot", 0.0)))
     rl = layout.get("route_label", [])
     rx, ry = layout.get("route_label_xy", (520, 940))
     for i, line in enumerate(rl):
-        svg.append(_stroke_text(rx, ry + i * 25, line, size=16, sw=1.05))
-    notes = layout.get("notes", [])
-    if notes:
-        hx, hy = notes[0]["x"], notes[0]["y"] - 30
-        svg.append(_stroke_text(hx, hy, "NOTES", size=15, sw=1.15))
-        svg.append(f'<line x1="{hx - 30}" y1="{hy + 11}" x2="{hx + 30}" '
-                   f'y2="{hy + 11}" stroke="#000" stroke-width="1.1"/>')
-    for note in notes:
+        svg.append(_stroke_text(rx, ry + i * ROUTE_LEAD, line,
+                                size=ROUTE_SIZE, sw=1.05))
+    # Notes carry no heading: each one sits by the crash it explains.
+    for note in layout.get("notes", []):
         for i, line in enumerate(note["text"]):
-            svg.append(_stroke_text(note["x"], note["y"] + i * 18, line,
-                                    size=12.5))
+            svg.append(_stroke_text(note["x"], note["y"] + i * NOTE_LEAD,
+                                    line, size=NOTE_SIZE))
     svg.append(tsu_block(1318, 842, layout.get("prepared_by", ""),
                          layout.get("date", ""),
                          layout.get("logo_b64", "")))

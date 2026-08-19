@@ -90,7 +90,7 @@ layout = {
     # Each note sits by the crash it explains, so nothing has to be read
     # off a list in the corner.
     "notes": [
-        {"x": 838, "y": 906,
+        {"x": 860, "y": 915,
          "text": ["Crash #6: eastbound, left the road to the",
                   "left while turning right onto SR 1321"]},
         {"x": 1330, "y": 620,
@@ -116,9 +116,9 @@ layout = {
         # the name slides east of its stub to leave the approach clear
         # for the two crashes carried onto the junction from it
         {"mp": 1.45, "label": "SR 1321 (McInnis Rd)", "side": -1,
-         "dx": 86},
+         "stub": 46, "dx": 186, "dy": 60},
         {"mp": 1.80, "label": "SR 1387 (Springside Rd)", "side": 1,
-         "stub": 66},
+         "stub": 66, "dy": -16},
     ],
     # sides the narratives establish, where the coded type alone would put
     # the cell on the wrong side of the centreline
@@ -129,9 +129,10 @@ layout = {
     # the southeast quadrant turning onto it; neither belongs where a
     # milepost search puts them once five crashes share one station.
     "at": {
-        "107089722": [500, 930],
-        "107666960": [455, 878],
+        "107089722": [452, 810],
+        "107666960": [555, 812],
         "108244836": [620, 800],
+        "108075100": [1490, 424],
     },
     "headings": {
         "108244836": 38,        # eastbound into the SR 1321 turn, SE quad

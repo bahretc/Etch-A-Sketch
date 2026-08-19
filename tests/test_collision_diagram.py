@@ -266,3 +266,37 @@ def test_a_pinned_crash_lands_where_it_was_pinned(tmp_path):
                   r'translate\(([-\d.]+),([-\d.]+)\)', html)
     assert m, "pinned crash never drawn"
     assert (float(m.group(1)), float(m.group(2))) == (640.0, 930.0)
+
+
+def test_the_sheet_is_well_formed_svg(tmp_path):
+    """Every sheet parses as XML. A malformed attribute silently truncates
+    the drawing at the point the renderer gives up, which is invisible in
+    a unit test that only looks for substrings."""
+    import xml.etree.ElementTree as ET
+    crashes = [make_crash(crash_id=str(100000000 + i), mp=1.4 + i * 0.05,
+                          severity=s, acc_typ=t, road_cond=rc, night=n,
+                          units=[cd.Unit(1, d, sp, m)])
+               for i, (s, t, rc, n, d, sp, m) in enumerate([
+                   ("K", 2, "D", False, "E", 55, 4),
+                   ("A", 21, "W", True, "W", 35, 4),
+                   ("B", 29, "I", False, "N", None, 7),
+                   ("C", 13, "O", False, "S", 75, 8),
+                   ("O", 5, "D", False, "E", 5, 4)])]
+    html = _sheet_with(crashes, tmp_path,
+                       notes=[{"x": 800, "y": 900, "text": ["n"]}],
+                       junctions=[{"mp": 1.45, "label": "SR 1", "side": 1}])
+    svg = html[html.index("<svg"):html.index("</svg>") + 6]
+    ET.fromstring(svg)
+
+
+def test_cell_linework_is_thin_enough_to_read_the_speed_dots():
+    """NCDOT's printing note is line weight 0 on the cells so the speed
+    marks survive the conversion to PDF. The dot has to out-read the
+    shaft it sits on."""
+    assert cd.CELL_SW <= 0.8
+    assert cd.DOT_R * 2 > cd.CELL_SW * 2
+    cr = make_crash(acc_typ=2, units=[cd.Unit(1, "E", 45, 4)])
+    g, _b, _n = cd.crash_glyph(cr, base_ang=-15.0, route_forward="E")
+    assert "{CELL_SW" not in g
+    widths = {float(w) for w in re.findall(r'stroke-width="([\d.]+)"', g)}
+    assert max(widths) <= 1.1

@@ -324,8 +324,12 @@ LANE_SEP = 11.0          # lateral separation of two units drawn side by side
 TICK_H = 6.5             # half length of the point of impact tick
 DEPART_ANG = 26.0        # cell rotation off the travel line for a departure
 ROAD_GAP = 11.0          # clear space between the centerline and any ink
-DOT_R = 1.35
-DOT_MIN_PITCH = 4.4       # dots always read as separate marks
+DOT_R = 1.75
+DOT_MIN_PITCH = 5.6       # dots always read as separate marks
+# NCDOT's own printing note is to drop the crash cells to line weight 0 so
+# the speed marks stay readable once the sheet is converted to PDF. A thin
+# shaft is what lets a 1.75 radius dot read as a dot.
+CELL_SW = 0.7
 ZIG_LEN = 10.0            # one length for the run off road break
 ZIG_GAP = 6.5             # clear run between the break and the head
 
@@ -339,7 +343,7 @@ def _arrowhead(x, y, ang, night):
     p = " ".join(f"{x + px * cos - py * sin:.1f},{y + px * sin + py * cos:.1f}"
                  for px, py in pts)
     return (f'<polygon points="{p}" fill="{fill}" stroke="#000" '
-            'stroke-width="1.1"/>')
+            f'stroke-width="{CELL_SW}"/>')
 
 
 def _speed_run(x0, y0, cos, sin, s_lo, s_hi, speed):
@@ -365,7 +369,7 @@ def _speed_run(x0, y0, cos, sin, s_lo, s_hi, speed):
                 f'y1="{y0 + s_lo * sin + ny * k:.1f}" '
                 f'x2="{x0 + s_hi * cos + nx * k:.1f}" '
                 f'y2="{y0 + s_hi * sin + ny * k:.1f}" '
-                f'stroke="{BLUE}" stroke-width="1.4"/>')
+                f'stroke="{BLUE}" stroke-width="{CELL_SW + 0.3}"/>')
         return "".join(out)
     n = min(6, spd // 10)
     if n < 1:
@@ -443,7 +447,7 @@ def _unit_cell(tx, ty, ang_deg, unit, night, zigzag=False,
         ink += [P(zb), tip]
         d = " ".join(f"{px:.1f},{py:.1f}" for px, py in path)
         out.append(f'<polyline points="{d}" fill="none" stroke="#000" '
-                   'stroke-width="1.1"/>')
+                   f'stroke-width="{CELL_SW}"/>')
         if mark_hi - mark_lo > 4:
             out.append(_speed_run(tx, ty, c, s, mark_lo, mark_hi,
                                   unit.speed))
@@ -460,7 +464,7 @@ def _unit_cell(tx, ty, ang_deg, unit, night, zigzag=False,
         mark_hi = z0 - 2.5
         d = " ".join(f"{px:.1f},{py:.1f}" for px, py in pts)
         out.append(f'<polyline points="{d}" fill="none" stroke="#000" '
-                   'stroke-width="1.1"/>')
+                   f'stroke-width="{CELL_SW}"/>')
         tip = P(shaft)
     elif swerve:
         pts = [P(0.0), P(shaft * 0.5), P(shaft * 0.66, swerve),
@@ -469,12 +473,12 @@ def _unit_cell(tx, ty, ang_deg, unit, night, zigzag=False,
         mark_hi = shaft * 0.46
         d = " ".join(f"{px:.1f},{py:.1f}" for px, py in pts)
         out.append(f'<polyline points="{d}" fill="none" stroke="#000" '
-                   'stroke-width="1.1"/>')
+                   f'stroke-width="{CELL_SW}"/>')
         tip = P(shaft, swerve)
     else:
         tip = P(shaft)
         out.append(f'<line x1="{tx:.1f}" y1="{ty:.1f}" x2="{tip[0]:.1f}" '
-                   f'y2="{tip[1]:.1f}" stroke="#000" stroke-width="1.1"/>')
+                   f'y2="{tip[1]:.1f}" stroke="#000" stroke-width="{CELL_SW}"/>')
     if mark_hi - mark_lo > 4:
         out.append(_speed_run(tx, ty, c, s, mark_lo, mark_hi, unit.speed))
     out.append(_arrowhead(tip[0], tip[1], a, night))
@@ -498,16 +502,16 @@ def _severity_circle(x, y, sev):
         return f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{SEV_R}" fill="{RED}"/>'
     if sev == "A":
         return (f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{SEV_R}" fill="#fff" '
-                f'stroke="{RED}" stroke-width="1.5"/>'
+                f'stroke="{RED}" stroke-width="{CELL_SW + 0.3}"/>'
                 f'<path d="M {x - SEV_R:.1f} {y:.1f} A {SEV_R} {SEV_R} 0 0 0 '
                 f'{x + SEV_R:.1f} {y:.1f} Z" fill="{RED}"/>')
     return (f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{SEV_R}" fill="#fff" '
-            f'stroke="{RED}" stroke-width="1.5"/>')
+            f'stroke="{RED}" stroke-width="{CELL_SW + 0.3}"/>')
 
 
 def _badge(x, y, n):
     return (f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{BUBBLE_R}" fill="#fff" '
-            'stroke="#000" stroke-width="1.0"/>'
+            f'stroke="#000" stroke-width="{CELL_SW}"/>'
             + _stroke_text(x, y, n, size=8.5))
 
 
@@ -517,31 +521,31 @@ def _mode_mark(x, y, kind, h=11.0):
     if kind == "P":
         r = h * 0.16
         return (f'<circle cx="{x:.1f}" cy="{y - h * 0.40:.1f}" r="{r:.1f}" '
-                f'fill="none" stroke="{BLUE}" stroke-width="1.1"/>'
+                f'fill="none" stroke="{BLUE}" stroke-width="{CELL_SW}"/>'
                 f'<path d="M {x:.1f} {y - h * 0.24:.1f} L {x:.1f} '
                 f'{y + h * 0.06:.1f} M {x - h * 0.20:.1f} {y + h * 0.42:.1f} '
                 f'L {x:.1f} {y + h * 0.06:.1f} L {x + h * 0.22:.1f} '
                 f'{y + h * 0.42:.1f} M {x - h * 0.22:.1f} {y - h * 0.06:.1f} '
                 f'L {x + h * 0.20:.1f} {y - h * 0.18:.1f}" fill="none" '
-                f'stroke="{BLUE}" stroke-width="1.1" '
+                f'stroke="{BLUE}" stroke-width="{CELL_SW}" '
                 'stroke-linecap="round"/>')
     if kind == "B":
         r = h * 0.22
         return (f'<circle cx="{x - h * 0.26:.1f}" cy="{y + h * 0.24:.1f}" '
                 f'r="{r:.1f}" fill="none" stroke="{BLUE}" '
-                'stroke-width="1.0"/>'
+                f'stroke-width="{CELL_SW}"/>'
                 f'<circle cx="{x + h * 0.26:.1f}" cy="{y + h * 0.24:.1f}" '
                 f'r="{r:.1f}" fill="none" stroke="{BLUE}" '
-                'stroke-width="1.0"/>'
+                f'stroke-width="{CELL_SW}"/>'
                 f'<path d="M {x - h * 0.26:.1f} {y + h * 0.24:.1f} '
                 f'L {x:.1f} {y - h * 0.10:.1f} L {x + h * 0.26:.1f} '
                 f'{y + h * 0.24:.1f} M {x:.1f} {y - h * 0.10:.1f} '
                 f'L {x + h * 0.10:.1f} {y - h * 0.34:.1f}" fill="none" '
-                f'stroke="{BLUE}" stroke-width="1.0" '
+                f'stroke="{BLUE}" stroke-width="{CELL_SW}" '
                 'stroke-linecap="round"/>'
                 f'<circle cx="{x + h * 0.14:.1f}" cy="{y - h * 0.44:.1f}" '
                 f'r="{h * 0.12:.1f}" fill="none" stroke="{BLUE}" '
-                'stroke-width="1.0"/>')
+                f'stroke-width="{CELL_SW}"/>')
     return _stroke_text(x, y, kind, size=12, color=BLUE)
 
 
@@ -551,7 +555,7 @@ def _impact_tick(x, y, ang_deg):
     nx, ny = -math.sin(a) * TICK_H, math.cos(a) * TICK_H
     return (f'<line x1="{x - nx:.1f}" y1="{y - ny:.1f}" '
             f'x2="{x + nx:.1f}" y2="{y + ny:.1f}" stroke="#000" '
-            'stroke-width="1.1"/>')
+            f'stroke-width="{CELL_SW}"/>')
 
 
 class _Box(tuple):
@@ -686,7 +690,7 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
             ox, oy = tip[0] + 10 * c, tip[1] + 10 * s
             parts.append(f'<rect x="{ox - 5.5:.1f}" y="{oy - 5.5:.1f}" '
                          'width="11" height="11" fill="none" stroke="#000" '
-                         'stroke-width="1.0" stroke-dasharray="2.4 2"/>')
+                         f'stroke-width="{CELL_SW}" stroke-dasharray="2.4 2"/>')
             K(ox, oy, 8)
             front = 16.0
         elif mark:                                    # ped, bike, animal

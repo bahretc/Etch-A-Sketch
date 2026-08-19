@@ -300,3 +300,47 @@ def test_cell_linework_is_thin_enough_to_read_the_speed_dots():
     assert "{CELL_SW" not in g
     widths = {float(w) for w in re.findall(r'stroke-width="([\d.]+)"', g)}
     assert max(widths) <= 1.1
+
+
+def test_the_drawn_road_follows_the_centreline_it_is_given():
+    """With a centreline the sheet is drawn north up and keeps the shape
+    of the real alignment: a right angle on the ground is a right angle
+    on the paper, not a smooth sweep through it."""
+    geo = ([[34.8190 - 0.0002 * i, -79.2180 + 0.0002 * i] for i in range(30)]
+           + [[34.8130, -79.2120 + 0.0004 * i] for i in range(1, 40)])
+    line = cd.road_line({"centerline": geo,
+                         "road_box": [100, 300, 1500, 800]})
+    assert line.true_north
+    x0, y0 = line.at(0.0)
+    x1, y1 = line.at(1.0)
+    assert x1 > x0 and y1 > y0            # runs southeast then due east
+    a_start = math.degrees(line.tangent(0.02))
+    a_end = math.degrees(line.tangent(0.98))
+    assert 20 < a_start < 70, a_start     # down and to the right
+    assert abs(a_end) < 20, a_end         # flat
+    inside = all(96 <= x <= 1504 and 296 <= y <= 804
+                 for x, y in line.pts)
+    assert inside, "road drawn outside its box"
+
+
+def test_a_sheet_with_no_centreline_still_draws():
+    """Layouts that carry no survey fall back to the plain sweep, and the
+    needle leans with it rather than claiming north."""
+    line = cd.road_line({})
+    assert not line.true_north
+    assert len(line.pts) > 100
+
+
+def test_a_side_road_leaves_at_its_own_bearing(tmp_path):
+    """A junction with a bearing is drawn heading that way, not square off
+    the centreline."""
+    html = _sheet_with([make_crash()], tmp_path,
+                       junctions=[{"mp": 1.45, "label": "SR 1", "side": 1,
+                                   "bearing": 180}])
+    segs = [tuple(float(v) for v in m) for m in re.findall(
+        r'<line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" '
+        r'y2="([-\d.]+)" stroke="#000" stroke-width="1.1"/>', html)]
+    assert segs, "junction stub never drawn"
+    x0, y0, x1, y1 = max(segs, key=lambda s: math.hypot(s[2] - s[0],
+                                                        s[3] - s[1]))
+    assert math.hypot(x1 - x0, y1 - y0) >= cd.STUB_LEN - 1

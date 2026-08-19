@@ -324,6 +324,7 @@ LANE_SEP = 11.0          # lateral separation of two units drawn side by side
 TICK_H = 6.5             # half length of the point of impact tick
 DEPART_ANG = 26.0        # cell rotation off the travel line for a departure
 ROAD_GAP = 11.0          # clear space between the centerline and any ink
+STUB_LEN = 150.0         # side road leg, long enough to read as a road
 DOT_R = 1.75
 DOT_MIN_PITCH = 5.6       # dots always read as separate marks
 # NCDOT's own printing note is to drop the crash cells to line weight 0 so
@@ -1036,27 +1037,124 @@ def north_needle(x, y, h=170, rot=0.0):
     return g
 
 
+# ------------------------------------------------------------- roadway
+class RoadLine:
+    """The route as it is drawn: a page polyline, sampled evenly along its
+    length so a milepost fraction is a position on it."""
+
+    __slots__ = ("pts", "true_north")
+
+    def __init__(self, pts, true_north):
+        self.pts = pts
+        self.true_north = true_north
+
+    def at(self, t):
+        t = min(1.0, max(0.0, t))
+        f = t * (len(self.pts) - 1)
+        i = min(int(f), len(self.pts) - 2)
+        r = f - i
+        (x0, y0), (x1, y1) = self.pts[i], self.pts[i + 1]
+        return x0 + (x1 - x0) * r, y0 + (y1 - y0) * r
+
+    def tangent(self, t):
+        """Heading at t, taken over a short run so a single vertex in the
+        polyline cannot swing it."""
+        n = len(self.pts) - 1
+        f = min(1.0, max(0.0, t)) * n
+        i = min(int(f), n - 1)
+        j0 = max(0, i - 3)
+        j1 = min(n, i + 4)
+        (x0, y0), (x1, y1) = self.pts[j0], self.pts[j1]
+        return math.atan2(y1 - y0, x1 - x0)
+
+    def path_d(self):
+        d = [f"M {self.pts[0][0]:.1f} {self.pts[0][1]:.1f}"]
+        d += [f"L {x:.1f} {y:.1f}" for x, y in self.pts[1:]]
+        return " ".join(d)
+
+
+def _resample(pts, n=320):
+    """Even spacing along the polyline, so t is arc length and not vertex
+    count. Mileposts are spaced along the road, not along its corners."""
+    run = [0.0]
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        run.append(run[-1] + math.hypot(x1 - x0, y1 - y0))
+    total = run[-1] or 1.0
+    out, j = [], 0
+    for k in range(n + 1):
+        want = total * k / n
+        while j < len(run) - 2 and run[j + 1] < want:
+            j += 1
+        span = run[j + 1] - run[j] or 1.0
+        r = (want - run[j]) / span
+        (x0, y0), (x1, y1) = pts[j], pts[j + 1]
+        out.append((x0 + (x1 - x0) * r, y0 + (y1 - y0) * r))
+    return out
+
+
+def _smooth(pts, window=7, passes=2):
+    """Rolling mean over the polyline. The drawn line follows the real
+    alignment but not every wobble in it: a collision diagram is a clean
+    schematic of the road, not a survey of it."""
+    half = window // 2
+    for _ in range(passes):
+        out = []
+        for i in range(len(pts)):
+            j0, j1 = max(0, i - half), min(len(pts), i + half + 1)
+            seg = pts[j0:j1]
+            out.append((sum(p[0] for p in seg) / len(seg),
+                        sum(p[1] for p in seg) / len(seg)))
+        pts = out
+    return pts
+
+
+def road_line(layout) -> RoadLine:
+    """Page geometry for the route. Given a centreline the sheet follows
+    the real alignment, drawn north up and fitted to the drawing band, so
+    a bend on the ground is a bend on the sheet. Without one it falls back
+    to the plain sweep, which is all a layout with no survey can offer."""
+    geo = layout.get("centerline") or []
+    if len(geo) < 3:
+        p0, p1, p2 = (80, 870), (860, 690), (1560, 430)
+        pts = [((1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * p1[0]
+                + t ** 2 * p2[0],
+                (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * p1[1]
+                + t ** 2 * p2[1])
+               for t in (i / 240.0 for i in range(241))]
+        return RoadLine(pts, False)
+
+    lat0 = sum(p[0] for p in geo) / len(geo)
+    k = math.cos(math.radians(lat0))
+    flat = [((p[1] - geo[0][1]) * k, -(p[0] - geo[0][0])) for p in geo]
+    flat = _smooth(_resample(flat))
+
+    bx0, by0, bx1, by1 = layout.get("road_box", (150, 330, 1560, 800))
+    xs = [p[0] for p in flat]
+    ys = [p[1] for p in flat]
+    w = (max(xs) - min(xs)) or 1e-9
+    h = (max(ys) - min(ys)) or 1e-9
+    sc = min((bx1 - bx0) / w, (by1 - by0) / h)
+    ox = bx0 + ((bx1 - bx0) - w * sc) / 2 - min(xs) * sc
+    oy = by0 + ((by1 - by0) - h * sc) / 2 - min(ys) * sc
+    return RoadLine([(x * sc + ox, y * sc + oy) for x, y in flat], True)
+
+
 # ------------------------------------------------------------------ sheet
 def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
     """Render a section (strip) sheet: one schematic road line, crashes
     stacked near their milepost, the standard furniture around it."""
     lo, hi = layout["begin_mp"], layout["end_mp"]
-    p0 = (80, 870)
-    p1 = (860, 690)
-    p2 = (1560, 430)
+    line = road_line(layout)
 
     def road_pt(t):
-        x = ((1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * p1[0] + t ** 2 * p2[0])
-        y = ((1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * p1[1] + t ** 2 * p2[1])
-        return x, y
+        return line.at(t)
 
     def road_ang(t):
-        dx = 2 * (1 - t) * (p1[0] - p0[0]) + 2 * t * (p2[0] - p1[0])
-        dy = 2 * (1 - t) * (p1[1] - p0[1]) + 2 * t * (p2[1] - p1[1])
-        return math.atan2(dy, dx)
+        return line.tangent(t)
 
-    svg = [f'<path d="M {p0[0]} {p0[1]} Q {p1[0]} {p1[1]} {p2[0]} {p2[1]}" '
+    svg = [f'<path d="{line.path_d()}" '
            'fill="none" stroke="#000" stroke-width="1.3"/>']
+    mp_keep = []
     for t, mp in ((0.0, lo), (1.0, hi)):
         x, y = road_pt(t)
         a = road_ang(t) + math.pi / 2
@@ -1068,9 +1166,16 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         # the MP labels sit on the side of the line the terminal side road
         # does not use, so a stub and its name never fight them
         lbl = f"Begin MP {mp:.2f}" if t == 0 else f"End MP {mp:.2f}"
-        lx = max(x, 112) if t == 0 else x - 176
-        ly = y - 72 if t == 0 else y - 58
+        key = "begin_label_xy" if t == 0 else "end_label_xy"
+        # the terminal side road takes one side of the line, so the
+        # milepost sits on the other unless the layout says otherwise
+        if layout.get(key):
+            lx, ly = layout[key]
+        else:
+            lx = max(x, 112) if t == 0 else x - 176
+            ly = y - 72 if t == 0 else y - 58
         svg.append(_stroke_text(lx, ly, lbl, size=15.5, sw=1.05))
+        mp_keep.append((lx - 100, ly - 16, lx + 100, ly + 16))
     jn_keep = []
     for jn in layout.get("junctions", []):
         t = (jn["mp"] - lo) / (hi - lo) if hi > lo else 0.5
@@ -1080,16 +1185,26 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         ang = math.degrees(road_ang(t))
         nx, ny = _rot(0, -1, ang)        # +1 is north, as for the crashes
         up = jn.get("side", 1)
-        stub = jn.get("stub", 100)
-        ex = x + up * stub * nx
-        ey = y + up * stub * ny
+        # A side road leaves at its own bearing where the sheet is drawn
+        # north up. Square off the centreline is only a guess, and on a
+        # road that bends it is a wrong one.
+        brg = jn.get("bearing")
+        if brg is not None and line.true_north:
+            dx = math.sin(math.radians(brg))
+            dy = -math.cos(math.radians(brg))
+            up = 1 if (dx * nx + dy * ny) >= 0 else -1
+        else:
+            dx, dy = up * nx, up * ny
+        stub = jn.get("stub", STUB_LEN)
+        ex = x + stub * dx
+        ey = y + stub * dy
         svg.append(f'<line x1="{x:.1f}" y1="{y:.1f}" '
                    f'x2="{ex:.1f}" y2="{ey:.1f}" stroke="#000" '
                    'stroke-width="1.1"/>')
         # the name sits centred over the end of its own stub
         anchor = jn.get("anchor", "middle")
-        lx = ex + up * 15 * nx + jn.get("dx", 0)
-        ly = ey + up * 15 * ny + jn.get("dy", 0)
+        lx = ex + 18 * dx + jn.get("dx", 0)
+        ly = ey + 18 * dy + jn.get("dy", 0)
         svg.append(_stroke_text(lx, ly, jn["label"], size=11.5,
                                 anchor=anchor))
         w = _text_width(jn["label"], 11.5)
@@ -1106,7 +1221,11 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                         max(x, ex) + 16, max(y, ey) + 6))
 
     if "north_rot" not in layout:
-        layout["north_rot"] = math.degrees(road_ang(0.5))
+        # A sheet drawn off the real alignment is drawn north up, so the
+        # needle points up. A schematic sweep is not, so it leans with the
+        # drawn roadway instead.
+        layout["north_rot"] = 0.0 if line.true_north \
+            else math.degrees(road_ang(0.5))
     # furniture keep-outs, measured off what the sheet actually draws so
     # a block that moves or gains a line still holds its own space
     def text_box(cx, cy, lines, size, lead, anchor="middle"):
@@ -1118,9 +1237,8 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
     keep_out = [(LEGEND_X - 8, LEGEND_Y - 8,                 # legend
                  LEGEND_X + LEGEND_W + 8, LEGEND_Y + LEGEND_H + 8),
                 (1300, 826, 1632, 1056),                 # TSU title block
-                (0, 760, 210, 940),                      # begin MP label
-                (1300, 336, 1436, 424),                  # end MP label
                 (784, 18, 928, 232)]                     # north needle
+    keep_out += mp_keep                                  # the MP labels
     keep_out.append(text_box(layout.get("title_x", 760), 54,
                              layout.get("title", []), TITLE_SIZE,
                              TITLE_LEAD))

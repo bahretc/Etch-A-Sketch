@@ -29,6 +29,10 @@ os.makedirs(SP, exist_ok=True)
 
 crashes = read_data_csv(f"{REPO}/{WO}_CollisionDiagramData.txt")
 
+with open(f"{REPO}/mapdata/centerline.json", encoding="utf-8") as fh:
+    #: SR 1320 between the study limits, as [lat, lon] along the road.
+    CENTERLINE = [list(p) for p in json.load(fh)["study"]]
+
 #: Milepost the review settled on, where it differs from the export.
 REVIEW_MP = {
     "107089722": 1.450,     # RE: SR 1321 approach, carried through the junction
@@ -84,25 +88,33 @@ layout = {
     ],
     # The road label sits by the road it names, the way the NCDOT
     # examples letter each approach.
-    "route_label_xy": [1000, 515],
+    "route_label_xy": [1000, 570],
     # Both turning crashes left the road during the turn, which the cell
     # cannot show alongside the corner, so each carries a note.
     # Each note sits by the crash it explains, so nothing has to be read
     # off a list in the corner.
     "notes": [
-        {"x": 860, "y": 915,
+        {"x": 430, "y": 935,
          "text": ["Crash #6: eastbound, left the road to the",
                   "left while turning right onto SR 1321"]},
-        {"x": 1330, "y": 620,
+        {"x": 1120, "y": 880,
          "text": ["Crash #10: second unit was an ATV",
                   "crossing SR 1320 from a dirt road"]},
-        {"x": 1330, "y": 690,
+        {"x": 1120, "y": 950,
          "text": ["Crash #12: ran the stop sign on SR 1387 and",
                   "left the road to the right while turning",
                   "onto SR 1320. Carried at the end, MP 1.800"]},
     ],
     "nudges": {},
     "route_forward": "E",
+    # The drawn line follows the real alignment: a steep run down to the
+    # McInnis Road corner, then a long, near flat leg east to Springside
+    # Road. Points are the TEAAS centreline between the study limits,
+    # projected and drawn north up.
+    "centerline": CENTERLINE,
+    "road_box": [150, 330, 1470, 800],
+    "begin_label_xy": [105, 330],
+    "end_label_xy": [1390, 745],
     # McInnis Road leaves SR 1320 heading 192 degrees, so its stub and the
     # crashes remileposted onto the junction from it sit south of the line
     # Sides checked against the OSM centreline: McInnis Road leaves SR 1320
@@ -110,29 +122,31 @@ layout = {
     # of the line and the other north. The begin junction is the local
     # street OSM carries as Hucks Drive, leaving to the southwest; TEAAS
     # names the study from it as Stone Drive.
+    # Bearing is the direction each side road leaves SR 1320, measured off
+    # the OSM geometry where it carries the road: McInnis Road 192,
+    # Springside 20. Stone Drive is scaled off the aerial, and the two
+    # Watermelon Road legs are in neither the TEAAS Features Report nor
+    # the OSM extract, so their mileposts come off the aerial as well and
+    # want checking against the county map before this is issued.
     "junctions": [
-        {"mp": 1.31, "label": "Stone Drive", "side": -1, "stub": 44,
-         "dx": 10, "dy": 6},
-        # the name slides east of its stub to leave the approach clear
-        # for the two crashes carried onto the junction from it
-        {"mp": 1.45, "label": "SR 1321 (McInnis Rd)", "side": -1,
-         "stub": 46, "dx": 186, "dy": 60},
-        {"mp": 1.80, "label": "SR 1387 (Springside Rd)", "side": 1,
-         "stub": 66, "dy": -16},
+        {"mp": 1.31, "label": "Stone Drive", "bearing": 32},
+        {"mp": 1.45, "label": "SR 1321 (McInnis Rd)", "bearing": 192},
+        {"mp": 1.54, "label": "Watermelon Rd", "bearing": 185},
+        {"mp": 1.62, "label": "Watermelon Rd", "bearing": 200},
+        {"mp": 1.80, "label": "SR 1387 (Springside Rd)", "bearing": 20},
     ],
     # sides the narratives establish, where the coded type alone would put
     # the cell on the wrong side of the centreline
     # approach headings for the two crashes that came in off a side road,
     # where the cardinal direction code cannot say which leg they used
-    # Junction crashes pinned to the leg and quadrant they happened in.
-    # 107089722 came up the SR 1321 approach, 108244836 left the road in
-    # the southeast quadrant turning onto it; neither belongs where a
-    # milepost search puts them once five crashes share one station.
+    # Two crashes the milepost search cannot resolve on its own: the ADD
+    # crash belongs in the northwest quadrant of the SR 1387 junction, and
+    # 108309866 stacks out of reach of the line among the five that share
+    # the SR 1321 station.
     "at": {
-        "107089722": [452, 810],
-        "107666960": [555, 812],
-        "108244836": [620, 800],
-        "108075100": [1490, 424],
+        "108244836": [492, 768],
+        "108309866": [566, 772],
+        "108075100": [1430, 600],
     },
     "headings": {
         "108244836": 38,        # eastbound into the SR 1321 turn, SE quad

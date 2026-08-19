@@ -312,7 +312,7 @@ def crashes_from_initial_study(path: str) -> list[DiagramCrash]:
 # unit, one arrowhead, one bubble, one decor offset, one severity circle.
 # Only the cell's rotation and which parts are present change with the
 # crash type, so a sheet reads as one drafted set.
-CELL_SHAFT = 56.0        # tail start to arrow tip, identical for every unit
+CELL_SHAFT = 70.0        # tail start to arrow tip, identical for every unit
 CELL_HEAD = 13.0         # arrowhead length, measured inside the shaft
 BUBBLE_R = 8.0           # crash number circle
 BUBBLE_GAP = 1.0         # bubble edge to tail start, near enough to touch
@@ -329,13 +329,13 @@ JN_SIZE = 11.5           # side road name at the end of its leg
 MP_SIZE = 13.5           # milepost callout, two sizes up from the name
 MP_LEAD = 21.0
 DOT_R = 1.75
-DOT_MIN_PITCH = 5.6       # dots always read as separate marks
+DOT_PITCH = 7.0           # one spacing on every cell, whatever the count
 # NCDOT's own printing note is to drop the crash cells to line weight 0 so
 # the speed marks stay readable once the sheet is converted to PDF. A thin
 # shaft is what lets a 1.75 radius dot read as a dot.
 CELL_SW = 0.7
-ZIG_LEN = 10.0            # one length for the run off road break
-ZIG_GAP = 6.5             # clear run between the break and the head
+ZIG_LEN = 8.0             # one length for the run off road break
+ZIG_GAP = 5.0             # clear run between the break and the head
 
 
 def _arrowhead(x, y, ang, night):
@@ -378,19 +378,13 @@ def _speed_run(x0, y0, cos, sin, s_lo, s_hi, speed):
     n = min(6, spd // 10)
     if n < 1:
         return ""
-    # the marks spread across the shaft rather than bunching at the tail:
-    # NCDOT's own cells vary the pitch with the count and run the dots
-    # most of the way to the head
-    lo = s_lo + 0.16 * (s_hi - s_lo)
-    hi = s_lo + 0.92 * (s_hi - s_lo)
-    if n == 1:
-        at = [(lo + hi) / 2.0]
-    else:
-        pitch = (hi - lo) / (n - 1)
-        if pitch < DOT_MIN_PITCH:               # a short run keeps them
-            pitch = DOT_MIN_PITCH               # legible and centres them
-            lo = mid - (n - 1) * pitch / 2.0
-        at = [lo + k * pitch for k in range(n)]
+    # One pitch on every cell. Spreading the marks to fill whatever run a
+    # cell happened to leave meant a plain cell and a run off road cell
+    # showed the same speed at different spacings, and the shaft is sized
+    # so six of them fit on the shortest run any cell has.
+    span = (n - 1) * DOT_PITCH
+    lo = mid - span / 2.0
+    at = [lo + k * DOT_PITCH for k in range(n)]
     return "".join(
         f'<circle cx="{x0 + a * cos:.1f}" cy="{y0 + a * sin:.1f}" '
         f'r="{DOT_R}" fill="{BLUE}"/>' for a in at)

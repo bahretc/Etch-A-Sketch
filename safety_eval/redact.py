@@ -408,9 +408,16 @@ def _require(binary: str) -> str:
     return path
 
 
-def ocr_words(image_path: str, page: int = 0, timeout: int = 120,
+#: Seconds allowed for one page of OCR. A page normally takes a few
+#: seconds; a throttled machine can take minutes, and a fixed ceiling
+#: turns that into a redaction failure rather than a slow redaction.
+OCR_TIMEOUT = int(os.environ.get("SAFETY_EVAL_OCR_TIMEOUT", "120"))
+
+
+def ocr_words(image_path: str, page: int = 0, timeout: int | None = None,
               min_conf: float = 30.0) -> list[Word]:
     """OCR one page image into word boxes via tesseract TSV."""
+    timeout = OCR_TIMEOUT if timeout is None else timeout
     tesseract = _require("tesseract")
     proc = subprocess.run(
         [tesseract, image_path, "stdout", "--psm", "11", "tsv"],

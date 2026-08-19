@@ -396,3 +396,33 @@ def test_a_bend_does_not_throw_a_cell_to_the_wrong_side(tmp_path):
     html = _sheet_with(crashes, tmp_path, centerline=geo)
     sides = _sides(html, layout)
     assert all(v > 0 for v in sides.values()), sides
+
+
+def test_speed_dots_keep_one_pitch_whatever_the_cell(tmp_path):
+    """A component of the symbol is the same size on every crash. The dots
+    used to be spread to fill whatever run a cell left over, so a plain
+    cell and a run off road cell showed the same speed at two spacings."""
+    def pitches(acc_typ, speed):
+        """Spacing along the shaft, not along the page: a run off road
+        cell is drawn rotated off the travel line."""
+        cr = make_crash(acc_typ=acc_typ, units=[cd.Unit(1, "E", speed, 4)])
+        g, _b, _n = cd.crash_glyph(cr, base_ang=0.0, route_forward="E")
+        pts = sorted((float(x), float(y)) for x, y in re.findall(
+            rf'<circle cx="([-\d.]+)" cy="([-\d.]+)" r="{cd.DOT_R}"', g))
+        return [round(math.dist(a, b), 2) for a, b in zip(pts, pts[1:])]
+
+    plain = pitches(21, 45)            # rear end, straight shaft
+    ror = pitches(2, 45)               # run off road, shaft broken
+    fast = pitches(2, 60)              # six dots on the shortest run
+    assert len(plain) == len(ror) == 3
+    assert len(fast) == 5
+    for got in (plain, ror, fast):
+        assert all(abs(p - cd.DOT_PITCH) < 0.06 for p in got), got
+
+
+def test_six_dots_fit_the_shortest_run_any_cell_has():
+    """The shaft is sized so the widest speed band still fits between the
+    tail and the run off road break."""
+    z0 = cd.CELL_SHAFT - cd.CELL_HEAD - cd.ZIG_LEN - cd.ZIG_GAP
+    band = (2.0, z0 - 2.5)
+    assert 5 * cd.DOT_PITCH <= band[1] - band[0]

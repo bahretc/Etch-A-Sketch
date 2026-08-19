@@ -94,13 +94,14 @@ layout = {
     # Each note sits by the crash it explains, so nothing has to be read
     # off a list in the corner.
     "notes": [
-        {"x": 400, "y": 925,
-         "text": ["Crash #6: eastbound vehicle turning right onto",
-                  "SR 1321 ran off the road to the left"]},
-        {"x": 1120, "y": 720,
+        {"x": 232, "y": 812,
+         "text": ["Crash #6: eastbound vehicle",
+                  "turning right onto SR 1321",
+                  "ran off the road to the left"]},
+        {"x": 1235, "y": 722,
          "text": ["Crash #10: second unit was an ATV",
                   "crossing SR 1320 from a dirt road"]},
-        {"x": 1290, "y": 775,
+        {"x": 1200, "y": 782,
          "text": ["Crash #12: ran the stop sign on SR 1387 and",
                   "left the road to the right while turning",
                   "onto SR 1320. Carried at the end, MP 1.800"]},
@@ -142,14 +143,14 @@ layout = {
     # 108309866 stacks out of reach of the line among the five that share
     # the SR 1321 station.
     "at": {
-        "107829164": [305, 625],
-        "107089722": [480, 670],
+        "107829164": [304, 627],
+        "107089722": [478, 667],
         "107304540": [614, 670],
         "107666960": [452, 738],
-        "108244836": [422, 762],
+        "108244836": [427, 747],
         "108309866": [645, 715],
-        "108052444": [1360, 588],
-        "108075100": [1425, 720],
+        "108052444": [1357, 583],
+        "108075100": [1427, 726],
     },
     "headings": {
         "107666960": -78,       # northbound on SR 1321, so the cell runs

@@ -219,3 +219,13 @@ def test_stroke_text_renders_strokes_or_falls_back():
     assert ("path d=" in svg) or ("<text" in svg)
     if cd._HFONT is not None:
         assert "path d=" in svg and "translate(100.0,50.0)" in svg
+
+
+def test_sheet_prints_as_one_page(tmp_path):
+    """An inline svg on a text baseline spills a blank second page."""
+    html = _sheet_with([make_crash()], tmp_path)
+    head = html[:html.index("</style>")]
+    assert "@page{size:17in 11in;margin:0}" in head
+    assert "svg{display:block}" in head, "svg must not sit on a baseline"
+    assert "overflow:hidden" in head
+    assert f"width:{cd.PAGE_W}px;height:{cd.PAGE_H}px" in head

@@ -22,7 +22,12 @@ dependencies = [
 pdf = ["pdfplumber>=0.11", "pypdf>=4.0"]
 ocr = ["pytesseract>=0.3", "pdf2image>=1.17"]
 ui = ["streamlit>=1.30", "Pillow>=10"]
-dev = ["pytest>=7"]
+# assumptions email deliverable
+docx = ["python-docx>=1.1"]
+# The recalc tests also need LibreOffice with Calc: the core package
+# alone has no xlsx filter, so soffice reports "source file could
+# not be loaded" and every recalc returns False.
+dev = ["pytest>=7", "python-docx>=1.1"]
 
 [project.scripts]
 safety-eval = "safety_eval.cli:main"

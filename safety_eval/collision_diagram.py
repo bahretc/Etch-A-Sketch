@@ -1218,9 +1218,14 @@ def _sheet(body_svg: list, layout: dict, crashes) -> str:
                          layout.get("date", ""),
                          layout.get("logo_b64", "")))
     svg.extend(body_svg)
+    # svg{display:block} matters: an inline svg sits on a text baseline
+    # and the descender space under it spills past the sheet, which prints
+    # a second, blank page. The @page rule and overflow keep it to one.
     return ('<!doctype html><html><head><meta charset="utf-8"><style>'
-            'html,body{margin:0;padding:0}'
+            '@page{size:17in 11in;margin:0}'
+            'html,body{margin:0;padding:0;overflow:hidden}'
             f'body{{width:{PAGE_W}px;height:{PAGE_H}px}}'
+            'svg{display:block}'
             'text{font-family:Arial,Helvetica,sans-serif;fill:#000}'
             '</style></head><body>'
             f'<svg width="{PAGE_W}" height="{PAGE_H}" '

@@ -110,11 +110,17 @@ layout = {
         {"mp": 1.31, "label": "Stone Drive", "side": -1, "stub": 44,
          "dx": 10, "dy": 6},
         {"mp": 1.45, "label": "SR 1321 (McInnis Rd)", "side": -1},
-        {"mp": 1.80, "label": "SR 1387", "side": 1,
-         "stub": 44, "anchor": "end", "dx": -66, "dy": 4},
+        {"mp": 1.80, "label": "SR 1387 (Springside Rd)", "side": 1,
+         "stub": 66},
     ],
     # sides the narratives establish, where the coded type alone would put
     # the cell on the wrong side of the centreline
+    # approach headings for the two crashes that came in off a side road,
+    # where the cardinal direction code cannot say which leg they used
+    "headings": {
+        "108244836": 38,        # eastbound into the SR 1321 turn, SE quad
+        "108075100": 120,       # down SR 1387 toward SR 1320, SW
+    },
     "sides": {
         "107089722": -1,        # SR 1321 approach, south of SR 1320
         "107666960": -1,        # SR 1321 approach, south of SR 1320

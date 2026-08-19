@@ -563,7 +563,8 @@ _DIR_ANG = {"E": 0, "NE": -45, "N": -90, "NW": -135,
 
 def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
                 route_forward: str = "E",
-                throw: float = 0.0) -> tuple[str, tuple, tuple]:
+                throw: float = 0.0,
+                heading: float | None = None) -> tuple[str, tuple, tuple]:
     """Assemble one crash from the standard parts in the roadway's frame.
 
     ``base_ang`` is the road tangent in page degrees at this crash's
@@ -586,7 +587,10 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
     def conv(d, fallback):
         return base + _DIR_ANG.get(d, fallback - base)
 
-    a1 = conv(u1.direction, base)
+    # ``heading`` overrides the coded direction with an absolute page
+    # angle, for a crash whose approach follows a side road rather than
+    # the mainline and which the cardinal code cannot express.
+    a1 = conv(u1.direction, base) if heading is None else float(heading)
     parts: list[str] = []
     kp: list[tuple[float, float, float]] = []      # (x, y, pad)
 
@@ -1000,12 +1004,10 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                    'stroke-width="1.2"/>')
         # the MP labels sit on the side of the line the terminal side road
         # does not use, so a stub and its name never fight them
-        lbl = "Begin MP:" if t == 0 else "End MP:"
-        lx = max(x, 74) if t == 0 else x - 196
-        ly = y - 78 if t == 0 else y - 62
-        svg.append(_stroke_text(lx, ly - 5, lbl, size=15.5, sw=1.05))
-        svg.append(_stroke_text(lx, ly + 15, f"{mp:.2f}", size=15.5,
-                                sw=1.05))
+        lbl = f"Begin MP {mp:.2f}" if t == 0 else f"End MP {mp:.2f}"
+        lx = max(x, 112) if t == 0 else x - 176
+        ly = y - 72 if t == 0 else y - 58
+        svg.append(_stroke_text(lx, ly, lbl, size=15.5, sw=1.05))
     jn_keep = []
     for jn in layout.get("junctions", []):
         t = (jn["mp"] - lo) / (hi - lo) if hi > lo else 0.5
@@ -1021,13 +1023,21 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         svg.append(f'<line x1="{x:.1f}" y1="{y:.1f}" '
                    f'x2="{ex:.1f}" y2="{ey:.1f}" stroke="#000" '
                    'stroke-width="1.1"/>')
-        anchor = jn.get("anchor", "start")
-        lx = ex + up * 4 * nx + jn.get("dx", 8 if anchor == "start" else -8)
-        ly = ey + up * 16 * ny + jn.get("dy", 0)
+        # the name sits centred over the end of its own stub
+        anchor = jn.get("anchor", "middle")
+        lx = ex + up * 15 * nx + jn.get("dx", 0)
+        ly = ey + up * 15 * ny + jn.get("dy", 0)
         svg.append(_stroke_text(lx, ly, jn["label"], size=11.5,
                                 anchor=anchor))
         w = _text_width(jn["label"], 11.5)
-        x0 = lx - (w if anchor == "end" else 0)
+        x0 = lx - (w / 2 if anchor == "middle"
+                   else w if anchor == "end" else 0)
+        shift = max(0.0, 30.0 - x0) - max(0.0, x0 + w - (PAGE_W - 30.0))
+        if shift:                      # a name near the edge slides inboard
+            lx += shift
+            x0 += shift
+            svg[-1] = _stroke_text(lx, ly, jn["label"], size=11.5,
+                                   anchor=anchor)
         jn_keep.append((x0 - 5, ly - 8, x0 + w + 5, ly + 8))
         jn_keep.append((min(x, ex) - 16, min(y, ey) - 6,
                         max(x, ex) + 16, max(y, ey) + 6))
@@ -1077,8 +1087,9 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         bx, by = road_pt(t)
         ang = math.degrees(road_ang(t))
         nx, ny = _rot(0, -1, ang)
+        hd = layout.get("headings", {}).get(cr.crash_id)
         g, box, n_ext = crash_glyph(cr, base_ang=ang,
-                                    route_forward=route_fwd)
+                                    route_forward=route_fwd, heading=hd)
         # A crash is drawn on the side of the centreline its vehicle was
         # travelling on, the way the sheets separate the two directions:
         # eastbound below the line, westbound above it. Where it left the
@@ -1087,6 +1098,8 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         base = ang - _DIR_ANG.get(route_fwd, 0)
         ua = (base + _DIR_ANG.get(cr.units[0].direction, -base)
               if cr.units else base)
+        if hd is not None:
+            ua = float(hd)
         rx, ry = _rot(1.0, 0.0, ua + 90.0)          # right of travel
         along_n = rx * nx + ry * ny
         pref = 1 if along_n > 0 else -1
@@ -1252,7 +1265,13 @@ def _sheet(body_svg: list, layout: dict, crashes) -> str:
     rx, ry = layout.get("route_label_xy", (520, 940))
     for i, line in enumerate(rl):
         svg.append(_stroke_text(rx, ry + i * 25, line, size=16, sw=1.05))
-    for note in layout.get("notes", []):
+    notes = layout.get("notes", [])
+    if notes:
+        hx, hy = notes[0]["x"], notes[0]["y"] - 30
+        svg.append(_stroke_text(hx, hy, "NOTES", size=15, sw=1.15))
+        svg.append(f'<line x1="{hx - 30}" y1="{hy + 11}" x2="{hx + 30}" '
+                   f'y2="{hy + 11}" stroke="#000" stroke-width="1.1"/>')
+    for note in notes:
         for i, line in enumerate(note["text"]):
             svg.append(_stroke_text(note["x"], note["y"] + i * 18, line,
                                     size=12.5))

@@ -313,7 +313,9 @@ TICK_H = 6.5             # half length of the point of impact tick
 DEPART_ANG = 26.0        # cell rotation off the travel line for a departure
 ROAD_GAP = 11.0          # clear space between the centerline and any ink
 DOT_R = 1.35
-DOT_MIN_PITCH = 3.2       # dots stay legible on a short run
+DOT_MIN_PITCH = 4.4       # dots always read as separate marks
+ZIG_LEN = 10.0            # one length for the run off road break
+ZIG_GAP = 6.5             # clear run between the break and the head
 
 
 def _arrowhead(x, y, ang, night):
@@ -402,30 +404,30 @@ def _unit_cell(tx, ty, ang_deg, unit, night, zigzag=False,
     ink = [P(0.0)]
     mark_lo, mark_hi = 2.0, shaft - CELL_HEAD - 2.0
     if turn:
-        # a vehicle that was turning when it left the road: the normal run
-        # off road cell, with the far end of the shaft bent toward the road
-        # it was turning onto. A full square corner does not fit alongside
-        # the break and the head in one shaft length.
+        # a vehicle that was turning when it left the road. This is the
+        # ordinary run off road cell, same shaft, same marks, same break,
+        # and only the last stretch and the head swing toward the road it
+        # was turning onto. Bending earlier puts two direction changes
+        # within a few pixels of each other and the linework stops reading.
         bend = turn * 0.42
         a2 = math.radians(ang_deg + bend)
         c2, s2 = math.cos(a2), math.sin(a2)
         n2x, n2y = -s2, c2
-        zb = shaft * 0.62                       # where the shaft bends
+        z0 = shaft - CELL_HEAD - ZIG_LEN - ZIG_GAP
+        zb = z0 + ZIG_LEN
 
         def Q(u, v=0.0):
             bx, by = P(zb)
             return (bx + u * c2 + v * n2x, by + u * s2 + v * n2y)
 
-        leg = shaft - zb
+        leg = shaft - zb                     # ZIG_GAP of it is clear run
         path = [P(0.0)]
         if zigzag:
-            z0 = zb - 13.0
-            path += [P(z0), P(z0 + 3.0, -5.6), P(z0 + 7.0, 5.6),
-                     P(z0 + 10.0)]
+            path += [P(z0), P(z0 + 3.0, -5.6), P(z0 + 7.0, 5.6)]
             ink += [P(z0 + 3.0, -5.6), P(z0 + 7.0, 5.6)]
-            mark_hi = z0 - 2.5
         path += [P(zb), Q(leg)]
         tip = Q(leg)
+        mark_hi = z0 - 2.5
         ink += [P(zb), tip]
         d = " ".join(f"{px:.1f},{py:.1f}" for px, py in path)
         out.append(f'<polyline points="{d}" fill="none" stroke="#000" '
@@ -435,12 +437,13 @@ def _unit_cell(tx, ty, ang_deg, unit, night, zigzag=False,
                                   unit.speed))
         out.append(_arrowhead(tip[0], tip[1], a2, night))
         return "".join(out), tip, ink
+
     if zigzag:
         # the break sits late on the shaft, the way the drawn sheets put
         # it, so the speed marks keep a clean run off the tail
-        z0 = shaft - CELL_HEAD - 12.5      # the break clears the head
+        z0 = shaft - CELL_HEAD - ZIG_LEN - ZIG_GAP   # break clears head
         pts = [P(0.0), P(z0), P(z0 + 3.0, -5.6), P(z0 + 7.0, 5.6),
-               P(z0 + 10), P(shaft)]
+               P(z0 + ZIG_LEN), P(shaft)]
         ink += [P(z0 + 3.0, -5.6), P(z0 + 7.0, 5.6)]
         mark_hi = z0 - 2.5
         d = " ".join(f"{px:.1f},{py:.1f}" for px, py in pts)

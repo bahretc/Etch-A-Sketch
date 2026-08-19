@@ -408,7 +408,7 @@ def _unit_cell(tx, ty, ang_deg, unit, night, zigzag=False,
         a2 = math.radians(ang_deg + turn)
         c2, s2 = math.cos(a2), math.sin(a2)
         n2x, n2y = -s2, c2
-        s1 = shaft * 0.45
+        s1 = shaft * 0.40
         leg = shaft - s1
 
         def Q(u, v=0.0):
@@ -421,9 +421,12 @@ def _unit_cell(tx, ty, ang_deg, unit, night, zigzag=False,
              f"L {P(s1 - r)[0]:.1f} {P(s1 - r)[1]:.1f}",
              f"Q {cor[0]:.1f} {cor[1]:.1f} {Q(r)[0]:.1f} {Q(r)[1]:.1f}"]
         if zigzag:
-            z = leg * 0.42
+            # the break has to finish before the head starts, or the last
+            # tooth is drawn straight through the arrowhead
+            zlen = 10.0
+            z = max(1.5, leg - CELL_HEAD - zlen - 2.5)
             for u, v in ((z, 0.0), (z + 3.0, -5.6), (z + 7.0, 5.6),
-                         (z + 10.0, 0.0)):
+                         (z + zlen, 0.0)):
                 d.append(f"L {Q(u, v)[0]:.1f} {Q(u, v)[1]:.1f}")
                 ink.append(Q(u, v))
         d.append(f"L {Q(leg)[0]:.1f} {Q(leg)[1]:.1f}")
@@ -440,7 +443,7 @@ def _unit_cell(tx, ty, ang_deg, unit, night, zigzag=False,
     if zigzag:
         # the break sits late on the shaft, the way the drawn sheets put
         # it, so the speed marks keep a clean run off the tail
-        z0 = shaft - CELL_HEAD - 10.0
+        z0 = shaft - CELL_HEAD - 12.5      # the break clears the head
         pts = [P(0.0), P(z0), P(z0 + 3.0, -5.6), P(z0 + 7.0, 5.6),
                P(z0 + 10), P(shaft)]
         ink += [P(z0 + 3.0, -5.6), P(z0 + 7.0, 5.6)]

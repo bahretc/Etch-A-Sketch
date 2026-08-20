@@ -168,7 +168,7 @@ layout = {
     # extract, so their mileposts come off the aerial as well and want
     # checking against the county map before this is issued.
     "junctions": [
-        {"mp": 1.31, "label": "Stone Drive", "bearing": 32},
+        {"mp": 1.31, "label": "Stone Dr", "bearing": 32},
         {"mp": 1.45, "label": "SR 1321 (McInnis Rd)", "bearing": 192},
         {"mp": 1.54, "label": "Watermelon Rd", "bearing": 185},
         {"mp": 1.62, "label": "Watermelon Rd", "bearing": 200},

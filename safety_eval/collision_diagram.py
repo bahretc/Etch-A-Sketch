@@ -763,17 +763,17 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
         return ("".join(parts),) + extents_of()
 
     # ------------------------------------------------ angle and turning
+    # the crossing unit's arrow ends at the side of the through unit's
+    # path (deck page 26), so its shaft stops short of the origin and the
+    # two heads never meet point to point; the injury circle sits past
+    # the through unit's head, the front of the assembly
     c2, s2 = vec(a2)
     tail1 = (-CELL_SHAFT * c1, -CELL_SHAFT * s1)
     tail2 = (-CELL_SHAFT * c2, -CELL_SHAFT * s2)
     svg1, tip1 = draw(tail1, a1, u1)
-    svg2, _ = draw(tail2, a2, u2)
+    svg2, _ = draw(tail2, a2, u2, shaft=CELL_SHAFT - 9.0)
     parts += [svg1, svg2]
-    bis = a1 + ((a2 - a1 + 540) % 360 - 180) / 2.0
-    bc, bs = vec(bis)
-    px, py = (SEV_GAP + 3) * bc, (SEV_GAP + 3) * bs
-    parts.append(_severity_circle(px, py, cr.severity))
-    K(px, py, SEV_R + 2)
+    parts.append(sev_at(tip1[0], tip1[1], a1))
     parts.append(decor(tail1, a1))
     return ("".join(parts),) + extents_of()
 
@@ -1183,8 +1183,12 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                    'stroke-width="1.1"/>')
         # the name sits centred over the end of its own stub
         anchor = jn.get("anchor", "middle")
-        lx = ex + 18 * dx + jn.get("dx", 0)
-        ly = ey + 18 * dy + jn.get("dy", 0)
+        # a stub pointing up meets its label from below, where the
+        # milepost line hangs under the name, so the block stands further
+        # off the leg than one the stub meets from above
+        off = 34 if dy < 0 else 18
+        lx = ex + off * dx + jn.get("dx", 0)
+        ly = ey + off * dy + jn.get("dy", 0)
         svg.append(_stroke_text(lx, ly, jn["label"], size=JN_SIZE,
                                 anchor=anchor))
         w = _text_width(jn["label"], JN_SIZE)
@@ -1213,8 +1217,7 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
     # milepost floating on its own somewhere near the end of the line.
     for t, mp in ((0.0, lo), (1.0, hi)):
         x, y = road_pt(t)
-        lbl = (f"Begin Study MP {mp:.3f}" if t == 0
-               else f"End Study MP {mp:.3f}")
+        lbl = "Begin Study" if t == 0 else "End Study"
         key = "begin_label_xy" if t == 0 else "end_label_xy"
         anchor = "middle"
         if layout.get(key):

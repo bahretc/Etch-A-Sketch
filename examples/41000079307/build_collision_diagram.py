@@ -137,9 +137,8 @@ layout = {
         # collision diagram export drops it for want of a direction, so
         # the cell shows one vehicle and the note carries the rest.
         {"x": 1155, "y": 726,
-         "text": ["Crash #10: an ATV crossed SR 1320 southbound from",
-                  "an unnamed track into the eastbound vehicle. TEAAS",
-                  "codes the through unit southbound; drawn per review."]},
+         "text": ["Crash #10: an ATV entered SR 1320 southbound",
+                  "from a driveway without yielding."]},
         {"x": 1200, "y": 782,
          "text": ["Crash #12: ran the stop sign on SR 1387 and",
                   "left the road to the right while turning",
@@ -192,11 +191,11 @@ layout = {
                                     # keeps the crossing arm at the track,
                                     # which the mainline clearance search
                                     # can never accept on its own
-        "107829164": [352, 700],    # at its station, downstream of 1
-        "106918221": [760, 696],    # at its station, past Watermelon Rd
+        "107829164": [326, 684],    # at its station, downstream of 1
+        "106918221": [678, 700],    # at its station, past Watermelon Rd
         "107089722": [489, 749],    # up the SR 1321 approach, beside 5
         "107666960": [452, 738],    # up the SR 1321 approach
-        "108244836": [540, 778],    # off to the left in the SR 1321 turn
+        "108244836": [420, 747],    # off to the left in the SR 1321 turn
         "108075100": [1414, 742],   # SW quadrant, south of SR 1320 and
                                     # west of the stub, per the engineer
     },

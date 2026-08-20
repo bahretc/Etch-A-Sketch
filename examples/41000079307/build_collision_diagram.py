@@ -19,7 +19,7 @@ import sys
 sys.path.insert(0, "/home/user/Etch-A-Sketch")
 
 from safety_eval.collision_diagram import (  # noqa: E402
-    build_section_diagram, read_data_csv, write_data_csv)
+    Unit, build_section_diagram, read_data_csv, write_data_csv)
 
 SP = ("/tmp/claude-0/-home-user-Etch-A-Sketch/"
       "4d83860a-51f4-5f7b-a60e-765168dfbb13/scratchpad/cd79307")
@@ -40,6 +40,16 @@ REVIEW_MP = {
     "108075100": 1.800,     # ADD: SR 1387 junction crash at the study terminus
 }
 
+#: TEAAS types 107421047 an ANGLE and the Crash Analysis export carries
+#: two units for it, but the collision diagram export drops unit two: it
+#: has no direction, speed or maneuver coded, and the plotting program
+#: needs a direction. The through vehicle on SR 1320 is restored here so
+#: the crash draws as the angle it is; its speed stays unknown because
+#: the export does not carry one.
+ADD_UNIT = {
+    "107421047": ("E", None, 4),
+}
+
 #: Type the DMV-349 narrative supports, where the coded type has no cell
 #: or contradicts the report.
 RETYPE = {
@@ -58,6 +68,9 @@ for c in crashes:
         c.mp = REVIEW_MP[c.crash_id]
     if c.crash_id in RETYPE:
         c.acc_typ = RETYPE[c.crash_id]
+    if c.crash_id in ADD_UNIT and len(c.units) == 1:
+        d, sp, mv = ADD_UNIT[c.crash_id]
+        c.units.append(Unit(2, d, sp, mv))
 
 # The export is already in the order TEAAS wants them plotted, matching
 # 41000079307_CrashID.txt: milepost, then date. Keep it.
@@ -103,10 +116,10 @@ layout = {
         # type, and it has no direction, speed or maneuver coded. The
         # collision diagram export drops it for want of a direction, so
         # the cell shows one vehicle and the note carries the rest.
-        {"x": 1235, "y": 716,
-         "text": ["Crash #10: angle with an ATV crossing from a",
-                  "dirt road. TEAAS carries no direction or speed",
-                  "for the second unit, so it is not plotted."]},
+        {"x": 1155, "y": 726,
+         "text": ["Crash #10: angle with an ATV crossing southbound",
+                  "from an unnamed track. TEAAS carries no direction",
+                  "for the second unit; drawn eastbound on SR 1320."]},
         {"x": 1200, "y": 782,
          "text": ["Crash #12: ran the stop sign on SR 1387 and",
                   "left the road to the right while turning",
@@ -148,15 +161,14 @@ layout = {
     # crash belongs in the northwest quadrant of the SR 1387 junction, and
     # 108309866 stacks out of reach of the line among the five that share
     # the SR 1321 station.
+    # Pins are for crashes whose position the domain fixes, not for
+    # working around placement: which leg of a junction a crash came in
+    # on, and which quadrant it ended up in. Everything else is placed by
+    # the rule, so a sheet does not need hand tuning to read.
     "at": {
-        "107829164": [304, 627],
-        "107089722": [478, 667],
-        "107304540": [614, 670],
-        "107666960": [452, 738],
-        "108244836": [427, 747],
-        "108309866": [645, 715],
-        "108052444": [1357, 583],
-        "108075100": [1427, 726],
+        "107666960": [452, 738],    # up the SR 1321 approach
+        "108244836": [540, 778],    # off to the left in the SR 1321 turn
+        "108075100": [1425, 730],   # SE quadrant of the SR 1387 junction
     },
     "headings": {
         "107666960": -78,       # northbound on SR 1321, so the cell runs

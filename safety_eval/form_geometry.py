@@ -280,6 +280,41 @@ def location_vocabulary(words, height: int) -> set[str]:
     return out
 
 
+def local_address_words(words, width: int, height: int,
+                        reg: tuple[float, float], roads: set[str]) -> list:
+    """Address tokens inside a covered zone that name the study roadway.
+
+    An address is PII when it says where someone lives. An address that
+    says the crash happened in front of a house on the study road is
+    location, and covering it throws away the thing a reviewer needs to
+    place the crash. So a row inside an identity zone survives when it
+    carries a road the report's own header calls out: the same vocabulary
+    that already stops one report's street blacking out another report's
+    municipality.
+    """
+    if not roads:
+        return []
+    zones = [rect for z, rect in zone_rects(width, height, reg)
+             if z.harvest]
+    inside = [w for w in words if any(_in_rect(w, r) for r in zones)]
+    rows: list[list] = []
+    for w in sorted(inside, key=lambda w: (w.top, w.left)):
+        tol = max(6, w.height)
+        for row in rows:
+            if abs((row[0].top + row[0].height / 2)
+                   - (w.top + w.height / 2)) <= tol:
+                row.append(w)
+                break
+        else:
+            rows.append([w])
+    keep = []
+    for row in rows:
+        text = {w.text.strip().strip(".,;:").upper() for w in row}
+        if text & roads:
+            keep.extend(row)
+    return keep
+
+
 def scrub_targets(words, names: set[str]) -> list:
     """Words anywhere on a page that match a harvested name."""
     if not names:

@@ -582,6 +582,15 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
                     else []
                 zip_holes = [(w.left, w.top, w.right, w.bottom)
                              for w in zip_keep]
+                # An address on the study road is where the crash was, not
+                # where somebody lives, so a row inside an identity zone
+                # that names a road the report's own header calls out is
+                # left readable.
+                zip_holes += [
+                    (w.left, w.top, w.right, w.bottom)
+                    for w in fg.local_address_words(
+                        words, img.width, img.height, page_reg[i],
+                        protected)]
                 for z, rect in fg.zone_rects(img.width, img.height,
                                              page_reg[i]):
                     holes = zip_holes

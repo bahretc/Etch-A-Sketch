@@ -322,7 +322,7 @@ SEV_GAP = 5.0            # arrow tip to severity circle center
 SEV_R = 2.6
 LANE_SEP = 11.0          # lateral separation of two units drawn side by side
 TICK_H = 6.5             # half length of the point of impact tick
-DEPART_ANG = 26.0        # cell rotation off the travel line for a departure
+DEPART_ANG = 18.0        # cell rotation off the travel line for a departure
 ROAD_GAP = 11.0          # clear space between the centerline and any ink
 STUB_LEN = 150.0         # side road leg, long enough to read as a road
 JN_SIZE = 11.5           # side road name at the end of its leg
@@ -1202,8 +1202,12 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
             svg[-1] = _stroke_text(lx, ly, jn["label"], size=JN_SIZE,
                                    anchor=anchor)
         jn_keep.append((x0 - 5, ly - 8, x0 + w + 5, ly + 8))
-        jn_keep.append((min(x, ex) - 16, min(y, ey) - 6,
-                        max(x, ex) + 16, max(y, ey) + 6))
+        # the leg protects the line it draws and little more: a wide
+        # corridor down a 150 long stub walls off the roadway either side
+        # of every side street, and the crashes there are exactly the ones
+        # a reader wants beside the line
+        jn_keep.append((min(x, ex) - 8, min(y, ey) - 4,
+                        max(x, ex) + 8, max(y, ey) + 4))
         jn_label[round(jn["mp"], 3)] = (lx, ly, anchor, dy)
 
     # The milepost that ends the study is written under the name of the
@@ -1365,7 +1369,11 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
             def base_dist(it, s2):
                 n_lo, n_hi = it["n"]
                 return (ROAD_GAP - n_lo) if s2 > 0 else (ROAD_GAP + n_hi)
-            rowh = max(33.0, 0.55 * max(it["n"][1] - it["n"][0]
+            # Rows sit close together. A row is only there to stop two
+            # cells overlapping, and the overlap test does that job on
+            # its own, so a tall row buys nothing and costs every cell
+            # behind the first a long walk away from the roadway.
+            rowh = max(21.0, 0.40 * max(it["n"][1] - it["n"][0]
                                         for it in members))
 
             def along(it):
@@ -1399,7 +1407,7 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                 ((abs(d) * 0.75 + 55.0 * rk, rk, d)
                  for rk in (0, 1, 2, 3)
                  for d in (0, -14, 14, -28, 28, -46, 46, -68, 68,
-                           -96, 96, -130, 130, -170, 170)),
+                           -96, 96, -130, 130, -170, 170, -210, 210)),
                 key=lambda t: t[0])
 
             def place(it, s_at, rank, sd2, extra=0.0):
@@ -1444,11 +1452,11 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
                 # the road curves away from the tangent, so a cell may need
                 # a little more than its own clearance to stay off the line
                 extra = 0.0
-                for _ in range(12):
+                for _ in range(30):
                     tx0, ty0, _bb = place(it, s_i, 0, sd, extra)
                     if road_ok(it, tx0, ty0):
                         break
-                    extra += 3.0
+                    extra += 1.5
                 for _, rank, dsh in cands:
                     tx, ty, bb = place(it, s_i + dsh, rank, sd, extra)
                     # clearance is tested at the spot actually taken: the

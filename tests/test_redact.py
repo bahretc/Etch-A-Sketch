@@ -196,3 +196,42 @@ def test_verifier_shares_the_planner_scope():
              W("Rd", 400, 300, line=(0, 0, 9))]
     assert list(_residual_groups(words, True, [(0, 0, 10_000, 200)])) == []
     assert list(_residual_groups(words, True, WHOLE_PAGE))
+
+
+def test_an_address_on_the_study_road_survives_the_identity_zone():
+    """An address is PII when it says where somebody lives. An address that
+    says the crash happened on the study road is location, and covering it
+    throws away what places the crash."""
+    from safety_eval import form_geometry as fg
+
+    class W:
+        def __init__(self, text, left, top, w=60, h=14):
+            self.text, self.left, self.top = text, left, top
+            self.width, self.height = w, h
+
+        @property
+        def right(self):
+            return self.left + self.width
+
+        @property
+        def bottom(self):
+            return self.top + self.height
+
+    width, height = 1000, 1300
+    reg = (1.0, 0.0)
+    ident = next(r for z, r in fg.zone_rects(width, height, reg)
+                 if z.name == "driver-identity")
+    y = (ident[1] + ident[3]) // 2
+    home = [W("4127", 120, y), W("BIRCHWOOD", 190, y), W("LANE", 300, y)]
+    onroad = [W("2216", 120, y + 30), W("MILK", 190, y + 30),
+              W("DAIRY", 260, y + 30), W("ROAD", 330, y + 30)]
+    roads = {"MILK", "DAIRY", "ROAD", "SR"}
+    keep = fg.local_address_words(home + onroad, width, height, reg, roads)
+    kept = {w.text for w in keep}
+    assert "DAIRY" in kept and "MILK" in kept, kept
+    assert "BIRCHWOOD" not in kept, kept
+
+
+def test_no_study_roads_means_every_address_stays_covered():
+    from safety_eval import form_geometry as fg
+    assert fg.local_address_words([], 1000, 1300, (1.0, 0.0), set()) == []

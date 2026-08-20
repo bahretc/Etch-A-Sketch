@@ -89,7 +89,8 @@ def parse_features(payload: dict) -> list[AadtStation]:
     for feat in payload.get("features", []):
         attrs = feat.get("attributes", {}) or {}
         geom = feat.get("geometry", {}) or {}
-        sid = _first(attrs, "STATION_ID", "STATION", "LOCATION_ID", "LOC_ID",
+        sid = _first(attrs, "STATION_ID", "STATION", "LocationID",
+                     "LOCATION_ID", "LOC_ID",
                      "SITE_ID", "OBJECTID")
         st = stations.get(sid)
         if st is None:

@@ -1,0 +1,41 @@
+# Evaluation Set-up inputs for 41000076160 / 10-18-223 (W-5710AM),
+# SR 1001 (Sikes Mill Road) at SR 1617 (Tom Boyd Road), Union County.
+#
+# Construction: All-Way Stop conversion completed 5/24/2021 (Final
+# Inspection memo), so the construction period is the default 3 months
+# ending 5/31/2021. The TEAAS pull starts 4/1/2016, which mirrors a
+# 59-month before period against an after period ending 4/30/2026;
+# teaas_date is capped there so both periods stay inside the pull.
+#
+# Major-road legs are the two AADT stations bracketing the junction on
+# SR 1001 (biennial counts; the station pair alternates odd/even years):
+#   leg1 = station 0900000008, 0.68 mi SW (south of SR 1615)
+#   leg2 = station 0900000575, 0.48 mi NE (south of SR 1637)
+# SR 1617 (Tom Boyd Road) has no AADT station in Union County. The 1400
+# per-leg minor volume is derived: TEAAS intersection entering AADT 5100
+# minus the major-leg average for 2019, rounded to the nearest hundred
+# per the minor-road rule. It is an assumption for the analyst to
+# confirm (red-font convention), carried unchanged into 2022.
+teaas_date: 2026-04-30
+construction_months: 3
+construction_end: 2021-05-31
+rep_before_year: 2019
+rep_after_year: 2022
+legs_by_year:
+  # Actual station counts (black-font): leg1 2017/2019/2021, leg2
+  # 2016/2018/2022, from the biennial program. Every other value is an
+  # analyst-convention estimate (red font when the PE reviews): straight
+  # interpolation between counts, last count carried forward, and the
+  # 1400 minor legs derived from TEAAS entering AADT 5100 minus the 2019
+  # major-leg average, rounded to the nearest hundred.
+  2016: {leg1: 4100, leg2: 2200, leg3: 1400, leg4: 1400}
+  2017: {leg1: 4100, leg2: 2650, leg3: 1400, leg4: 1400}
+  2018: {leg1: 4300, leg2: 3100, leg3: 1400, leg4: 1400}
+  2019: {leg1: 4500, leg2: 2850, leg3: 1400, leg4: 1400}
+  2020: {leg1: 4000, leg2: 2600, leg3: 1400, leg4: 1400}
+  2021: {leg1: 3500, leg2: 2350, leg3: 1400, leg4: 1400}
+  2022: {leg1: 3500, leg2: 2100, leg3: 1400, leg4: 1400}
+  2023: {leg1: 3500, leg2: 2100, leg3: 1400, leg4: 1400}
+  2024: {leg1: 3500, leg2: 2100, leg3: 1400, leg4: 1400}
+  2025: {leg1: 3500, leg2: 2100, leg3: 1400, leg4: 1400}
+  2026: {leg1: 3500, leg2: 2100, leg3: 1400, leg4: 1400}

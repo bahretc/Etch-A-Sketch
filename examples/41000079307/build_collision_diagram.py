@@ -98,9 +98,15 @@ layout = {
          "text": ["Crash #6: eastbound vehicle",
                   "turning right onto SR 1321",
                   "ran off the road to the left"]},
-        {"x": 1235, "y": 722,
-         "text": ["Crash #10: second unit was an ATV",
-                  "crossing SR 1320 from a dirt road"]},
+        # TEAAS carries two units for this one: unit 2 is vehicle type 27,
+        # the only one in the study that is not an ordinary passenger
+        # type, and it has no direction, speed or maneuver coded. The
+        # collision diagram export drops it for want of a direction, so
+        # the cell shows one vehicle and the note carries the rest.
+        {"x": 1235, "y": 716,
+         "text": ["Crash #10: angle with an ATV crossing from a",
+                  "dirt road. TEAAS carries no direction or speed",
+                  "for the second unit, so it is not plotted."]},
         {"x": 1200, "y": 782,
          "text": ["Crash #12: ran the stop sign on SR 1387 and",
                   "left the road to the right while turning",

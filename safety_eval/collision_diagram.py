@@ -492,17 +492,13 @@ def _unit_arrow(x, y, ang_deg, length, unit, night, zigzag=False):
 
 
 def _severity_circle(x, y, sev):
-    """Injury indicator at the front of the cell: open for a non severe
-    injury, half filled for a severe one, solid for a fatality."""
-    if sev == "O":
+    """Injury indicator at the front of the cell. The deck defines two
+    states only: hollow for a non fatal injury, solid for a fatality
+    (training deck page 25); a PDO crash carries no circle at all."""
+    if sev in ("O", ""):
         return ""
     if sev == "K":
         return f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{SEV_R}" fill="{RED}"/>'
-    if sev == "A":
-        return (f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{SEV_R}" fill="#fff" '
-                f'stroke="{RED}" stroke-width="{CELL_SW + 0.3}"/>'
-                f'<path d="M {x - SEV_R:.1f} {y:.1f} A {SEV_R} {SEV_R} 0 0 0 '
-                f'{x + SEV_R:.1f} {y:.1f} Z" fill="{RED}"/>')
     return (f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{SEV_R}" fill="#fff" '
             f'stroke="{RED}" stroke-width="{CELL_SW + 0.3}"/>')
 
@@ -821,10 +817,10 @@ def legend_block(x, y, w=LEGEND_W, h=LEGEND_H):
              "PARKING VEHICLE", "MOVABLE OBJECT", "HEAD ON", "REAR END",
              "RAN OFF ROAD"]
     rows2 = ["ANGLE", "TURNING", "BACKING", "SIDESWIPE",
-             "NON-SEVERE INJURY", "SEVERE INJURY", "FATALITY"]
-    rows3 = ["9 MPH OR LESS", "10 MPH TO 19", "20 MPH TO 29", "30 MPH TO 39",
-             "40 MPH TO 49", "50 MPH TO 59", "60 MPH TO 69", "70 AND UP",
-             "SPEED UNKNOWN"]
+             "NON-FATAL INJURY", "FATAL INJURY"]
+    rows3 = ["9 MPH OR LESS", "10 TO 19 MPH", "20 TO 29 MPH", "30 TO 39 MPH",
+             "40 TO 49 MPH", "50 TO 59 MPH", "60 TO 69 MPH", "70 MPH AND UP",
+             "UNKNOWN SPEED"]
     rows4 = [("P", "PEDESTRIAN", BLUE), ("T", "TRAIN", BLUE),
              ("*", "DRIVER AT FAULT", MAGENTA), ("D", "DRY", GREEN),
              ("W", "WET", GREEN), ("I", "ICY OR SNOWY", GREEN),
@@ -935,8 +931,7 @@ def legend_block(x, y, w=LEGEND_W, h=LEGEND_H):
                  _arrowhead(ax + 42, ay + 5, 0, False) +
                  _arrowhead(ax + 30, ay - 11, -0.25, False))
         else:
-            sev = {"NON-SEVERE INJURY": "B", "SEVERE INJURY": "A",
-                   "FATALITY": "K"}[label]
+            sev = {"NON-FATAL INJURY": "B", "FATAL INJURY": "K"}[label]
             g = (f'<line x1="{ax}" y1="{ay}" x2="{ax + 26}" y2="{ay}" '
                  'stroke="#000"/>' + _arrowhead(ax + 38, ay, 0, False) +
                  _severity_circle(ax + 46, ay, sev))
@@ -1201,7 +1196,10 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
             x0 += shift
             svg[-1] = _stroke_text(lx, ly, jn["label"], size=JN_SIZE,
                                    anchor=anchor)
-        jn_keep.append((x0 - 5, ly - 8, x0 + w + 5, ly + 8))
+        # the completed examples milepost every cross street
+        svg.append(_stroke_text(lx, ly + 15, f"MP {jn['mp']:.3f}",
+                                size=JN_SIZE - 1.5, anchor=anchor))
+        jn_keep.append((x0 - 5, ly - 8, x0 + w + 5, ly + 23))
         # the leg protects the line it draws and little more: a wide
         # corridor down a 150 long stub walls off the roadway either side
         # of every side street, and the crashes there are exactly the ones
@@ -1215,16 +1213,17 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
     # milepost floating on its own somewhere near the end of the line.
     for t, mp in ((0.0, lo), (1.0, hi)):
         x, y = road_pt(t)
-        lbl = f"Begin MP {mp:.2f}" if t == 0 else f"End MP {mp:.2f}"
+        lbl = (f"Begin Study MP {mp:.3f}" if t == 0
+               else f"End Study MP {mp:.3f}")
         key = "begin_label_xy" if t == 0 else "end_label_xy"
         anchor = "middle"
         if layout.get(key):
             lx, ly = layout[key]
         elif round(mp, 3) in jn_label:
             lx, ly, anchor, sdy = jn_label[round(mp, 3)]
-            # the callout stacks away from the roadway, so a leg that runs
-            # up the sheet never has its own tip through the milepost
-            ly += MP_LEAD if sdy > 0 else -MP_LEAD
+            # the callout stacks away from the roadway, clear of both the
+            # name and the milepost line under it
+            ly += 15 + MP_LEAD if sdy > 0 else -MP_LEAD
         else:
             lx = max(x, 112) if t == 0 else x - 176
             ly = y - 72 if t == 0 else y - 58
@@ -1359,6 +1358,22 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
         nx, ny = _rot(0, -1, angm)
         fx, fy = _rot(1, 0, angm)
         for sd, members in ((1, above), (-1, below)):
+            # a pinned cell is drawn at its pin; leaving it in the chain
+            # makes its neighbours spread around a slot nothing occupies,
+            # which walked cells hundreds of feet from their milepost
+            for it in members:
+                xy = pinned.get(it["cr"].crash_id)
+                if xy:
+                    ox, oy, _bb = fixed_box(it, xy)
+                    dxn, dyn = layout.get("nudges", {}).get(
+                        it["cr"].crash_id, (0, 0))
+                    svg.append(
+                        f'<g data-crash="{it["cr"].crash_id}" '
+                        f'data-seq="{it["cr"].seq}" '
+                        f'transform="translate({ox + dxn:.1f},'
+                        f'{oy + dyn:.1f})">{it["g"]}</g>')
+            members = [it for it in members
+                       if it["cr"].crash_id not in pinned]
             if not members:
                 continue
             members.sort(key=lambda it: (it["cr"].mp, it["cr"].seq))
@@ -1437,17 +1452,6 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
 
 
             for it, s_i in zip(members, st):
-                xy = pinned.get(it["cr"].crash_id)
-                if xy:
-                    ox, oy, _bb = fixed_box(it, xy)
-                    dxn, dyn = layout.get("nudges", {}).get(
-                        it["cr"].crash_id, (0, 0))
-                    svg.append(
-                        f'<g data-crash="{it["cr"].crash_id}" '
-                        f'data-seq="{it["cr"].seq}" '
-                        f'transform="translate({ox + dxn:.1f},'
-                        f'{oy + dyn:.1f})">{it["g"]}</g>')
-                    continue
                 spot = None
                 # the road curves away from the tangent, so a cell may need
                 # a little more than its own clearance to stay off the line
@@ -1547,7 +1551,7 @@ def _sheet(body_svg: list, layout: dict, crashes) -> str:
             f'viewBox="0 0 {PAGE_W} {PAGE_H}" '
             'xmlns="http://www.w3.org/2000/svg">'
             + "".join(svg) + '</svg>'
-            '<script>window._map=1;</script></body></html>')
+            '</body></html>')
 
 
 def load_logo(path: str | None) -> str:

@@ -47,7 +47,23 @@ REVIEW_MP = {
 #: the crash draws as the angle it is; its speed stays unknown because
 #: the export does not carry one.
 ADD_UNIT = {
-    "107421047": ("E", None, 4),
+    "107421047": ("S", None, 4),    # the crossing ATV, direction per the
+                                    # engineer; TEAAS codes it with no data
+}
+
+#: Direction the review resolves for a unit whose coded direction cannot
+#: be right. 107421047 unit 1 is the through vehicle on SR 1320 but is
+#: coded southbound; on an east-west road the through unit is eastbound
+#: per the engineer's read, and its 55 mph stays with it.
+REDIRECT = {
+    "107421047": "E",
+}
+
+#: Severity the review resolves where TEAAS codes unknown. 107822778 is
+#: SVRTY 6 (unknown); the Intersection Analysis Report shows zero K/A/B/C
+#: injuries and $9,500 damage, so it is property damage only.
+RESEVERITY = {
+    "107822778": "O",
 }
 
 #: Type the DMV-349 narrative supports, where the coded type has no cell
@@ -68,9 +84,13 @@ for c in crashes:
         c.mp = REVIEW_MP[c.crash_id]
     if c.crash_id in RETYPE:
         c.acc_typ = RETYPE[c.crash_id]
+    if c.crash_id in REDIRECT:
+        c.units[0].direction = REDIRECT[c.crash_id]
     if c.crash_id in ADD_UNIT and len(c.units) == 1:
         d, sp, mv = ADD_UNIT[c.crash_id]
         c.units.append(Unit(2, d, sp, mv))
+    if c.crash_id in RESEVERITY:
+        c.severity = RESEVERITY[c.crash_id]
 
 # The export is already in the order TEAAS wants them plotted, matching
 # 41000079307_CrashID.txt: milepost, then date. Keep it.
@@ -110,20 +130,20 @@ layout = {
         {"x": 232, "y": 812,
          "text": ["Crash #6: eastbound vehicle",
                   "turning right onto SR 1321",
-                  "ran off the road to the left"]},
+                  "ran off the road to the left."]},
         # TEAAS carries two units for this one: unit 2 is vehicle type 27,
         # the only one in the study that is not an ordinary passenger
         # type, and it has no direction, speed or maneuver coded. The
         # collision diagram export drops it for want of a direction, so
         # the cell shows one vehicle and the note carries the rest.
         {"x": 1155, "y": 726,
-         "text": ["Crash #10: angle with an ATV crossing southbound",
-                  "from an unnamed track. TEAAS carries no direction",
-                  "for the second unit; drawn eastbound on SR 1320."]},
+         "text": ["Crash #10: an ATV crossed SR 1320 southbound from",
+                  "an unnamed track into the eastbound vehicle. TEAAS",
+                  "codes the through unit southbound; drawn per review."]},
         {"x": 1200, "y": 782,
          "text": ["Crash #12: ran the stop sign on SR 1387 and",
                   "left the road to the right while turning",
-                  "onto SR 1320. Carried at the end, MP 1.800"]},
+                  "onto SR 1320. Carried at the end, MP 1.800."]},
     ],
     "nudges": {},
     "route_forward": "E",
@@ -142,10 +162,12 @@ layout = {
     # names the study from it as Stone Drive.
     # Bearing is the direction each side road leaves SR 1320, measured off
     # the OSM geometry where it carries the road: McInnis Road 192,
-    # Springside 20. Stone Drive is scaled off the aerial, and the two
-    # Watermelon Road legs are in neither the TEAAS Features Report nor
-    # the OSM extract, so their mileposts come off the aerial as well and
-    # want checking against the county map before this is issued.
+    # Springside 20. Stone Drive leaves to the north-northeast at the bend
+    # per the engineer's aerial (OSM carries no street by that name; its
+    # Hucks Drive is a different leg further west). The two Watermelon
+    # Road legs are in neither the TEAAS Features Report nor the OSM
+    # extract, so their mileposts come off the aerial as well and want
+    # checking against the county map before this is issued.
     "junctions": [
         {"mp": 1.31, "label": "Stone Drive", "bearing": 32},
         {"mp": 1.45, "label": "SR 1321 (McInnis Rd)", "bearing": 192},
@@ -166,11 +188,21 @@ layout = {
     # on, and which quadrant it ended up in. Everything else is placed by
     # the rule, so a sheet does not need hand tuning to read.
     "at": {
+        "107421047": [1319, 597],   # the angle at the crossing: the pin
+                                    # keeps the crossing arm at the track,
+                                    # which the mainline clearance search
+                                    # can never accept on its own
+        "107829164": [352, 700],    # at its station, downstream of 1
+        "106918221": [760, 696],    # at its station, past Watermelon Rd
+        "107089722": [489, 749],    # up the SR 1321 approach, beside 5
         "107666960": [452, 738],    # up the SR 1321 approach
         "108244836": [540, 778],    # off to the left in the SR 1321 turn
-        "108075100": [1425, 730],   # SE quadrant of the SR 1387 junction
+        "108075100": [1414, 742],   # SW quadrant, south of SR 1320 and
+                                    # west of the stub, per the engineer
     },
     "headings": {
+        "107089722": -78,       # ran the SR 1321 stop sign straight ahead,
+                                # same movement as 107666960 beside it
         "107666960": -78,       # northbound on SR 1321, so the cell runs
                                 # parallel to that leg, not square to it
         "108244836": 38,        # eastbound into the SR 1321 turn, SE quad

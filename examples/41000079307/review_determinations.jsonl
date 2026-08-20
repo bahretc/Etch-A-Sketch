@@ -12,3 +12,4 @@
 {"crash_id":"106667337","status":"NIS","new_mp":null,"comment":"Westbound vehicle ran off the road to the right and struck a ditch. MP 2.670, well beyond the study end."}
 {"crash_id":"107053481","status":"NIS","new_mp":null,"comment":"Southbound vehicle ran off the road to the right and struck a ditch. MP 2.670, well beyond the study end."}
 {"crash_id":"107621996","status":"NIS","new_mp":null,"comment":"Eastbound vehicle ran off the roadway, crossed the centerline, struck a ditch and overturned. MP 2.670, well beyond the study end."}
+{"crash_id": "107822778", "status": "IS", "new_mp": null, "comment": "TEAAS severity 6 (unknown); Intersection Analysis Report shows zero K/A/B/C injuries and $9,500 damage, resolved to PDO"}

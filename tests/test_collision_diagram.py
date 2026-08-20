@@ -460,3 +460,37 @@ def test_a_cell_that_runs_with_the_road_stays_beside_it(tmp_path):
                    for px, py, _ in ink) / len(ink)
         worst = max(worst, mean)
     assert worst <= 55, f"a cell sits {worst:.0f} px off the roadway"
+
+
+def test_injury_indicator_has_two_states_only():
+    """The deck defines the injury circle as hollow for a non fatal
+    injury and solid for a fatality; there is no third state and a PDO
+    crash carries none."""
+    assert cd._severity_circle(0, 0, "O") == ""
+    assert cd._severity_circle(0, 0, "") == ""
+    k = cd._severity_circle(0, 0, "K")
+    assert 'fill="#E10000"' in k and "path" not in k
+    for sev in ("A", "B", "C"):
+        c = cd._severity_circle(0, 0, sev)
+        assert 'fill="#fff"' in c and "path" not in c, sev
+
+
+def test_pinned_cells_leave_the_placement_chain(tmp_path):
+    """A pinned cell must not hold a slot in the row spread: its
+    unpinned neighbour at the same station stays at that station instead
+    of sliding around a ghost."""
+    crashes = [make_crash(crash_id=str(100000000 + i), mp=1.55, acc_typ=2,
+                          dt=f"01/{i + 1:02d}/2024 12:00",
+                          units=[cd.Unit(1, "W", 45, 4)])
+               for i in range(3)]
+    html = _sheet_with(crashes, tmp_path, at={"100000001": [400, 300]})
+    layout = {"type": "section", "begin_mp": 1.31, "end_mp": 1.80,
+              "title": ["t"], "route_label": ["r"],
+              "prepared_by": "x", "date": "1/1/2026"}
+    line = cd.road_line(layout)
+    sx, sy = line.at((1.55 - 1.31) / 0.49)
+    for cid in ("100000000", "100000002"):
+        m = re.search(rf'data-crash="{cid}"[^>]*'
+                      r'translate\(([-\d.]+),([-\d.]+)\)', html)
+        x, y = float(m.group(1)), float(m.group(2))
+        assert math.hypot(x - sx, y - sy) < 130, (cid, x, y, sx, sy)

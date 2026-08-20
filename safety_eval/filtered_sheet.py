@@ -101,6 +101,51 @@ def build_filtered_rows_xml(template: str, groups: dict) -> str:
     return "".join(parts)
 
 
+ORIGINAL_SHEET = "Original Fiche"
+
+#: Original Fiche columns: the fiche's own layout plus the DetailedFiche's
+#: coordinates, which is what locates a crash when its milepost cannot.
+_ORIGINAL_HEADERS = {
+    "A": "Muni.\nCode", "B": "On Road", "C": "Miles", "D": "Dir From",
+    "E": "From Road", "F": "Toward Road", "G": "Milepost Road", "H": "MP",
+    "I": "MA", "J": "Crash ID", "K": "Date", "L": "T", "M": "C", "N": "F",
+    "O": "L", "P": "S", "Q": "Latitude", "R": "Longitude", "S": "Source",
+}
+
+
+def build_original_rows_xml(template: str, fiche, coords: dict) -> str:
+    """The full fiche dump for the Original Fiche sheet.
+
+    ``coords`` maps crash_id to (latitude, longitude, source) from the
+    DetailedFiche; rows without an entry keep those cells empty.
+    """
+    styles = sheet_row_styles(template, ORIGINAL_SHEET, 2)
+    parts = [render_row(1, dict(_ORIGINAL_HEADERS))]
+    for row, crash in enumerate(fiche, start=2):
+        la, lo, src = coords.get(crash.crash_id, (None, None, None))
+        parts.append(render_row(row, {
+            "A": crash.muni_code or None, "B": crash.on_road or None,
+            "C": crash.miles, "D": crash.dir_from or None,
+            "E": crash.from_road or None, "F": crash.toward_road or None,
+            "G": crash.milepost_road or None, "H": crash.mp,
+            "I": crash.ma or None,
+            "J": (int(crash.crash_id) if crash.crash_id.isdigit()
+                  else crash.crash_id),
+            "K": _fmt(crash.date) if crash.date else None,
+            "L": crash.t, "M": crash.c, "N": crash.f, "O": crash.l,
+            "P": crash.s or None, "Q": la, "R": lo, "S": src,
+        }, styles))
+    return "".join(parts)
+
+
+def populate_original_sheet(template: str, output: str, fiche,
+                            coords: dict) -> int:
+    rows_xml = build_original_rows_xml(template, fiche, coords)
+    replace_sheet_rows(template, output, ORIGINAL_SHEET, rows_xml,
+                       from_row=1)
+    return len(fiche)
+
+
 def populate_filtered_sheet(
     template: str, output: str, fiche: list[Crash],
     before_ids: set[str], after_ids: set[str],

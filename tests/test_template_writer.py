@@ -159,3 +159,25 @@ def test_populated_workbook_recalc_if_available(tmp_path, cfg):
     # KABCO/EPDO summary reachable; drawings/media must still be intact
     report = verify_integrity(TEMPLATE, out)
     assert report.ok, report.problems
+
+
+def test_original_fiche_sheet_carries_the_detailed_coordinates(tmp_path):
+    """The Original Fiche sheet is the full fiche dump, and a crash the
+    DetailedFiche locates carries its coordinates on the row."""
+    import openpyxl
+
+    from safety_eval.filtered_sheet import populate_original_sheet
+    from safety_eval.models import Crash
+
+    template = "templates/Intersection Evaluation Workbook - 2023-12-04.xlsx"
+    fiche = [Crash(crash_id="100000001", on_road="SR 1"),
+             Crash(crash_id="100000002", on_road="SR 2")]
+    out = str(tmp_path / "out.xlsx")
+    n = populate_original_sheet(template, out, fiche,
+                                {"100000002": (35.08, -80.5, "DMV349")})
+    assert n == 2
+    ws = openpyxl.load_workbook(out)["Original Fiche"]
+    assert ws.cell(row=1, column=17).value == "Latitude"
+    assert ws.cell(row=3, column=17).value == 35.08
+    assert ws.cell(row=3, column=19).value == "DMV349"
+    assert ws.cell(row=2, column=17).value is None

@@ -44,6 +44,20 @@ project_development:
   b: 1.4
   c: 1.2
   pdo: 1.0
-# Filled from the DMV-349 reads (see review_determinations.jsonl):
-additional_info: []
-items_for_discussion: []
+# From the DMV-349 reads of all 27 reports (see review_determinations.jsonl).
+# At-fault approach: before, every target crash was a side-street driver
+# (SR 1617 west leg eastbound, SR 1619 east leg westbound); after, the
+# residual pattern is SR 1001 drivers missing or misjudging their new stop.
+additional_info:
+  - {label: "Target Crashes: SR 1617/SR 1619 At-Fault", before: 11, after: 1}
+  - {label: "Target Crashes: SR 1001 At-Fault", before: 0, after: 4}
+  - {label: "Target Crashes: No Fault Determined", before: 0, after: 2}
+  - {label: "Target Crashes: Failed to Yield", before: 8, after: 3}
+  - {label: "Target Crashes: Ran Stop Sign", before: 3, after: 2}
+items_for_discussion:
+  - "No crashes occurred at the intersection during the construction period (4/1/2021 to 6/30/2021)."
+  - "The only Class A injury crash (12/16/2017) was an eastbound SR 1617 driver who ran the STOP sign and struck the saddle fuel tank of a southbound truck-trailer on SR 1001; the truck ran off the road and came to rest in the front yard of a residence."
+  - "The most severe after-period target crash (10/23/2025, Class C) was a westbound SR 1001 driver who failed to stop at the four-way stop at 45 mph and struck a northbound vehicle towing a trailer; the other after-period target crashes occurred at 5 to 25 mph between vehicles at or departing the new stops."
+  - "The single after-period rear-end (12/4/2024, Class C) struck a vehicle stopped at the all-way stop; rear-end frequency did not rise with the conversion (one before, one after, both from following too closely in a queue)."
+  - "One before-period angle crash (1/26/2018) was coded 0.000 miles from SR 1619 and never entered the TEAAS study combinations; the DMV-349 places it at the intersection (SR 1619 is the eastern leg of Tom Boyd Road), and it is added to the before period."
+  - "Four review candidates resolved not in study against their DMV-349s: two lane departures south of the y-line, a mid-block tree strike, and a backing crash on a private drive."

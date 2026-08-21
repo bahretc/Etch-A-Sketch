@@ -328,3 +328,24 @@ def test_verifier_flags_a_surviving_charge_line_name():
     found = list(_residual_groups(words, True, None))
     assert [r for _, r in found] == ["charge-line name survived"]
     assert [w.text for w in found[0][0]] == ["DALTON"]
+
+
+def test_field_number_beside_caption_still_covers_the_next_line():
+    """'86 Type/Owner' left only a field number beside the caption, which
+    took the value-before branch and never armed next-line coverage; the
+    property owner's name below survived (600504376 p12/p20)."""
+    words = [W("86", 10, 10, w=25, line=(0, 0, 1)),
+             W("Owner", 45, 10, w=55, line=(0, 0, 1)),
+             W("MAILBOX-LINDSAY", 12, 40, w=170, line=(0, 0, 2)),
+             W("BENFIELD", 190, 40, w=90, line=(0, 0, 2))]
+    boxes = plan_redactions(words)
+    below = [b for b in boxes if b.top >= 30]
+    assert below, [b.reason for b in boxes]
+    assert any(b.left <= 15 and b.right >= 275 for b in below), below
+
+
+def test_study_road_tokens_never_scrub_as_names():
+    from safety_eval.redact import _road_token_seqs
+    vocab = {t for seq in _road_token_seqs(["SIKES MILL", "TOM BOYD"])
+             for t in seq}
+    assert vocab == {"SIKES", "MILL", "TOM", "BOYD"}

@@ -161,7 +161,8 @@ _CHARGE_WORDS = {
     "pending", "yes", "no", "not", "posted", "statute", "chapter",
     # connective words so a readable charge does not end up pockmarked
     "with", "was", "were", "the", "and", "for", "any", "other", "due",
-    "care", "caution", "roadway", "highway", "street",
+    "care", "caution", "roadway", "highway", "street", "appear",
+    "comply", "expired", "inspection", "operator",
 }
 
 _ZIP_RE = re.compile(r"^\d{5}(?:-\d{4})?$")
@@ -458,6 +459,14 @@ def plan_redactions(words: list[Word], keep_zip: bool = True, pad: int = 3,
                 # the value BEFORE the surviving caption on the row (seen with
                 # VIN/plate on the 600501348 binder)
                 planned.append((before_words, f"label:{label_kind}(before)"))
+                if all(len(_norm(w.text)) <= 2 or _norm(w.text).isdigit()
+                       for w in before_words):
+                    # nothing but a form field number sat beside the caption
+                    # ("86 Type/Owner"), so the value lives on the following
+                    # line; without this the property owner's name survived
+                    # (600504376 pages 12 and 20)
+                    redact_next_line_of[("pending", idx + 1)] = \
+                        f"label:{label_kind}(below)"
             else:
                 # caption-only line: value sits on the following line
                 redact_next_line_of[("pending", idx + 1)] = f"label:{label_kind}(below)"
@@ -684,6 +693,11 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
                 current = fg.harvest_names(words, img.width, img.height, reg)
             page_reg.append(reg)
             page_names.append(current or set())
+        # the engineer's study roads are places, never people: a driver who
+        # shares a surname with the road must not black the road's name out
+        # of narratives and location lines ("SIKES MILL RD", observed)
+        protected |= {t for seq in _road_token_seqs(local_roads or ())
+                      for t in seq}
         page_names = [n - protected for n in page_names]
         harvested = len(set().union(*page_names)) if page_names else 0
         if harvested:

@@ -1,26 +1,26 @@
-{"crash_id": "104716467", "status": "IS", "new_mp": null, "comment": "at the junction, SR 1617 MP 0.540"}
-{"crash_id": "104890928", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "104901954", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "104942804", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "104987740", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "105210461", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "105326435", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "105520583", "status": "IS", "new_mp": null, "comment": "SR 1001 MP 3.442, 100 ft south"}
-{"crash_id": "105535858", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "105553349", "status": "IS", "new_mp": null, "comment": "SR 1001 MP 3.447, 74 ft south"}
-{"crash_id": "105885258", "status": "IS", "new_mp": null, "comment": "SR 1617 MP 0.512, 148 ft west, right at the y-line"}
-{"crash_id": "106126767", "status": "IS", "new_mp": null, "comment": "SR 1001 MP 3.466, 26 ft north"}
-{"crash_id": "106133705", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "106286453", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "106743409", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "106772984", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "107601791", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "107870118", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "107902086", "status": "IS", "new_mp": null, "comment": "at the junction; DMV349 coords 10 ft"}
-{"crash_id": "107945637", "status": "IS", "new_mp": null, "comment": "SR 1001 MP 3.466, 26 ft north"}
-{"crash_id": "108250468", "status": "IS", "new_mp": null, "comment": "at the junction; DMV349 coords 0 ft"}
-{"crash_id": "108279485", "status": "IS", "new_mp": null, "comment": "at the junction; DMV349 coords 12 ft"}
-{"crash_id": "105363964", "status": "ADD", "new_mp": null, "comment": "confirmed at the study intersection: stopped on SR 1619, failed to yield, collided with the SR 1001 vehicle in the intersection (report 0 ft, at SR 1619); angle, target type, before period"}
+{"crash_id": "104716467", "status": "IS", "new_mp": null, "comment": "at the junction, SR 1617 MP 0.540; EB west leg stopped, then failed to yield crossing; charged failure to yield"}
+{"crash_id": "104890928", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair; WB east leg stopped at the sign, pulled into the SB through; failed to yield, charged"}
+{"crash_id": "104901954", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair; WB east leg pulled from the stop into the SB through, then struck the opposite waiting vehicle; failed to yield, charged unsafe movement"}
+{"crash_id": "104942804", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair; WB east leg stopped, then entered against the SB through; failed to yield"}
+{"crash_id": "104987740", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair; WB east leg ran the stop sign at 45; charged stop sign violation"}
+{"crash_id": "105210461", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair; EB west leg stopped, then entered against the NB through; failed to yield, charged"}
+{"crash_id": "105326435", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair; EB west leg ran the stop sign, struck a SB truck trailer's saddle fuel tank; the A injury; charged stop sign violation"}
+{"crash_id": "105520583", "status": "IS", "new_mp": null, "comment": "SR 1001 MP 3.442, 100 ft south; NB ran off right into the ditch, charged safe speed; not intersection related"}
+{"crash_id": "105535858", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair; SE west leg ran the stop sign at 50, struck broadside; ran on to sideswipe the house at 2220 Sikes Mill Rd; charged stop sign violation"}
+{"crash_id": "105553349", "status": "IS", "new_mp": null, "comment": "SR 1001 MP 3.447, 74 ft south; NB at 65 crossed the centerline into the ditch; not intersection related"}
+{"crash_id": "105885258", "status": "IS", "new_mp": null, "comment": "SR 1617 MP 0.512, 148 ft west, right at the y-line; opposite direction mirror strike on Tom Boyd, unit 1 fled; not control related"}
+{"crash_id": "106126767", "status": "IS", "new_mp": null, "comment": "SR 1001 MP 3.466, 26 ft north; SB queue rear end, vehicles stopped for traffic flow ahead; charged failure to reduce speed"}
+{"crash_id": "106133705", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair; EB west leg failed to yield at 15 against the NB through"}
+{"crash_id": "106286453", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair; EB west leg crossed at 10 against the NB through; charged failure to yield"}
+{"crash_id": "106743409", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair; NB SR 1001 pulled from the new stop into a crossing vehicle nearly clear; failed to yield, charged; 5 to 10 mph"}
+{"crash_id": "106772984", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair; both at 10 to 15 mph; officer could not determine which failed to yield"}
+{"crash_id": "107601791", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair; EB Tom Boyd failed to yield from the stop; both at 10 mph"}
+{"crash_id": "107870118", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair; NB SR 1001 failed to stop at the new all way stop at 25"}
+{"crash_id": "107902086", "status": "IS", "new_mp": null, "comment": "at the junction; DMV349 coords 10 ft; NB SR 1001 failed to yield from the stop sign; both from stops at 5 mph"}
+{"crash_id": "107945637", "status": "IS", "new_mp": null, "comment": "SR 1001 MP 3.466, 26 ft north; rear end into a vehicle stopped at the all way stop, failed to reduce speed; the after period C injury"}
+{"crash_id": "108250468", "status": "IS", "new_mp": null, "comment": "at the junction; DMV349 coords 0 ft; both departed their stops at 5 mph; no fault determined"}
+{"crash_id": "108279485", "status": "IS", "new_mp": null, "comment": "at the junction; DMV349 coords 12 ft; WB SR 1001 failed to stop at the four way at 45, charged failed to stop; the after period target C injury"}
+{"crash_id": "105363964", "status": "ADD", "new_mp": null, "comment": "confirmed at the study intersection (report 0 ft, at SR 1619): WB east leg stopped, then failed to yield into the SB SR 1001 vehicle; charged fail to yield at stop sign; angle, target type, before period"}
 {"crash_id": "105208918", "status": "NIS", "new_mp": null, "comment": "confirmed elsewhere: ran off right on the curve, overcorrected across the centerline, head on in the southbound lane 156 ft south; lane departure, no intersection involvement"}
 {"crash_id": "105964079", "status": "NIS", "new_mp": null, "comment": "confirmed elsewhere: too fast on a wet curve, slid off right, struck the ditch and overturned; no intersection involvement"}
 {"crash_id": "108184887", "status": "NIS", "new_mp": null, "comment": "confirmed elsewhere: ran off left mid block and struck a tree; the report's coded reference and its own coordinates disagree but both fall outside the y-line"}

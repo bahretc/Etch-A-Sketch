@@ -166,7 +166,7 @@ def _load(path: str) -> list[dict]:
 
 
 def run_drafts(dataset_path: str, train_path: str, outpath: str,
-               model: str = D.DEFAULT_MODEL, k: int = 3,
+               model: str | None = None, k: int = 3,
                mode: str = "batch", rehearsal: bool = False,
                limit: int | None = None, client=None,
                poll_seconds: int = 30, progress=None) -> dict:
@@ -174,7 +174,13 @@ def run_drafts(dataset_path: str, train_path: str, outpath: str,
 
     ``mode='batch'`` uses the Message Batches API (half price; minutes to
     hours of latency); ``'sync'`` calls the Messages API record by record.
+    ``model=None`` resolves through the SAFETY_EVAL_ASSIST_MODEL environment
+    variable, then the drafting default.
     """
+    from .review_assist import ENV_MODEL as _ENV
+    import os as _os
+    model = (model or "").strip() \
+        or _os.environ.get(_ENV, "").strip() or D.DEFAULT_MODEL
     records = _load(dataset_path)
     train = _load(train_path)
     if records and records[0].get("split") == "train" and not rehearsal:

@@ -1,24 +1,29 @@
 """Streamlit shell for the NCDOT safety-study workflow (docs/07).
 
-Run with:  streamlit run safety_eval/app.py
+Run with:  streamlit run streamlit_app.py
 
-The study type chosen in the sidebar governs the run (docs/12): every type
-shares the fiche, redaction and review core; an Evaluation adds the workbook
-population tab and an HSIP Package Analysis adds the warrant tab. The tabs a
-study cannot use are not shown.
+The app is a small set of pages, grouped in the sidebar in workflow order
+(``st.navigation`` over the shims in ``safety_eval/ui_pages/``). The study
+type chosen in the sidebar governs the run (docs/12): every type shares the
+fiche, redaction and review core; an Evaluation adds the workbook and
+assumptions-email deliverables and an HSIP Package Analysis adds the warrant
+screen. Pages a study cannot use are not shown.
 
+* **Overview** - the workflow, step by step, with links; environment check.
 * **Fiche Workbook** - assemble the study workbook from the TEAAS exports and
   run the colour screen (IS / ? / NIS, DEL for animals on HSIP).
-* **Evaluation Workbook** - populate a real NCDOT template; every write is
-  integrity-verified and drawings stay byte-identical.
-* **HSIP Warrants** - after the review: section or intersection warrant
-  screen, the Warrant sheet, sub-section findings, import list and feature
-  inclusions.
 * **Redact Crash Reports** - every DMV-349 is redacted BEFORE it is stored or
   shown; ZIP codes and crash IDs are kept.
 * **Review Queue** - the interactive fiche review with the redacted report
   beside the coded data. The tool prepares and records; the engineer decides
   every status.
+* **HSIP Warrants** - after the review: section or intersection warrant
+  screen, the Warrant sheet, sub-section findings, import list and feature
+  inclusions.
+* **Evaluation Workbook** - populate a real NCDOT template; every write is
+  integrity-verified and drawings stay byte-identical.
+* **Assumptions Email** - the docs/05 team-template .docx, from a YAML or the
+  Master Evaluation Spreadsheet row.
 
 Accessibility: state is never carried by colour alone. Verdicts are words
 ("Met", "Yes"), warnings carry icons and text, and the theme's primary colour
@@ -69,6 +74,28 @@ def _style(st) -> None:
         </style>""", unsafe_allow_html=True)
 
 
+#: page-shim paths, relative to the launcher (streamlit_app.py at the repo
+#: root); st.navigation, st.page_link and the AppTest suite all use these.
+PAGES_DIR = "safety_eval/ui_pages"
+PAGE = {
+    "home": f"{PAGES_DIR}/home.py",
+    "fiche": f"{PAGES_DIR}/fiche.py",
+    "redact": f"{PAGES_DIR}/redact.py",
+    "review": f"{PAGES_DIR}/review.py",
+    "warrants": f"{PAGES_DIR}/warrants.py",
+    "evaluation": f"{PAGES_DIR}/evaluation.py",
+    "assumptions": f"{PAGES_DIR}/assumptions.py",
+}
+
+
+def _current_kind():
+    """The StudyType the sidebar selector holds (HSIP before first render)."""
+    import streamlit as st
+
+    from safety_eval.study_type import HSIP, STUDY_TYPES
+    return STUDY_TYPES[st.session_state.get("study_type", HSIP)]
+
+
 def main() -> None:
     import streamlit as st
 
@@ -83,11 +110,8 @@ def main() -> None:
     # and the animal-crash rule branch (docs/12).
     keys = [k for k, _ in choices()]
     with st.sidebar:
-        st.title("NCDOT Safety Studies")
-        st.caption("TEAAS-faithful crash analysis, review and deliverables.")
-        st.divider()
         study_key = st.selectbox(
-            "Study type", keys,
+            "Study type", keys, key="study_type",
             format_func=lambda k: STUDY_TYPES[k].label)
         kind = STUDY_TYPES[study_key]
         st.caption(kind.description)
@@ -98,40 +122,204 @@ def main() -> None:
             notes.append("the HSIP warrant screen runs")
         if notes:
             st.info("For this study type, " + " and ".join(notes) + ".")
-        st.divider()
         st.caption("The engineer decides every status; the app prepares, "
                    "checks and records.")
-    st.session_state["study_type"] = study_key
 
-    # Tabs a study type cannot use are not shown: an Evaluation never sees a
+    # Pages a study type cannot use are not shown: an Evaluation never sees a
     # warrant screen it must not rely on, and only an Evaluation populates
-    # the NCDOT Evaluation Workbook template (docs/12).
-    names = ["Fiche Workbook"]
+    # the NCDOT Evaluation Workbook template (docs/12). The groups follow the
+    # workflow: set up, work the crashes, then the study's own deliverables.
+    pages = {
+        "Start": [st.Page(PAGE["home"], title="Overview",
+                          icon=":material/home:", default=True)],
+        "Crash data": [
+            st.Page(PAGE["fiche"], title="Fiche Workbook",
+                    icon=":material/table_chart:"),
+            st.Page(PAGE["redact"], title="Redact Crash Reports",
+                    icon=":material/visibility_off:"),
+            st.Page(PAGE["review"], title="Review Queue",
+                    icon=":material/checklist:"),
+        ],
+    }
+    if kind.runs_warrants:
+        pages["Analysis"] = [st.Page(PAGE["warrants"], title="HSIP Warrants",
+                                     icon=":material/rule:")]
     if study_key == EVALUATION:
-        names.append("Evaluation Workbook")
+        pages["Deliverables"] = [
+            st.Page(PAGE["evaluation"], title="Evaluation Workbook",
+                    icon=":material/grid_on:"),
+            st.Page(PAGE["assumptions"], title="Assumptions Email",
+                    icon=":material/mail:"),
+        ]
+    # The shown-page titles, for the Overview page and the behaviour tests.
+    st.session_state["nav_titles"] = [
+        p.title for group in pages.values() for p in group]
+    st.navigation(pages, position="sidebar").run()
+
+
+# --------------------------------------------------------------------------- #
+# page entry points (called by the safety_eval/ui_pages/ shims)
+# --------------------------------------------------------------------------- #
+def page_home() -> None:
+    import streamlit as st
+    _home_page(st, _current_kind())
+
+
+def page_fiche() -> None:
+    import streamlit as st
+    st.header("Fiche Workbook")
+    _fiche_tab(st, _current_kind())
+
+
+def page_redact() -> None:
+    import streamlit as st
+    st.header("Redact Crash Reports")
+    _redact_tab(st)
+
+
+def page_review() -> None:
+    import streamlit as st
+    st.header("Review Queue")
+    _review_queue_tab(st)
+
+
+def page_warrants() -> None:
+    import streamlit as st
+    st.header("HSIP Warrants")
+    _hsip_tab(st)
+
+
+def page_evaluation() -> None:
+    import streamlit as st
+    st.header("Evaluation Workbook")
+    _evaluation_tab(st)
+
+
+def page_assumptions() -> None:
+    import streamlit as st
+    st.header("Assumptions Email")
+    _assumptions_tab(st)
+
+
+def _home_page(st, kind) -> None:
+    from safety_eval.study_type import EVALUATION
+
+    st.header("NCDOT Safety Studies")
+    st.caption("TEAAS-faithful crash analysis, review and deliverables. "
+               "Pick the study type in the sidebar; the pages in the sidebar "
+               "follow the workflow, top to bottom.")
+
+    steps = [
+        (PAGE["fiche"], "Build the fiche workbook",
+         "Assemble the TEAAS exports into the working sheet and run the "
+         "colour screen (IS / ? / NIS"
+         + (" / DEL for animals" if kind.deletes_animals else "") + ")."),
+        (PAGE["redact"], "Redact the crash reports",
+         "Every DMV-349 is redacted before it is stored or shown; ZIP codes "
+         "and crash IDs are kept."),
+        (PAGE["review"], "Review the crashes",
+         "The queue shows the redacted report beside the coded data; the "
+         "engineer decides every status, with optional AI assist."),
+    ]
     if kind.runs_warrants:
-        names.append("HSIP Warrants")
-    names += ["Redact Crash Reports", "Review Queue"]
-    tabs = dict(zip(names, st.tabs(names)))
-    tab_redact = tabs["Redact Crash Reports"]
-    tab_review = tabs["Review Queue"]
+        steps.append((PAGE["warrants"], "Run the HSIP warrants",
+                      "Section or intersection warrant screen off your "
+                      "IS/RE/ADD determinations, with the import list and "
+                      "the crash map."))
+    if kind.key == EVALUATION:
+        steps.append((PAGE["evaluation"], "Populate the Evaluation Workbook",
+                      "A real NCDOT template; every write is "
+                      "integrity-verified and drawings stay byte-identical."))
+        steps.append((PAGE["assumptions"], "Send the assumptions email",
+                      "The docs/05 team-template .docx, from a YAML or the "
+                      "Master Evaluation Spreadsheet row."))
+    for n, (path, title, blurb) in enumerate(steps, 1):
+        with st.container(border=True):
+            left, right = st.columns([3, 2], vertical_alignment="center")
+            with left:
+                st.page_link(path, label=f"{n}. {title}",
+                             icon=":material/arrow_forward:")
+            with right:
+                st.caption(blurb)
 
-    with tabs["Fiche Workbook"]:
-        _fiche_tab(st, kind)
+    with st.expander("Environment check"):
+        _environment_check(st)
 
-    if "Evaluation Workbook" in tabs:
-        with tabs["Evaluation Workbook"]:
-            _evaluation_tab(st)
 
-    if kind.runs_warrants:
-        with tabs["HSIP Warrants"]:
-            _hsip_tab(st)
+def _environment_check(st) -> None:
+    """What this machine can run, in words (the CLI's `doctor`, for the UI)."""
+    import shutil
 
-    with tab_redact:
-        _redact_tab(st)
+    from safety_eval.ocr import available_backends
+    from safety_eval.review_assist import assist_available
 
-    with tab_review:
-        _review_queue_tab(st)
+    rows = []
+    for name, ok in available_backends().items():
+        rows.append((ok, name, "PDF/OCR backend"))
+    soffice = bool(shutil.which("soffice") or shutil.which("libreoffice"))
+    rows.append((soffice, "LibreOffice (Calc)",
+                 "formula recalc pass for populated workbooks (docs/06)"))
+    have_templates = os.path.isdir("templates") and any(
+        f.endswith((".xlsx", ".xlsm")) for f in os.listdir("templates"))
+    rows.append((have_templates, "templates/",
+                 "real NCDOT template workbooks (ground truth)"))
+    ready, detail = assist_available()
+    rows.append((ready, "AI assist", detail))
+    for ok, name, note in rows:
+        st.write(("✅" if ok else "▫️") + f" **{name}** — {note}")
+    if not soffice:
+        st.caption("Without LibreOffice the populated workbooks still build; "
+                   "Excel recalculates the formulas on first open.")
+
+
+def _assumptions_tab(st) -> None:
+    st.caption("The assumptions email .docx (docs/05 team template): from an "
+               "assumptions YAML, or drafted straight from the order's row in "
+               "the NCDOT Master Evaluation Spreadsheet. NCDOT's reply in the "
+               "assignment thread is the authoritative record.")
+    source = st.radio("Draft from",
+                      ["Assumptions YAML", "Master Evaluation Spreadsheet"],
+                      horizontal=True)
+    from_master = source.startswith("Master")
+    if from_master:
+        master_up = st.file_uploader("Master Evaluation Spreadsheet (.xlsx)",
+                                     type=["xlsx", "xlsm"])
+        order_id = st.text_input("Evaluation Order Number",
+                                 placeholder="04-15-39049")
+        ready = master_up is not None and order_id.strip()
+        yaml_up = None
+    else:
+        yaml_up = st.file_uploader("Assumptions YAML", type=["yaml", "yml"])
+        ready = yaml_up is not None
+        master_up, order_id = None, ""
+
+    if st.button("Generate .docx", type="primary", disabled=not ready):
+        from safety_eval.assumptions_email import (default_filename,
+                                                   generate_assumptions_email,
+                                                   load_assumptions_yaml)
+        with tempfile.TemporaryDirectory() as tmp:
+            try:
+                if from_master:
+                    from safety_eval.master_eval import (find_assignment,
+                                                         to_assumptions_data)
+                    data = to_assumptions_data(find_assignment(
+                        _save_upload(master_up, tmp), order_id.strip()))
+                    st.info("Drafted from the Master Evaluation Spreadsheet; "
+                            "target crashes and time periods are left for "
+                            "the engineer.")
+                else:
+                    data = load_assumptions_yaml(_save_upload(yaml_up, tmp))
+                out = os.path.join(tmp, default_filename(data))
+                generate_assumptions_email(data, out)
+            except (ValueError, KeyError) as exc:
+                st.error(str(exc))
+                st.stop()
+            with open(out, "rb") as fh:
+                st.download_button("Download " + os.path.basename(out),
+                                   fh.read(),
+                                   file_name=os.path.basename(out))
+            st.success("Draft generated; review every line before it goes "
+                       "to NCDOT.")
 
 
 def _evaluation_tab(st) -> None:
@@ -691,6 +879,28 @@ def _review_queue_tab(st) -> None:
                  "the report's distances, and the assist is told not to infer "
                  "one.")
 
+    # The assist is optional and the queue must work without it: the settings
+    # live here so a missing key reads as one plain sentence, not a traceback.
+    import safety_eval.review_assist as ra
+    ready, detail = ra.assist_available()
+    with st.expander("AI assist settings", expanded=False):
+        st.caption("Runs on the redacted pages only; proposals are never "
+                   "auto-applied. The key stays in this app's process "
+                   "environment; it is never written to disk.")
+        pasted = st.text_input("Anthropic API key", type="password",
+                               key="rq_api_key",
+                               help="Leave blank if ANTHROPIC_API_KEY is "
+                                    "already set in the environment.")
+        if pasted.strip():
+            os.environ["ANTHROPIC_API_KEY"] = pasted.strip()
+            ready, detail = ra.assist_available()
+        assist_model = st.text_input(
+            "Model", value=ra.assist_model(), key="rq_assist_model",
+            help="Default from SAFETY_EVAL_ASSIST_MODEL when set; the "
+                 "measured default otherwise.")
+        st.caption(("✅ AI assist " if ready else "▫️ AI assist not ready: ")
+                   + detail)
+
     if not (wb_path and os.path.exists(wb_path)):
         if wb_path:
             st.error(f"Workbook not found: {wb_path}")
@@ -856,12 +1066,13 @@ def _review_queue_tab(st) -> None:
                 for note in resolved.notes[:3]:
                     st.caption("· " + note)
             akey = f"rq_assist_res_{row.crash_id}"
-            if assist_mode != "Off" and st.button("Run AI assist",
-                                                  key=f"rq_run_{row.crash_id}"):
+            if assist_mode != "Off" and not ready:
+                st.warning("AI assist not ready: " + detail)
+            elif assist_mode != "Off" and st.button(
+                    "Run AI assist", key=f"rq_run_{row.crash_id}"):
                 if not report_pages:
                     st.warning("No redacted report to assist from.")
                 else:
-                    import safety_eval.review_assist as ra
                     ctx = ra.StudyContext(analysis_type=analysis_type,
                                           study_point=point, mp_range=mp_range,
                                           prescreen_ft=item.dist_ft,
@@ -873,7 +1084,7 @@ def _review_queue_tab(st) -> None:
                         try:
                             st.session_state[akey] = ra.assist(
                                 row, ctx, report_pages, mode=assist_mode.lower(),
-                                redacted=True)
+                                redacted=True, model=assist_model)
                         except Exception as exc:   # noqa: BLE001 - show, don't die
                             st.error(f"Assist failed: {exc}")
             res = st.session_state.get(akey)

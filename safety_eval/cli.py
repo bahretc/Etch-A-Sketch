@@ -1064,7 +1064,9 @@ def build_parser() -> argparse.ArgumentParser:
                     "the dataset.")
     be.add_argument("--train", help="train-half records .jsonl (exemplars).")
     be.add_argument("--output", help="draft: drafts.jsonl; score: report.json.")
-    be.add_argument("--model", default="claude-opus-4-8")
+    be.add_argument("--model", default=None,
+                    help="Default: SAFETY_EVAL_ASSIST_MODEL or the measured "
+                         "assist default.")
     be.add_argument("--exemplars", type=int, default=3)
     be.add_argument("--mode", choices=["batch", "sync"], default="batch")
     be.add_argument("--rehearsal", action="store_true",
@@ -1099,7 +1101,9 @@ def build_parser() -> argparse.ArgumentParser:
     rv.add_argument("--target", default="",
                     help="Target-crash definition text for context.")
     rv.add_argument("--study-name", dest="study_name", default="")
-    rv.add_argument("--model", default="claude-opus-4-8")
+    rv.add_argument("--model", default=None,
+                    help="Default: SAFETY_EVAL_ASSIST_MODEL or the measured "
+                         "assist default.")
     rv.add_argument("--limit", type=int)
     rv.add_argument("--only", nargs="*",
                     help="Crash IDs to assist (default: the whole queue).")

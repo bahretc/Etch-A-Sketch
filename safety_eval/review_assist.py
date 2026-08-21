@@ -29,6 +29,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+import os
 from dataclasses import dataclass, field
 
 from .review_queue import (STATUS_VOCAB, Determination, branch_vocab,
@@ -49,6 +50,37 @@ DEFAULT_MODEL = "claude-opus-4-8"
 DEFAULT_MAX_TOKENS = 4000
 
 MODES = ("decide", "prepare")
+
+#: environment override for the assist model, so a study can pin a model
+#: without touching code (the UI and CLI both resolve through assist_model).
+ENV_MODEL = "SAFETY_EVAL_ASSIST_MODEL"
+
+
+def assist_model(override: str | None = None) -> str:
+    """The model an assist call uses: explicit override, then the
+    SAFETY_EVAL_ASSIST_MODEL environment variable, then the measured default."""
+    return (override or "").strip() \
+        or os.environ.get(ENV_MODEL, "").strip() or DEFAULT_MODEL
+
+
+def assist_available() -> tuple[bool, str]:
+    """Whether an assist call can run here, and why not when it cannot.
+
+    Returns ``(ready, detail)``: ready means the SDK imports and an API key is
+    configured. Callers (the review queue UI, the CLI) check this BEFORE
+    building a request so the engineer gets a plain sentence instead of a
+    traceback from inside the SDK.
+    """
+    try:
+        import anthropic  # noqa: F401
+    except ImportError:
+        return False, ("the 'anthropic' package is not installed "
+                       "(pip install anthropic)")
+    if not os.environ.get("ANTHROPIC_API_KEY", "").strip():
+        return False, ("no API key: set the ANTHROPIC_API_KEY environment "
+                       "variable, or paste a key in the app's AI assist "
+                       "settings (kept for the session only)")
+    return True, f"ready, model {assist_model()}"
 
 
 @dataclass
@@ -304,11 +336,12 @@ def _image_blocks(pages) -> list[dict]:
 
 
 def build_request(row, ctx: StudyContext, pages, mode: str,
-                  model: str = DEFAULT_MODEL,
+                  model: str | None = None,
                   max_tokens: int = DEFAULT_MAX_TOKENS) -> dict:
     """Messages-API params for one assist call (decide or prepare)."""
     if mode not in MODES:
         raise ValueError(f"mode must be one of {MODES}, got {mode!r}")
+    model = assist_model(model)
     system = _DECIDE_SYS if mode == "decide" else _PREPARE_SYS
     schema = (_decide_schema(ctx.analysis_type, ctx.in_initial_study)
               if mode == "decide" else _PREPARE_SCHEMA)
@@ -409,7 +442,7 @@ def _parse(data: dict, row, ctx: StudyContext, mode: str) -> AssistResult:
 
 def assist(row, ctx: StudyContext, pages, mode: str = "decide",
            client=None, redacted: bool = False,
-           model: str = DEFAULT_MODEL) -> AssistResult:
+           model: str | None = None) -> AssistResult:
     """Assist one crash's determination from its REDACTED report pages.
 
     ``pages`` are already-redacted PIL images (``render_crash_pages`` output);

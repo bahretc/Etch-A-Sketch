@@ -248,3 +248,35 @@ def test_IS_on_the_coded_milepost_alone_is_allowed():
     r = _decide("IS", fiche_milepost=8.10)
     assert not any("milepost-dependent" in f for f in r.flags)
     assert not any("look the New MP up" in f for f in r.flags)
+
+
+# --------------------------------------------------------------------------- #
+# configuration: model resolution and availability, in words
+# --------------------------------------------------------------------------- #
+def test_the_model_resolves_override_then_env_then_default(monkeypatch):
+    monkeypatch.delenv(ra.ENV_MODEL, raising=False)
+    assert ra.assist_model() == ra.DEFAULT_MODEL
+    monkeypatch.setenv(ra.ENV_MODEL, "claude-opus-5")
+    assert ra.assist_model() == "claude-opus-5"
+    assert ra.assist_model("claude-sonnet-5") == "claude-sonnet-5"
+    assert ra.assist_model("  ") == "claude-opus-5"
+
+
+def test_availability_names_the_missing_key_in_a_sentence(monkeypatch):
+    """A missing key must come back as words the UI can show, so the queue
+    degrades to manual review instead of raising inside the SDK."""
+    pytest.importorskip("anthropic")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    ready, detail = ra.assist_available()
+    assert not ready and "ANTHROPIC_API_KEY" in detail
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+    monkeypatch.setenv(ra.ENV_MODEL, "claude-opus-5")
+    ready, detail = ra.assist_available()
+    assert ready and "claude-opus-5" in detail
+
+
+def test_build_request_uses_the_env_model_when_none_is_passed(monkeypatch):
+    monkeypatch.setenv(ra.ENV_MODEL, "claude-opus-5")
+    row = ReviewRow(row=2, crash_id="1", fields={"crash_id": "1"})
+    params = ra.build_request(row, StudyContext(), [], mode="prepare")
+    assert params["model"] == "claude-opus-5"

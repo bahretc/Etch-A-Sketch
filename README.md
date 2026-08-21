@@ -93,7 +93,7 @@ safety-eval qc --workbook eval.xlsx --treatment dual
 safety-eval teaas-import --workbook eval.xlsx --outdir out/
 
 # the app: upload -> redact -> review -> build, in a browser
-pip install -e '.[ui]' && streamlit run safety_eval/app.py
+pip install -e '.[ui]' && streamlit run streamlit_app.py
 
 safety-eval parse  --fiche path/to/fiche.pdf     # preview parsed crashes
 safety-eval doctor                               # which OCR/PDF backends are available
@@ -259,9 +259,11 @@ pytest -q
       only for already-determined ID-list crashes (RE derived when the import
       milepost corrects the coded one, section analyses only); all other
       determinations left blank for the engineer.
-- [x] Streamlit app shell (`streamlit run safety_eval/app.py`): Build
-      Evaluation, Redact Crash Reports (PII removed on upload), Review
-      Queue tabs.
+- [x] Streamlit app (`streamlit run streamlit_app.py`): pages grouped in
+      workflow order (Overview, Fiche Workbook, Redact Crash Reports,
+      Review Queue, then the study type's own HSIP Warrants or Evaluation
+      Workbook + Assumptions Email pages), with an environment check and
+      per-session AI assist settings.
 - [x] Fiche review queue with redacted DMV-349 page retrieval (docs/07
       Phase 3): binder OCR page index (`safety-eval binder-index` /
       `binder-get`), queue ordered by GPS or milepost distance, quick

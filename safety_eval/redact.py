@@ -137,6 +137,33 @@ def _is_persons_header(norm_tokens: list[str]) -> bool:
     has_addr = bool(s & {"address", "addresses"})
     return has_name and has_addr and bool(s & {"persons", "person", "all"})
 
+#: Lines that talk about who was charged. The DMV-349 charge rows repeat a
+#: person's name next to the offense text, and a garbled caption or a name
+#: the front-page harvest missed left one legible on a real report
+#: (600504376 page 60, found 8/20/2026).
+_CHARGE_CONTEXT = {"charge", "charged", "charges", "citation", "cited",
+                   "violation", "violations"}
+#: NC offense phrasing that may appear as the charge text itself and must
+#: stay readable (it is evidence: ran stop sign vs failed to yield is what
+#: the review needs). Anything alphabetic on a charge line that is not in
+#: this vocabulary is treated as a name and covered; unknown words fail
+#: closed.
+_CHARGE_WORDS = {
+    "failure", "fail", "failed", "yield", "right", "way", "stop", "sign",
+    "signal", "red", "light", "ran", "run", "running", "speed", "speeding",
+    "exceeding", "safe", "excessive", "reckless", "driving", "careless",
+    "unsafe", "movement", "left", "center", "centerline", "improper",
+    "turn", "turning", "backing", "passing", "following", "too", "closely",
+    "dwi", "dui", "impaired", "alcohol", "open", "container", "license",
+    "licence", "operators", "revoked", "suspended", "registration",
+    "insurance", "seat", "belt", "none", "reduce", "reduced", "control",
+    "vehicle", "lane", "zone", "work", "misdemeanor", "infraction",
+    "pending", "yes", "no", "not", "posted", "statute", "chapter",
+    # connective words so a readable charge does not end up pockmarked
+    "with", "was", "were", "the", "and", "for", "any", "other", "due",
+    "care", "caution", "roadway", "highway", "street",
+}
+
 _ZIP_RE = re.compile(r"^\d{5}(?:-\d{4})?$")
 # full numbers, and the 7-digit local form scans often show when the area
 # code sits in its own box ("252 ... 214-8149")
@@ -237,6 +264,29 @@ def _street_span(line):
                 if tokens[j].upper().strip(".,") in _STREET_SUFFIXES:
                     return line[i:j + 1]
     return []
+
+
+def _charge_line_names(line, norm) -> list | None:
+    """Name-looking words of a charge line, or None when it is not one.
+
+    A line counts as a charge line when it carries charge-context
+    vocabulary. On it, every alphabetic token of three or more letters
+    that is not offense phrasing, a form caption, or the context word
+    itself is covered as a name. Empty list: a charge line with nothing
+    to cover ("Charged: failure to yield").
+    """
+    if not set(norm) & _CHARGE_CONTEXT:
+        return None
+    out = []
+    for w in line:
+        t = _norm(w.text)
+        if (t in _CHARGE_CONTEXT or t in _CHARGE_WORDS
+                or t in _LABEL_WORDS or len(t) < 3
+                or not any(ch.isalpha() for ch in w.text)
+                or any(ch.isdigit() for ch in w.text)):
+            continue
+        out.append(w)
+    return out
 
 
 def _inside(word: Word, rects) -> bool:
@@ -349,6 +399,16 @@ def plan_redactions(words: list[Word], keep_zip: bool = True, pad: int = 3,
                 continue
         if _is_persons_header(norm):
             persons_band_until = idx + _PERSONS_BAND_MAX
+            continue
+
+        # a charge line: the offense text stays (it is evidence), and any
+        # other alphabetic token is treated as the charged person's name.
+        # This does not lean on the caption or the harvest, both of which
+        # failed on a real page; unknown words fail closed.
+        sus = _charge_line_names(line, norm)
+        if sus is not None:
+            if sus:
+                planned.append((sus, "charge-line-name"))
             continue
 
         # city/state/zip continuation line directly under an address line
@@ -852,6 +912,11 @@ def _residual_groups(words: list[Word], keep_zip: bool, identity_rects=None,
     for line in _visual_rows(words):
         tokens = [w.text for w in line]
         norm = [_norm(t) for t in tokens]
+        sus = _charge_line_names(line, norm)
+        if sus is not None:
+            if sus:
+                yield sus, "charge-line name survived"
+            continue
         span = _street_span(line)
         if span and zones and all(_inside(w, zones) for w in span):
             span = [w for w in span if id(w) not in kept]

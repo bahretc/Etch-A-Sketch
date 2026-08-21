@@ -280,3 +280,51 @@ def test_ocr_timeout_env(monkeypatch):
     assert _ocr_timeout() == 600
     monkeypatch.setenv("SAFETY_EVAL_OCR_TIMEOUT", "bogus")
     assert _ocr_timeout() == 120
+
+
+# --- charge-line names ------------------------------------------------------
+def test_charge_line_covers_the_name_and_keeps_the_charge():
+    """The offense text is evidence (ran stop sign vs failed to yield);
+    the person beside it is not. Real leak: a name survived on a charge
+    line whose caption OCR lost (600504376 p60)."""
+    words = [W("Charged:", 10, 10, w=70, line=(0, 0, 1)),
+             W("DALTON", 90, 10, line=(0, 0, 1)),
+             W("PRUITT", 160, 10, line=(0, 0, 1)),
+             W("FAILURE", 240, 10, line=(0, 0, 1)),
+             W("TO", 310, 10, w=25, line=(0, 0, 1)),
+             W("YIELD", 345, 10, line=(0, 0, 1))]
+    boxes = plan_redactions(words)
+    assert [b.reason for b in boxes] == ["charge-line-name"]
+    b = boxes[0]
+    assert b.left <= 95 and b.right >= 215        # both name words covered
+    assert b.right < 240, b                       # the charge text is clear
+
+
+def test_charge_line_with_only_offense_text_is_untouched():
+    words = [W("Charge:", 10, 10, w=60, line=(0, 0, 1)),
+             W("EXCEEDING", 80, 10, w=90, line=(0, 0, 1)),
+             W("SAFE", 180, 10, line=(0, 0, 1)),
+             W("SPEED", 250, 10, line=(0, 0, 1))]
+    assert plan_redactions(words) == []
+
+
+def test_charge_rule_ignores_ordinary_narrative_lines():
+    words = [W("Vehicle", 10, 10, w=70, line=(0, 0, 1)),
+             W("1", 90, 10, w=15, line=(0, 0, 1)),
+             W("struck", 110, 10, line=(0, 0, 1)),
+             W("DALTON", 180, 10, line=(0, 0, 1))]
+    # no charge context on the line: this rule stays out of it
+    from safety_eval.redact import _charge_line_names, _norm
+    assert _charge_line_names(words, [_norm(w.text) for w in words]) is None
+
+
+def test_verifier_flags_a_surviving_charge_line_name():
+    from safety_eval.redact import _residual_groups
+    words = [W("Charged:", 10, 10, w=70, line=(0, 0, 1)),
+             W("DALTON", 90, 10, line=(0, 0, 1)),
+             W("RAN", 170, 10, w=35, line=(0, 0, 1)),
+             W("STOP", 215, 10, line=(0, 0, 1)),
+             W("SIGN", 280, 10, line=(0, 0, 1))]
+    found = list(_residual_groups(words, True, None))
+    assert [r for _, r in found] == ["charge-line name survived"]
+    assert [w.text for w in found[0][0]] == ["DALTON"]

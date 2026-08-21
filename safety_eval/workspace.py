@@ -37,6 +37,7 @@ ROLES = {
     "features_report": ("Features Report", True),
     "binder_index": ("Binder index (.json)", False),
     "collision_diagram_data": ("CollisionDiagramData (.txt)", False),
+    "train_dataset": ("Report drafting train set (.jsonl)", False),
     "centerline": ("Route centerline GeoJSON", False),
     "before_ids": ("Before Crash ID list (.txt)", False),
     "after_ids": ("After Crash ID list (.txt)", False),

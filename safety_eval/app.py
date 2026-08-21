@@ -84,6 +84,7 @@ PAGE = {
     "review": f"{PAGES_DIR}/review.py",
     "warrants": f"{PAGES_DIR}/warrants.py",
     "evaluation": f"{PAGES_DIR}/evaluation.py",
+    "report": f"{PAGES_DIR}/report.py",
     "assumptions": f"{PAGES_DIR}/assumptions.py",
 }
 
@@ -110,6 +111,34 @@ def _active_ws():
         return wsm.Workspace.open(pick)
     except (OSError, ValueError, json.JSONDecodeError):
         return None
+
+
+def _llm_settings(st, prefix: str, label: str, blurb: str):
+    """Key and model controls shared by the AI features.
+
+    Returns ``(ready, detail, model)``. A missing key reads as one plain
+    sentence, never a traceback, and a pasted key stays in this process's
+    environment only.
+    """
+    import safety_eval.review_assist as ra
+    ready, detail = ra.assist_available()
+    with st.expander(f"{label} settings", expanded=False):
+        st.caption(blurb + " The key stays in this app's process "
+                   "environment; it is never written to disk.")
+        pasted = st.text_input("Anthropic API key", type="password",
+                               key=f"{prefix}_api_key",
+                               help="Leave blank if ANTHROPIC_API_KEY is "
+                                    "already set in the environment.")
+        if pasted.strip():
+            os.environ["ANTHROPIC_API_KEY"] = pasted.strip()
+            ready, detail = ra.assist_available()
+        model = st.text_input(
+            "Model", value=ra.assist_model(), key=f"{prefix}_assist_model",
+            help="Default from SAFETY_EVAL_ASSIST_MODEL when set; the "
+                 "measured default otherwise.")
+        st.caption((f"✅ {label} " if ready else f"▫️ {label} not ready: ")
+                   + detail)
+    return ready, detail, model
 
 
 def _stage_wb(study_wb: str | None, wb_up, tmp: str) -> str | None:
@@ -200,6 +229,8 @@ def main() -> None:
         pages["Deliverables"] = [
             st.Page(PAGE["evaluation"], title="Evaluation Workbook",
                     icon=":material/grid_on:"),
+            st.Page(PAGE["report"], title="Report Text",
+                    icon=":material/edit_note:"),
             st.Page(PAGE["assumptions"], title="Assumptions Email",
                     icon=":material/mail:"),
         ]
@@ -247,6 +278,12 @@ def page_evaluation() -> None:
     _evaluation_tab(st)
 
 
+def page_report() -> None:
+    import streamlit as st
+    st.header("Report Text")
+    _report_text_tab(st)
+
+
 def page_assumptions() -> None:
     import streamlit as st
     st.header("Assumptions Email")
@@ -282,6 +319,10 @@ def _home_page(st, kind) -> None:
         steps.append((PAGE["evaluation"], "Populate the Evaluation Workbook",
                       "A real NCDOT template; every write is "
                       "integrity-verified and drawings stay byte-identical."))
+        steps.append((PAGE["report"], "Draft the report text",
+                      "Items for Discussion and Additional Information "
+                      "drafts from the workbook's tallies, style and "
+                      "number gated; the engineer reviews and pastes."))
         steps.append((PAGE["assumptions"], "Send the assumptions email",
                       "The docs/05 team-template .docx, from a YAML or the "
                       "Master Evaluation Spreadsheet row."))
@@ -354,6 +395,96 @@ def _environment_check(st) -> None:
     if not soffice:
         st.caption("Without LibreOffice the populated workbooks still build; "
                    "Excel recalculates the formulas on first open.")
+
+
+def _report_text_tab(st) -> None:
+    st.caption("Drafts the engineer-authored text of the 1-page results "
+               "sheet: the Items for Discussion cell and the Additional "
+               "Information rows, located on the workbook by label. The "
+               "input data is the workbook's own computed tallies and "
+               "ledger; the worked examples come strictly from the "
+               "archive's train half (docs/10; the verify half is "
+               "measured, never mined). Every draft passes the docs/05 "
+               "style gate and the numeric gate before it is shown. "
+               "Drafts only: nothing is written to the workbook. The "
+               "engineer reviews, edits and pastes.")
+    ws = _active_ws()
+    ready, detail, model = _llm_settings(
+        st, "draft", "AI drafting",
+        "Text is drafted from the workbook's tallies and archive "
+        "exemplars only; every crash count is checked against a computed "
+        "tally.")
+    wb_path = st.text_input(
+        "Evaluation workbook (.xlsx path)",
+        value=((ws.path("evaluation_workbook") or "") if ws else ""),
+        help="The populated workbook; its computed tallies and ledger are "
+             "the drafting input.")
+    train_path = st.text_input(
+        "Train dataset (train.jsonl path)",
+        value=((ws.path("train_dataset") or "") if ws else ""),
+        help="From `safety-eval bench extract` over the archive "
+             "workbooks. Exemplars come only from this file.")
+    c1, c2, c3 = st.columns(3)
+    analysis_type = c1.selectbox(
+        "Analysis type", ["", "section", "intersection"],
+        help="For exemplar matching: same-type deliveries are preferred.")
+    family = c2.text_input("Countermeasure family",
+                           help="For exemplar matching, e.g. "
+                                "rumble-strips.")
+    k = c3.number_input("Exemplars", min_value=1, max_value=8, value=3)
+    sheet = st.text_input(
+        "Results sheet (blank finds the workbook's only one)", "",
+        help="Name it when the workbook carries both the 1 Target and "
+             "2 Targets variants.")
+
+    if st.button("Draft the text", type="primary",
+                 disabled=not (wb_path.strip() and train_path.strip())):
+        for p, what in ((wb_path, "Workbook"), (train_path, "Train dataset")):
+            if not os.path.exists(p):
+                st.error(f"{what} not found: {p}")
+                st.stop()
+        if not ready:
+            st.warning("AI drafting not ready: " + detail)
+            st.stop()
+        from safety_eval.draft import draft_new
+        with st.spinner("Drafting against the archive exemplars..."):
+            try:
+                out = draft_new(wb_path, train_path,
+                                sheet=sheet.strip() or None,
+                                analysis_type=analysis_type,
+                                countermeasure_family=family.strip(),
+                                model=model, k=int(k))
+            except (ValueError, KeyError, RuntimeError) as exc:
+                st.error(str(exc))
+                st.stop()
+        st.session_state["draft_result"] = out
+        if ws and train_path.strip() != (ws.path("train_dataset") or ""):
+            ws.attach_path("train_dataset", train_path.strip())
+
+    out = st.session_state.get("draft_result")
+    if out:
+        exes = ", ".join(w for w in out["exemplars"] if w)
+        st.caption(f"Drafted for {out['sheet']}"
+                   + (f"; exemplars {exes}." if exes else "."))
+        if out["problems"]:
+            st.warning(f"{len(out['problems'])} gate problem(s); resolve "
+                       "before any of this text is used:")
+            for p in out["problems"]:
+                st.caption("! " + p)
+        else:
+            st.success("Gates clean (docs/05 style, numeric tallies).")
+        for sheet_name, cells in out["draft"].items():
+            for cell in sorted(cells):
+                st.text_area(f"{sheet_name} · {cell}", value=cells[cell],
+                             height=120,
+                             key=f"draft_cell_{sheet_name}_{cell}")
+        import json as _json
+        st.download_button("Download drafts JSON",
+                           _json.dumps(out, indent=1),
+                           file_name="results_drafts.json")
+        st.caption("The engineer decides: review each draft, edit it "
+                   "here if useful, and paste it into the workbook's tan "
+                   "cells.")
 
 
 def _assumptions_tab(st) -> None:
@@ -1138,25 +1269,10 @@ def _review_queue_tab(st) -> None:
 
     # The assist is optional and the queue must work without it: the settings
     # live here so a missing key reads as one plain sentence, not a traceback.
-    import safety_eval.review_assist as ra
-    ready, detail = ra.assist_available()
-    with st.expander("AI assist settings", expanded=False):
-        st.caption("Runs on the redacted pages only; proposals are never "
-                   "auto-applied. The key stays in this app's process "
-                   "environment; it is never written to disk.")
-        pasted = st.text_input("Anthropic API key", type="password",
-                               key="rq_api_key",
-                               help="Leave blank if ANTHROPIC_API_KEY is "
-                                    "already set in the environment.")
-        if pasted.strip():
-            os.environ["ANTHROPIC_API_KEY"] = pasted.strip()
-            ready, detail = ra.assist_available()
-        assist_model = st.text_input(
-            "Model", value=ra.assist_model(), key="rq_assist_model",
-            help="Default from SAFETY_EVAL_ASSIST_MODEL when set; the "
-                 "measured default otherwise.")
-        st.caption(("✅ AI assist " if ready else "▫️ AI assist not ready: ")
-                   + detail)
+    ready, detail, assist_model = _llm_settings(
+        st, "rq", "AI assist",
+        "Runs on the redacted pages only; proposals are never "
+        "auto-applied.")
 
     if not (wb_path and os.path.exists(wb_path)):
         if wb_path:

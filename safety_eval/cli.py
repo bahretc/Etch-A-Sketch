@@ -1393,6 +1393,30 @@ def build_parser() -> argparse.ArgumentParser:
     fw.add_argument("--route", default="", help='Study route, e.g. "US 74".')
     fw.set_defaults(func=_cmd_fiche_workbook)
 
+    dr = sub.add_parser(
+        "draft-results",
+        help="Draft the manual text of a NEW evaluation workbook (Items "
+             "for Discussion, Additional Information rows) with train-half "
+             "exemplars from the archive; docs/05 style and numeric gates "
+             "run before anything is shown. Drafts only, never written to "
+             "the workbook.")
+    dr.add_argument("--workbook", required=True,
+                    help="The populated evaluation workbook.")
+    dr.add_argument("--train", required=True,
+                    help="train.jsonl from `safety-eval bench extract`.")
+    dr.add_argument("--sheet", help="Results sheet to draft for (needed "
+                    "when the workbook carries both variants).")
+    dr.add_argument("--analysis-type", dest="analysis_type", default="",
+                    choices=["", "section", "intersection"])
+    dr.add_argument("--family", default="",
+                    help="Countermeasure family, for exemplar matching.")
+    dr.add_argument("--exemplars", type=int, default=3)
+    dr.add_argument("--model", default=None,
+                    help="Default: SAFETY_EVAL_ASSIST_MODEL or the "
+                         "drafting default.")
+    dr.add_argument("--output", help="Write the result JSON here too.")
+    dr.set_defaults(func=_cmd_draft_results)
+
     td = sub.add_parser(
         "tsu-diagram",
         help="Render the TSU collision diagram sheet (11x17 HTML) from a "
@@ -1410,6 +1434,34 @@ def build_parser() -> argparse.ArgumentParser:
     d = sub.add_parser("doctor", help="Report available optional backends.")
     d.set_defaults(func=_cmd_doctor)
     return p
+
+
+def _cmd_draft_results(args) -> int:
+    import json as _json
+
+    from .draft import draft_new
+
+    out = draft_new(args.workbook, args.train, sheet=args.sheet,
+                    analysis_type=args.analysis_type,
+                    countermeasure_family=args.family,
+                    model=args.model, k=args.exemplars)
+    print(f"Drafted {sum(len(c) for c in out['draft'].values())} cell(s) "
+          f"on {out['sheet']} (exemplars: "
+          + ", ".join(w for w in out["exemplars"] if w) + ")")
+    for sheet, cells in out["draft"].items():
+        for cell in sorted(cells):
+            print(f"\n[{sheet}!{cell}]\n{cells[cell]}")
+    if out["problems"]:
+        print(f"\n{len(out['problems'])} gate problem(s); fix before use:")
+        for p in out["problems"]:
+            print(f"  ! {p}")
+    else:
+        print("\nGates clean (docs/05 style, numeric tallies).")
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as fh:
+            _json.dump(out, fh, indent=1)
+        print(f"Wrote {args.output}")
+    return 1 if out["problems"] else 0
 
 
 def _cmd_tsu_diagram(args) -> int:

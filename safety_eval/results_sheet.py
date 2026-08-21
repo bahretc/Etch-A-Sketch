@@ -147,6 +147,36 @@ def build_results_edits(template: str, data: ResultsData,
     return edits
 
 
+def manual_text_targets(xlsx_path: str, sheet: str) -> list[str]:
+    """The draftable narrative cells of one results sheet, by address.
+
+    Located by label on the actual workbook (rule 8: layouts drift), the
+    same way :func:`build_results_edits` finds them to write: the Items
+    for Discussion cell below its header, and the Additional Information
+    label rows between that header and Map/Satellite Views. These are the
+    cells the report-drafting layer offers text for; everything numeric on
+    the sheet stays formula-driven and is never drafted.
+    """
+    from .setup_sheet import _scan_sheet
+
+    names = sheet_files(xlsx_path)
+    if sheet not in names:
+        raise KeyError(f"Workbook has no {sheet!r} sheet: {sorted(names)}")
+    cells = _scan_sheet(xlsx_path, sheet)
+    out: list[str] = []
+    lbl = _find_label(cells, r"^Items for Discussion$")
+    if lbl:
+        out.append(f"{lbl[0]}{lbl[1] + 1}")
+    hdr = _find_label(cells, r"^Additional Information$")
+    stop = _find_label(cells, r"Map/?Satellite Views")
+    if hdr:
+        hcol, hrow = hdr
+        first_row = hrow + 2                     # header + subheader rows
+        last_row = (stop[1] - 1) if stop else first_row + 4
+        out += [f"{hcol}{r}" for r in range(first_row, last_row + 1)]
+    return out
+
+
 def load_results_yaml(path: str) -> ResultsData:
     """Load results-sheet inputs from YAML. ``additional_info`` entries are
     ``{label, before, after}``; ``items_for_discussion`` is a list of strings."""

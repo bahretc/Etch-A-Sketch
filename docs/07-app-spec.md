@@ -81,6 +81,15 @@ Warrants (section or intersection). Tabs a study type must not use are not
 rendered (docs/12). Theme: Okabe-Ito primary, no state carried by colour
 alone; verdicts are words.
 
+Report text drafting (Phase 5, drafts only): `safety-eval draft-results
+--workbook Eval.xlsx --train train.jsonl` drafts the Items for Discussion
+cell and the Additional Information rows of a NEW evaluation workbook, the
+targets located by label (results_sheet.manual_text_targets, rule 8), with
+train-half exemplars and the docs/05 style + numeric gates run before
+anything is shown. The same flow is the Report Text page under
+Deliverables. Nothing is ever written to the workbook: the engineer
+reviews, edits and pastes.
+
 Collision diagrams: `safety-eval tsu-diagram --data <WO>_CollisionDiagramData.txt
 --layout layout.json --out sheet.html` renders the MicroStation-style 11x17
 TSU sheet. The layout's `"kind"` selects it: `"intersection"` draws the

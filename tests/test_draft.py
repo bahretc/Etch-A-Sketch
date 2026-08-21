@@ -164,3 +164,77 @@ def test_score_counts_missing_cells(records):
     s = score_draft({}, verify[0], boiler)
     assert s.cells_missing == 1 and s.cells_scored == 0
     assert isinstance(s, DraftScore)
+
+
+def test_explicit_targets_reach_the_prompt(records):
+    """A new workbook has no authored cells; the caller passes the
+    template's manual cells and they, not the (empty) authored set,
+    become the request's targets."""
+    train, verify = records
+    boiler = boilerplate_texts(train + verify)
+    targets = {"1 page results - 1 Target": ["C58", "A34", "A35"]}
+    _, messages = build_prompt(verify[0], train[:2], boiler,
+                               targets=targets)
+    body = messages[0]["content"]
+    assert '"C58"' in body and '"A35"' in body
+    params = draft_request_params(verify[0], train[:2], boiler,
+                                  targets=targets)
+    assert '"C58"' in params["messages"][0]["content"]
+
+
+def test_draft_new_end_to_end_with_a_stub(tmp_path):
+    """draft_new on a NEW workbook: targets located by label, exemplars
+    from the train file only, gates run on what comes back."""
+    import json as _json
+
+    import openpyxl
+
+    from safety_eval.draft import draft_new
+
+    wb = openpyxl.Workbook()
+    ff = wb.active
+    ff.title = "Filtered Fiche"
+    ff.append(["Muni.\nCode", "On Road", "Miles", "Dir\nFrom", "From Road",
+               "Toward Road", "Milepost Road", "MP", "IS?", "New MP", "MA",
+               "Crash ID", "Date", "T", "C", "F", "L", "S", "Comments"])
+    r1 = wb.create_sheet("1 page results - 1 Target")
+    r1["C57"] = "Items for Discussion"
+    r1["A32"] = "Additional Information"
+    r1["A38"] = "Map/Satellite Views"
+    path = str(tmp_path / "new_eval.xlsx")
+    wb.save(path)
+
+    train = [_rec(f"4100000000{i}", "train",
+                  {"C10": "The 2 lane departure crashes were wet events."})
+             for i in range(3)]
+    tp = tmp_path / "train.jsonl"
+    tp.write_text("\n".join(_json.dumps(r) for r in train))
+
+    payload = ('{"cells": [{"sheet": "1 page results - 1 Target", '
+               '"cell": "C58", "text": "Both before period crashes were '
+               'wet road lane departures \\u2014 a clear pattern."}]}')
+    out = draft_new(path, str(tp), sheet="1 page results - 1 Target",
+                    analysis_type="section", client=_StubClient(payload))
+    assert out["sheet"] == "1 page results - 1 Target"
+    # the located targets: C58 under the header, the info rows A34..A37
+    assert out["targets"]["1 page results - 1 Target"][0] == "C58"
+    assert "A34" in out["targets"]["1 page results - 1 Target"]
+    assert out["draft"]["1 page results - 1 Target"]["C58"]
+    # the em dash the stub slipped in is caught by the docs/05 gate
+    assert any("em" in p and "dash" in p for p in out["problems"])
+    assert len(out["exemplars"]) == 3
+
+
+def test_draft_new_refuses_an_empty_train_file(tmp_path):
+    import openpyxl
+
+    from safety_eval.draft import draft_new
+
+    wb = openpyxl.Workbook()
+    wb.active.title = "Filtered Fiche"
+    path = str(tmp_path / "e.xlsx")
+    wb.save(path)
+    tp = tmp_path / "train.jsonl"
+    tp.write_text("")
+    with pytest.raises(ValueError, match="no train records"):
+        draft_new(path, str(tp))

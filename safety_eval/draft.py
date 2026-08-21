@@ -108,14 +108,19 @@ def _inputs_view(rec: dict) -> dict:
 
 
 def build_prompt(rec: dict, exemplars: list[dict],
-                 boilerplate: set[str]) -> tuple[str, list[dict]]:
+                 boilerplate: set[str],
+                 targets: dict[str, list] | None = None
+                 ) -> tuple[str, list[dict]]:
     """(system, messages) for one draft request.
 
     ``exemplars`` must be train-half records; each contributes its inputs
     and its authored cells as a worked example. The target lists the sheet
     and cell addresses to fill (the tan manual cells the engineer filled on
     the delivered workbook), so drafted text aligns cell-for-cell for
-    review and scoring.
+    review and scoring. On a delivered workbook the targets are its own
+    authored cells (the benchmark); a NEW workbook has none yet, so the
+    caller passes ``targets`` located on the template by label
+    (results_sheet.manual_text_targets).
     """
     for ex in exemplars:
         if ex.get("split") != "train":
@@ -132,8 +137,9 @@ def build_prompt(rec: dict, exemplars: list[dict],
             f"Text the engineer wrote:\n"
             f"{json.dumps(authored_cells(ex, boilerplate), indent=1)}")
 
-    targets = {sheet: sorted(cells)
-               for sheet, cells in authored_cells(rec, boilerplate).items()}
+    if targets is None:
+        targets = {sheet: sorted(cells)
+                   for sheet, cells in authored_cells(rec, boilerplate).items()}
     parts.append(
         "## Your task\n"
         f"Input data:\n{json.dumps(_inputs_view(rec), indent=1)}\n"
@@ -185,9 +191,11 @@ _DRAFT_SCHEMA = {
 def draft_request_params(rec: dict, exemplars: list[dict],
                          boilerplate: set[str],
                          model: str = DEFAULT_MODEL,
-                         max_tokens: int = 8192) -> dict:
+                         max_tokens: int = 8192,
+                         targets: dict[str, list] | None = None) -> dict:
     """Messages-API params for one draft (create or batch entry)."""
-    system, messages = build_prompt(rec, exemplars, boilerplate)
+    system, messages = build_prompt(rec, exemplars, boilerplate,
+                                    targets=targets)
     return {
         "model": model,
         "max_tokens": max_tokens,
@@ -209,14 +217,84 @@ def parse_draft(text: str) -> dict[str, dict]:
 
 def generate_draft(client, rec: dict, exemplars: list[dict],
                    boilerplate: set[str],
-                   model: str = DEFAULT_MODEL) -> dict[str, dict]:
+                   model: str = DEFAULT_MODEL,
+                   targets: dict[str, list] | None = None) -> dict[str, dict]:
     """One synchronous draft via the Messages API."""
-    params = draft_request_params(rec, exemplars, boilerplate, model)
+    params = draft_request_params(rec, exemplars, boilerplate, model,
+                                  targets=targets)
     response = client.messages.create(**params)
     if response.stop_reason == "refusal":
         raise RuntimeError(f"Model declined drafting {rec.get('wo')}")
     text = next(b.text for b in response.content if b.type == "text")
     return parse_draft(text)
+
+
+def draft_new(xlsx_path: str, train_path: str, *,
+              sheet: str | None = None,
+              analysis_type: str = "", countermeasure_family: str = "",
+              assumptions: dict | None = None, treatment: str | None = None,
+              client=None, model: str | None = None, k: int = 3) -> dict:
+    """Draft the manual text of a NEW evaluation workbook (drafts only).
+
+    The benchmark drafts a delivered workbook against its own authored
+    cells; a new workbook has none yet, so the targets are located on the
+    workbook by label (results_sheet.manual_text_targets): the Items for
+    Discussion cell and the Additional Information rows. Exemplars come
+    strictly from ``train_path`` (the archive's train half, docs/10), and
+    every draft passes the docs/05 style gate and the numeric gate before
+    the engineer sees it. Nothing is written to the workbook: the
+    engineer reviews, edits and pastes.
+
+    ``model=None`` resolves through SAFETY_EVAL_ASSIST_MODEL then the
+    drafting default. Returns ``{"draft": {sheet: {cell: text}},
+    "problems": [...], "targets": {sheet: [cells]}, "exemplars": [wo...],
+    "sheet": sheet}``.
+    """
+    import os as _os
+
+    from .report_dataset import extract_record, results_sheet_names
+    from .results_sheet import manual_text_targets
+    from .xlsx_patch import sheet_files
+
+    with open(train_path, encoding="utf-8") as fh:
+        train = [json.loads(ln) for ln in fh if ln.strip()]
+    if not train:
+        raise ValueError(f"no train records in {train_path}; run "
+                         "`safety-eval bench extract` on the archive first")
+    boilerplate = boilerplate_texts(train)
+
+    rec = extract_record(xlsx_path, meta={
+        "wo": "candidate", "split": "candidate",
+        "analysis_type": analysis_type,
+        "countermeasure_family": countermeasure_family,
+    }, assumptions=assumptions, treatment=treatment)
+
+    if sheet is None:
+        sheets = results_sheet_names(list(sheet_files(xlsx_path)))
+        if len(sheets) != 1:
+            raise ValueError(
+                "say which results sheet to draft for; the workbook has "
+                + (", ".join(sorted(sheets)) or "no results sheet"))
+        sheet = sheets[0]
+    targets = {sheet: manual_text_targets(xlsx_path, sheet)}
+    if not targets[sheet]:
+        raise ValueError(f"no draftable cells located on {sheet!r}; the "
+                         "sheet is missing its Items for Discussion / "
+                         "Additional Information labels")
+
+    exemplars = select_exemplars(rec, train, k=k)
+    model = (model or "").strip() \
+        or _os.environ.get("SAFETY_EVAL_ASSIST_MODEL", "").strip() \
+        or DEFAULT_MODEL
+    if client is None:
+        import anthropic
+        client = anthropic.Anthropic()
+    draft = generate_draft(client, rec, exemplars, boilerplate,
+                           model=model, targets=targets)
+    problems = gate_draft(draft, rec)
+    return {"draft": draft, "problems": problems, "targets": targets,
+            "exemplars": [e.get("wo", "") for e in exemplars],
+            "sheet": sheet}
 
 
 # --------------------------------------------------------------------------- #

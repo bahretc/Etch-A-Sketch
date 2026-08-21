@@ -54,6 +54,7 @@ def test_an_evaluation_gets_the_deliverable_pages_and_no_warrants():
     at = _app("evaluation")
     titles = _nav_titles(at)
     assert "Evaluation Workbook" in titles
+    assert "Report Text" in titles
     assert "Assumptions Email" in titles
     assert "HSIP Warrants" not in titles
 
@@ -67,7 +68,7 @@ def test_a_fatal_analysis_gets_only_the_shared_core():
 def test_every_study_type_renders_every_offered_page():
     pages_for = {"hsip": ["home", "fiche", "redact", "review", "warrants"],
                  "evaluation": ["home", "fiche", "redact", "review",
-                                "evaluation", "assumptions"],
+                                "evaluation", "report", "assumptions"],
                  "fatal": ["home", "fiche", "redact", "review"]}
     for key, pages in pages_for.items():
         for page in pages:
@@ -203,3 +204,16 @@ def test_pages_default_from_the_open_study(tmp_path, monkeypatch):
     assert not at.exception, at.exception
     wb_radio = next(r for r in at.radio if r.label == "Workbook")
     assert "From study 41000079305" in wb_radio.options[0]
+
+
+def test_the_report_text_page_gates_and_asks_for_its_inputs(monkeypatch):
+    """Drafting needs the workbook, the train half, and a ready model;
+    with no key the settings say so in a sentence."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    at = _app("evaluation", page="report")
+    labels = {t.label for t in at.text_input}
+    assert "Evaluation workbook (.xlsx path)" in labels
+    assert "Train dataset (train.jsonl path)" in labels
+    captions = " ".join(getattr(el, "value", "") or "" for el in at.caption)
+    assert "AI drafting not ready" in captions
+    assert "never mined" in captions       # the provenance rule, in words

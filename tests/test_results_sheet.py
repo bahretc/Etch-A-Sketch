@@ -124,3 +124,19 @@ def test_load_results_yaml(tmp_path):
     assert d.division == "2"
     assert d.additional_info[0].after == 1
     assert d.items_for_discussion == ["First point."]
+
+
+@needs_template
+def test_manual_text_targets_located_by_label_on_the_real_template():
+    """The draftable narrative cells: Items for Discussion below its
+    header and the Additional Information rows, found on the actual
+    workbook (rule 8: layouts drift; addresses are never hardcoded)."""
+    from safety_eval.results_sheet import manual_text_targets
+    targets = manual_text_targets(TEMPLATE, "1 page results - 1 Target")
+    assert len(targets) >= 4          # the discussion cell + info rows
+    assert all(t[0].isalpha() and t[1:].isdigit() for t in targets)
+    # both variants carry the same labels
+    t2 = manual_text_targets(TEMPLATE, "1 page results - 2 Targets")
+    assert len(t2) >= 4
+    with pytest.raises(KeyError):
+        manual_text_targets(TEMPLATE, "no such sheet")

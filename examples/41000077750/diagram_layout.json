@@ -1,0 +1,36 @@
+{
+  "kind": "intersection",
+  "title": ["PH# TSUINT672620", "Order# 41000077750", "Wayne County",
+            "NC 581 (Bill Lane Boulevard) at", "SR 1960 (Spring Bank Road)",
+            "10/1/2015 - 9/30/2025"],
+  "center": [780, 570],
+  "throat": 54,
+  "legs": [
+    {"bearing": 262, "width": 36,
+     "label": ["NC 581", "(Bill Lane Boulevard)", "AADT (Year)",
+               "6,700 (2023)", "55 mph"]},
+    {"bearing": 82, "width": 36,
+     "label": ["NC 581", "(Bill Lane Boulevard)", "AADT (Year)",
+               "6,700 (2023)", "55 mph"]},
+    {"bearing": 347, "width": 30, "stop": true,
+     "label": ["SR 1960", "(Spring Bank Road)", "AADT (Year)",
+               "2,000 (2023 Est.)", "55 mph"]},
+    {"bearing": 152, "width": 30, "stop": true,
+     "label": ["SR 1960", "(Spring Bank Road)", "AADT (Year)",
+               "2,000 (2023 Est.)", "55 mph"]}
+  ],
+  "notes": [
+    {"x": 1050, "y": 380,
+     "text": ["Crash #5 & 9: At-fault vehicle made unsafe pass",
+              "as other vehicle turned"]},
+    {"x": 430, "y": 760,
+     "text": ["Crash #11: At-fault vehicle was travelling east and",
+              "ran off the road to the right to avoid",
+              "rear-ending another vehicle"]},
+    {"x": 800, "y": 790,
+     "text": ["Crash #1: At-fault vehicle was motorcyclist",
+              "passing in a no-passing zone"]}
+  ],
+  "prepared_by": "",
+  "date": ""
+}

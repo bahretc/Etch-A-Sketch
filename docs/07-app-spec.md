@@ -81,6 +81,16 @@ Warrants (section or intersection). Tabs a study type must not use are not
 rendered (docs/12). Theme: Okabe-Ito primary, no state carried by colour
 alone; verdicts are words.
 
+Collision diagrams: `safety-eval tsu-diagram --data <WO>_CollisionDiagramData.txt
+--layout layout.json --out sheet.html` renders the MicroStation-style 11x17
+TSU sheet. The layout's `"kind"` selects it: `"intersection"` draws the
+junction north up at its legs' true bearings so every unit arrow reads at
+its coded compass direction (validated against the delivered 41000077750
+sheet; example layout in `examples/41000077750/diagram_layout.json`);
+anything else draws the section sheet. The intersection sheet is also on
+the HSIP Warrants page (intersection branch). Bike/Ped diagrams are a
+distinct format and are NOT covered yet (docs/12).
+
 The HSIP flow in CLI form, end to end on a reviewed fiche workbook:
 
     safety-eval fiche-workbook --study N --fiche F.csv --initial-ids I.txt \

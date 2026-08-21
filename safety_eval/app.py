@@ -818,6 +818,74 @@ def _hsip_tab(st) -> None:
                 except ValueError as exc:
                     st.error(f"Feature inclusions: {exc}")
 
+    if not is_section:
+        with st.expander("Collision diagram (TSU sheet)"):
+            import json as _json
+
+            st.caption("The MicroStation-style 11x17 sheet from the TEAAS "
+                       "CollisionDiagramData export, drawn north up at the "
+                       "legs' true bearings so every unit arrow reads at "
+                       "its coded compass direction (format validated "
+                       "against the delivered 41000077750 sheet). Edit the "
+                       "layout to set bearings, labels, stop control, "
+                       "notes, and per-crash pins (`at`), `nudges` and "
+                       "`headings`; the engineer places what the search "
+                       "cannot.")
+            data_up = st.file_uploader(
+                "CollisionDiagramData (.txt)", type=["txt", "csv"],
+                key="tsu_data",
+                help="The TEAAS per-unit export "
+                     "(<WO>_CollisionDiagramData.txt).")
+            study_no = (ws.study if ws else "")
+            starter = {
+                "kind": "intersection",
+                "title": [f"Order# {study_no}".strip(),
+                          "County", "Main St at Side St",
+                          "period"],
+                "legs": [
+                    {"bearing": 270, "width": 36,
+                     "label": ["Main St", "AADT (Year)", "n,nnn (20xx)",
+                               "55 mph"]},
+                    {"bearing": 90, "width": 36,
+                     "label": ["Main St", "AADT (Year)", "n,nnn (20xx)",
+                               "55 mph"]},
+                    {"bearing": 0, "width": 30, "stop": True,
+                     "label": ["Side St", "AADT (Year)", "n,nnn (20xx)",
+                               "45 mph"]},
+                    {"bearing": 180, "width": 30, "stop": True,
+                     "label": ["Side St", "AADT (Year)", "n,nnn (20xx)",
+                               "45 mph"]},
+                ],
+                "notes": [],
+            }
+            layout_text = st.text_area(
+                "Layout (JSON)", value=_json.dumps(starter, indent=1),
+                height=280, key="tsu_layout")
+            if st.button("Build diagram", disabled=not data_up):
+                from safety_eval.collision_diagram import (load_logo,
+                                                           read_data_csv,
+                                                           render_intersection)
+                try:
+                    layout = _json.loads(layout_text)
+                except ValueError as exc:
+                    st.error(f"Layout JSON: {exc}")
+                    st.stop()
+                layout["kind"] = "intersection"
+                layout["logo_b64"] = load_logo(layout.get("logo"))
+                with tempfile.TemporaryDirectory() as tmp:
+                    dpath = _save_upload(data_up, tmp)
+                    try:
+                        dcrashes = read_data_csv(dpath)
+                        html = render_intersection(dcrashes, layout)
+                    except (ValueError, KeyError) as exc:
+                        st.error(str(exc))
+                        st.stop()
+                stem2 = (study_no or "study")
+                st.download_button(
+                    f"Download {stem2}_CollisionDiagram.html "
+                    f"({len(dcrashes)} crashes; print at 17x11)",
+                    html, file_name=f"{stem2}_CollisionDiagram.html")
+
     if is_section:
         with st.expander("GIS crash map (self-contained HTML)"):
             st.caption("Every crash over embedded aerial and street "

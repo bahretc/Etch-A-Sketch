@@ -139,6 +139,13 @@ class DiagramCrash:
     night: bool = False
     units: list[Unit] = field(default_factory=list)
     note: str = ""
+    # coded location relative to the from-road, which is how an
+    # intersection study places a crash on its leg: 0 miles is the
+    # junction itself, .1 W is a tenth of a mile out the west leg.
+    on_road: str = ""
+    from_road: str = ""
+    dist_mi: float = 0.0
+    dist_dir: str = ""
 
 
 def severity_from_code(code) -> str:
@@ -175,6 +182,11 @@ def read_data_csv(path: str) -> list[DiagramCrash]:
             if cr is None:
                 mp_raw = (row.get("MLPST_NBR") or "").strip()
                 mp = float(mp_raw) if mp_raw not in ("", "999.999") else None
+                dist_raw = (row.get("DSTNC_MILE_FRM_RD_QTY") or "").strip()
+                try:
+                    dist = float(dist_raw) if dist_raw else 0.0
+                except ValueError:
+                    dist = 0.0
                 cr = DiagramCrash(
                     crash_id=cid, mp=mp,
                     dt=(row.get("ACDNT_DT_TM") or "").strip(),
@@ -182,6 +194,10 @@ def read_data_csv(path: str) -> list[DiagramCrash]:
                     acc_typ=int(row.get("ACC_TYP") or 0),
                     road_cond=road_cond_letter(row.get("RD_COND")),
                     night=(row.get("LT_COND") or "1").strip() != "1",
+                    on_road=(row.get("RD_ON_CD") or "").strip(),
+                    from_road=(row.get("FRM_RD_CD") or "").strip(),
+                    dist_mi=dist,
+                    dist_dir=(row.get("DRCTN_FRM_RD_CD") or "").strip().upper(),
                 )
                 by_id[cid] = cr
                 order.append(cid)
@@ -1515,6 +1531,304 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
     return _sheet(svg, layout, crashes)
 
 
+# ------------------------------------------------------------ intersection
+def _brg_vec(bearing: float) -> tuple[float, float]:
+    """Compass bearing -> page unit vector on a north-up sheet."""
+    r = math.radians(bearing)
+    return math.sin(r), -math.cos(r)
+
+
+def _line_x(p, d, q, e):
+    """Intersection of p + t*d and q + s*e, or None when parallel."""
+    den = d[0] * e[1] - d[1] * e[0]
+    if abs(den) < 1e-9:
+        return None
+    t = ((q[0] - p[0]) * e[1] - (q[1] - p[1]) * e[0]) / den
+    return p[0] + t * d[0], p[1] + t * d[1]
+
+
+def _leg_len(cx, cy, dx, dy, margin=60.0):
+    """Distance from the center to the sheet frame along the leg."""
+    best = 1e9
+    if dx > 1e-9:
+        best = min(best, (PAGE_W - margin - cx) / dx)
+    if dx < -1e-9:
+        best = min(best, (margin - cx) / dx)
+    if dy > 1e-9:
+        best = min(best, (PAGE_H - margin - cy) / dy)
+    if dy < -1e-9:
+        best = min(best, (margin - cy) / dy)
+    return max(120.0, best)
+
+
+def _stop_sign(x, y):
+    """Red octagon, the way the drawn sheets mark a stop approach."""
+    r = 16.0
+    pts = []
+    for k in range(8):
+        a = math.radians(22.5 + 45 * k)
+        pts.append(f"{x + r * math.cos(a):.1f},{y + r * math.sin(a):.1f}")
+    return (f'<polygon points="{" ".join(pts)}" fill="{RED}" '
+            'stroke="#7A0000" stroke-width="1"/>'
+            f'<text x="{x:.1f}" y="{y + 3.2:.1f}" text-anchor="middle" '
+            'font-size="8.5" fill="#fff" '
+            'style="letter-spacing:0.5px">STOP</text>')
+
+
+def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
+    """Render an intersection sheet: the junction drawn north up at its
+    true bearings, crashes clustered on their approach legs.
+
+    North up is what makes the cells honest: every unit arrow is drawn at
+    its coded compass direction, exactly as the delivered sheets read
+    (41000077750). The layout carries the legs::
+
+        {"kind": "intersection",
+         "center": [740, 560],
+         "legs": [{"bearing": 265, "label": ["NC 581", "..."],
+                   "stop": false, "length": 620, "width": 34}, ...],
+         "px_per_mile": 1400, ...}
+
+    plus the shared furniture keys (title, notes, prepared_by, date, at,
+    nudges, headings, keep_out) that the section sheet uses. Unlike a
+    section, cells may stand on the drawn pavement; the completed sheets
+    cluster them right on the junction.
+    """
+    cx, cy = layout.get("center", (740, 560))
+    legs = []
+    for lg in layout.get("legs", []) or [{"bearing": b}
+                                         for b in (0, 90, 180, 270)]:
+        b = float(lg.get("bearing", 0)) % 360.0
+        dx, dy = _brg_vec(b)
+        legs.append({
+            "bearing": b, "dx": dx, "dy": dy,
+            "hw": float(lg.get("width", 34)) / 2.0,
+            "len": float(lg.get("length") or _leg_len(cx, cy, dx, dy)),
+            "stop": bool(lg.get("stop")),
+            "label": lg.get("label", []),
+            "label_xy": lg.get("label_xy"),
+        })
+    legs.sort(key=lambda lg: lg["bearing"])
+
+    svg = []
+    throat = float(layout.get("throat", 52))
+    # Pavement edges: each leg's two edge lines start where they meet the
+    # neighbouring leg's edge, so the junction mouth closes cleanly the
+    # way a drawn sheet's does, instead of eight lines stopping short.
+    n = len(legs)
+    for i, lg in enumerate(legs):
+        dx, dy = lg["dx"], lg["dy"]
+        nx, ny = -dy, dx                       # left of outbound
+        for side, nb in ((1, legs[(i - 1) % n]), (-1, legs[(i + 1) % n])):
+            px = cx + side * nx * lg["hw"]
+            py = cy + side * ny * lg["hw"]
+            nnx, nny = -nb["dy"], nb["dx"]
+            nside = -side if n > 1 else side
+            qx = cx + nside * nnx * nb["hw"]
+            qy = cy + nside * nny * nb["hw"]
+            start = _line_x((px, py), (dx, dy), (qx, qy),
+                            (nb["dx"], nb["dy"])) if n > 1 else None
+            if start is None or \
+                    math.hypot(start[0] - cx, start[1] - cy) > 4 * throat:
+                start = (px + dx * throat, py + dy * throat)
+            ex = px + dx * lg["len"]
+            ey = py + dy * lg["len"]
+            svg.append(f'<line x1="{start[0]:.1f}" y1="{start[1]:.1f}" '
+                       f'x2="{ex:.1f}" y2="{ey:.1f}" stroke="#000" '
+                       'stroke-width="1.3"/>')
+        # centreline, dashed, clear of the junction mouth
+        sx = cx + dx * (throat + 26)
+        sy = cy + dy * (throat + 26)
+        ex = cx + dx * lg["len"]
+        ey = cy + dy * lg["len"]
+        svg.append(f'<line x1="{sx:.1f}" y1="{sy:.1f}" x2="{ex:.1f}" '
+                   f'y2="{ey:.1f}" stroke="#000" stroke-width="0.9" '
+                   'stroke-dasharray="14 12"/>')
+
+    # The header stands top left with the needle beside it, the way the
+    # delivered sheet reads; both defaults are measured off the title so
+    # a long intersection name cannot run off the frame or under the
+    # needle.
+    title_w = max((_text_width(t, TITLE_SIZE)
+                   for t in layout.get("title", [])), default=0.0)
+    layout.setdefault("title_x", max(46.0 + title_w / 2, 160.0))
+    layout.setdefault("north_x",
+                      min(layout["title_x"] + title_w / 2 + 70.0, 880.0))
+
+    keep_out = [(LEGEND_X - 8, LEGEND_Y - 8,
+                 LEGEND_X + LEGEND_W + 8, LEGEND_Y + LEGEND_H + 8),
+                (1300, 826, 1632, 1056),                 # TSU title block
+                (layout["north_x"] - 40, 18,
+                 layout["north_x"] + 40, 232)]
+
+    def text_box(cx0, cy0, lines, size, lead, anchor="middle"):
+        w = max((_text_width(t, size) for t in lines), default=0.0)
+        x0 = cx0 - w / 2 if anchor == "middle" else cx0
+        return (x0 - 12, cy0 - size, x0 + w + 12,
+                cy0 + lead * (len(lines) - 1) + size)
+
+    keep_out.append(text_box(layout["title_x"], 54,
+                             layout.get("title", []), TITLE_SIZE,
+                             TITLE_LEAD))
+    for note in layout.get("notes", []):
+        keep_out.append(text_box(note["x"], note["y"], note["text"],
+                                 NOTE_SIZE, NOTE_LEAD))
+    keep_out += [tuple(r) for r in layout.get("keep_out", [])]
+
+    # stop control and the leg labels
+    for lg in legs:
+        dx, dy = lg["dx"], lg["dy"]
+        nx, ny = -dy, dx
+        if lg["stop"]:
+            # the sign stands beside the approach lane (right side coming
+            # in toward the junction = left of the outbound vector)
+            sx = cx + dx * (throat + 46) + nx * (lg["hw"] + 26)
+            sy = cy + dy * (throat + 46) + ny * (lg["hw"] + 26)
+            svg.append(_stop_sign(sx, sy))
+            keep_out.append((sx - 22, sy - 22, sx + 22, sy + 22))
+        if lg["label"]:
+            lw = max((_text_width(t, ROUTE_SIZE)
+                      for t in lg["label"]), default=0.0)
+            lh = ROUTE_LEAD * len(lg["label"])
+
+            def label_at(t_frac, sgn):
+                # beside the leg, standing fully off the pavement
+                ex = cx + dx * (lg["len"] * t_frac)
+                ey = cy + dy * (lg["len"] * t_frac)
+                off = lg["hw"] + 30 + (lw / 2 * abs(nx) + lh / 2 * abs(ny))
+                ax = ex + sgn * nx * off
+                ay = ey + sgn * ny * off - lh / 2 + ROUTE_LEAD
+                ax = min(max(ax, 60 + lw / 2), PAGE_W - 60 - lw / 2)
+                ay = min(max(ay, 70), PAGE_H - 46 - lh)
+                return ax, ay
+
+            if lg["label_xy"]:
+                lx, ly = lg["label_xy"]
+            else:
+                # first choice: the side facing away from the middle of
+                # the sheet, near the leg's end; a spot on the title, a
+                # note or the legend flips sides, then slides inward
+                out0 = (cx + dx * lg["len"] * 0.8 - PAGE_W / 2,
+                        cy + dy * lg["len"] * 0.8 - PAGE_H / 2)
+                s0 = 1 if (nx * out0[0] + ny * out0[1]) >= 0 else -1
+                lx, ly = label_at(0.80, s0)
+                for t_frac in (0.80, 0.66, 0.52):
+                    placed = False
+                    for sgn in (s0, -s0):
+                        ax, ay = label_at(t_frac, sgn)
+                        bb = text_box(ax, ay, lg["label"],
+                                      ROUTE_SIZE, ROUTE_LEAD)
+                        if not any(bb[0] < k[2] and bb[2] > k[0]
+                                   and bb[1] < k[3] and bb[3] > k[1]
+                                   for k in keep_out):
+                            lx, ly, placed = ax, ay, True
+                            break
+                    if placed:
+                        break
+            for k, line in enumerate(lg["label"]):
+                svg.append(_stroke_text(lx, ly + k * ROUTE_LEAD, line,
+                                        size=ROUTE_SIZE, sw=1.05))
+            keep_out.append(text_box(lx, ly, lg["label"],
+                                     ROUTE_SIZE, ROUTE_LEAD))
+
+    if "north_rot" not in layout:
+        layout["north_rot"] = 0.0            # the sheet is drawn north up
+
+    def clear(bb):
+        if bb[0] < 26 or bb[2] > PAGE_W - 26 or bb[1] < 26 \
+                or bb[3] > PAGE_H - 26:
+            return False
+        return not any(bb[0] < k[2] and bb[2] > k[0]
+                       and bb[1] < k[3] and bb[3] > k[1] for k in keep_out)
+
+    # Every cell is drawn in the compass frame: base 0 / route E on a
+    # north-up sheet means a unit coded N points up the page.
+    px_mi = float(layout.get("px_per_mile", 1400))
+    items = []
+    for cr in crashes:
+        hd = layout.get("headings", {}).get(cr.crash_id)
+        g, box, _n = crash_glyph(cr, base_ang=0.0, route_forward="E",
+                                 heading=hd)
+        # the seed: the junction, or out the coded leg for a crash coded
+        # some distance from the from-road
+        sx, sy = cx, cy
+        leg = None
+        if cr.dist_mi and cr.dist_dir in _DIR_ANG:
+            ddx, ddy = _brg_vec({"N": 0, "NE": 45, "E": 90, "SE": 135,
+                                 "S": 180, "SW": 225, "W": 270,
+                                 "NW": 315}[cr.dist_dir])
+            leg = min(legs, key=lambda lg: math.hypot(lg["dx"] - ddx,
+                                                      lg["dy"] - ddy))
+            run = min(cr.dist_mi * px_mi, leg["len"] - 110)
+            sx = cx + leg["dx"] * run
+            sy = cy + leg["dy"] * run
+        if leg is None and cr.units and cr.units[0].direction in _DIR_ANG:
+            # approaching FROM the leg opposite the travel direction
+            ddx, ddy = _brg_vec(
+                ({"N": 0, "NE": 45, "E": 90, "SE": 135, "S": 180,
+                  "SW": 225, "W": 270, "NW": 315}[cr.units[0].direction]
+                 + 180) % 360)
+            leg = min(legs, key=lambda lg: math.hypot(lg["dx"] - ddx,
+                                                      lg["dy"] - ddy))
+        if leg is None:
+            leg = legs[0]
+        items.append({"cr": cr, "g": g, "box": box, "sx": sx, "sy": sy,
+                      "leg": leg})
+
+    all_boxes: list[tuple] = []
+    pinned = layout.get("at", {})
+    for it in items:
+        xy = pinned.get(it["cr"].crash_id)
+        if xy:
+            tx, ty = float(xy[0]), float(xy[1])
+            all_boxes.append((tx + it["box"][0] - 4, ty + it["box"][2] - 4,
+                              tx + it["box"][1] + 4, ty + it["box"][3] + 4))
+
+    for it in items:
+        cr = it["cr"]
+        dxn, dyn = layout.get("nudges", {}).get(cr.crash_id, (0, 0))
+        xy = pinned.get(cr.crash_id)
+        if xy:
+            ox, oy = float(xy[0]), float(xy[1])
+        else:
+            # walk out from the seed: first along the approach leg and to
+            # its sides, then anywhere, nearest first. The junction fills
+            # from the middle outward, the way the drawn sheets cluster.
+            leg = it["leg"]
+            la = math.degrees(math.atan2(leg["dy"], leg["dx"]))
+            cands = []
+            for r in range(0, 560, 30):
+                for da in (0, 35, -35, 70, -70, 105, -105, 140,
+                           -140, 180):
+                    a = math.radians(la + da)
+                    tx = it["sx"] + r * math.cos(a)
+                    ty = it["sy"] + r * math.sin(a)
+                    cands.append((r + abs(da) * 0.9, tx, ty))
+            cands.sort(key=lambda t: t[0])
+            spot = None
+            for _, tx, ty in cands:
+                bb = (tx + it["box"][0] - 4, ty + it["box"][2] - 4,
+                      tx + it["box"][1] + 4, ty + it["box"][3] + 4)
+                if clear(bb) and not any(
+                        bb[0] < r2[2] and bb[2] > r2[0]
+                        and bb[1] < r2[3] and bb[3] > r2[1]
+                        for r2 in all_boxes):
+                    spot = (tx, ty, bb)
+                    break
+            if spot is None:
+                tx, ty = it["sx"], it["sy"]
+                spot = (tx, ty,
+                        (tx + it["box"][0] - 4, ty + it["box"][2] - 4,
+                         tx + it["box"][1] + 4, ty + it["box"][3] + 4))
+            ox, oy, bb = spot
+            all_boxes.append(bb)
+        svg.append(f'<g data-crash="{cr.crash_id}" data-seq="{cr.seq}" '
+                   f'transform="translate({ox + dxn:.1f},'
+                   f'{oy + dyn:.1f})">{it["g"]}</g>')
+
+    return _sheet(svg, layout, crashes)
+
+
 def _sheet(body_svg: list, layout: dict, crashes) -> str:
     svg = [f'<rect x="14" y="14" width="{PAGE_W - 28}" '
            f'height="{PAGE_H - 28}" fill="#fff" stroke="#000" '
@@ -1568,6 +1882,21 @@ def build_section_diagram(out_html: str, data_csv: str, layout_json: str):
     layout = json.load(open(layout_json))
     layout["logo_b64"] = load_logo(layout.get("logo"))
     html = render_section(crashes, layout)
+    with open(out_html, "w", encoding="utf-8") as fh:
+        fh.write(html)
+    return len(crashes)
+
+
+def build_diagram(out_html: str, data_csv: str, layout_json: str) -> int:
+    """Build the TSU sheet the layout asks for: ``"kind":
+    "intersection"`` renders the junction sheet, anything else the
+    section sheet (the historical default)."""
+    crashes = read_data_csv(data_csv)
+    layout = json.load(open(layout_json))
+    layout["logo_b64"] = load_logo(layout.get("logo"))
+    render = (render_intersection
+              if layout.get("kind") == "intersection" else render_section)
+    html = render(crashes, layout)
     with open(out_html, "w", encoding="utf-8") as fh:
         fh.write(html)
     return len(crashes)

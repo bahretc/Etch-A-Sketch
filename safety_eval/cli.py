@@ -1393,9 +1393,31 @@ def build_parser() -> argparse.ArgumentParser:
     fw.add_argument("--route", default="", help='Study route, e.g. "US 74".')
     fw.set_defaults(func=_cmd_fiche_workbook)
 
+    td = sub.add_parser(
+        "tsu-diagram",
+        help="Render the TSU collision diagram sheet (11x17 HTML) from a "
+             "TEAAS CollisionDiagramData export and a layout JSON. The "
+             "layout's kind selects the sheet: 'intersection' draws the "
+             "junction north up at its legs' true bearings (validated "
+             "against 41000077750); anything else draws the section sheet.")
+    td.add_argument("--data", required=True,
+                    help="<WO>_CollisionDiagramData.txt (one row per unit).")
+    td.add_argument("--layout", required=True, help="Layout JSON.")
+    td.add_argument("--out", required=True, help="Output .html (print to "
+                    "PDF at 17x11 in a browser or headless Chromium).")
+    td.set_defaults(func=_cmd_tsu_diagram)
+
     d = sub.add_parser("doctor", help="Report available optional backends.")
     d.set_defaults(func=_cmd_doctor)
     return p
+
+
+def _cmd_tsu_diagram(args) -> int:
+    from .collision_diagram import build_diagram
+
+    n = build_diagram(args.out, args.data, args.layout)
+    print(f"Rendered {n} crash(es) -> {args.out}")
+    return 0
 
 
 def main(argv=None) -> int:

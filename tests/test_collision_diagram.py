@@ -494,3 +494,146 @@ def test_pinned_cells_leave_the_placement_chain(tmp_path):
                       r'translate\(([-\d.]+),([-\d.]+)\)', html)
         x, y = float(m.group(1)), float(m.group(2))
         assert math.hypot(x - sx, y - sy) < 130, (cid, x, y, sx, sy)
+
+
+# --------------------------------------------------------------------------- #
+# the intersection sheet (validated against the delivered 41000077750)
+# --------------------------------------------------------------------------- #
+import pathlib as _pl
+
+_EX = _pl.Path(__file__).resolve().parent.parent / "examples" / "41000077750"
+_needs_example = pytest.mark.skipif(
+    not (_EX / "41000077750_CollisionDiagramData.txt").exists(),
+    reason="41000077750 example data not present")
+
+
+def _crash_xy(html):
+    """{crash_id: (x, y)} for every placed cell."""
+    out = {}
+    for cid, x, y in re.findall(
+            r'<g data-crash="(\d+)"[^>]*transform="translate\('
+            r'([-\d.]+),([-\d.]+)\)"', html):
+        out[cid] = (float(x), float(y))
+    return out
+
+
+@_needs_example
+def test_the_real_data_reads_with_its_from_road_coding():
+    crashes = cd.read_data_csv(
+        str(_EX / "41000077750_CollisionDiagramData.txt"))
+    assert len(crashes) == 24
+    by_id = {c.crash_id: c for c in crashes}
+    fatal = by_id["104677590"]
+    assert fatal.severity == "K" and fatal.acc_typ == 27
+    assert fatal.units[1].speed == 130          # the motorcyclist
+    off = by_id["105113604"]
+    assert off.dist_mi == 0.1 and off.dist_dir == "W"
+    assert off.on_road == "30000581" and off.from_road == "30000111"
+    night = by_id["104713233"]
+    assert night.night                          # LT_COND 5
+    assert crashes[0].seq == 1 and crashes[-1].seq == 24  # date order kept
+
+
+@_needs_example
+def test_intersection_sheet_places_all_24_crashes_inside_the_frame(tmp_path):
+    out = tmp_path / "sheet.html"
+    n = cd.build_diagram(str(out),
+                         str(_EX / "41000077750_CollisionDiagramData.txt"),
+                         str(_EX / "diagram_layout.json"))
+    assert n == 24
+    html = out.read_text()
+    placed = _crash_xy(html)
+    assert len(placed) == 24
+    for x, y in placed.values():
+        assert 30 < x < cd.PAGE_W - 30 and 30 < y < cd.PAGE_H - 30
+    # both stop approaches carry their sign, the junction its furniture
+    assert html.count(">STOP</text>") == 2
+    # the lettering is plotter strokes, so presence is structural: the
+    # last badge and the sheet frame are both there
+    assert 'data-seq="24"' in html
+
+
+@_needs_example
+def test_a_distance_coded_crash_stands_out_its_leg(tmp_path):
+    """105113604 is coded .1 mile WEST of the junction; its cell must
+    stand out the west leg, not on the junction."""
+    out = tmp_path / "sheet.html"
+    cd.build_diagram(str(out),
+                     str(_EX / "41000077750_CollisionDiagramData.txt"),
+                     str(_EX / "diagram_layout.json"))
+    placed = _crash_xy(out.read_text())
+    layout = json.loads((_EX / "diagram_layout.json").read_text())
+    cx = layout["center"][0]
+    assert placed["105113604"][0] < cx - 90
+
+
+def _intersection_layout(**extra):
+    layout = {"kind": "intersection", "title": ["t"], "center": [780, 560],
+              "legs": [{"bearing": 270, "label": ["Main St"]},
+                       {"bearing": 90, "label": ["Main St"]},
+                       {"bearing": 0, "stop": True, "label": ["Side St"]},
+                       {"bearing": 180, "stop": True, "label": ["Side St"]}],
+              "prepared_by": "x", "date": "1/1/2026"}
+    layout.update(extra)
+    return layout
+
+
+def _intersection_sheet(crashes, tmp_path, **extra):
+    data = tmp_path / "data.txt"
+    cd.write_data_csv(str(data), crashes)
+    lp = tmp_path / "layout.json"
+    lp.write_text(json.dumps(_intersection_layout(**extra)))
+    out = tmp_path / "sheet.html"
+    cd.build_diagram(str(out), str(data), str(lp))
+    return out.read_text()
+
+
+def test_intersection_cells_never_overlap_each_other(tmp_path):
+    crashes = [make_crash(crash_id=str(100000000 + i), mp=None,
+                          units=[cd.Unit(1, d, 45, 4)])
+               for i, d in enumerate(["E", "W", "N", "S"] * 5)]
+    html = _intersection_sheet(crashes, tmp_path)
+    placed = _crash_xy(html)
+    assert len(placed) == 20
+    pts = list(placed.values())
+    for i in range(len(pts)):
+        for j in range(i + 1, len(pts)):
+            dx = abs(pts[i][0] - pts[j][0])
+            dy = abs(pts[i][1] - pts[j][1])
+            assert dx > 20 or dy > 20, "two cells landed on one spot"
+
+
+def test_intersection_pinned_cell_lands_where_it_was_pinned(tmp_path):
+    crashes = [make_crash(crash_id="100000001", mp=None)]
+    html = _intersection_sheet(crashes, tmp_path,
+                               at={"100000001": [401.0, 233.0]})
+    assert _crash_xy(html)["100000001"] == (401.0, 233.0)
+
+
+def test_intersection_sheet_is_north_up(tmp_path):
+    """North up is what lets every unit arrow read at its coded compass
+    direction; the needle must not lean with any road."""
+    crashes = [make_crash(mp=None)]
+    data = tmp_path / "data.txt"
+    cd.write_data_csv(str(data), crashes)
+    layout = _intersection_layout()
+    cd_html = cd.render_intersection(cd.read_data_csv(str(data)), layout)
+    assert layout["north_rot"] == 0.0
+    assert 'data-crash="100000001"' in cd_html
+
+
+def test_build_diagram_dispatches_on_kind(tmp_path):
+    crashes = [make_crash()]
+    data = tmp_path / "data.txt"
+    cd.write_data_csv(str(data), crashes)
+    sec = tmp_path / "s.json"
+    sec.write_text(json.dumps({"type": "section", "begin_mp": 1.31,
+                               "end_mp": 1.8, "title": ["t"],
+                               "route_label": ["r"]}))
+    out = tmp_path / "o.html"
+    cd.build_diagram(str(out), str(data), str(sec))
+    assert ">STOP</text>" not in out.read_text()  # no junction furniture
+    ix = tmp_path / "i.json"
+    ix.write_text(json.dumps(_intersection_layout()))
+    cd.build_diagram(str(out), str(data), str(ix))
+    assert ">STOP</text>" in out.read_text()     # the junction furniture

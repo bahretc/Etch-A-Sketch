@@ -198,40 +198,85 @@ def test_verifier_shares_the_planner_scope():
     assert list(_residual_groups(words, True, WHOLE_PAGE))
 
 
-def test_an_address_on_the_study_road_survives_the_identity_zone():
-    """An address is PII when it says where somebody lives. An address that
-    says the crash happened on the study road is location, and covering it
-    throws away what places the crash."""
+# --- study-road address exemption (local_roads) ----------------------------
+def _driver_block_address(road=("Tom", "Boyd")):
+    """A driver-identity row: name left, '1518 <road> Rd' to its right."""
+    a, b = road
+    return [W("John", 20, 100, line=(0, 0, 3)),
+            W("Smith", 90, 100, line=(0, 0, 3)),
+            W("1518", 300, 100, line=(0, 0, 3)),
+            W(a, 370, 100, line=(0, 0, 3)),
+            W(b, 440, 100, line=(0, 0, 3)),
+            W("Rd", 510, 100, line=(0, 0, 3))]
+
+
+DRIVER_ZONE = [(0, 50, 10_000, 200)]
+
+
+def test_local_road_address_words_matches_span_only():
+    from safety_eval.redact import local_address_words
+    words = _driver_block_address()
+    kept = local_address_words(words, ["TOM BOYD"], DRIVER_ZONE)
+    assert sorted(w.text for w in kept) == ["1518", "Boyd", "Rd", "Tom"]
+
+
+def test_local_road_address_survives_planning_but_name_does_not():
+    """The planner carves the kept span out of its own boxes, and the zone
+    band (which is what actually covers an uncaptioned name in the driver
+    block) splits around the kept words, leaving the name covered."""
     from safety_eval import form_geometry as fg
+    from safety_eval.redact import local_address_words
+    words = _driver_block_address()
+    kept = local_address_words(words, ["TOM BOYD"], DRIVER_ZONE)
+    boxes = plan_redactions(words, identity_rects=DRIVER_ZONE,
+                            local_keep=kept)
+    for b in boxes:                      # no box may cover the address span
+        assert not (b.left <= 310 and b.right >= 520), b
+    holes = [(w.left, w.top, w.right, w.bottom) for w in kept]
+    pieces = fg.rect_minus(DRIVER_ZONE[0], holes)
 
-    class W:
-        def __init__(self, text, left, top, w=60, h=14):
-            self.text, self.left, self.top = text, left, top
-            self.width, self.height = w, h
-
-        @property
-        def right(self):
-            return self.left + self.width
-
-        @property
-        def bottom(self):
-            return self.top + self.height
-
-    width, height = 1000, 1300
-    reg = (1.0, 0.0)
-    ident = next(r for z, r in fg.zone_rects(width, height, reg)
-                 if z.name == "driver-identity")
-    y = (ident[1] + ident[3]) // 2
-    home = [W("4127", 120, y), W("BIRCHWOOD", 190, y), W("LANE", 300, y)]
-    onroad = [W("2216", 120, y + 30), W("MILK", 190, y + 30),
-              W("DAIRY", 260, y + 30), W("ROAD", 330, y + 30)]
-    roads = {"MILK", "DAIRY", "ROAD", "SR"}
-    keep = fg.local_address_words(home + onroad, width, height, reg, roads)
-    kept = {w.text for w in keep}
-    assert "DAIRY" in kept and "MILK" in kept, kept
-    assert "BIRCHWOOD" not in kept, kept
+    def covered(x, y=110):
+        return any(x0 <= x <= x1 and y0 <= y <= y1
+                   for x0, y0, x1, y1 in pieces)
+    assert covered(50) and covered(120)          # the name stays covered
+    assert not covered(380) and not covered(460)  # the address shows
 
 
-def test_no_study_roads_means_every_address_stays_covered():
-    from safety_eval import form_geometry as fg
-    assert fg.local_address_words([], 1000, 1300, (1.0, 0.0), set()) == []
+def test_other_roads_stay_covered_with_local_roads_set():
+    from safety_eval.redact import local_address_words
+    words = _driver_block_address(road=("Buffalo", "Creek"))
+    kept = local_address_words(words, ["TOM BOYD"], DRIVER_ZONE)
+    assert kept == []
+
+
+def test_no_exemption_outside_the_driver_owner_zones():
+    """A persons-table address on the study road stays covered: the table
+    lists occupants, not the driver/owner the engineer asked to keep."""
+    from safety_eval.redact import local_address_words
+    words = _driver_block_address()
+    kept = local_address_words(words, ["TOM BOYD"], [(0, 500, 10_000, 900)])
+    assert kept == []
+
+
+def test_verifier_shares_the_local_road_exemption():
+    from safety_eval.redact import _residual_groups
+    words = [W("1518", 300, 100, line=(0, 0, 3)),
+             W("Tom", 370, 100, line=(0, 0, 3)),
+             W("Boyd", 440, 100, line=(0, 0, 3)),
+             W("Rd", 510, 100, line=(0, 0, 3))]
+    # without the exemption: flagged as a surviving street address
+    assert list(_residual_groups(words, True, DRIVER_ZONE))
+    # with it: kept by design, not a finding
+    assert list(_residual_groups(words, True, DRIVER_ZONE,
+                                 local_roads=["TOM BOYD"],
+                                 addr_rects=DRIVER_ZONE)) == []
+
+
+def test_ocr_timeout_env(monkeypatch):
+    from safety_eval.redact import _ocr_timeout
+    monkeypatch.delenv("SAFETY_EVAL_OCR_TIMEOUT", raising=False)
+    assert _ocr_timeout() == 120
+    monkeypatch.setenv("SAFETY_EVAL_OCR_TIMEOUT", "600")
+    assert _ocr_timeout() == 600
+    monkeypatch.setenv("SAFETY_EVAL_OCR_TIMEOUT", "bogus")
+    assert _ocr_timeout() == 120

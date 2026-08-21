@@ -104,6 +104,17 @@ _VERIFY_DPI = 150
 _PERSONS_END_WORDS = {"injured", "taken", "ems", "treatment", "facility",
                       "investigating", "officer", "signature"}
 
+#: tesseract can be pathologically slow on some hosts (a trivial page taking
+#: tens of seconds), and a binder run multiplies that by hundreds of pages.
+#: The per-page ceiling is env-tunable so a slow host can be given room (or
+#: failed fast) without editing code. Benchmark tesseract on a trivial image
+#: before blaming the pipeline.
+def _ocr_timeout() -> int:
+    try:
+        return int(os.environ.get("SAFETY_EVAL_OCR_TIMEOUT", "120"))
+    except ValueError:
+        return 120
+
 
 def _label_key(token: str) -> str:
     """Normalized token, singularized so plural captions match.
@@ -235,8 +246,60 @@ def _inside(word: Word, rects) -> bool:
     return any(x0 <= cx <= x1 and y0 <= cy <= y1 for x0, y0, x1, y1 in rects)
 
 
+def _road_token_seqs(roads) -> set[tuple[str, ...]]:
+    """Study road names as normalized token tuples ('TOM BOYD' -> (TOM, BOYD))."""
+    out: set[tuple[str, ...]] = set()
+    for r in roads or ():
+        toks = tuple(t for t in re.split(r"[^A-Za-z0-9]+", str(r).upper()) if t)
+        if toks:
+            out.add(toks)
+    return out
+
+
+def local_address_words(words: list[Word], roads,
+                        addr_rects) -> list[Word]:
+    """Driver/owner address words on a STUDY road, deliberately KEPT.
+
+    A person whose address is the study road is evidence: it explains a
+    driveway crash, resolves a "backed from private drive" location, and ties
+    an at-address diagram to a milepost. So when the engineer supplies the
+    study road names, an address row inside the driver or owner identity
+    block that names one of those roads keeps its street span (house number,
+    road tokens, street suffix) while the rest of the block stays covered.
+
+    Scope is deliberately narrow: only the driver-identity and owner-identity
+    zones (``addr_rects``), never the persons table (occupants, including
+    minors), and only the matched span, because a visual row crosses both
+    unit columns and the other driver's address must not ride along.
+    """
+    seqs = _road_token_seqs(roads)
+    if not seqs or not addr_rects:
+        return []
+    keep: list[Word] = []
+    for row in _visual_rows(words):
+        inz = [w for w in row if _inside(w, addr_rects)]
+        if not inz:
+            continue
+        toks = [w.text.strip().strip(".,;:").upper() for w in inz]
+        spans: list[tuple[int, int]] = []
+        for seq in seqs:
+            n = len(seq)
+            for i in range(len(toks) - n + 1):
+                if tuple(toks[i:i + n]) != seq:
+                    continue
+                j0, j1 = i, i + n
+                if j0 > 0 and toks[j0 - 1].isdigit() and len(toks[j0 - 1]) <= 6:
+                    j0 -= 1
+                if j1 < len(toks) and toks[j1] in _STREET_SUFFIXES:
+                    j1 += 1
+                spans.append((j0, j1))
+        for j0, j1 in spans:
+            keep.extend(inz[j0:j1])
+    return keep
+
+
 def plan_redactions(words: list[Word], keep_zip: bool = True, pad: int = 3,
-                    identity_rects=None) -> list[Redaction]:
+                    identity_rects=None, local_keep=()) -> list[Redaction]:
     """Decide what to black out.
 
     What this is FOR: the identifying information of the people involved in
@@ -260,8 +323,11 @@ def plan_redactions(words: list[Word], keep_zip: bool = True, pad: int = 3,
       outside the identity block is a road, not a person.
     * ZIP-looking tokens are carved OUT of any planned box when ``keep_zip``.
     * 9-digit crash IDs are never redacted.
+    * ``local_keep`` words (study-road addresses from
+      :func:`local_address_words`) are carved out the same way ZIPs are.
     """
     zones = list(identity_rects or ())
+    kept_ids = {id(w) for w in local_keep}
     lines = _visual_rows(words)
     planned: list[tuple[list[Word], str]] = []
     redact_next_line_of: dict[tuple, str] = {}
@@ -359,7 +425,7 @@ def plan_redactions(words: list[Word], keep_zip: bool = True, pad: int = 3,
 
     out: list[Redaction] = []
     for group, reason in planned:
-        segments = _split_keeping_zip(group, keep_zip)
+        segments = _split_keeping_zip(group, keep_zip, kept_ids)
         for seg in segments:
             seg = [w for w in seg if not _CRASH_ID_RE.match(w.text.strip())]
             if not seg:
@@ -375,17 +441,22 @@ def plan_redactions(words: list[Word], keep_zip: bool = True, pad: int = 3,
     return out
 
 
-def _split_keeping_zip(group: list[Word], keep_zip: bool) -> list[list[Word]]:
-    if not keep_zip:
-        return [group]
+def _split_keeping_zip(group: list[Word], keep_zip: bool,
+                       kept_ids=frozenset()) -> list[list[Word]]:
+    """Split a planned group around the words that stay visible.
+
+    Splitting, not filtering: a persons-row group is boxed by min/max extent,
+    so merely dropping a kept word from the middle would leave it covered by
+    the box spanning its neighbours.
+    """
     segments: list[list[Word]] = []
     current: list[Word] = []
     for w in group:
-        if _ZIP_RE.match(w.text.strip()):
+        if (keep_zip and _ZIP_RE.match(w.text.strip())) or id(w) in kept_ids:
             if current:
                 segments.append(current)
                 current = []
-            continue                      # zip stays visible
+            continue                      # stays visible
         current.append(w)
     if current:
         segments.append(current)
@@ -408,20 +479,19 @@ def _require(binary: str) -> str:
     return path
 
 
-#: Seconds allowed for one page of OCR. A page normally takes a few
-#: seconds; a throttled machine can take minutes, and a fixed ceiling
-#: turns that into a redaction failure rather than a slow redaction.
-OCR_TIMEOUT = int(os.environ.get("SAFETY_EVAL_OCR_TIMEOUT", "120"))
-
-
 def ocr_words(image_path: str, page: int = 0, timeout: int | None = None,
               min_conf: float = 30.0) -> list[Word]:
-    """OCR one page image into word boxes via tesseract TSV."""
-    timeout = OCR_TIMEOUT if timeout is None else timeout
+    """OCR one page image into word boxes via tesseract TSV.
+
+    ``timeout`` defaults to SAFETY_EVAL_OCR_TIMEOUT (seconds, default 120),
+    read at call time so a long process or a test can adjust it.
+    """
     tesseract = _require("tesseract")
     proc = subprocess.run(
         [tesseract, image_path, "stdout", "--psm", "11", "tsv"],
-        capture_output=True, text=True, timeout=timeout, check=True)
+        capture_output=True, text=True,
+        timeout=timeout if timeout is not None else _ocr_timeout(),
+        check=True)
     words: list[Word] = []
     reader = csv.DictReader(io.StringIO(proc.stdout), delimiter="\t")
     for row in reader:
@@ -479,11 +549,12 @@ def _open_image(path: str):
     return Image.open(path)
 
 
-def _groups_to_boxes(groups, keep_zip: bool, pad: int = 3) -> list[Redaction]:
+def _groups_to_boxes(groups, keep_zip: bool, pad: int = 3,
+                     kept_ids=frozenset()) -> list[Redaction]:
     """Word groups -> boxes, preserving ZIPs and crash IDs (as planning does)."""
     out: list[Redaction] = []
     for group, reason in groups:
-        for seg in _split_keeping_zip(group, keep_zip):
+        for seg in _split_keeping_zip(group, keep_zip, kept_ids):
             seg = [w for w in seg if not _CRASH_ID_RE.match(w.text.strip())]
             if not seg:
                 continue
@@ -499,7 +570,8 @@ def _groups_to_boxes(groups, keep_zip: bool, pad: int = 3) -> list[Redaction]:
 
 
 def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
-                dpi: int = 200, passes: int = 3) -> RedactionReport:
+                dpi: int = 200, passes: int = 3,
+                local_roads=None) -> RedactionReport:
     """Redact a crash-report file into an image-only PDF.
 
     One pass leaves whatever that pass's OCR did not resolve, and OCR results
@@ -508,6 +580,9 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
     consumer renders it, covering anything the verifier can still read. The
     planner and the verifier share their predicates, so what the verifier can
     find, the redactor covers.
+
+    ``local_roads``: study road names; a driver or owner address on one of
+    them stays readable (see :func:`local_address_words`).
 
     Returns an audit report (counts and reasons only; the PII itself is never
     echoed anywhere).
@@ -556,17 +631,27 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
 
         out_pages = []
         page_zone_rects: list[list] = []
+        page_addr_rects: list[list] = []
         for i, img in enumerate(pages):
             words = page_words[i]
             # Where the occupants' data sits on THIS page. The address, phone
             # and VIN pattern rules are scoped to it, so the narrative, the
             # location block and the coded grid are never touched by them.
-            ident = ([r for _, r in fg.zone_rects(img.width, img.height,
-                                                  page_reg[i])]
+            zoned = (fg.zone_rects(img.width, img.height, page_reg[i])
                      if page_reg[i] is not None else [])
+            ident = [r for _, r in zoned]
+            addr_rects = [r for z, r in zoned
+                          if z.name in ("driver-identity", "owner-identity")]
             page_zone_rects.append(ident)
+            page_addr_rects.append(addr_rects)
+            local_keep = local_address_words(words, local_roads, addr_rects)
+            if local_keep:
+                report.by_reason["local-address-kept"] = (
+                    report.by_reason.get("local-address-kept", 0)
+                    + len(local_keep))
             boxes = plan_redactions(words, keep_zip=keep_zip,
-                                    identity_rects=ident)
+                                    identity_rects=ident,
+                                    local_keep=local_keep)
             # geometry zones: cover the identity blocks by position, whatever
             # OCR made of their captions
             if page_reg[i] is not None:
@@ -581,16 +666,7 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
                                                  page_reg[i])) if keep_zip \
                     else []
                 zip_holes = [(w.left, w.top, w.right, w.bottom)
-                             for w in zip_keep]
-                # An address on the study road is where the crash was, not
-                # where somebody lives, so a row inside an identity zone
-                # that names a road the report's own header calls out is
-                # left readable.
-                zip_holes += [
-                    (w.left, w.top, w.right, w.bottom)
-                    for w in fg.local_address_words(
-                        words, img.width, img.height, page_reg[i],
-                        protected)]
+                             for w in zip_keep + local_keep]
                 for z, rect in fg.zone_rects(img.width, img.height,
                                              page_reg[i]):
                     holes = zip_holes
@@ -627,9 +703,14 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
                             int(x1 * scale), int(y1 * scale))
                            for x0, y0, x1, y1 in ident]
                           if scale != 1.0 else ident)
+                    azs = ([(int(x0 * scale), int(y0 * scale),
+                             int(x1 * scale), int(y1 * scale))
+                            for x0, y0, x1, y1 in addr_rects]
+                           if scale != 1.0 else addr_rects)
                     for b in _groups_to_boxes(
                             _residual_groups(ocr_words(rp, page=i), keep_zip,
-                                             zs),
+                                             zs, local_roads=local_roads,
+                                             addr_rects=azs),
                             keep_zip):
                         again.append(b if scale == 1.0 else Redaction(
                             page=b.page, left=int(b.left / scale),
@@ -671,8 +752,12 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
             k = _VERIFY_DPI / float(dpi or _VERIFY_DPI)
             probe_zones = [[(int(x0 * k), int(y0 * k), int(x1 * k), int(y1 * k))
                             for x0, y0, x1, y1 in z] for z in page_zone_rects]
+            probe_addr = [[(int(x0 * k), int(y0 * k), int(x1 * k), int(y1 * k))
+                           for x0, y0, x1, y1 in z] for z in page_addr_rects]
             found = residual_pii(renders, keep_zip=keep_zip,
-                                 identity_rects=probe_zones)
+                                 identity_rects=probe_zones,
+                                 local_roads=local_roads,
+                                 addr_rects=probe_addr)
             if not found:
                 break
             for f in found:
@@ -712,7 +797,8 @@ class ResidualFinding:
 
 
 def residual_pii(image_paths: list[str], keep_zip: bool = True,
-                 identity_rects=None) -> list[ResidualFinding]:
+                 identity_rects=None, local_roads=None,
+                 addr_rects=None) -> list[ResidualFinding]:
     """Re-OCR redacted page images and report PII that is still legible.
 
     Redaction is OCR-driven, so a caption the OCR misses leaves its value in
@@ -733,7 +819,13 @@ def residual_pii(image_paths: list[str], keep_zip: bool = True,
         if identity_rects:
             rects = (identity_rects[page_no - 1]
                      if page_no - 1 < len(identity_rects) else None)
-        for group, reason in _residual_groups(words, keep_zip, rects):
+        arects = None
+        if addr_rects:
+            arects = (addr_rects[page_no - 1]
+                      if page_no - 1 < len(addr_rects) else None)
+        for group, reason in _residual_groups(words, keep_zip, rects,
+                                              local_roads=local_roads,
+                                              addr_rects=arects):
             left = min(w.left for w in group)
             top = min(w.top for w in group)
             right = max(w.left + w.width for w in group)
@@ -743,20 +835,28 @@ def residual_pii(image_paths: list[str], keep_zip: bool = True,
     return out
 
 
-def _residual_groups(words: list[Word], keep_zip: bool, identity_rects=None):
+def _residual_groups(words: list[Word], keep_zip: bool, identity_rects=None,
+                     local_roads=None, addr_rects=None):
     """Lines of a redacted page that still look like PII.
 
     Scoped exactly like ``plan_redactions``: a street address or phone number
     only counts as residual PII where the occupants' data lives. A street name
-    in the narrative is the crash location.
+    in the narrative is the crash location, and a driver or owner address on a
+    study road (``local_roads`` within ``addr_rects``) is kept by design, so
+    neither is a finding.
     """
     zones = list(identity_rects or ())
+    kept = ({id(w) for w in local_address_words(words, local_roads,
+                                                addr_rects or ())}
+            if local_roads else set())
     for line in _visual_rows(words):
         tokens = [w.text for w in line]
         norm = [_norm(t) for t in tokens]
         span = _street_span(line)
         if span and zones and all(_inside(w, zones) for w in span):
-            yield span, "street-address survived"
+            span = [w for w in span if id(w) not in kept]
+            if span:
+                yield span, "street-address survived"
             continue
         if _looks_like_city_line(tokens) and not keep_zip:
             yield line, "city/state/zip survived"
@@ -776,12 +876,14 @@ def _residual_groups(words: list[Word], keep_zip: bool, identity_rects=None):
                     yield [w], "date beside a DOB caption survived"
 
 
-def verify_redaction(image_paths: list[str], keep_zip: bool = True) -> None:
+def verify_redaction(image_paths: list[str], keep_zip: bool = True,
+                     local_roads=None, addr_rects=None) -> None:
     """Raise if any PII survived redaction (fail closed).
 
     Call before a redacted page is shown to a reviewer or sent to a model.
     """
-    findings = residual_pii(image_paths, keep_zip=keep_zip)
+    findings = residual_pii(image_paths, keep_zip=keep_zip,
+                            local_roads=local_roads, addr_rects=addr_rects)
     if findings:
         counts: dict[str, int] = {}
         for f in findings:

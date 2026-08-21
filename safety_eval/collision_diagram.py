@@ -322,7 +322,7 @@ SEV_GAP = 5.0            # arrow tip to severity circle center
 SEV_R = 2.6
 LANE_SEP = 11.0          # lateral separation of two units drawn side by side
 TICK_H = 6.5             # half length of the point of impact tick
-DEPART_ANG = 18.0        # cell rotation off the travel line for a departure
+DEPART_KINK = 26.0       # bend of the leg past the break for a departure
 ROAD_GAP = 11.0          # clear space between the centerline and any ink
 STUB_LEN = 150.0         # side road leg, long enough to read as a road
 JN_SIZE = 11.5           # side road name at the end of its leg
@@ -398,14 +398,18 @@ def _speed_marks(x0, y0, x1, y1, speed):
 
 
 def _unit_cell(tx, ty, ang_deg, unit, night, zigzag=False,
-               shaft=CELL_SHAFT, swerve=0.0, turn=0.0):
+               shaft=CELL_SHAFT, swerve=0.0, turn=0.0, kink=0.0):
     """One vehicle drawn from its tail start toward ``ang_deg``.
 
     The shaft is always ``shaft`` long tail to tip, so cells of different
     crash types stack the same. ``zigzag`` breaks the middle of the shaft
     for a run off road without changing its length, and ``swerve`` jogs
-    the shaft sideways near the head for a sideswipe. Returns the svg,
-    the tip point, and the ink points the caller needs for its bounds.
+    the shaft sideways near the head for a sideswipe. ``kink`` bends only
+    the stretch past the break, so a run off road reads its side off the
+    cell itself: the run stays on the travel line and the departure leg
+    angles off it (rotating the whole cell left the side ambiguous).
+    Returns the svg, the tip point, and the ink points the caller needs
+    for its bounds.
     """
     a = math.radians(ang_deg)
     c, s = math.cos(a), math.sin(a)
@@ -417,13 +421,13 @@ def _unit_cell(tx, ty, ang_deg, unit, night, zigzag=False,
     out = []
     ink = [P(0.0)]
     mark_lo, mark_hi = 2.0, shaft - CELL_HEAD - 2.0
-    if turn:
+    if turn or kink:
         # a vehicle that was turning when it left the road. This is the
         # ordinary run off road cell, same shaft, same marks, same break,
         # and only the last stretch and the head swing toward the road it
         # was turning onto. Bending earlier puts two direction changes
         # within a few pixels of each other and the linework stops reading.
-        bend = turn * 0.42
+        bend = turn * 0.42 if turn else kink
         a2 = math.radians(ang_deg + bend)
         c2, s2 = math.cos(a2), math.sin(a2)
         n2x, n2y = -s2, c2
@@ -504,9 +508,14 @@ def _severity_circle(x, y, sev):
 
 
 def _badge(x, y, n):
-    return (f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{BUBBLE_R}" fill="#fff" '
+    # a two digit number needs a wider circle and slightly smaller
+    # lettering to sit clear of the outline (deck sheets draw the circle
+    # around the number, never through it)
+    two = len(str(n)) > 1
+    r = BUBBLE_R + (2.0 if two else 0.0)
+    return (f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r}" fill="#fff" '
             f'stroke="#000" stroke-width="{CELL_SW}"/>'
-            + _stroke_text(x, y, n, size=8.5))
+            + _stroke_text(x, y, n, size=7.6 if two else 8.5))
 
 
 def _mode_mark(x, y, kind, h=11.0):
@@ -638,10 +647,11 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
         """
         c, s = vec(ang)
         lx, ly = s, -c                       # left of travel, page frame
-        bx = tail[0] - (BUBBLE_R + BUBBLE_GAP) * c
-        by = tail[1] - (BUBBLE_R + BUBBLE_GAP) * s
+        br = BUBBLE_R + (2.0 if len(str(cr.seq)) > 1 else 0.0)
+        bx = tail[0] - (br + BUBBLE_GAP) * c
+        by = tail[1] - (br + BUBBLE_GAP) * s
         out = _badge(bx, by, cr.seq)
-        K(bx, by, BUBBLE_R + 1)
+        K(bx, by, br + 1)
         sx = tail[0] + DECOR_S * c + DECOR_N * lx
         sy = tail[1] + DECOR_S * s + DECOR_N * ly
         out += _stroke_text(sx, sy + 1.5, "*", size=12.5, color=MAGENTA,
@@ -663,20 +673,25 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
     if u2 is None or cr.acc_typ in SINGLE_UNIT_TYPES:
         depart = cr.acc_typ in ROR_TYPES or cr.acc_typ == 19
         # ran off road right leaves right, left leaves left, and straight
-        # ahead carries on along the travel line without a deflection
+        # ahead carries on along the travel line without a deflection.
+        # The departure bends only the leg past the break (the deck's
+        # symbol), so the cell itself shows which side the vehicle left.
         side = {1: 1, 2: -1, 3: 0}.get(cr.acc_typ, 1)
         # maneuver 7 is making a right turn, 8 a left turn; a vehicle that
         # was turning gets the corner drawn rather than a straight run
         turn = {7: 90.0, 8: -90.0}.get(u1.maneuver, 0.0)
-        ang = a1 + (side * DEPART_ANG if depart and not turn else 0.0)
+        kink = side * DEPART_KINK if depart and not turn else 0.0
+        ang = a1
         c, s = vec(ang)
         tail = (-CELL_SHAFT * c, -CELL_SHAFT * s)
         # a turn and a run off road break will not both fit legibly in one
         # cell: the deck's answer is to plot the cell that fits and note
         # the rest, so a turning cell keeps the corner and drops the break
-        svg, tip = draw(tail, ang, u1, zigzag=depart, turn=turn)
+        svg, tip = draw(tail, ang, u1, zigzag=depart, turn=turn, kink=kink)
         if turn:
             c, s = vec(ang + turn)      # the front of the cell is the exit
+        elif kink:
+            c, s = vec(ang + kink)      # the front follows the departure
         parts.append(svg)
         mark = {14: "P", 15: "B", 17: "A", 16: "T"}.get(cr.acc_typ)
         front = 0.0
@@ -769,9 +784,12 @@ def crash_glyph(cr: DiagramCrash, base_ang: float = 0.0,
     # the through unit's head, the front of the assembly
     c2, s2 = vec(a2)
     tail1 = (-CELL_SHAFT * c1, -CELL_SHAFT * s1)
-    tail2 = (-CELL_SHAFT * c2, -CELL_SHAFT * s2)
+    # the crossing arm draws subordinate to the through unit (deck page
+    # 26): shorter, and its head stopping at the side of the through path
+    cross = CELL_SHAFT - 18.0
+    tail2 = (-cross * c2, -cross * s2)
     svg1, tip1 = draw(tail1, a1, u1)
-    svg2, _ = draw(tail2, a2, u2, shaft=CELL_SHAFT - 9.0)
+    svg2, _ = draw(tail2, a2, u2, shaft=cross - 9.0)
     parts += [svg1, svg2]
     parts.append(sev_at(tip1[0], tip1[1], a1))
     parts.append(decor(tail1, a1))
@@ -814,13 +832,13 @@ def legend_block(x, y, w=LEGEND_W, h=LEGEND_H):
                 _arrowhead(ax + ln, ay, 0, night))
 
     rows1 = ["MOVING VEHICLE", "NIGHT CRASH", "PARKED VEHICLE",
-             "PARKING VEHICLE", "MOVABLE OBJECT", "HEAD ON", "REAR END",
+             "PARKING VEHICLE", "FIXED OBJECT", "HEAD ON", "REAR END",
              "RAN OFF ROAD"]
-    rows2 = ["ANGLE", "TURNING", "BACKING", "SIDESWIPE",
-             "NON-FATAL INJURY", "FATAL INJURY"]
-    rows3 = ["9 MPH OR LESS", "10 TO 19 MPH", "20 TO 29 MPH", "30 TO 39 MPH",
-             "40 TO 49 MPH", "50 TO 59 MPH", "60 TO 69 MPH", "70 MPH AND UP",
-             "UNKNOWN SPEED"]
+    rows2 = ["ANGLE", "TURNING", "BACKING", "SIDESWIPE", "OUT OF CONTROL",
+             "INJURY", "FATALITY"]
+    rows3 = ["9 MPH OR LESS", "10 MPH TO 19", "20 MPH TO 29", "30 MPH TO 39",
+             "40 MPH TO 49", "50 MPH TO 59", "60 MPH TO 69", "70 MPH AND UP",
+             "SPEED UNKNOWN"]
     rows4 = [("P", "PEDESTRIAN", BLUE), ("T", "TRAIN", BLUE),
              ("*", "DRIVER AT FAULT", MAGENTA), ("D", "DRY", GREEN),
              ("W", "WET", GREEN), ("I", "ICY OR SNOWY", GREEN),
@@ -873,10 +891,9 @@ def legend_block(x, y, w=LEGEND_W, h=LEGEND_H):
                  f'<line x1="{ax + 24}" y1="{ay + 2}" x2="{ax + 34}" '
                  f'y2="{ay - 4}" stroke="#000"/>' +
                  _arrowhead(ax + 38, ay - 6, -0.5, False))
-        elif label == "MOVABLE OBJECT":
-            g = arrow(ax, ay, 34) + (
-                f'<path d="M {ax + 40} {ay - 6} h 10 v 12 h -10" '
-                'fill="none" stroke="#000"/>')
+        elif label == "FIXED OBJECT":
+            g = (f'<rect x="{ax + 6}" y="{ay - 6}" width="13" height="12" '
+                 'fill="none" stroke="#000"/>')
         elif label == "HEAD ON":
             g = (arrow(ax, ay, 26) +
                  f'<line x1="{ax + 28}" y1="{ay - 8}" x2="{ax + 28}" '
@@ -930,8 +947,15 @@ def legend_block(x, y, w=LEGEND_W, h=LEGEND_H):
                  f'L {ax + 20} {ay - 9}" fill="none" stroke="#000"/>' +
                  _arrowhead(ax + 42, ay + 5, 0, False) +
                  _arrowhead(ax + 30, ay - 11, -0.25, False))
+        elif label == "OUT OF CONTROL":
+            loops = "".join(
+                f'<circle cx="{ax + 13 + k * 7}" cy="{ay + 3.5}" r="3.2" '
+                'fill="none" stroke="#000"/>' for k in range(3))
+            g = (f'<line x1="{ax}" y1="{ay}" x2="{ax + 34}" y2="{ay}" '
+                 'stroke="#000"/>' + loops +
+                 _arrowhead(ax + 46, ay, 0, False))
         else:
-            sev = {"NON-FATAL INJURY": "B", "FATAL INJURY": "K"}[label]
+            sev = {"INJURY": "B", "FATALITY": "K"}[label]
             g = (f'<line x1="{ax}" y1="{ay}" x2="{ax + 26}" y2="{ay}" '
                  'stroke="#000"/>' + _arrowhead(ax + 38, ay, 0, False) +
                  _severity_circle(ax + 46, ay, sev))
@@ -942,8 +966,7 @@ def legend_block(x, y, w=LEGEND_W, h=LEGEND_H):
     pitch = band(len(rows3))
     for i, label in enumerate(rows3):
         ay = top + i * pitch
-        spd = (None if label == "SPEED UNKNOWN"
-               else 75 if label == "70 AND UP" else i * 10 + 5)
+        spd = None if label == "SPEED UNKNOWN" else i * 10 + 5
         svg, _ = _unit_arrow(col(2, 0), ay, 0, 40, Unit(1, speed=spd),
                              False)
         out.append(svg)
@@ -953,13 +976,10 @@ def legend_block(x, y, w=LEGEND_W, h=LEGEND_H):
     pitch = band(len(rows4))
     for i, (letter, label, color) in enumerate(rows4):
         ay = top + i * pitch
-        if letter == "P":
-            out.append(_mode_mark(col(3, 0) + 4, ay, letter, h=15))
-        else:
-            out.append(_stroke_text(col(3, 0) + 4,
-                                    ay + (2 if letter == "*" else 0),
-                                    letter, size=13 if letter == "*" else 11,
-                                    color=color))
+        out.append(_stroke_text(col(3, 0) + 4,
+                                ay + (2 if letter == "*" else 0),
+                                letter, size=13 if letter == "*" else 11,
+                                color=color))
         out.append(_stroke_text(col(3, 1), ay, label, size=LEGEND_LABEL,
                                 anchor="start"))
     return "".join(out)
@@ -1419,10 +1439,19 @@ def render_section(crashes: list[DiagramCrash], layout: dict) -> str:
             # Cost of a spot: how far it walks the cell off its milepost
             # against how far out it stacks. A cell that reads off the
             # line is worth more than one that reads at exactly the right
-            # station, so a row out is dear and a slide is cheap: a cell
-            # slides most of a row's worth before it stands out at all.
+            # station, so a row out is DEAR and a slide is cheap: a cell
+            # slides two rows' worth before standing off is even
+            # considered. Cells hugging the line is what makes the sheet
+            # read (every engineer markup round has said so).
+            def slide_cost(d):
+                # a short slide is nearly free, a long one dear: past two
+                # cell-lengths the sheet starts lying about the station,
+                # which is worse than standing one row off the line
+                return abs(d) * 0.45 if abs(d) <= 60 \
+                    else 27.0 + (abs(d) - 60) * 1.4
+
             cands = sorted(
-                ((abs(d) * 0.75 + 55.0 * rk, rk, d)
+                ((slide_cost(d) + 110.0 * rk, rk, d)
                  for rk in (0, 1, 2, 3)
                  for d in (0, -14, 14, -28, 28, -46, 46, -68, 68,
                            -96, 96, -130, 130, -170, 170, -210, 210)),

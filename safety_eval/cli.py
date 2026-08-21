@@ -241,8 +241,11 @@ def _cmd_aadt(args) -> int:
 
 def _cmd_redact(args) -> int:
     from .redact import redact_file
+    roads = ([r.strip() for r in args.local_roads.split(",") if r.strip()]
+             if getattr(args, "local_roads", None) else None)
     report = redact_file(args.input, args.output,
-                         keep_zip=not args.no_keep_zip, dpi=args.dpi)
+                         keep_zip=not args.no_keep_zip, dpi=args.dpi,
+                         local_roads=roads)
     print(f"Redacted {report.boxes} region(s) across {report.pages} page(s) "
           f"-> {args.output}")
     for reason, n in sorted(report.by_reason.items()):
@@ -988,6 +991,10 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Also redact ZIP codes (kept by default).")
     rd.add_argument("--dpi", type=int, default=200,
                     help="Rasterization DPI for PDF input (default 200).")
+    rd.add_argument("--local-roads", default=None,
+                    help="Comma-separated study road names; a driver or owner "
+                         "address on one of them stays readable (evidence for "
+                         "at-address crashes).")
     rd.set_defaults(func=_cmd_redact)
 
     bi = sub.add_parser(

@@ -590,3 +590,40 @@ def test_an_overridden_value_carries_its_fill_and_the_analysis_uses_it(tmp_path)
     assert ws.cell(row=2, column=8).fill.patternType is None   # others untouched
     f4 = next(w for w in screen.warrants if w.warrant == "F-4")
     assert f4.count == 2                             # the override counts
+
+
+# --------------------------------------------------------------------------- #
+# the study-period check (urban 5 / rural 10, per the HSIP GIS; docs/12)
+# --------------------------------------------------------------------------- #
+from safety_eval.warrants import STUDY_PERIOD_YEARS, period_note  # noqa: E402
+
+
+def _span_crashes(years):
+    old = Crash("1", "angle", 1, 1, severity="O",
+                date=END - _dt.timedelta(days=int(years * 365.25)))
+    new = Crash("2", "angle", 1, 1, severity="O", date=END)
+    return [old, new]
+
+
+def test_the_expected_pull_is_five_urban_and_ten_rural():
+    assert STUDY_PERIOD_YEARS == {"urban": 5, "rural": 10}
+
+
+def test_a_matching_span_raises_no_note():
+    assert period_note(_span_crashes(5), "urban", END) is None
+    assert period_note(_span_crashes(10), "rural", END) is None
+    # a pull rarely has a crash on its boundary dates; slack is allowed
+    assert period_note(_span_crashes(4.5), "urban", END) is None
+
+
+def test_a_ten_year_pull_screened_as_urban_is_flagged_and_vice_versa():
+    note = period_note(_span_crashes(10), "urban", END)
+    assert note and "10.0 years" in note and "5 years" in note
+    note = period_note(_span_crashes(5), "rural", END)
+    assert note and "10 years" in note
+
+
+def test_the_note_is_advisory_and_never_blocks_a_thin_dataset():
+    assert period_note([], "urban", END) is None
+    assert period_note(_span_crashes(10)[:1], "urban", END) is None
+    assert period_note(_span_crashes(10), "elsewhere", END) is None

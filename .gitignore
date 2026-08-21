@@ -10,3 +10,6 @@ venv/
 
 # Tool output
 output/
+
+# per-study workspaces (real crash data; never committed)
+studies/

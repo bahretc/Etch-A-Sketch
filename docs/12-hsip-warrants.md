@@ -106,6 +106,44 @@ RTSR, U-Turn, Head-on). Urban uses a 2-year recency window, rural a 3-year one:
 
 **These are the 2024 warrants. NCDOT has 2026 updates not yet in hand.**
 
+## Analysis periods and the HSIP GIS
+
+Section analyses run on a 5-year period (the minimums table above is a
+5-year table). Intersection analyses run on the period NCDOT pulls for the
+location: **5 years for urban locations, 10 years for rural ones**. The
+period, and the urban/rural call itself, come from the NCDOT HSIP GIS for
+the time being:
+
+<https://www.arcgis.com/apps/mapviewer/index.html?webmap=bb6dd277ce6247438fc096200141949a>
+
+The layer `NC HSIP_INT_<year>` carries one point per ranked intersection
+with Intersection ID (`TSUINT...`), Legacy PH, Location Description, Rank,
+County, City, Routes, and the warrant flags behind the rank (FRONTAL
+IMPACT, LAST YEAR INCREASE, SEVERITY INDEX, FATAL AND SEVERE INJURY, NIGHT
+LOCATION, each split `- RURAL` / `- URBAN`). **The City field names the
+municipality for an urban location and reads `RURAL` for a rural one**;
+that is the same urban/rural call the IU/IR sheets and the recency windows
+key on. Prior HSIP years are available as layers in the same map.
+
+The longer rural pull does not stretch the recency sub-tests: the windows
+(1 year, 2/3 years, and I-3's K/A frontal-impact in the last 5) always
+count back from the analysis end date, whatever the pull length.
+
+Worked example in hand: study **41000077750** (2025 HSIP; rural, Wayne
+County, NC-581 at SR-1960) is GIS point TSUINT672620 / Legacy PH 95I00327,
+and the completed study folder `41000077750 PH TSUINT672620` is in the team
+Drive. The same location reappears in the 2026 layer at rank 431.
+
+## Bike/Ped HSIP analyses (not built; do not lose)
+
+Alongside the intersection and section analyses, HSIP packages include
+bicycle/pedestrian analyses. They are **always 10-year intersection
+analyses with a 300 ft y-line** (against the usual 150 ft buffer), and
+their collision diagram has its own format, distinct from the vehicle
+diagrams. Completed examples exist in the archive/Drive. Deliberately
+deferred for now; nothing in the current warrant or diagram code covers
+them, and any future implementation starts from those examples.
+
 ## Shares are rounded to whole percents BEFORE the test
 
 Every share in the workbook is `ROUND(count/total, 2)` and the `>=` comparison

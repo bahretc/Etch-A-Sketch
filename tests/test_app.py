@@ -133,3 +133,73 @@ def test_the_review_page_says_when_the_assist_is_not_ready(monkeypatch):
     captions = " ".join(getattr(el, "value", "") or "" for el in at.caption)
     assert "AI assist not ready" in captions
     assert "ANTHROPIC_API_KEY" in captions
+
+
+# --------------------------------------------------------------------------- #
+# the study workspace in the app (sidebar create/open, page defaults)
+# --------------------------------------------------------------------------- #
+def test_the_sidebar_offers_a_study_selector_defaulting_to_none(tmp_path,
+                                                                monkeypatch):
+    from safety_eval import workspace as wsm
+    monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
+    at = _app()
+    picks = [s for s in at.sidebar.selectbox if s.label == "Study"]
+    assert picks and picks[0].value == "(no study)"
+
+
+def test_creating_a_study_in_the_sidebar_opens_it(tmp_path, monkeypatch):
+    from safety_eval import workspace as wsm
+    monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
+    at = _app()
+    at.sidebar.text_input(key="new_study").set_value("41000079305")
+    next(b for b in at.sidebar.button
+         if b.label == "Create study").click()
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    pick = next(s for s in at.sidebar.selectbox if s.label == "Study")
+    assert pick.value == "41000079305"
+    assert wsm.list_studies() == ["41000079305"]
+    # the study type chosen in the sidebar is recorded on the manifest
+    assert wsm.Workspace.open("41000079305").study_type == "hsip"
+
+
+def test_pages_default_from_the_open_study(tmp_path, monkeypatch):
+    from safety_eval import workspace as wsm
+    monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
+    ws = wsm.Workspace.create("41000079305", study_type="hsip")
+    import openpyxl
+    wb_path = tmp_path / "41000079305_Fiche.xlsx"
+    wbx = openpyxl.Workbook()
+    wbx.active.title = "41000079305_Fiche"
+    wbx.save(wb_path)
+    ws.adopt_output("workbook", str(wb_path))
+    ws.attach("initial_ids_txt", "ids.txt", b"1|2")
+    ws.set_params(route="US 74", mp_lo=13.56, mp_hi=13.815)
+
+    at = _app()
+    pick = next(s for s in at.sidebar.selectbox if s.label == "Study")
+    pick.set_value("41000079305")
+    at.run(timeout=30)
+
+    at.switch_page(PAGE["fiche"])
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    assert next(t for t in at.text_input
+                if t.label == "Study number").value == "41000079305"
+    assert next(t for t in at.text_input
+                if t.label == "Study route").value == "US 74"
+
+    at.switch_page(PAGE["review"])
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    values = {t.label: t.value for t in at.text_input}
+    assert values["Workbook (.xlsx path)"].endswith("41000079305_Fiche.xlsx")
+    assert values["TEAAS ID export (.txt path, recommended)"].endswith(
+        "ids.txt")
+    assert values["Study milepost range lo:hi (optional)"] == "13.56:13.815"
+
+    at.switch_page(PAGE["warrants"])
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    wb_radio = next(r for r in at.radio if r.label == "Workbook")
+    assert "From study 41000079305" in wb_radio.options[0]

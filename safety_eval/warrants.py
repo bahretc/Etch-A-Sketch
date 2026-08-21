@@ -263,6 +263,35 @@ FI_TYPES = {"angle", "LTDR", "LTSR", "RTDR", "RTSR", "U-Turn", "head-on",
 #: Urban looks back 2 years for its recency test, rural 3.
 RECENCY_YEARS = {"urban": 2, "rural": 3}
 
+#: The crash pull NCDOT runs for an intersection analysis: 5 years urban,
+#: 10 years rural. The HSIP GIS is the source of the pull and of the
+#: urban/rural call itself (City reads RURAL or names the municipality);
+#: see docs/12. The recency windows above are unchanged by the pull length.
+STUDY_PERIOD_YEARS = {"urban": 5, "rural": 10}
+
+
+def period_note(crashes, context: str, end_date=None) -> str | None:
+    """A sentence when the crash data span does not look like the study
+    period NCDOT pulls for this context, or None when it does.
+
+    Advisory only: it never changes the screen. The span is measured from
+    the earliest crash to ``end_date`` (or the latest crash), and up to nine
+    months of slack is allowed, since a pull can sit anywhere inside its
+    period and quiet corridors have no crash on the boundary dates.
+    """
+    expected = STUDY_PERIOD_YEARS.get(context)
+    dates = [c.date for c in crashes if c.date is not None]
+    if expected is None or len(dates) < 2:
+        return None
+    end = end_date or max(dates)
+    span = (end - min(dates)).days / 365.25
+    if abs(span - expected) <= 0.75:
+        return None
+    return (f"the crash data spans {span:.1f} years but a {context} "
+            f"intersection analysis is pulled as {expected} years "
+            "(urban 5 / rural 10, per the NCDOT HSIP GIS; docs/12). "
+            "Check the fiche pull period before relying on the screen.")
+
 #: Every intersection warrant, as (context, description). The test itself is
 #: in :func:`screen_intersection` because several combine three quantities.
 INTERSECTION_WARRANTS = {

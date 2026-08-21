@@ -96,6 +96,35 @@ def _current_kind():
     return STUDY_TYPES[st.session_state.get("study_type", HSIP)]
 
 
+def _active_ws():
+    """The open study Workspace, or None (no study, or unreadable folder)."""
+    import json
+
+    import streamlit as st
+
+    from safety_eval import workspace as wsm
+    pick = st.session_state.get("study_pick")
+    if not pick or pick == "(no study)":
+        return None
+    try:
+        return wsm.Workspace.open(pick)
+    except (OSError, ValueError, json.JSONDecodeError):
+        return None
+
+
+def _stage_wb(study_wb: str | None, wb_up, tmp: str) -> str | None:
+    """The workbook to run on, as a tmp copy (analyses write into it)."""
+    import shutil
+
+    if wb_up is not None:
+        return _save_upload(wb_up, tmp)
+    if study_wb:
+        dest = os.path.join(tmp, os.path.basename(study_wb))
+        shutil.copy(study_wb, dest)
+        return dest
+    return None
+
+
 def main() -> None:
     import streamlit as st
 
@@ -122,6 +151,29 @@ def main() -> None:
             notes.append("the HSIP warrant screen runs")
         if notes:
             st.info("For this study type, " + " and ".join(notes) + ".")
+        st.divider()
+        from safety_eval import workspace as wsm
+        pending = st.session_state.pop("pending_study", None)
+        if pending:
+            st.session_state["study_pick"] = pending
+        st.selectbox(
+            "Study", ["(no study)"] + wsm.list_studies(), key="study_pick",
+            help="A study folder keeps the attached TEAAS exports, the "
+                 "study facts and the built workbooks together, and every "
+                 "page starts from them. Optional: each page still runs "
+                 "from uploads alone.")
+        with st.expander("New study"):
+            new_study = st.text_input("Study number", key="new_study",
+                                      placeholder="41000079305")
+            if st.button("Create study", disabled=not new_study.strip()):
+                try:
+                    wsm.Workspace.create(new_study.strip(),
+                                         study_type=study_key)
+                except (ValueError, OSError) as exc:
+                    st.error(str(exc))
+                else:
+                    st.session_state["pending_study"] = new_study.strip()
+                    st.rerun()
         st.caption("The engineer decides every status; the app prepares, "
                    "checks and records.")
 
@@ -242,6 +294,38 @@ def _home_page(st, kind) -> None:
             with right:
                 st.caption(blurb)
 
+    ws = _active_ws()
+    if ws:
+        from safety_eval import workspace as wsm
+        from safety_eval.study_type import STUDY_TYPES
+        with st.container(border=True):
+            st.subheader(f"Study {ws.study}")
+            label = STUDY_TYPES.get(ws.study_type)
+            facts = [label.label if label else ws.study_type]
+            for key, fmt in (("route", "{}"), ("mp_lo", "MP {}"),
+                             ("mp_hi", "to {}"), ("context", "{}")):
+                v = ws.param(key)
+                if v is not None and v != "":
+                    facts.append(fmt.format(v))
+            st.caption(" · ".join(str(f) for f in facts))
+            attached = [(wsm.ROLES[role][0],
+                         ", ".join(os.path.basename(p)
+                                   for p in ws.paths(role)))
+                        for role in wsm.ROLES if ws.paths(role)]
+            if attached:
+                for lab, names in attached:
+                    st.write(f"**{lab}:** {names}")
+            else:
+                st.caption("Nothing attached yet; the Fiche Workbook page "
+                           "saves its inputs and workbook here as it "
+                           "builds.")
+            st.caption(f"Folder: {os.path.relpath(ws.root)}")
+    else:
+        st.caption("No study is open. Create one in the sidebar and the "
+                   "pages will keep its TEAAS exports, study facts and "
+                   "built workbooks together, starting from them each "
+                   "time.")
+
     with st.expander("Environment check"):
         _environment_check(st)
 
@@ -326,6 +410,10 @@ def _evaluation_tab(st) -> None:
     st.caption("Populate a real NCDOT Evaluation Workbook template from "
                "TEAAS exports. Every write is integrity-verified; "
                "drawings stay byte-identical.")
+    ws = _active_ws()
+    if ws:
+        st.caption(f"Study **{ws.study}** is open: the inputs and the built "
+                   "workbook are saved into its folder.")
     templates = sorted(
         os.path.join("templates", f) for f in os.listdir("templates")
         if f.endswith(".xlsx") and "~$" not in f
@@ -389,6 +477,22 @@ def _evaluation_tab(st) -> None:
             except (ValueError, RuntimeError) as exc:
                 st.error(str(exc))
                 st.stop()
+            if ws:
+                from safety_eval import workspace as wsm
+                for role, up in (("before_ids", before_up),
+                                 ("after_ids", after_up),
+                                 ("before_mp", before_mp_up),
+                                 ("after_mp", after_mp_up),
+                                 ("fiche_csv", fiche_up),
+                                 ("setup_yaml", setup_up),
+                                 ("results_yaml", results_up),
+                                 ("statuses_workbook", statuses_up)):
+                    wsm.copy_into(ws, role, up)
+                saved = ws.adopt_output(
+                    "evaluation_workbook", os.path.join(tmp, "workbook.xlsx"),
+                    name=f"{ws.study}_Evaluation.xlsx")
+                st.caption(f"Saved into study {ws.study}: "
+                           f"{os.path.relpath(saved)}")
             with open(os.path.join(tmp, "workbook.xlsx"), "rb") as fh:
                 st.download_button("Download populated workbook",
                                    fh.read(), file_name="Evaluation.xlsx")
@@ -428,7 +532,12 @@ def _fiche_tab(st, kind) -> None:
                + (", and animal crashes are deleted (DEL)"
                   if kind.deletes_animals else "")
                + ", and the grey NOT-REVIEWED banner is placed.")
-    study = st.text_input("Study number", placeholder="41000079305")
+    ws = _active_ws()
+    if ws:
+        st.caption(f"Study **{ws.study}** is open: the inputs and the built "
+                   "workbook are saved into its folder.")
+    study = st.text_input("Study number", value=(ws.study if ws else ""),
+                          placeholder="41000079305")
     c1, c2 = st.columns(2)
     with c1:
         fiche_up = st.file_uploader("Fiche Report (.csv)", type=["csv"])
@@ -448,11 +557,14 @@ def _fiche_tab(st, kind) -> None:
                  "the limits, or a blue/yellow bracket, sends the crash to "
                  "review (?).")
         r1, r2, r3 = st.columns(3)
-        route = r1.text_input("Study route", placeholder="US 74")
+        route = r1.text_input("Study route", placeholder="US 74",
+                              value=(ws.param("route", "") if ws else ""))
         lo = r2.number_input("MP begin", min_value=0.0, format="%.3f",
-                             step=0.005, key="fiche_lo")
+                             step=0.005, key="fiche_lo",
+                             value=(ws.param("mp_lo", 0.0) if ws else 0.0))
         hi = r3.number_input("MP end", min_value=0.0, format="%.3f",
-                             step=0.005, key="fiche_hi")
+                             step=0.005, key="fiche_hi",
+                             value=(ws.param("mp_hi", 0.0) if ws else 0.0))
 
     want_screen = features_up is not None and route.strip() and hi > lo
     if features_up is not None and not want_screen:
@@ -500,6 +612,19 @@ def _fiche_tab(st, kind) -> None:
                 label = ("NIS / DEL" if kind.deletes_animals else "NIS")
                 cols[3].metric(label, tally.get("NIS", 0)
                                + tally.get("DEL", 0))
+            if ws:
+                from safety_eval import workspace as wsm
+                for role, up in (("fiche_csv", fiche_up),
+                                 ("initial_study_csv", initial_up),
+                                 ("initial_ids_txt", ids_up),
+                                 ("detailed_fiche_csv", detailed_up),
+                                 ("features_report", features_up)):
+                    wsm.copy_into(ws, role, up)
+                saved = ws.adopt_output("workbook", out)
+                ws.set_params(route=route.strip() or None, mp_lo=lo or None,
+                              mp_hi=hi or None)
+                st.caption(f"Saved into study {ws.study}: "
+                           f"{os.path.relpath(saved)}")
             with open(out, "rb") as fh:
                 st.download_button("Download fiche workbook", fh.read(),
                                    file_name=os.path.basename(out))
@@ -531,20 +656,40 @@ def _hsip_tab(st) -> None:
              "crash identification (docs/01).")
     is_section = analysis.startswith("Section")
 
-    wb_up = st.file_uploader("Reviewed fiche workbook (.xlsx)", type=["xlsx"])
+    ws = _active_ws()
+    study_wb = (ws.path("reviewed_workbook") or ws.path("workbook")) \
+        if ws else None
+    wb_up = None
+    if study_wb:
+        src = st.radio(
+            "Workbook", [f"From study {ws.study}: "
+                         f"{os.path.basename(study_wb)}", "Upload"],
+            horizontal=True)
+        if src == "Upload":
+            study_wb = None
+    if not study_wb:
+        wb_up = st.file_uploader("Reviewed fiche workbook (.xlsx)",
+                                 type=["xlsx"])
+    have_wb = bool(study_wb or wb_up)
+    wb_name = os.path.basename(study_wb) if study_wb \
+        else (wb_up.name if wb_up else "")
     ids_up = st.file_uploader(
         "TEAAS ID export (.txt)",
         help="Enables the branch-vocabulary gate (docs/03): the run refuses "
-             "while any status contradicts Initial Study membership.")
+             "while any status contradicts Initial Study membership."
+             + (" Defaults to the study's ID export when attached."
+                if ws else ""))
 
     if is_section:
         c1, c2, c3, c4 = st.columns(4)
         facility = c1.selectbox("Facility", list(FACILITY_LABELS),
                                 format_func=FACILITY_LABELS.get)
         lo = c2.number_input("MP begin", min_value=0.0, format="%.3f",
-                             step=0.005)
+                             step=0.005,
+                             value=(ws.param("mp_lo", 0.0) if ws else 0.0))
         hi = c3.number_input("MP end", min_value=0.0, format="%.3f",
-                             step=0.005)
+                             step=0.005,
+                             value=(ws.param("mp_hi", 0.0) if ws else 0.0))
         multilane = c4.checkbox(
             "Multi-lane", value=False,
             help="Counts SSSD as run-off-road (docs/12; off by default).")
@@ -553,7 +698,11 @@ def _hsip_tab(st) -> None:
         c1, c2 = st.columns(2)
         context = c1.radio("Context", ["urban", "rural"], horizontal=True,
                            help="Urban and rural differ in every threshold "
-                                "and in the recency window (2 vs 3 years).")
+                                "and in the recency window (2 vs 3 years). "
+                                "The HSIP GIS City field makes the call "
+                                "(a municipality name vs RURAL), and the "
+                                "crash pull is 5 years urban / 10 rural "
+                                "(docs/12).")
         end_date = c2.date_input(
             "Analysis end date", value=None,
             help="The recency tests count back from here; without it, from "
@@ -573,16 +722,18 @@ def _hsip_tab(st) -> None:
              "cap; format unverified against a live import, docs/09).")
 
     if st.button("Run warrants", type="primary",
-                 disabled=not wb_up or not ready):
+                 disabled=not have_wb or not ready):
         import safety_eval.hsip as hsip
         from safety_eval.qc import check_branch_vocabulary
         from safety_eval.teaas import write_feature_list
 
         with tempfile.TemporaryDirectory() as tmp:
-            path = _save_upload(wb_up, tmp)
-            if ids_up:
+            path = _stage_wb(study_wb, wb_up, tmp)
+            ids_path = _save_upload(ids_up, tmp) if ids_up \
+                else (ws.path("initial_ids_txt") if ws else None)
+            if ids_path:
                 from safety_eval.fiche_workbook import parse_initial_ids
-                _, raw = parse_initial_ids(_save_upload(ids_up, tmp))
+                _, raw = parse_initial_ids(ids_path)
                 bad = check_branch_vocabulary(path, "", [r[0] for r in raw])
                 if bad:
                     st.error(f"{len(bad)} branch violation(s); fix the "
@@ -613,21 +764,28 @@ def _hsip_tab(st) -> None:
                                              os.path.join(tmp, "import.txt"))
             else:
                 try:
-                    s, pairs, flags = _screen_intersection_wb(
+                    s, pairs, flags, period_warn = _screen_intersection_wb(
                         path, context, end_date, overrides)
                 except ValueError as exc:
                     st.error(str(exc))
                     st.stop()
+                if period_warn:
+                    st.warning("Period check: " + period_warn)
                 from safety_eval.teaas import write_import_list
                 import_path = os.path.join(tmp, "import.txt")
                 import_lines = write_import_list(import_path, pairs,
                                                  strip_zeros=True)
                 _intersection_results(st, s, flags)
 
-            base = os.path.splitext(os.path.basename(wb_up.name))[0]
+            base = os.path.splitext(wb_name)[0]
             stem = base.replace("_Fiche", "")
             d1, d2, d3, d4 = st.columns(4)
             if is_section:
+                if ws and study_wb:
+                    kept = ws.adopt_output("reviewed_workbook", path)
+                    st.caption("Warrant sheet written into study "
+                               f"{ws.study}'s workbook: "
+                               f"{os.path.relpath(kept)}")
                 with open(path, "rb") as fh:
                     d1.download_button("Workbook with Warrant sheet",
                                        fh.read(),
@@ -671,7 +829,9 @@ def _hsip_tab(st) -> None:
                        "the centreline comes from the corridor's own coded "
                        "crashes.")
             m1, m2 = st.columns(2)
-            map_route = m1.text_input("Route label", placeholder="US 74")
+            map_route = m1.text_input("Route label", placeholder="US 74",
+                                      value=(ws.param("route", "")
+                                             if ws else ""))
             shade = m2.text_input("Shade sub-section lo:hi (optional)",
                                   placeholder="13.560:13.815")
             map_style = st.radio(
@@ -688,7 +848,7 @@ def _hsip_tab(st) -> None:
                      "it the centreline is derived from the corridor's "
                      "coded crashes and positions are approximate.")
             if st.button("Build crash map",
-                         disabled=not (wb_up and map_route.strip()
+                         disabled=not (have_wb and map_route.strip()
                                        and hi > lo)):
                 from safety_eval.crash_map import build_crash_map
                 feats = []
@@ -711,7 +871,7 @@ def _hsip_tab(st) -> None:
                         st.stop()
                 diagram = map_style == "Collision diagram"
                 with tempfile.TemporaryDirectory() as tmp:
-                    path = _save_upload(wb_up, tmp)
+                    path = _stage_wb(study_wb, wb_up, tmp)
                     out = os.path.join(tmp, "map.html")
                     cl_path = _save_upload(cl_up, tmp) if cl_up else None
                     try:
@@ -726,8 +886,7 @@ def _hsip_tab(st) -> None:
                     except ValueError as exc:
                         st.error(str(exc))
                         st.stop()
-                    stem = os.path.splitext(os.path.basename(
-                        wb_up.name))[0].replace("_Fiche", "")
+                    stem = os.path.splitext(wb_name)[0].replace("_Fiche", "")
                     kind = ("CollisionDiagram" if diagram else "CrashMap")
                     with open(out, "rb") as fh:
                         st.download_button(
@@ -817,7 +976,9 @@ def _screen_intersection_wb(path, context, end_date, overrides):
     flags = daylight_check(
         [(a.crash_id, times.get(a.crash_id, a.date), a.l)
          for a in rows if a.l is not None])
-    return screen, hsip.import_pairs(rows), flags
+    from safety_eval.warrants import period_note
+    note = period_note(crashes, context, end_date or None)
+    return screen, hsip.import_pairs(rows), flags, note
 
 
 @functools.lru_cache(maxsize=16)
@@ -836,10 +997,22 @@ def _review_queue_tab(st) -> None:
                "recorded to the audit trail. The engineer decides every "
                "status; nothing is ever blanket-reclassified.")
 
+    ws = _active_ws()
+    if ws:
+        st.caption(f"Defaults below come from study **{ws.study}**; edit "
+                   "any of them to review something else.")
+
+    def _wsp(role, fallback_role=None):
+        if ws is None:
+            return ""
+        return ws.path(role) or (ws.path(fallback_role)
+                                 if fallback_role else None) or ""
+
     c1, c2 = st.columns(2)
     with c1:
         wb_path = st.text_input(
             "Workbook (.xlsx path)",
+            value=_wsp("reviewed_workbook", "workbook"),
             help="An evaluation workbook (Filtered Fiche) or the study "
                  "fiche workbook (<study>_Fiche). A path, not an upload, "
                  "so the reviewed copy can be saved next to it.")
@@ -852,25 +1025,35 @@ def _review_queue_tab(st) -> None:
                                           "RE only exists for sections.")
         initial_path = st.text_input(
             "TEAAS ID export (.txt path, recommended)",
+            value=_wsp("initial_ids_txt"),
             help="Initial Study membership fixes each crash's status branch "
                  "(docs/03): in it, IS/RE/DEL; not in it, ADD/NIS. "
                  "Validation and the AI assist both narrow to the branch.")
     with c2:
         index_path = st.text_input(
             "Binder index JSON (from `safety-eval binder-index`)",
+            value=_wsp("binder_index"),
             help="OCR page index of the scanned DMV-349 binder. Leave blank "
                  "to review without report retrieval.")
         coords_path = st.text_input(
             "DetailedFiche (optional)",
+            value=_wsp("detailed_fiche_csv"),
             help="Provided alongside the Original Fiche and Initial Study; "
                  "carries per-crash Latitude/Longitude used to decide which "
                  "reports to review (fiche workbook or delimited file). "
                  "The pre-screen never takes coordinates from the reports "
                  "themselves.")
         study_pt = st.text_input("Study point lat,lon (optional)",
+                                 value=(ws.param("study_point", "")
+                                        if ws else ""),
                                  help="Used with coordinates to sort the "
                                       "queue by distance.")
-        mp_rng = st.text_input("Study milepost range lo:hi (optional)")
+        mp_default = ""
+        if ws and ws.param("mp_lo") is not None \
+                and ws.param("mp_hi") is not None:
+            mp_default = f"{ws.param('mp_lo')}:{ws.param('mp_hi')}"
+        mp_rng = st.text_input("Study milepost range lo:hi (optional)",
+                               value=mp_default)
         features_up = st.file_uploader(
             "Features report(s) for this evaluation",
             type=["pdf", "txt", "csv"], accept_multiple_files=True,
@@ -908,7 +1091,12 @@ def _review_queue_tab(st) -> None:
 
     if not sheet.strip():
         import openpyxl
-        names = openpyxl.load_workbook(wb_path, read_only=True).sheetnames
+        try:
+            names = openpyxl.load_workbook(wb_path,
+                                           read_only=True).sheetnames
+        except Exception as exc:               # noqa: BLE001 - show, don't die
+            st.error(f"Could not open the workbook: {exc}")
+            st.stop()
         sheet = next((n for n in names if n.endswith("_Fiche")),
                      "Filtered Fiche")
         st.caption(f"Reviewing sheet: {sheet}")
@@ -963,9 +1151,22 @@ def _review_queue_tab(st) -> None:
                 inventory = FeatureInventory.from_files(paths)
             except Exception as exc:          # noqa: BLE001 - show, don't die
                 st.error(f"Could not read the features report(s): {exc}")
+        if inventory is not None and ws:
+            from safety_eval import workspace as wsm
+            for f in features_up:
+                wsm.copy_into(ws, "features_report", f)
+    elif ws and ws.paths("features_report"):
+        from safety_eval.location import FeatureInventory
+        try:
+            inventory = FeatureInventory.from_files(
+                ws.paths("features_report"))
+        except Exception as exc:              # noqa: BLE001 - show, don't die
+            st.error(f"Could not read the study's features report(s): {exc}")
         if inventory is not None:
-            st.caption("Features reports loaded for routes: "
-                       + ", ".join(sorted(inventory.features)))
+            st.caption(f"Features reports from study {ws.study}.")
+    if inventory is not None:
+        st.caption("Features reports loaded for routes: "
+                   + ", ".join(sorted(inventory.features)))
     coords = rq.parse_coordinates(coords_path) if coords_path else None
     # The DetailedFiche doubles as the route shape (location.clean_shape):
     # coordinates then resolve to a milepost instead of punting.
@@ -1208,6 +1409,10 @@ def _review_queue_tab(st) -> None:
                                         analysis_type=analysis_type)
             st.success(f"Wrote {n} determination(s) -> {out_path} "
                        f"(audit trail: {audit_path})")
+        if ws:
+            kept = ws.adopt_output("reviewed_workbook", out_path)
+            st.caption(f"Recorded as study {ws.study}'s reviewed workbook: "
+                       f"{os.path.relpath(kept)}")
         with open(out_path, "rb") as fh:
             st.download_button("Download reviewed workbook", fh.read(),
                                file_name=os.path.basename(out_path))

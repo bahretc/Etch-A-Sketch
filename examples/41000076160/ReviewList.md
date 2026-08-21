@@ -57,12 +57,15 @@ narrative. No remileposts, no type corrections.
 
 Behavior from the reports (target crashes): before, all 11 were
 side-street drivers at fault (6 eastbound on the SR 1617 leg, 5
-westbound on the SR 1619 leg; 8 failed to yield after stopping, 3 ran
-the stop sign, at 45 to 55 mph through speeds). After, 1 side-street
-at fault, 4 SR 1001 drivers missing or misjudging their new stop (2
-ran it, incl. the 45 mph Class C on 10/23/2025), 2 with no fault
-determined; impacts at 5 to 25 mph. Rear ends did not rise: one
-before, one after, both queue crashes.
+westbound on the SR 1619 leg). The 8 failed-to-yields entered from
+stops of 0 to 15 mph coded original speed into through traffic at 45
+to 60; the 3 stop-sign runners entered at 45 to 55 and all three were
+charged with a stop sign violation. After, 1 side-street at fault
+(eastbound SR 1617), 4 SR 1001 drivers missing or misjudging their
+new stop (3 northbound, 1 coded westbound; 2 ran it, incl. the Class
+C on 10/23/2025), and 2 with no fault determined by the officer;
+impacts at 5 to 25 mph. Rear ends did not rise: one before, one
+after, both queue crashes.
 
 ## Checked and resolved NIS without report review
 

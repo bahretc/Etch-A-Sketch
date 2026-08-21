@@ -36,6 +36,10 @@ _IDENTITY_LABELS = {
     r"^Completion Date:$": "completion_date",
     r"^Analysis Criteria:$": "analysis_criteria",
     r"^Target Crashes:$": "target_crashes",
+    # Data Prepared By block, bottom right of the printed 1-pager
+    r"^Principal Investigator:$": "principal_investigator",
+    r"^Work Group/Consultant:$": "work_group",
+    r"^Date:$": "prepared_date",
 }
 
 
@@ -62,6 +66,9 @@ class ResultsData:
     completion_date: str | None = None
     analysis_criteria: str | None = None
     target_crashes: str | None = None
+    principal_investigator: str | None = None
+    work_group: str | None = None
+    prepared_date: str | None = None
     additional_info: list = field(default_factory=list)   # AdditionalInfoRow
     items_for_discussion: list = field(default_factory=list)  # bullet strings
     #: Project Development column of the per-year comparison block:
@@ -196,6 +203,9 @@ def load_results_yaml(path: str) -> ResultsData:
         completion_date=d.get("completion_date"),
         analysis_criteria=d.get("analysis_criteria"),
         target_crashes=d.get("target_crashes"),
+        principal_investigator=d.get("principal_investigator"),
+        work_group=d.get("work_group"),
+        prepared_date=d.get("prepared_date"),
         additional_info=rows,
         items_for_discussion=list(d.get("items_for_discussion", []) or []),
         project_development=d.get("project_development"),

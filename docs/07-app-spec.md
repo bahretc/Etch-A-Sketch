@@ -99,3 +99,28 @@ the reviewed working sheet (typed Type cells beat the T-code lookup), applies
 recorded overrides (yellow on the Warrant sheet, original kept on the fiche),
 joins crash times off the ID sheet for the daylight QC, and refuses to run
 warrants for a study type that does not have them.
+
+The report PDF (`safety_eval/report_pdf.py`, CLI `report-pdf`): the
+delivered "{project} Web.pdf" is the '1 page results' sheet printed
+fit-to-one-page over the completed workbooks' saved print area (B2:L72),
+followed by the standard 2020-data disclaimer page shipped at
+templates/Disclaimer_2020_Data.pdf. The print goes through the UNO
+bridge in memory (python3-uno + libreoffice-calc; the workbook file on
+disk is never modified): page style set to one page, centered, 0.25 in
+side and 0.5 in top margins, no headers or footers, and the rows the
+engineer expands before printing (countermeasures, Target Crashes list,
+the Map/Satellite column, Items for Discussion) sized the same way,
+then ONLY the print-range selection exported. The plain
+`soffice --convert-to pdf` path is not usable here: it ignores injected
+print areas and prints hidden sheets. An annotated aerial (--map, built
+per site the way examples/41000076160/build_aerial.py records) is
+dropped into the Map/Satellite Views box, whose location is measured
+off the print itself each time because fit-to-page rescales whenever
+content changes. "Complete Evaluation.pdf" is the same assembly with
+the two TEAAS Intersection Analysis Reports appended (--append); those
+are TEAAS output the engineer supplies.
+
+`safety-eval teaas-currency` reads the NCDOT Connect TEAAS page and
+reports the most recent month of loaded crash data ("TEAAS crash data
+is now available through {Month Year}"). Run it before starting any new
+analysis so the study periods do not run past the loaded data.

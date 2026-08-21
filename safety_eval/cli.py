@@ -8,6 +8,13 @@ import sys
 from .config import Config
 from .ocr import available_backends
 from .pipeline import run_from_files, write_markdown, write_workbook
+from .report_pdf import RESULTS_SHEET as _REPORT_SHEET_DEFAULT
+
+#: The standard 2020-data disclaimer page, shipped with the repo; every
+#: delivered Web / Complete Evaluation PDF carries it after the 1-pager.
+_DISCLAIMER_PDF = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "templates", "Disclaimer_2020_Data.pdf")
 
 
 def _cmd_run(args) -> int:
@@ -788,6 +795,54 @@ def _cmd_doctor(args) -> int:
     return 0
 
 
+def _cmd_report_pdf(args) -> int:
+    """Print the 1-pager and assemble the Web / Complete Evaluation PDF."""
+    import tempfile
+
+    from . import report_pdf as rp
+
+    outdir = os.path.dirname(os.path.abspath(args.out)) or "."
+    parts: list[str] = []
+    with tempfile.TemporaryDirectory(dir=outdir) as td:
+        one = os.path.join(td, "onepager.pdf")
+        rp.export_onepager(args.workbook, one, sheet=args.sheet)
+        print(f"  printed {args.sheet!r} to one page")
+        if args.map_image:
+            mapped = os.path.join(td, "onepager_map.pdf")
+            rp.overlay_map(one, args.map_image, mapped)
+            one = mapped
+            print("  aerial placed in the Map/Satellite Views box")
+        parts.append(one)
+        if args.disclaimer:
+            if not os.path.exists(args.disclaimer):
+                print(f"  ! disclaimer not found: {args.disclaimer}")
+                return 1
+            parts.append(args.disclaimer)
+        for extra in args.append or []:
+            if not os.path.exists(extra):
+                print(f"  ! appended PDF not found: {extra}")
+                return 1
+            parts.append(extra)
+        rp.assemble(parts, args.out)
+    from pypdf import PdfReader
+    print(f"Wrote {args.out} ({len(PdfReader(args.out).pages)} pages).")
+    return 0
+
+
+def _cmd_teaas_currency(args) -> int:
+    """Report the most recent month of loaded TEAAS crash data."""
+    from .teaas_currency import CURRENCY_URL, current_data_month
+
+    try:
+        month = current_data_month()
+    except Exception as exc:
+        print(f"Could not read the TEAAS data-currency page: {exc}")
+        print(f"Check by hand: {CURRENCY_URL}")
+        return 1
+    print(f"TEAAS crash data is available through {month}.")
+    return 0
+
+
 def _cmd_review_assist(args) -> int:
     import json
 
@@ -1395,6 +1450,42 @@ def build_parser() -> argparse.ArgumentParser:
     fw.add_argument("--hi", type=float, help="Study MP end (screen).")
     fw.add_argument("--route", default="", help='Study route, e.g. "US 74".')
     fw.set_defaults(func=_cmd_fiche_workbook)
+
+    rp = sub.add_parser(
+        "report-pdf",
+        help="Print the '1 page results' sheet to a one-page PDF (UNO "
+             "in-memory export; the workbook file is never modified) and "
+             "assemble the report: 1-pager, optional aerial dropped into "
+             "the Map/Satellite Views box, the standard 2020-data "
+             "disclaimer, then any appended PDFs. 'Web' is 1-pager + "
+             "disclaimer; 'Complete Evaluation' appends the TEAAS "
+             "Intersection Analysis Reports for both periods.")
+    rp.add_argument("--workbook", required=True,
+                    help="Completed evaluation workbook (.xlsx).")
+    rp.add_argument("--out", required=True, help="Output PDF path.")
+    rp.add_argument("--sheet", default=_REPORT_SHEET_DEFAULT,
+                    help="Results sheet to print (default: %(default)r).")
+    rp.add_argument("--map", dest="map_image",
+                    help="Annotated aerial PNG for the Map/Satellite "
+                         "Views box (see examples/*/build_aerial.py).")
+    rp.add_argument("--disclaimer", default=_DISCLAIMER_PDF,
+                    help="Disclaimer page PDF (default: the repo asset).")
+    rp.add_argument("--no-disclaimer", dest="disclaimer",
+                    action="store_const", const=None,
+                    help="Omit the disclaimer page.")
+    rp.add_argument("--append", nargs="*", default=[],
+                    help="PDFs appended after the disclaimer, e.g. the "
+                         "TEAAS Intersection Analysis Reports (before "
+                         "then after) for a Complete Evaluation.")
+    rp.set_defaults(func=_cmd_report_pdf)
+
+    tc = sub.add_parser(
+        "teaas-currency",
+        help="Report the most recent month of crash data loaded in TEAAS "
+             "(from the NCDOT Connect page). Check it before starting "
+             "any new analysis so study periods do not run past the "
+             "loaded data.")
+    tc.set_defaults(func=_cmd_teaas_currency)
 
     d = sub.add_parser("doctor", help="Report available optional backends.")
     d.set_defaults(func=_cmd_doctor)

@@ -55,8 +55,13 @@ additional_info:
   - {label: "Target Crashes: Failed to Yield", before: 8, after: 3}
   - {label: "Target Crashes: Ran Stop Sign", before: 3, after: 2}
 items_for_discussion:
-  - "No crashes occurred at the intersection during the construction period (4/1/2021 to 6/30/2021)."
-  - "The only Class A injury crash (12/16/2017) was an eastbound SR 1617 driver who ran the STOP sign and struck the saddle fuel tank of a southbound truck-trailer on SR 1001; the truck ran off the road and came to rest in the front yard of a residence."
-  - "The most severe after-period target crash (10/23/2025, Class C) was a westbound SR 1001 driver who failed to stop at the four-way stop and struck a northbound vehicle towing a trailer."
-  - "Before conversion the side-street at-fault approaches split evenly: six eastbound on the SR 1617 leg and five westbound on the SR 1619 leg. The one after-period side-street at-fault target crash was eastbound on SR 1617. Three of the four after-period SR 1001 at-fault target crashes were northbound; the fourth was coded westbound."
-  - "The single after-period rear-end (12/4/2024, Class C) struck a vehicle stopped at the all-way stop; rear-end frequency did not rise with the conversion (one before, one after, both queue crashes)."
+  - "Construction period set with the project completion date of May 24, 2021 near the middle to account for any temporary warning signs or other modifications implemented before or after the conversion to AWSC. No crashes occurred at the intersection during the construction period."
+  - "All Target Crashes in both periods were angle crashes."
+  - "The Class A injury Target Crash was a 12/16/2017 angle crash at 11:43 AM in which an EB vehicle on SR 1617 ran the stop sign at 55 mph and struck the saddle fuel tank of a SB tractor/semi-trailer on SR 1001; the truck ran off the road and came to rest in the front yard of a residence."
+  - "The most severe after-period Target Crash was a 10/23/2025 angle crash at 12:53 PM in which a WB vehicle on SR 1001 ran the stop sign and struck a NB vehicle towing a trailer on SR 1617, resulting in one Class C injury."
+  - |-
+    A breakdown by the at-fault direction of the Target Crashes is as follows:
+       - Before: EB SR 1617: 6 (4 failure-to-yield, 2 ran-stop-sign); WB SR 1619: 5 (4 failure-to-yield, 1 ran-stop-sign)
+       - After: NB SR 1001: 3 (2 failure-to-yield, 1 ran-stop-sign); WB SR 1001: 1 (ran-stop-sign); EB SR 1617: 1 (failure-to-yield); no fault could be determined: 2
+  - "In the two after-period Target Crashes where fault could not be determined (November 2021 and October 2025), a WB and an EB vehicle on SR 1617, respectively, collided with a SB vehicle on SR 1001."
+  - "The one non-Target Crash in the after period involved a SB vehicle on SR 1001 that failed to reduce speed and struck a vehicle stopped at the all-way stop (December 2024, Class C). Rear-end frequency did not change with the conversion: one in each period, both queue crashes."

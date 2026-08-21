@@ -34,16 +34,13 @@ target_crashes: |-
   • Right-turn, different roadway (RTDR)
   • Head-on
   • Angle
+# Dates go in as real dates; the counts land in the helper cells
+# (O57:O62) and Years plus every per-year rate is a live formula, the
+# way the completed workbooks carry them.
 project_development:
-  years: "5.00 years"
   start: "6/1/2013"
   end: "5/31/2018"
-  total: 3.8
-  fatal: 0
-  a: 0.2
-  b: 1.4
-  c: 1.2
-  pdo: 1.0
+  counts: {total: 19, fatal: 0, a: 1, b: 7, c: 6, pdo: 5}
 # From the DMV-349 reads of all 27 reports (see review_determinations.jsonl).
 # At-fault approach: before, every target crash was a side-street driver
 # (SR 1617 west leg eastbound, SR 1619 east leg westbound); after, the

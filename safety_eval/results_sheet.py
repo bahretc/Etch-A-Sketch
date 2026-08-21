@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .setup_sheet import _col_index, _col_letter, _find_label
+from .xlsx_patch import KEEP_VALUE as _KEEP_VALUE
 from .xlsx_patch import CellEdit, sheet_files, xlsx_patch
 
 RESULTS_1T = "1 page results - 1 Target"
@@ -68,7 +69,7 @@ class ResultsData:
     target_crashes: str | None = None
     principal_investigator: str | None = None
     work_group: str | None = None
-    prepared_date: str | None = None
+    prepared_date: object = None       # str or datetime.date (-> serial)
     additional_info: list = field(default_factory=list)   # AdditionalInfoRow
     items_for_discussion: list = field(default_factory=list)  # bullet strings
     #: Project Development column of the per-year comparison block:
@@ -78,6 +79,14 @@ class ResultsData:
 
 
 _BANNED = {"—": "em dash", "–": "en dash"}
+
+#: Where the completed workbooks park the Project Development crash counts
+#: that feed the per-year formulas: O57:O62, outside the printed area.
+_PD_HELPER_COL = "O"
+_PD_HELPER_ROW = 57
+
+#: The completed workbooks' saved print scale for the results 1-pager.
+REPORT_PAGE_SCALE = 64
 
 
 def check_style(text: str, where: str) -> None:
@@ -144,26 +153,57 @@ def build_results_edits(template: str, data: ResultsData,
     # cell anchors the column, the row labels one column left anchor each
     # value row (the same label texts appear elsewhere on the sheet, so
     # the search is scoped to below the header in the adjacent column).
+    # The completed workbooks enter the period dates as real dates, park
+    # the period's crash COUNTS in the off-print helper column (O57:O62),
+    # and drive Years and every per-year rate with formulas, so the
+    # reviewer can trace each number (rule 4). ``counts`` selects that
+    # convention; the legacy flat mapping still writes plain values.
     if data.project_development:
         hdr = _find_label(cells, r"^Project Development$")
         if hdr:
             hcol, hrow = hdr
             lcol = _col_letter(_col_index(hcol) - 1)
-            labels = {"Years": "years", "Start Date": "start",
-                      "End Date": "end", "Total": "total",
-                      "Fatal Injury": "fatal", "Class A Injury": "a",
-                      "Class B Injury": "b", "Class C Injury": "c",
-                      "Property Damage Only": "pdo"}
             pd = data.project_development
+            rows = {}
             for (col, row), val in cells.items():
-                if col != lcol or row <= hrow:
-                    continue
-                key = labels.get(str(val).strip())
-                if key is not None and key in pd:
-                    value = pd[key]
-                    if isinstance(value, str):
-                        check_style(value, f"project_development.{key}")
-                    edits.append(CellEdit(f"{hcol}{row}", value))
+                if col == lcol and row > hrow:
+                    rows[str(val).strip()] = row
+            if "counts" in pd:
+                r_start, r_end = rows["Start Date"], rows["End Date"]
+                dcol = hcol
+                edits.append(CellEdit(f"{dcol}{r_start}", pd["start"]))
+                edits.append(CellEdit(f"{dcol}{r_end}", pd["end"]))
+                years = (f"ROUND(YEARFRAC({dcol}{r_start},{dcol}{r_end},1),2)")
+                edits.append(CellEdit(
+                    f"{dcol}{rows['Years']}",
+                    formula=(f'IF(MOD({years},1)=0, TEXT({years},"0.00")'
+                             f' & " years", {years} & " years")')))
+                order = ["total", "fatal", "a", "b", "c", "pdo"]
+                labels = {"Total": "total", "Fatal Injury": "fatal",
+                          "Class A Injury": "a", "Class B Injury": "b",
+                          "Class C Injury": "c",
+                          "Property Damage Only": "pdo"}
+                for text, key in labels.items():
+                    row = rows[text]
+                    helper = (f"{_PD_HELPER_COL}"
+                              f"{_PD_HELPER_ROW + order.index(key)}")
+                    edits.append(CellEdit(helper, pd["counts"][key]))
+                    edits.append(CellEdit(
+                        f"{dcol}{row}",
+                        formula=(f"{helper}/ROUND(YEARFRAC("
+                                 f"${dcol}${r_start},${dcol}${r_end}),2)")))
+            else:
+                labels = {"Years": "years", "Start Date": "start",
+                          "End Date": "end", "Total": "total",
+                          "Fatal Injury": "fatal", "Class A Injury": "a",
+                          "Class B Injury": "b", "Class C Injury": "c",
+                          "Property Damage Only": "pdo"}
+                for text, key in labels.items():
+                    if text in rows and key in pd:
+                        value = pd[key]
+                        if isinstance(value, str):
+                            check_style(value, f"project_development.{key}")
+                        edits.append(CellEdit(f"{hcol}{rows[text]}", value))
 
     # Items for Discussion: one merged cell below the header, bullets joined
     # with line breaks (ALT+ENTER = plain \n in the XML).
@@ -183,6 +223,17 @@ def build_results_edits(template: str, data: ResultsData,
     return edits
 
 
+def _as_date(value):
+    """m/d/yyyy strings become dates (written as serials, format kept)."""
+    import re as _re
+    from datetime import date as _date
+    if isinstance(value, str):
+        m = _re.match(r"^(\d{1,2})/(\d{1,2})/(\d{4})$", value.strip())
+        if m:
+            return _date(int(m.group(3)), int(m.group(1)), int(m.group(2)))
+    return value
+
+
 def load_results_yaml(path: str) -> ResultsData:
     """Load results-sheet inputs from YAML. ``additional_info`` entries are
     ``{label, before, after}``; ``items_for_discussion`` is a list of strings."""
@@ -190,6 +241,11 @@ def load_results_yaml(path: str) -> ResultsData:
 
     with open(path) as fh:
         d = yaml.safe_load(fh) or {}
+    pd = d.get("project_development")
+    if pd:
+        for key in ("start", "end"):
+            if key in pd:
+                pd[key] = _as_date(pd[key])
     rows = [AdditionalInfoRow(label=str(r["label"]),
                               before=r.get("before"), after=r.get("after"))
             for r in d.get("additional_info", []) or []]
@@ -205,14 +261,190 @@ def load_results_yaml(path: str) -> ResultsData:
         target_crashes=d.get("target_crashes"),
         principal_investigator=d.get("principal_investigator"),
         work_group=d.get("work_group"),
-        prepared_date=d.get("prepared_date"),
+        prepared_date=_as_date(d.get("prepared_date")),
         additional_info=rows,
         items_for_discussion=list(d.get("items_for_discussion", []) or []),
         project_development=d.get("project_development"),
     )
 
 
+def _wrapped_lines(text: str, chars_per_line: int) -> int:
+    import math
+    return sum(max(1, math.ceil(len(seg) / chars_per_line))
+               for seg in text.split("\n"))
+
+
+def format_results_sheet(template: str, sheet: str = RESULTS_1T,
+                         data: ResultsData | None = None):
+    """Reproduce the engineer's manual formatting of the printed 1-pager.
+
+    Everything here mirrors the completed workbooks (SS-6002AD et al.)
+    against the shipped template:
+
+    * the Map/Satellite Views heading moves down one row so an empty
+      spacer row separates it from the Additional Information table, with
+      the two rows' heights swapped (15pt spacer, 18pt heading) so the
+      overall page height does not change;
+    * the last Additional Information row gets the same bordered styles
+      and live percent formula as the rows above it (the template ships
+      row 38 unformatted and without the K-column formula);
+    * the bulleted Countermeasure(s) block is left-aligned at 8pt and the
+      Target Crashes list left-aligned at 10pt, as in every completed
+      workbook (the template centers both, which scrambles indented
+      bullets);
+    * the saved print scale becomes the completed workbooks' 64%.
+
+    Returns ``(edits, ops)`` where ``ops`` are keyword arguments for
+    :func:`xlsx_patch` (row heights, merges, page scale, replaced
+    styles.xml).
+    """
+    import re as _re
+    import zipfile as _zipfile
+
+    from .setup_sheet import _scan_sheet
+    from .xlsx_patch import clone_style, sheet_files
+
+    cells = _scan_sheet(template, sheet)
+    names = sheet_files(template)
+    with _zipfile.ZipFile(template) as z:
+        xml = z.read(names[sheet]).decode("utf-8")
+        styles_xml = z.read("xl/styles.xml").decode("utf-8")
+
+    def style_of(ref):
+        m = _re.search(rf'<c r="{ref}"(?: s="(\d+)")?', xml)
+        return m.group(1) if m and m.group(1) else None
+
+    edits: list[CellEdit] = []
+    row_heights: dict[int, float] = {}
+    merges: list[str] = []
+
+    # -- Map/Satellite Views heading: down one row, spacer left behind
+    lbl = _find_label(cells, r"Map/?Satellite Views")
+    if lbl is None:
+        raise KeyError("Map/Satellite Views heading not found")
+    mcol, mrow = lbl
+    merge = _re.search(rf'<mergeCell ref="({mcol}{mrow}:([A-Z]+){mrow})"/>',
+                       xml)
+    end_col = merge.group(2) if merge else mcol
+    edits.append(CellEdit(f"{mcol}{mrow}", None))
+    edits.append(CellEdit(f"{mcol}{mrow + 1}", "Map/Satellite Views",
+                          style=style_of(f"{mcol}{mrow}")))
+    merges.append(f"{mcol}{mrow + 1}:{end_col}{mrow + 1}")
+    row_heights[mrow] = 15.0
+    row_heights[mrow + 1] = 18.0
+
+    # -- last Additional Information row: formats and formula of the rows
+    #    above it
+    hdr = _find_label(cells, r"^Additional Information$")
+    if hdr is not None:
+        hcol, hrow = hdr
+        first, last = hrow + 2, mrow - 1
+        src = last - 1
+        ic = _col_index(hcol)
+        cols = [hcol, _col_letter(ic + 1), _col_letter(ic + 2),
+                _col_letter(ic + 3)]
+        for col in cols[:3]:
+            st = style_of(f"{col}{src}")
+            if st and st != style_of(f"{col}{last}"):
+                edits.append(CellEdit(f"{col}{last}", _KEEP_VALUE, style=st))
+        kcol = cols[3]
+        has_formula = _re.search(
+            rf'<c r="{kcol}{last}"[^>]*>\s*<f', xml) is not None
+        if not has_formula:
+            bcol, acol = cols[1], cols[2]
+            edits.append(CellEdit(
+                f"{kcol}{last}",
+                formula=(f'IFERROR(({acol}{last}-{bcol}{last})'
+                         f'/{bcol}{last}, "n/a")'),
+                style=style_of(f"{kcol}{src}")))
+        # long row labels shrink to fit instead of clipping at the border
+        base = style_of(f"{hcol}{first}")
+        if base is not None:
+            styles_xml, shrunk = clone_style(styles_xml, int(base),
+                                             shrink=True)
+            for r in range(first, last + 1):
+                edits.append(CellEdit(f"{hcol}{r}", _KEEP_VALUE,
+                                      style=str(shrunk)))
+
+    # -- left-aligned bullet blocks (countermeasures 8pt, target list 10pt)
+    style_overrides: dict[str, str] = {}
+    for pattern, attr, size in ((r"^Countermeasure\(s\):$",
+                                 "countermeasures", 8),
+                                (r"^Target Crashes:$", "target_crashes", 10)):
+        lbl = _find_label(cells, pattern)
+        if lbl is None:
+            continue
+        ref = f"{_col_letter(_col_index(lbl[0]) + 1)}{lbl[1]}"
+        base = style_of(ref)
+        if base is None:
+            continue
+        styles_xml, idx = clone_style(
+            styles_xml, int(base), font_size=size,
+            halign="left", valign="center", wrap=True)
+        style_overrides[attr] = str(idx)
+
+    # -- size the engineer-adjusted blocks to their text, the way the
+    #    completed workbooks do (rows grow, fit-to-one-page settles scale)
+    swaps: dict[str, str] = {}
+    if data is not None and data.countermeasures:
+        lbl = _find_label(cells, r"^Countermeasure\(s\):$")
+        ref = f"{_col_letter(_col_index(lbl[0]) + 1)}{lbl[1]}"
+        m = _re.search(rf'<mergeCell ref="{ref}:[A-Z]+(\d+)"/>', xml)
+        if m:
+            first, last = lbl[1], int(m.group(1))
+            need = _wrapped_lines(data.countermeasures, 60) * 11 + 4
+            per = max(15.0, float(-(-need // (last - first + 1))))
+            for r in range(first, last + 1):
+                row_heights[r] = per
+    if data is not None and data.items_for_discussion:
+        lbl = _find_label(cells, r"^Items for Discussion$")
+        icol, irow = lbl[0], lbl[1] + 1
+        m = _re.search(rf'<mergeCell ref="({icol}{irow}:([A-Z]+)(\d+))"/>',
+                       xml)
+        footer = _find_label(cells, r"^Data Prepared For:$")
+        if m and footer:
+            old_ref, ecol, last = m.group(1), m.group(2), int(m.group(3))
+            avail_last = footer[1] - 1
+            if avail_last > last:
+                swaps[old_ref] = f"{icol}{irow}:{ecol}{avail_last}"
+                last = avail_last
+            text = "\n".join("• " + t if not t.startswith(("•", "-")) else t
+                             for t in data.items_for_discussion)
+            need = _wrapped_lines(text, 158) * 13.2 + 6
+            per = max(15.0, float(-(-need // (last - irow + 1))))
+            for r in range(irow, last + 1):
+                row_heights[r] = per
+
+    # -- saved print scale: the completed workbooks' 64, or smaller when
+    #    the grown blocks need it (printable height 10.0in at the saved
+    #    0.5in top/bottom margins)
+    heights = {}
+    for rm in _re.finditer(r'<row r="(\d+)"([^>]*)>', xml):
+        hm = _re.search(r'ht="([\d.]+)"', rm.group(2))
+        heights[int(rm.group(1))] = float(hm.group(1)) if hm else 15.0
+    heights.update(row_heights)
+    total = sum(heights.get(r, 15.0) for r in range(2, 73))
+    scale = min(REPORT_PAGE_SCALE, int(720.0 / total * 100))
+
+    ops = dict(row_heights={sheet: row_heights},
+               add_merges={sheet: merges},
+               swap_merges={sheet: swaps},
+               page_scale={sheet: scale},
+               replace_members={"xl/styles.xml": styles_xml.encode("utf-8")})
+    return edits, ops, style_overrides
+
+
 def populate_results_sheet(template: str, output: str, data: ResultsData,
-                           sheet: str = RESULTS_1T) -> None:
-    xlsx_patch(template, output,
-               edits={sheet: build_results_edits(template, data, sheet)})
+                           sheet: str = RESULTS_1T,
+                           apply_format: bool = True) -> None:
+    edits = build_results_edits(template, data, sheet)
+    ops = {}
+    if apply_format:
+        fmt_edits, ops, overrides = format_results_sheet(template, sheet, data)
+        for e in edits:
+            for attr, idx in overrides.items():
+                if getattr(data, attr) is not None and isinstance(e.value, str) \
+                        and e.value == getattr(data, attr):
+                    e.style = idx
+        edits += fmt_edits
+    xlsx_patch(template, output, edits={sheet: edits}, **ops)

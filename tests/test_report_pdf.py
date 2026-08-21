@@ -42,11 +42,16 @@ def _fake_onepager(path):
 def test_measure_map_region_finds_the_box(tmp_path):
     pdf = _fake_onepager(str(tmp_path / "one.pdf"))
     x0, ytop, x1, ybot = measure_map_region(pdf)
-    assert x0 == 296.0 and x1 == 577.0
+    # x0 hugs the heading's left edge; x1 the widest printed word
+    assert 295 < x0 < 305
+    assert x1 > x0 + 50
     # region starts just below the header and stops above the Items head
     assert 395 < ytop < 415
     assert 675 < ybot < 695
     assert ybot - ytop > 250
+    # explicit overrides still win
+    ex0, _, ex1, _ = measure_map_region(pdf, x0=296.0, x1=577.0)
+    assert (ex0, ex1) == (296.0, 577.0)
 
 
 @needs_pdftotext

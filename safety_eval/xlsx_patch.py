@@ -29,6 +29,10 @@ from xml.sax.saxutils import escape
 
 _EXCEL_EPOCH = date(1899, 12, 30)
 
+#: Sentinel value for a style-only CellEdit: the cell's existing content
+#: (value or formula) is kept and only the style index changes.
+KEEP_VALUE = object()
+
 
 def excel_serial(d: date | datetime) -> int:
     """Excel 1900 date-system serial for a date."""
@@ -39,10 +43,19 @@ def excel_serial(d: date | datetime) -> int:
 
 @dataclass
 class CellEdit:
-    """One cell write: numeric, text (inline string), or blank (clear value)."""
+    """One cell write: numeric, text (inline string), or blank (clear value).
+
+    ``formula`` writes a live formula (rule 4: reviewers trace numbers to
+    formulas); the cached value is left empty and fullCalcOnLoad plus the
+    :func:`recalc` pass fill it in. ``style`` overrides the preserved style
+    index, for cells whose template formatting is wrong for the content
+    (e.g. the engineer left-aligns bulleted blocks the template centers).
+    """
     ref: str                       # e.g. "A4"
     value: object = None           # int/float -> number; str -> inline string;
                                    # date -> serial number; None -> clear
+    formula: str | None = None     # live formula text (no leading '=')
+    style: str | None = None       # style index override (s= attribute)
 
 
 def _col_of(ref: str) -> str:
@@ -86,8 +99,11 @@ def sheet_files(template: str) -> dict[str, str]:
     return out
 
 
-def _cell_xml(ref: str, value, style: str | None) -> str:
+def _cell_xml(ref: str, value, style: str | None,
+              formula: str | None = None) -> str:
     s_attr = f' s="{style}"' if style else ""
+    if formula is not None:
+        return f'<c r="{ref}"{s_attr}><f>{escape(formula)}</f></c>'
     if value is None:
         return f'<c r="{ref}"{s_attr}/>'
     if isinstance(value, (date, datetime)):
@@ -148,7 +164,21 @@ class SheetPatcher:
 
     def _apply_row(self, row: int, edits: list[CellEdit]) -> None:
         for e in edits:
-            new = _cell_xml(e.ref, e.value, self._style_of(e.ref))
+            if e.value is KEEP_VALUE:
+                style = e.style or self._style_of(e.ref)
+                m = self._existing_cell(e.ref)
+                if m:
+                    cell = m.group(0)
+                    if re.search(r'\bs="\d+"', cell):
+                        cell = re.sub(r'\bs="\d+"', f's="{style}"', cell, 1)
+                    else:
+                        cell = cell.replace(f'<c r="{e.ref}"',
+                                            f'<c r="{e.ref}" s="{style}"', 1)
+                    self.xml = self.xml[: m.start()] + cell + self.xml[m.end():]
+                    continue
+                e = CellEdit(e.ref, None, style=e.style)   # absent: bare cell
+            new = _cell_xml(e.ref, e.value, e.style or self._style_of(e.ref),
+                            e.formula)
             m = self._existing_cell(e.ref)
             if m:
                 self.xml = self.xml[: m.start()] + new + self.xml[m.end():]
@@ -186,35 +216,191 @@ class SheetPatcher:
             self.xml = self.xml[:insert_at] + new + self.xml[insert_at:]
 
 
+def set_row_height(xml: str, row: int, height: float) -> str:
+    """Set one row's height (customHeight) in worksheet XML."""
+    m = re.search(rf'<row r="{row}"([^>]*?)(/?)>', xml)
+    if m is None:
+        raise KeyError(f"row {row} not present in sheet XML")
+    attrs = m.group(1)
+    # \b keeps customHeight="1" intact (its tail would match ht="1")
+    attrs = re.sub(r'\s*\bht="[\d.]+"', "", attrs)
+    attrs = re.sub(r'\s*\bcustomHeight="1"', "", attrs)
+    ht = f"{height:g}"
+    new = f'<row r="{row}"{attrs} ht="{ht}" customHeight="1"{m.group(2)}>'
+    return xml[: m.start()] + new + xml[m.end():]
+
+
+def add_merge(xml: str, ref: str) -> str:
+    """Add one merged range to worksheet XML (idempotent)."""
+    if f'<mergeCell ref="{ref}"/>' in xml:
+        return xml
+    m = re.search(r'<mergeCells count="(\d+)">', xml)
+    if m is None:
+        raise KeyError("sheet has no mergeCells block")
+    xml = (xml[: m.start()] + f'<mergeCells count="{int(m.group(1)) + 1}">'
+           + xml[m.end():])
+    return xml.replace("</mergeCells>",
+                       f'<mergeCell ref="{ref}"/></mergeCells>', 1)
+
+
+def replace_merge(xml: str, old_ref: str, new_ref: str) -> str:
+    """Change one merged range (e.g. extend the Items cell downward)."""
+    tag = f'<mergeCell ref="{old_ref}"/>'
+    if tag not in xml:
+        raise KeyError(f"merge {old_ref} not present")
+    return xml.replace(tag, f'<mergeCell ref="{new_ref}"/>', 1)
+
+
+def set_page_scale(xml: str, scale: int) -> str:
+    """Set the saved print scale (pageSetup scale=...)."""
+    m = re.search(r"<pageSetup [^>]*/>", xml)
+    if m is None:
+        raise KeyError("sheet has no pageSetup")
+    tag = m.group(0)
+    if 'scale="' in tag:
+        tag = re.sub(r'scale="\d+"', f'scale="{scale}"', tag)
+    else:
+        tag = tag.replace("<pageSetup ", f'<pageSetup scale="{scale}" ', 1)
+    return xml[: m.start()] + tag + xml[m.end():]
+
+
+def clone_style(styles_xml: str, base_xf: int, *, font_size: float | None = None,
+                halign: str | None = None, valign: str | None = None,
+                wrap: bool | None = None,
+                shrink: bool | None = None) -> tuple[str, int]:
+    """Append a variant of cellXfs[base_xf] and return (new xml, new index).
+
+    The variant keeps the base's border, fill and number format; only the
+    font size (a same-family font is appended when none matches) and the
+    alignment change. This is how the engineer's one-off cell formats
+    (left-aligned bullet blocks, shrunken text) are reproduced without
+    touching any existing style index.
+    """
+    xfs_m = re.search(r"<cellXfs count=\"(\d+)\">(.*)</cellXfs>",
+                     styles_xml, re.S)
+    # self-closing branch first: '>.*?</xf>' on a self-closing xf would
+    # otherwise swallow every following xf up to the next paired closer
+    xf_list = re.findall(r"<xf\b[^>]*?/>|<xf\b[^>]*?>.*?</xf>",
+                         xfs_m.group(2), re.S)
+    xf = xf_list[base_xf]
+
+    if font_size is not None:
+        base_font = int(re.search(r'fontId="(\d+)"', xf).group(1))
+        fonts_m = re.search(r"<fonts count=\"(\d+)\"[^>]*>(.*?)</fonts>",
+                           styles_xml, re.S)
+        font_list = re.findall(r"<font>.*?</font>|<font/>", fonts_m.group(2),
+                               re.S)
+        fxml = font_list[base_font]
+        new_font = re.sub(r'<sz val="[\d.]+"/>', f'<sz val="{font_size:g}"/>',
+                          fxml)
+        try:
+            fid = font_list.index(new_font)
+        except ValueError:
+            fid = len(font_list)
+            styles_xml = styles_xml.replace(
+                fonts_m.group(0),
+                fonts_m.group(0).replace(
+                    "</fonts>", new_font + "</fonts>").replace(
+                    f'<fonts count="{fonts_m.group(1)}"',
+                    f'<fonts count="{int(fonts_m.group(1)) + 1}"', 1), 1)
+        xf = re.sub(r'fontId="\d+"', f'fontId="{fid}"', xf)
+        if 'applyFont=' not in xf:
+            xf = xf.replace("<xf ", '<xf applyFont="1" ', 1)
+
+    if (halign is not None or valign is not None or wrap is not None
+            or shrink is not None):
+        a = {}
+        am = re.search(r"<alignment([^/]*)/>", xf)
+        if am:
+            a = dict(re.findall(r'(\w+)="([^"]*)"', am.group(1)))
+        if halign is not None:
+            a["horizontal"] = halign
+        if valign is not None:
+            a["vertical"] = valign
+        if wrap is not None:
+            a["wrapText"] = "1" if wrap else "0"
+        if shrink is not None:
+            a["shrinkToFit"] = "1" if shrink else "0"
+        tag = "<alignment " + " ".join(
+            f'{k}="{v}"' for k, v in a.items()) + "/>"
+        if am:
+            xf = xf[: am.start()] + tag + xf[am.end():]
+        elif xf.endswith("/>"):
+            xf = xf[:-2] + ">" + tag + "</xf>"
+        else:
+            xf = xf.replace("</xf>", tag + "</xf>", 1)
+        if 'applyAlignment=' not in xf:
+            xf = xf.replace("<xf ", '<xf applyAlignment="1" ', 1)
+
+    # re-find cellXfs (the fonts block above may have shifted offsets)
+    xfs_m = re.search(r"<cellXfs count=\"(\d+)\">(.*)</cellXfs>",
+                     styles_xml, re.S)
+    new_index = len(xf_list)
+    styles_xml = (styles_xml[: xfs_m.start()]
+                  + f'<cellXfs count="{int(xfs_m.group(1)) + 1}">'
+                  + xfs_m.group(2) + xf + "</cellXfs>"
+                  + styles_xml[xfs_m.end():])
+    return styles_xml, new_index
+
+
 def xlsx_patch(path_in: str, path_out: str,
                edits: dict[str, list[CellEdit]],
                style_rows: dict[str, int] | None = None,
-               full_calc_on_load: bool = True) -> None:
+               full_calc_on_load: bool = True,
+               row_heights: dict[str, dict[int, float]] | None = None,
+               add_merges: dict[str, list[str]] | None = None,
+               swap_merges: dict[str, dict[str, str]] | None = None,
+               page_scale: dict[str, int] | None = None,
+               replace_members: dict[str, bytes] | None = None) -> None:
     """Apply per-sheet cell edits to a copy of ``path_in`` written at ``path_out``.
 
     ``edits`` maps sheet NAME -> list of CellEdit.  Every zip member that is not
     an edited worksheet (or workbook.xml when ``full_calc_on_load``) is copied
     byte-for-byte, preserving drawings, media, charts, styles, and rels.
+    ``row_heights``, ``add_merges`` and ``page_scale`` apply the matching
+    sheet-level adjustments per sheet name; ``replace_members`` swaps whole
+    zip members (e.g. a styles.xml extended by :func:`clone_style`).
     """
     style_rows = style_rows or {}
+    row_heights = row_heights or {}
+    add_merges = add_merges or {}
+    swap_merges = swap_merges or {}
+    page_scale = page_scale or {}
+    replace_members = replace_members or {}
     name_to_file = sheet_files(path_in)
-    unknown = set(edits) - set(name_to_file)
+    touched = (set(edits) | set(row_heights) | set(add_merges)
+               | set(swap_merges) | set(page_scale))
+    unknown = touched - set(name_to_file)
     if unknown:
         raise KeyError(f"Sheets not in template: {sorted(unknown)}")
-    file_edits = {name_to_file[n]: (n, e) for n, e in edits.items()}
+    file_ops = {name_to_file[n]: n for n in touched}
 
     with zipfile.ZipFile(path_in) as zin:
         members = zin.infolist()
         with zipfile.ZipFile(path_out, "w", zipfile.ZIP_DEFLATED) as zout:
             for info in members:
                 data = zin.read(info.filename)
-                if info.filename in file_edits:
-                    sheet_name, sheet_edits = file_edits[info.filename]
-                    patcher = SheetPatcher(
-                        data.decode("utf-8"),
-                        style_row=style_rows.get(sheet_name))
-                    patcher.apply(sheet_edits)
-                    data = patcher.xml.encode("utf-8")
+                if info.filename in replace_members:
+                    data = replace_members[info.filename]
+                if info.filename in file_ops:
+                    sheet_name = file_ops[info.filename]
+                    xml = data.decode("utf-8")
+                    sheet_edits = edits.get(sheet_name)
+                    if sheet_edits:
+                        patcher = SheetPatcher(
+                            xml, style_row=style_rows.get(sheet_name))
+                        patcher.apply(sheet_edits)
+                        xml = patcher.xml
+                    for row, ht in (row_heights.get(sheet_name) or {}).items():
+                        xml = set_row_height(xml, row, ht)
+                    for ref in add_merges.get(sheet_name) or []:
+                        xml = add_merge(xml, ref)
+                    for old, new in (swap_merges.get(sheet_name)
+                                     or {}).items():
+                        xml = replace_merge(xml, old, new)
+                    if sheet_name in page_scale:
+                        xml = set_page_scale(xml, page_scale[sheet_name])
+                    data = xml.encode("utf-8")
                 elif info.filename == "xl/workbook.xml" and full_calc_on_load:
                     text = data.decode("utf-8")
                     if "fullCalcOnLoad" in text:

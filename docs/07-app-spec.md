@@ -102,21 +102,35 @@ warrants for a study type that does not have them.
 
 The report PDF (`safety_eval/report_pdf.py`, CLI `report-pdf`): the
 delivered "{project} Web.pdf" is the '1 page results' sheet printed
-fit-to-one-page over the completed workbooks' saved print area (B2:L72),
-followed by the standard 2020-data disclaimer page shipped at
-templates/Disclaimer_2020_Data.pdf. The print goes through the UNO
-bridge in memory (python3-uno + libreoffice-calc; the workbook file on
-disk is never modified): page style set to one page, centered, 0.25 in
-side and 0.5 in top margins, no headers or footers, and the rows the
-engineer expands before printing (countermeasures, Target Crashes list,
-the Map/Satellite column, Items for Discussion) sized the same way,
-then ONLY the print-range selection exported. The plain
-`soffice --convert-to pdf` path is not usable here: it ignores injected
-print areas and prints hidden sheets. An annotated aerial (--map, built
-per site the way examples/41000076160/build_aerial.py records) is
-dropped into the Map/Satellite Views box, whose location is measured
-off the print itself each time because fit-to-page rescales whenever
-content changes. "Complete Evaluation.pdf" is the same assembly with
+over the completed workbooks' saved print area (B2:L72), followed by
+the standard 2020-data disclaimer page shipped at
+templates/Disclaimer_2020_Data.pdf. The WORKBOOK carries the look:
+`results_sheet.format_results_sheet` (run automatically by
+fill-template --results) reproduces the engineer's manual formatting
+against the completed AWSC workbooks: the Map/Satellite Views heading
+moved down one row with an empty 15pt spacer against the Additional
+Information table (heading rows are 18pt throughout), the last AI row
+given the bordered styles and the live K-column percent formula the
+template ships without, row labels shrink-to-fit, the bulleted
+Countermeasure(s) block left-aligned at 8pt and the Target Crashes
+list at 10pt (the template centers both, which scrambles indented
+bullets), Project Development driven by real date cells, helper counts
+in O57:O62 and per-year YEARFRAC formulas (rule 4), engineer-sized row
+heights over the countermeasure and Items blocks, and the saved print
+scale set to 64% or the largest whole percent that keeps one page.
+The print then goes through the UNO bridge in memory (python3-uno +
+libreoffice-calc; the file on disk is never modified) at that saved
+scale, which must be re-applied through the page style because
+LibreOffice drops a saved xlsx print scale on import; ONLY the
+print-range selection is exported, since the `--convert-to pdf` path
+ignores print areas and prints hidden sheets. fonts-crosextra-carlito
+must be installed: column widths are defined in units of the workbook
+default font (Calibri), and without the metric-compatible Carlito face
+every column prints about 20% wide and the right edge clips. An
+annotated aerial (--map, built per site the way
+examples/41000076160/build_aerial.py records) drops into the
+Map/Satellite Views box, whose location is measured off the print
+itself each time. "Complete Evaluation.pdf" is the same assembly with
 the two TEAAS Intersection Analysis Reports appended (--append); those
 are TEAAS output the engineer supplies.
 

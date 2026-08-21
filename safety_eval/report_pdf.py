@@ -36,14 +36,51 @@ ROW_HEIGHTS = {**{r: 920 for r in range(18, 23)},
 _UNO_PORT = 2002
 
 
+def saved_scale(workbook: str, sheet: str = RESULTS_SHEET,
+                default: int = 64) -> int:
+    """The sheet's saved print scale (pageSetup), the engineer's choice."""
+    import zipfile
+    with zipfile.ZipFile(workbook) as z:
+        wb = z.read("xl/workbook.xml").decode("utf-8")
+        rels = dict(re.findall(r'Id="(rId\d+)" [^>]*Target="([^"]+)"',
+                    z.read("xl/_rels/workbook.xml.rels").decode("utf-8")))
+        for name, rid in re.findall(
+                r'<sheet [^>]*?name="([^"]+)"[^>]*?r:id="(rId\d+)"', wb):
+            if name.replace("&amp;", "&") == sheet:
+                target = rels[rid].lstrip("/")
+                if not target.startswith("xl/"):
+                    target = "xl/" + target
+                m = re.search(r'<pageSetup[^>]*?scale="(\d+)"',
+                              z.read(target).decode("utf-8"))
+                return int(m.group(1)) if m else default
+    return default
+
+
 def export_onepager(workbook: str, out_pdf: str,
                     sheet: str = RESULTS_SHEET,
                     cell_range: str = PRINT_RANGE,
                     row_heights: dict | None = None,
+                    scale: int | None = None,
+                    fit_to_page: bool = False,
                     timeout: int = 120) -> str:
-    """Export one sheet's print range to a one-page PDF, in memory."""
+    """Export one sheet's print range to a one-page PDF, in memory.
+
+    The print runs at the workbook's SAVED scale (default) or an explicit
+    ``scale`` percentage -- either way it must be re-applied through the
+    page style, because LibreOffice drops the file's saved print scale on
+    OOXML import. ``fit_to_page`` instead forces scale-to-one-page with
+    the deliverable margins, plus any ``row_heights`` expansions, for
+    workbooks that never got the results_sheet formatting pass.
+
+    Column widths depend on the workbook default font (Calibri): the
+    metric-compatible Carlito face (fonts-crosextra-carlito) must be
+    installed or every column prints ~20% wide and the right edge clips.
+    """
     import uno
     from com.sun.star.beans import PropertyValue
+
+    if scale is None and not fit_to_page:
+        scale = saved_scale(workbook, sheet)
 
     proc = subprocess.Popen(
         ["soffice", "--headless", "--norestore", "--invisible",
@@ -74,25 +111,28 @@ def export_onepager(workbook: str, out_pdf: str,
             return p
 
         doc = desktop.loadComponentFromURL(
-            "file://" + os.path.abspath(workbook), "_blank", 0,
+            uno.systemPathToFileUrl(os.path.abspath(workbook)), "_blank", 0,
             (P("Hidden", True),))
         try:
             sh = doc.Sheets.getByName(sheet)
             cells = sh.getCellRangeByName(cell_range)
             style = doc.StyleFamilies.getByName("PageStyles").getByName(
                 sh.PageStyle)
-            style.ScaleToPages = 1
-            style.CenterHorizontally = True
-            style.CenterVertically = True
-            style.LeftMargin = style.RightMargin = 635      # 0.25 in
-            style.TopMargin = style.BottomMargin = 1270     # 0.5 in
             style.HeaderIsOn = style.FooterIsOn = False
-            for row, ht in (row_heights if row_heights is not None
-                            else ROW_HEIGHTS).items():
+            if fit_to_page:
+                style.ScaleToPages = 1
+                style.CenterHorizontally = True
+                style.CenterVertically = True
+                style.LeftMargin = style.RightMargin = 635      # 0.25 in
+                style.TopMargin = style.BottomMargin = 1270     # 0.5 in
+            elif scale is not None:
+                style.ScaleToPages = 0
+                style.PageScale = scale
+            for row, ht in (row_heights or {}).items():
                 sh.Rows.getByIndex(row - 1).Height = ht
             fdata = uno.Any("[]com.sun.star.beans.PropertyValue",
                             (P("Selection", cells),))
-            doc.storeToURL("file://" + os.path.abspath(out_pdf),
+            doc.storeToURL(uno.systemPathToFileUrl(os.path.abspath(out_pdf)),
                            (P("FilterName", "calc_pdf_Export"),
                             P("FilterData", fdata)))
         finally:
@@ -103,12 +143,13 @@ def export_onepager(workbook: str, out_pdf: str,
 
 
 def measure_map_region(onepager_pdf: str,
-                       x0: float = 296.0, x1: float = 577.0):
+                       x0: float | None = None, x1: float | None = None):
     """The empty Map/Satellite box on the printed page, in PDF points.
 
     Measured off the print itself (between the 'Map/Satellite Views'
-    header and the 'Items for Discussion' heading) because fit-to-page
-    rescales the sheet whenever content lengths change, so no fixed
+    header and the 'Items for Discussion' heading, spanning from the
+    header's left edge to the printed content's right edge) because the
+    print scale moves whenever content lengths change, so no fixed
     coordinates survive an edit.
     """
     out = subprocess.run(["pdftotext", "-bbox", onepager_pdf, "-"],
@@ -127,6 +168,10 @@ def measure_map_region(onepager_pdf: str,
     items = find(["Items", "for", "Discussion"])
     if not hdr or not items:
         raise RuntimeError("could not locate the Map/Satellite region")
+    if x0 is None:
+        x0 = float(hdr[0][0])
+    if x1 is None:
+        x1 = max(float(w[2]) for w in words)
     return x0, float(hdr[0][3]) + 5, x1, float(items[0][1]) - 8
 
 

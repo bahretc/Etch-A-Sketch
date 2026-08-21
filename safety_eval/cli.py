@@ -111,14 +111,13 @@ def _cmd_fill_template(args) -> int:
     if args.results:
         import shutil as _sh
 
-        from .results_sheet import (RESULTS_1T, RESULTS_2T,
-                                    build_results_edits, load_results_yaml)
-        from .xlsx_patch import verify_integrity, xlsx_patch
+        from .results_sheet import (RESULTS_1T, RESULTS_2T, load_results_yaml,
+                                    populate_results_sheet)
+        from .xlsx_patch import verify_integrity
         rdata = load_results_yaml(args.results)
         rsheet = RESULTS_2T if args.target2 else RESULTS_1T
         tmp = args.output + ".results.tmp"
-        xlsx_patch(args.output, tmp,
-                   edits={rsheet: build_results_edits(args.template, rdata, rsheet)})
+        populate_results_sheet(args.output, tmp, rdata, sheet=rsheet)
         _sh.move(tmp, args.output)
         rep = verify_integrity(args.template, args.output)
         if not rep.ok:
@@ -805,8 +804,10 @@ def _cmd_report_pdf(args) -> int:
     parts: list[str] = []
     with tempfile.TemporaryDirectory(dir=outdir) as td:
         one = os.path.join(td, "onepager.pdf")
-        rp.export_onepager(args.workbook, one, sheet=args.sheet)
-        print(f"  printed {args.sheet!r} to one page")
+        rp.export_onepager(args.workbook, one, sheet=args.sheet,
+                           scale=args.scale, fit_to_page=args.fit)
+        print(f"  printed {args.sheet!r} at "
+              f"{'fit-to-page' if args.fit else 'the saved scale'}")
         if args.map_image:
             mapped = os.path.join(td, "onepager_map.pdf")
             rp.overlay_map(one, args.map_image, mapped)
@@ -1465,6 +1466,13 @@ def build_parser() -> argparse.ArgumentParser:
     rp.add_argument("--out", required=True, help="Output PDF path.")
     rp.add_argument("--sheet", default=_REPORT_SHEET_DEFAULT,
                     help="Results sheet to print (default: %(default)r).")
+    rp.add_argument("--scale", type=int, default=None,
+                    help="Print scale percent (default: the workbook's "
+                         "saved scale; LibreOffice drops it on import, so "
+                         "it is re-applied).")
+    rp.add_argument("--fit", action="store_true",
+                    help="Scale-to-one-page instead of --scale, for "
+                         "workbooks without the formatting pass.")
     rp.add_argument("--map", dest="map_image",
                     help="Annotated aerial PNG for the Map/Satellite "
                          "Views box (see examples/*/build_aerial.py).")

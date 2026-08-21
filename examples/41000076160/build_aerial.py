@@ -31,24 +31,26 @@ os.makedirs(SP, exist_ok=True)
 LAT, LON = 35.081578, -80.500362
 Z = 17                       # aerial zoom
 COLS, ROWS = 3, 6            # tile mosaic footprint (768 x 1536 px)
-CROP_TOP, CROP_H = 763, 550  # window matching the printed box's aspect
+#: Window matching the printed Map/Satellite box's aspect (1.82 after
+#: the formatting pass; measure_map_region reports the live box).
+CROP_TOP, CROP_H = 788, 423
 
 F = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 FB = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 #: (cx, cy) in the cropped image; text is the engineer's callout block.
 CALLOUTS = [
-    ((600, 58), ["SR 1001 (Sikes Mill Road)", "55 mph",
+    ((600, 45), ["SR 1001 (Sikes Mill Road)", "55 mph",
                  "AADT (Year)", "2,100 vpd (2022)"]),
-    ((330, 172), ["SR 1617 (Tom Boyd Road)", "45 mph",
+    ((330, 147), ["SR 1617 (Tom Boyd Road)", "45 mph",
                   "AADT (Year)", "1,400 vpd (2019)"]),
-    ((615, 395), ["SR 1619 (Tom Boyd Road)", "45 mph",
+    ((615, 350), ["SR 1619 (Tom Boyd Road)", "45 mph",
                   "AADT (Year)", "1,400 vpd (2019)"]),
-    ((190, 480), ["SR 1001 (Sikes Mill Road)", "55 mph",
+    ((160, 350), ["SR 1001 (Sikes Mill Road)", "55 mph",
                   "AADT (Year)", "3,500 vpd (2021)"]),
 ]
-NORTH_ARROW = (732, 470)
-ATTRIBUTION_Y = 528          # "Esri World Imagery", bottom left
+NORTH_ARROW = (732, 360)
+ATTRIBUTION_Y = 400          # "Esri World Imagery", bottom left
 
 
 def tilexy(lat, lon, z):

@@ -6,8 +6,11 @@ The SR 1001 Features Report shows the junction as 4 legs, with SR 1617,
 SR 1619 and TOM BOYD all listed at MP 3.461: Tom Boyd continues east of
 SR 1001 as SR 1619. TEAAS's road combinations never included SR 1001 x
 SR 1619, which is how 105363964 stayed out of the study.
-Y-line 150 ft. Periods: before 4/1/2016 - 2/28/2021, after 6/1/2021 -
-4/30/2026.
+Y-line 150 ft. Periods per the approved assumptions: before 4/1/2016 -
+3/31/2021, construction 4/1/2021 - 6/30/2021, after 7/1/2021 -
+6/30/2026. The four unlocated rows the May and June 2026 window adds
+(108485442, 108496852, 108506936, 108526710) all resolve to named
+locations away from the junction; membership is unchanged.
 
 All 27 DMV-349 reports in the 600504376 pull were reviewed against
 redacted copies on 8/20/2026. Every determination below is

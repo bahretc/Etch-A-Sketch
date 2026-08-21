@@ -64,6 +64,10 @@ class ResultsData:
     target_crashes: str | None = None
     additional_info: list = field(default_factory=list)   # AdditionalInfoRow
     items_for_discussion: list = field(default_factory=list)  # bullet strings
+    #: Project Development column of the per-year comparison block:
+    #: {years, start, end, total, fatal, a, b, c, pdo}, rates per year,
+    #: straight from the assumptions email's Project Dev Crash Summary.
+    project_development: dict | None = None
 
 
 _BANNED = {"—": "em dash", "–": "en dash"}
@@ -129,6 +133,31 @@ def build_results_edits(template: str, data: ResultsData,
                     edits.append(CellEdit(f"{bcol}{row}", None))
                     edits.append(CellEdit(f"{acol}{row}", None))
 
+    # Project Development column of the Crashes Per Year block: the header
+    # cell anchors the column, the row labels one column left anchor each
+    # value row (the same label texts appear elsewhere on the sheet, so
+    # the search is scoped to below the header in the adjacent column).
+    if data.project_development:
+        hdr = _find_label(cells, r"^Project Development$")
+        if hdr:
+            hcol, hrow = hdr
+            lcol = _col_letter(_col_index(hcol) - 1)
+            labels = {"Years": "years", "Start Date": "start",
+                      "End Date": "end", "Total": "total",
+                      "Fatal Injury": "fatal", "Class A Injury": "a",
+                      "Class B Injury": "b", "Class C Injury": "c",
+                      "Property Damage Only": "pdo"}
+            pd = data.project_development
+            for (col, row), val in cells.items():
+                if col != lcol or row <= hrow:
+                    continue
+                key = labels.get(str(val).strip())
+                if key is not None and key in pd:
+                    value = pd[key]
+                    if isinstance(value, str):
+                        check_style(value, f"project_development.{key}")
+                    edits.append(CellEdit(f"{hcol}{row}", value))
+
     # Items for Discussion: one merged cell below the header, bullets joined
     # with line breaks (ALT+ENTER = plain \n in the XML).
     if data.items_for_discussion:
@@ -169,6 +198,7 @@ def load_results_yaml(path: str) -> ResultsData:
         target_crashes=d.get("target_crashes"),
         additional_info=rows,
         items_for_discussion=list(d.get("items_for_discussion", []) or []),
+        project_development=d.get("project_development"),
     )
 
 

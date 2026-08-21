@@ -1,0 +1,49 @@
+# 1 page results inputs for 41000076160 / 10-18-223 (TIP #W-5710AM).
+# Identity and scope mirror the approved assumptions email (Logan Newsome
+# 8/14/2026, NCDOT "no notes"); layout conventions mirror the completed
+# SS-6002AD AWSC evaluation workbook. Additional Information rows and the
+# report-based Items bullets come from the DMV-349 review of all 27
+# reports in the 600504376 pull.
+order_id: "41000076160"
+project_id: "10-18-223 (TIP #W-5710AM)"
+signal_id: "n/a"
+location: "SR 1001 (Sikes Mill Road) at SR 1617 (Tom Boyd Road)"
+gps: "35.081578, -80.500362"
+county: "Union"
+city: "n/a"
+division: 10
+countermeasures: |-
+  Convert intersection to All-Way STOP Control (AWSC), including:
+     • On SR 1001 approaches,
+        - Installation of 36" STOP signs (R1-1)
+        - Replacement of Cross Road (W2-1) Warning signs with STOP Ahead (W3-1) Warning signs with flashing beacons
+     • On SR 1617 approaches,
+        - Replacement of the existing 30" STOP signs with 36" STOP signs (R1-1)
+     • On all approaches, installation of STOP AHEAD and STOP pavement markings and stop bars
+cost: "$30,000"
+completion_date: "May 24, 2021"
+analysis_criteria: |-
+  Treatment data consists of all crashes at the intersection
+   of SR 1001 and SR 1617
+  with a Y-line of 150'
+target_crashes: |-
+  Frontal impact crashes including the following types:
+  • Left-turn, same roadway (LTSR)
+  • Left-turn, different roadway (LTDR)
+  • Right-turn, same roadway (RTSR)
+  • Right-turn, different roadway (RTDR)
+  • Head-on
+  • Angle
+project_development:
+  years: "5.00 years"
+  start: "6/1/2013"
+  end: "5/31/2018"
+  total: 3.8
+  fatal: 0
+  a: 0.2
+  b: 1.4
+  c: 1.2
+  pdo: 1.0
+# Filled from the DMV-349 reads (see review_determinations.jsonl):
+additional_info: []
+items_for_discussion: []

@@ -124,3 +124,25 @@ def test_load_results_yaml(tmp_path):
     assert d.division == "2"
     assert d.additional_info[0].after == 1
     assert d.items_for_discussion == ["First point."]
+
+
+@needs_template
+def test_project_development_column():
+    """The PD column anchors on its own header; the row labels one column
+    left scope the writes, so the sheet's other 'Start Date'/'Total'
+    labels (period table, injury summaries) are never touched."""
+    from dataclasses import replace
+    data = replace(DATA, project_development={
+        "years": "5.00 years", "start": "6/1/2013", "end": "5/31/2018",
+        "total": 3.8, "fatal": 0, "a": 0.2, "b": 1.4, "c": 1.2,
+        "pdo": 1.0})
+    edits = {e.ref: e.value for e in build_results_edits(TEMPLATE, data)}
+    assert edits["D46"] == "5.00 years"
+    assert edits["D47"] == "6/1/2013"
+    assert edits["D48"] == "5/31/2018"
+    assert edits["D50"] == 3.8
+    assert edits["D51"] == 0 and edits["D52"] == 0.2
+    assert edits["D53"] == 1.4 and edits["D54"] == 1.2
+    assert edits["D55"] == 1.0
+    # the period table's Start Date (D26) belongs to Setup formulas
+    assert "D26" not in edits or edits["D26"] != "6/1/2013"

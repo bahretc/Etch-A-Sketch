@@ -1593,6 +1593,16 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
     nudges, headings, keep_out) that the section sheet uses. Unlike a
     section, cells may stand on the drawn pavement; the completed sheets
     cluster them right on the junction.
+
+    The coded from-road distance stands a crash out a leg ONLY when its
+    from-road is one of the junction's own road codes, declared in the
+    layout's ``roads`` list (include the alias codes from the fiche's
+    road table). A distance from any other road is a foreign reference,
+    not a position on this junction: 105113604 is coded ".10 miles W of
+    NC 111" yet its DMV-349 diagram puts it at the study junction, where
+    the delivered sheet draws it. The report places the crash (docs/03);
+    such a cell seeds at the junction and the engineer pins it from the
+    diagram when the cluster is not where it belongs.
     """
     cx, cy = layout.get("center", (740, 560))
     legs = []
@@ -1744,16 +1754,18 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
     # Every cell is drawn in the compass frame: base 0 / route E on a
     # north-up sheet means a unit coded N points up the page.
     px_mi = float(layout.get("px_per_mile", 1400))
+    junction_roads = {str(r) for r in layout.get("roads", [])}
     items = []
     for cr in crashes:
         hd = layout.get("headings", {}).get(cr.crash_id)
         g, box, _n = crash_glyph(cr, base_ang=0.0, route_forward="E",
                                  heading=hd)
         # the seed: the junction, or out the coded leg for a crash coded
-        # some distance from the from-road
+        # some distance from one of the junction's OWN roads
         sx, sy = cx, cy
         leg = None
-        if cr.dist_mi and cr.dist_dir in _DIR_ANG:
+        if cr.dist_mi and cr.dist_dir in _DIR_ANG \
+                and cr.from_road in junction_roads:
             ddx, ddy = _brg_vec({"N": 0, "NE": 45, "E": 90, "SE": 135,
                                  "S": 180, "SW": 225, "W": 270,
                                  "NW": 315}[cr.dist_dir])

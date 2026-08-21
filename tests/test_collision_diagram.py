@@ -554,17 +554,51 @@ def test_intersection_sheet_places_all_24_crashes_inside_the_frame(tmp_path):
 
 
 @_needs_example
-def test_a_distance_coded_crash_stands_out_its_leg(tmp_path):
-    """105113604 is coded .1 mile WEST of the junction; its cell must
-    stand out the west leg, not on the junction."""
+def test_a_foreign_from_road_distance_never_places_a_crash(tmp_path):
+    """105113604 is coded ".10 miles W" OF NC 111, a road that is not
+    this junction; its DMV-349 diagram puts it at the study junction
+    (unit 2 turning left onto SR 1960), and that is where the delivered
+    sheet draws it. The report places the crash, never a distance from
+    a foreign reference road (docs/03)."""
     out = tmp_path / "sheet.html"
     cd.build_diagram(str(out),
                      str(_EX / "41000077750_CollisionDiagramData.txt"),
                      str(_EX / "diagram_layout.json"))
     placed = _crash_xy(out.read_text())
     layout = json.loads((_EX / "diagram_layout.json").read_text())
-    cx = layout["center"][0]
-    assert placed["105113604"][0] < cx - 90
+    cx, cy = layout["center"]
+    x, y = placed["105113604"]
+    assert abs(x - cx) < 320 and abs(y - cy) < 320, \
+        "the cell walked out a leg on a foreign from-road distance"
+
+
+def test_a_junction_road_distance_stands_the_crash_out_its_leg(tmp_path):
+    """Distance from one of the junction's OWN roads is a position on a
+    leg: .2 mile E of the junction stands well out the east leg."""
+    far = make_crash(crash_id="100000009", mp=None,
+                     units=[cd.Unit(1, "W", 45, 4)])
+    far.from_road, far.dist_mi, far.dist_dir = "30000581", 0.2, "E"
+    near = make_crash(crash_id="100000001", mp=None)
+    data = tmp_path / "data.txt"
+    cd.write_data_csv(str(data), [near, far])
+    # write_data_csv does not carry the from-road coding; hand-edit it in
+    rows = (tmp_path / "data.txt").read_text().splitlines()
+    fixed = [rows[0]]
+    for ln in rows[1:]:
+        if ln.startswith('"100000009"'):
+            parts = ln.split(",")
+            parts[4] = '"30000581"'          # FRM_RD_CD
+            parts[6] = '".2"'                # DSTNC_MILE_FRM_RD_QTY
+            parts[7] = '"E"'                 # DRCTN_FRM_RD_CD
+            ln = ",".join(parts)
+        fixed.append(ln)
+    (tmp_path / "data.txt").write_text("\n".join(fixed))
+    lp = tmp_path / "layout.json"
+    lp.write_text(json.dumps(_intersection_layout(roads=["30000581"])))
+    out = tmp_path / "sheet.html"
+    cd.build_diagram(str(out), str(data), str(lp))
+    placed = _crash_xy(out.read_text())
+    assert placed["100000009"][0] > 780 + 150
 
 
 def _intersection_layout(**extra):

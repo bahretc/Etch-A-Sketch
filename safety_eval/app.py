@@ -830,7 +830,12 @@ def _hsip_tab(st) -> None:
                        "layout to set bearings, labels, stop control, "
                        "notes, and per-crash pins (`at`), `nudges` and "
                        "`headings`; the engineer places what the search "
-                       "cannot.")
+                       "cannot. List the junction's own road codes (with "
+                       "aliases) in `roads`: a coded distance stands a "
+                       "crash out a leg only from one of those; a "
+                       "distance from any other road is a foreign "
+                       "reference, and the DMV-349 diagram places that "
+                       "crash (docs/03).")
             data_up = st.file_uploader(
                 "CollisionDiagramData (.txt)", type=["txt", "csv"],
                 key="tsu_data",
@@ -842,6 +847,7 @@ def _hsip_tab(st) -> None:
                 "title": [f"Order# {study_no}".strip(),
                           "County", "Main St at Side St",
                           "period"],
+                "roads": [],
                 "legs": [
                     {"bearing": 270, "width": 36,
                      "label": ["Main St", "AADT (Year)", "n,nnn (20xx)",

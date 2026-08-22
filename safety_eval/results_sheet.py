@@ -407,6 +407,20 @@ def format_results_sheet(template: str, sheet: str = RESULTS_1T,
             avail_last = footer[1] - 1
             if avail_last > last:
                 swaps[old_ref] = f"{icol}{irow}:{ecol}{avail_last}"
+                # the box outline lives on the merge's own perimeter
+                # cells: rows joining the merge carry the border down
+                # (old bottom row becomes interior, new bottom row takes
+                # its per-column styles), or the extended box prints open
+                cols = [_col_letter(i) for i in range(_col_index(icol),
+                                                      _col_index(ecol) + 1)]
+                for col in cols:
+                    interior = style_of(f"{col}{last - 1}")
+                    bottom = style_of(f"{col}{last}")
+                    for r in range(last, avail_last):
+                        edits.append(CellEdit(f"{col}{r}", _KEEP_VALUE,
+                                              style=interior))
+                    edits.append(CellEdit(f"{col}{avail_last}", _KEEP_VALUE,
+                                          style=bottom))
                 last = avail_last
             text = "\n".join("• " + t if not t.startswith(("•", "-")) else t
                              for t in data.items_for_discussion)

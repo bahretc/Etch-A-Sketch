@@ -46,8 +46,10 @@ CALLOUTS = [
                   "AADT (Year)", "1,400 vpd (2019)"]),
     ((615, 350), ["SR 1619 (Tom Boyd Road)", "45 mph",
                   "AADT (Year)", "1,400 vpd (2019)"]),
+    # NB approach: last actual count is 2021; carried to the after
+    # representative year so both SR 1001 legs read the same year
     ((160, 350), ["SR 1001 (Sikes Mill Road)", "55 mph",
-                  "AADT (Year)", "3,500 vpd (2021)"]),
+                  "AADT (Year)", "3,500 vpd (2022 Estimate)"]),
 ]
 NORTH_ARROW = (732, 360)
 ATTRIBUTION_Y = 400          # "Esri World Imagery", bottom left

@@ -70,6 +70,10 @@ after, both queue crashes.
 ## Checked and resolved NIS without report review
 
 - 107405320 animal 349 ft south; 105324665 animal 528 ft south
+- 105669961 animal on the SR 1619 reference, coded 0.038 (about
+  200 ft) from SR 1001, PDO; same class and standard as the other
+  animal strikes above (added to this list 8/22 after the coverage
+  re-sweep; it was screened but not documented)
 - 104793661 fixed object 528 ft south (0.100 S of the junction on the
   SR 1619 reference), B injury, outside any reasonable pull
 - 107771302 animal on SR 1619, coordinates 707 ft east
@@ -78,3 +82,16 @@ after, both queue crashes.
 - 106006697 LTSR at the SR 1615 junction, SR 1001 MP 2.871
 - Every in-period MP 999.999 row (119) resolves to a named location
   away from the junction or to a private drive or parking area
+
+## OPEN - needs a DMV-349 before submittal
+
+- 104898405  10/31/2016  ANGLE  C injury, before period. Coded on
+  SR 1619 at MP 0.000 referenced from SR 1001, i.e. at the study
+  junction, in the same SR 1001 x SR 1619 combination blind spot that
+  kept 105363964 out of the TEAAS pull. It was not in the 600504376
+  report pull and the fiche-side SR 1619 sweep missed the MP 0.000
+  row (caught by the 8/22 coverage re-sweep). If the report confirms
+  the junction, it is a before-period Target Crash (angle, Class C)
+  and the workbook and report regenerate: before 16 total, 12 target.
+  If the report places it elsewhere, it moves to the NIS list with
+  its reason. Do not submit until resolved.

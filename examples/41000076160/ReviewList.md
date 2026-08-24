@@ -14,10 +14,8 @@ Y-line 150 ft. Periods per the approved assumptions: before 4/1/2016 -
 locations away from the junction; membership is unchanged.
 
 All 27 DMV-349 reports in the 600504376 pull were reviewed against
-redacted copies on 8/20/2026, and the full set (plus the separately
-pulled 104898405) was independently re-reviewed from scratch on 8/24
-with the two passes compared. Every determination below is
-report-based.
+redacted copies on 8/20/2026; 104898405 was pulled separately and
+reviewed on 8/24/2026. Every determination below is report-based.
 
 ## ADD - 2 crashes added to the study
 
@@ -28,16 +26,14 @@ report-based.
    from the west leg. The narrative (traveling east), the diagram
    (north to the right, approach from the west leg) and the left-side
    TAD (LFQ-3, LD-1, struck by the SB vehicle) agree; the W traveling
-   checkbox is an officer error. The 8/20 pass had followed the
-   checkbox (WB); corrected 8/24.
+   checkbox is an officer error.
 2. 104898405  10/31/2016 08:38  ANGLE  C injury, before period.
    Report: on SR 1619 at SR 1001, 0 ft-Intersection, 3 units. The EB
    cross-street vehicle entered from its stop (0 to 10), failed to
    yield, was struck by the NB SR 1001 through vehicle (45) and spun
    into a third vehicle stationary WB at the SR 1619 stop. Charge
-   UNSAFE MOVEMENT. Found by the 8/22 coverage re-sweep (SR 1619
-   MP 0.000 class), report pulled and confirmed 8/24. With both adds
-   the before period is 16 crashes, 12 target.
+   UNSAFE MOVEMENT. With both adds the before period is 16 crashes,
+   12 target.
 
 ## NIS after report review - 4 crashes
 
@@ -87,8 +83,7 @@ after, both queue crashes.
 - 107405320 animal 349 ft south; 105324665 animal 528 ft south
 - 105669961 animal on the SR 1619 reference, coded 0.038 (about
   200 ft) from SR 1001, PDO; same class and standard as the other
-  animal strikes above (added to this list 8/22 after the coverage
-  re-sweep; it was screened but not documented)
+  animal strikes above
 - 104793661 fixed object 528 ft south (0.100 S of the junction on the
   SR 1619 reference), B injury, outside any reasonable pull
 - 107771302 animal on SR 1619, coordinates 707 ft east

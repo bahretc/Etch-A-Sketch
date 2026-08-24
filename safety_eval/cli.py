@@ -117,8 +117,10 @@ def _cmd_fill_template(args) -> int:
         rdata = load_results_yaml(args.results)
         rsheet = RESULTS_2T if args.target2 else RESULTS_1T
         tmp = args.output + ".results.tmp"
-        populate_results_sheet(args.output, tmp, rdata, sheet=rsheet)
+        notes = populate_results_sheet(args.output, tmp, rdata, sheet=rsheet)
         _sh.move(tmp, args.output)
+        for note in notes:
+            print(f"  ! {note}")
         rep = verify_integrity(args.template, args.output)
         if not rep.ok:
             raise RuntimeError(f"Integrity failed after results: {rep.problems}")

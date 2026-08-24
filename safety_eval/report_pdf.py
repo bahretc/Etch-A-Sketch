@@ -36,6 +36,21 @@ ROW_HEIGHTS = {**{r: 920 for r in range(18, 23)},
 _UNO_PORT = 2002
 
 
+def saved_print_range(workbook: str, sheet: str = RESULTS_SHEET,
+                      default: str = PRINT_RANGE) -> str:
+    """The sheet's saved Print_Area as a plain range (e.g. B2:L73).
+
+    Read rather than assumed: the Items cell grows by whole rows when a
+    long discussion needs them, and the print area grows with it.
+    """
+    import zipfile
+    with zipfile.ZipFile(workbook) as z:
+        wb = z.read("xl/workbook.xml").decode("utf-8")
+    m = re.search(r'<definedName name="_xlnm.Print_Area"[^>]*>\''
+                  + re.escape(sheet) + r"'!([^<]+)</definedName>", wb)
+    return m.group(1).replace("$", "") if m else default
+
+
 def saved_scale(workbook: str, sheet: str = RESULTS_SHEET,
                 default: int = 64) -> int:
     """The sheet's saved print scale (pageSetup), the engineer's choice."""
@@ -58,7 +73,7 @@ def saved_scale(workbook: str, sheet: str = RESULTS_SHEET,
 
 def export_onepager(workbook: str, out_pdf: str,
                     sheet: str = RESULTS_SHEET,
-                    cell_range: str = PRINT_RANGE,
+                    cell_range: str | None = None,
                     row_heights: dict | None = None,
                     scale: int | None = None,
                     fit_to_page: bool = False,
@@ -81,6 +96,8 @@ def export_onepager(workbook: str, out_pdf: str,
 
     if scale is None and not fit_to_page:
         scale = saved_scale(workbook, sheet)
+    if cell_range is None:
+        cell_range = saved_print_range(workbook, sheet)
 
     proc = subprocess.Popen(
         ["soffice", "--headless", "--norestore", "--invisible",

@@ -88,6 +88,33 @@ _PD_HELPER_ROW = 57
 #: The completed workbooks' saved print scale for the results 1-pager.
 REPORT_PAGE_SCALE = 64
 
+#: Font sizes the engineer uses, largest first. Items for Discussion is
+#: never smaller than 9.0 in the archive (11.0, 10.0 and 9.5 observed);
+#: the narrower blocks go down to 8.0, and this template's smaller cells
+#: sometimes need one step below that.
+BLOCK_SIZES = (11.0, 10.5, 10.0, 9.5, 9.0, 8.5, 8.0, 7.5, 7.0)
+ITEMS_SIZES = (11.0, 10.5, 10.0, 9.5, 9.0)
+ITEMS_PREFERRED_MIN = 9.5
+
+#: The sheet's row pitch; rows are added, never stretched.
+ROW_PITCH_PT = 15.0
+#: Letter portrait minus the deliverable's 0.5in top and bottom margins.
+PRINTABLE_HEIGHT_PT = 720.0
+#: Most rows the Items cell may gain (the engineer added 1 and 2).
+MAX_ADDED_ROWS = 6
+
+
+def _print_area_last_row(template: str, sheet: str) -> int | None:
+    """Last row of the sheet's saved Print_Area, if it has one."""
+    import re as _re
+    import zipfile as _zipfile
+    with _zipfile.ZipFile(template) as z:
+        wb = z.read("xl/workbook.xml").decode("utf-8")
+    m = _re.search(r'<definedName name="_xlnm.Print_Area"[^>]*>\''
+                   + _re.escape(sheet) + r"'!\$?[A-Z]+\$?\d+:\$?[A-Z]+\$?(\d+)",
+                   wb)
+    return int(m.group(1)) if m else None
+
 
 def check_style(text: str, where: str) -> None:
     """docs/05: plain and understated, no em dashes anywhere."""
@@ -274,6 +301,87 @@ def _wrapped_lines(text: str, chars_per_line: int) -> int:
                for seg in text.split("\n"))
 
 
+def items_text(data: ResultsData) -> str:
+    """The Items block exactly as it lands in the cell."""
+    return "\n".join("• " + t if not t.startswith(("•", "-")) else t
+                      for t in data.items_for_discussion)
+
+
+def plan_items_growth(template: str, sheet: str, data: ResultsData):
+    """Rows to add under the Items cell, or None if the text already fits.
+
+    The engineer grows this block by inserting whole rows (SS-6202A by
+    one, SS-6010O by two), never by stretching a row and never by taking
+    the blank row above 'Data Prepared For:'. Rows are added only while
+    the print scale stays at his 64.
+    """
+    import re as _re
+    import zipfile as _zipfile
+
+    from .setup_sheet import _scan_sheet
+    from .text_fit import box_size_pt, fit_font_size
+    from .xlsx_patch import sheet_files
+
+    if not (data and data.items_for_discussion):
+        return None
+    cells = _scan_sheet(template, sheet)
+    lbl = _find_label(cells, r"^Items for Discussion$")
+    footer = _find_label(cells, r"^Data Prepared For:$")
+    if lbl is None or footer is None:
+        return None
+    with _zipfile.ZipFile(template) as z:
+        xml = z.read(sheet_files(template)[sheet]).decode("utf-8")
+    icol, irow = lbl[0], lbl[1] + 1
+    m = _re.search(rf'<mergeCell ref="({icol}{irow}:([A-Z]+)(\d+))"/>', xml)
+    if m is None:
+        return None
+    mref, ecol, last = m.group(1), m.group(2), int(m.group(3))
+    width, height = box_size_pt(xml, mref)
+    text = items_text(data)
+
+    heights = {}
+    for rm in _re.finditer(r'<row r="(\d+)"([^>]*)>', xml):
+        hm = _re.search(r'ht="([\d.]+)"', rm.group(2))
+        heights[int(rm.group(1))] = float(hm.group(1)) if hm else 15.0
+    last_print = _print_area_last_row(template, sheet) or (footer[1] + 4)
+    page = sum(heights.get(r, 15.0) for r in range(2, last_print + 1))
+
+    added = 0
+    while added < MAX_ADDED_ROWS:
+        size, _, _ = fit_font_size(text, width, height + ROW_PITCH_PT * added,
+                                   sizes=ITEMS_SIZES)
+        if size is not None and size >= ITEMS_PREFERRED_MIN:
+            break
+        if int(PRINTABLE_HEIGHT_PT
+               / (page + ROW_PITCH_PT * (added + 1)) * 100) < REPORT_PAGE_SCALE:
+            break
+        added += 1
+    if added == 0:
+        return None
+
+    def style_of(ref):
+        mm = _re.search(rf'<c r="{ref}"(?: s="(\d+)")?', xml)
+        return mm.group(1) if mm and mm.group(1) else None
+
+    edits: list[CellEdit] = []
+    # the box outline lives on the merge's perimeter cells: the old bottom
+    # row becomes interior and the new bottom row takes its border styles,
+    # or the grown box prints open at the bottom
+    for i in range(_col_index(icol) - 1, _col_index(ecol) + 2):
+        col = _col_letter(i)
+        interior, bottom = style_of(f"{col}{last - 1}"), style_of(f"{col}{last}")
+        for r in range(last, last + added):
+            edits.append(CellEdit(f"{col}{r}", _KEEP_VALUE, style=interior))
+        edits.append(CellEdit(f"{col}{last + added}", _KEEP_VALUE,
+                              style=bottom))
+    ops = dict(grow_rows={sheet: (last + 1, added)},
+               swap_merges={sheet: {mref: f"{icol}{irow}:{ecol}{last + added}"}},
+               row_heights={sheet: {r: ROW_PITCH_PT
+                                    for r in range(last + 1, last + added + 1)}},
+               print_area={sheet: f"$B$2:$L${last_print + added}"})
+    return edits, ops, added
+
+
 def format_results_sheet(template: str, sheet: str = RESULTS_1T,
                          data: ResultsData | None = None):
     """Reproduce the engineer's manual formatting of the printed 1-pager.
@@ -366,11 +474,42 @@ def format_results_sheet(template: str, sheet: str = RESULTS_1T,
                 edits.append(CellEdit(f"{hcol}{r}", _KEEP_VALUE,
                                       style=str(shrunk)))
 
-    # -- left-aligned bullet blocks (countermeasures 8pt, target list 10pt)
+    # -- text blocks: the engineer never changes a row height on this
+    #    sheet (every completed workbook keeps rows 58-66 at 15.0pt); when
+    #    a block outgrows its merged cell he drops the font size, and only
+    #    when that is not enough does he insert whole rows, always leaving
+    #    a blank row above 'Data Prepared For:'. Same order here.
+    from .text_fit import box_size_pt, fit_font_size
+
     style_overrides: dict[str, str] = {}
-    for pattern, attr, size in ((r"^Countermeasure\(s\):$",
-                                 "countermeasures", 8),
-                                (r"^Target Crashes:$", "target_crashes", 10)):
+    notes: list[str] = []
+    swaps: dict[str, str] = {}
+
+    def merge_from(ref: str) -> str | None:
+        m = _re.search(rf'<mergeCell ref="({ref}:[A-Z]+\d+)"/>', xml)
+        return m.group(1) if m else None
+
+    def fitted(attr: str, text: str, ref: str, floor: float):
+        """(size, note) for a block that must fit its native merge."""
+        mref = merge_from(ref)
+        if mref is None:
+            return None, None
+        width, height = box_size_pt(xml, mref)
+        size, lines, need = fit_font_size(text, width, height,
+                                          sizes=BLOCK_SIZES)
+        if size is None:
+            return None, (f"{attr}: {lines} lines do not fit the "
+                          f"{height:.0f}pt cell even at "
+                          f"{BLOCK_SIZES[-1]:g}pt (needs {need:.0f}pt)")
+        if size < floor:
+            return size, (f"{attr}: sized {size:g}pt, below the usual "
+                          f"{floor:g}pt, to fit {lines} lines in the "
+                          f"{height:.0f}pt cell")
+        return size, None
+
+    for pattern, attr, floor in ((r"^Countermeasure\(s\):$",
+                                  "countermeasures", 8.0),
+                                 (r"^Target Crashes:$", "target_crashes", 9.0)):
         lbl = _find_label(cells, pattern)
         if lbl is None:
             continue
@@ -378,87 +517,103 @@ def format_results_sheet(template: str, sheet: str = RESULTS_1T,
         base = style_of(ref)
         if base is None:
             continue
+        size = floor
+        text = getattr(data, attr, None) if data is not None else None
+        if text:
+            picked, note = fitted(attr, text, ref, floor)
+            if picked is not None:
+                size = picked
+            if note:
+                notes.append(note)
         styles_xml, idx = clone_style(
             styles_xml, int(base), font_size=size,
             halign="left", valign="center", wrap=True)
         style_overrides[attr] = str(idx)
 
-    # -- size the engineer-adjusted blocks to their text, the way the
-    #    completed workbooks do (rows grow, fit-to-one-page settles scale)
-    swaps: dict[str, str] = {}
-    if data is not None and data.countermeasures:
-        lbl = _find_label(cells, r"^Countermeasure\(s\):$")
-        ref = f"{_col_letter(_col_index(lbl[0]) + 1)}{lbl[1]}"
-        m = _re.search(rf'<mergeCell ref="{ref}:[A-Z]+(\d+)"/>', xml)
-        if m:
-            first, last = lbl[1], int(m.group(1))
-            need = _wrapped_lines(data.countermeasures, 60) * 11 + 4
-            per = max(15.0, float(-(-need // (last - first + 1))))
-            for r in range(first, last + 1):
-                row_heights[r] = per
+    # -- Items for Discussion: size to whatever cell it has. The cell is
+    #    grown beforehand by :func:`plan_items_growth` when the text
+    #    cannot be held at the engineer's smallest size.
     if data is not None and data.items_for_discussion:
         lbl = _find_label(cells, r"^Items for Discussion$")
         icol, irow = lbl[0], lbl[1] + 1
-        m = _re.search(rf'<mergeCell ref="({icol}{irow}:([A-Z]+)(\d+))"/>',
-                       xml)
-        footer = _find_label(cells, r"^Data Prepared For:$")
-        if m and footer:
-            old_ref, ecol, last = m.group(1), m.group(2), int(m.group(3))
-            avail_last = footer[1] - 1
-            if avail_last > last:
-                swaps[old_ref] = f"{icol}{irow}:{ecol}{avail_last}"
-                # the box outline lives on the merge's own perimeter
-                # cells: rows joining the merge carry the border down
-                # (old bottom row becomes interior, new bottom row takes
-                # its per-column styles), or the extended box prints open
-                cols = [_col_letter(i) for i in range(_col_index(icol),
-                                                      _col_index(ecol) + 1)]
-                for col in cols:
-                    interior = style_of(f"{col}{last - 1}")
-                    bottom = style_of(f"{col}{last}")
-                    for r in range(last, avail_last):
-                        edits.append(CellEdit(f"{col}{r}", _KEEP_VALUE,
-                                              style=interior))
-                    edits.append(CellEdit(f"{col}{avail_last}", _KEEP_VALUE,
-                                          style=bottom))
-                last = avail_last
-            text = "\n".join("• " + t if not t.startswith(("•", "-")) else t
-                             for t in data.items_for_discussion)
-            need = _wrapped_lines(text, 158) * 13.2 + 6
-            per = max(15.0, float(-(-need // (last - irow + 1))))
-            for r in range(irow, last + 1):
-                row_heights[r] = per
+        mref = merge_from(f"{icol}{irow}")
+        if mref:
+            width, height = box_size_pt(xml, mref)
+            text = items_text(data)
+            size, lines, need = fit_font_size(text, width, height,
+                                              sizes=ITEMS_SIZES)
+            if size is None:
+                raise ValueError(
+                    f"Items for Discussion needs {need:.0f}pt for {lines} "
+                    f"lines but the cell holds {height:.0f}pt even at "
+                    f"{ITEMS_SIZES[-1]:g}pt; shorten the text.")
+            if size < ITEMS_PREFERRED_MIN:
+                notes.append(
+                    f"items_for_discussion: {size:g}pt for {lines} lines in "
+                    f"the {height:.0f}pt cell, below the preferred "
+                    f"{ITEMS_PREFERRED_MIN:g}pt")
+            base_items = style_of(f"{icol}{irow}")
+            if base_items is not None:
+                styles_xml, idx = clone_style(
+                    styles_xml, int(base_items), font_size=size,
+                    halign="left", valign="top", wrap=True)
+                edits.append(CellEdit(f"{icol}{irow}", _KEEP_VALUE,
+                                      style=str(idx)))
 
-    # -- saved print scale: the completed workbooks' 64, or smaller when
-    #    the grown blocks need it (printable height 10.0in at the saved
-    #    0.5in top/bottom margins)
+    # -- saved print scale: the engineer's 64, or smaller only if grown
+    #    rows push the sheet past the printable height
     heights = {}
     for rm in _re.finditer(r'<row r="(\d+)"([^>]*)>', xml):
         hm = _re.search(r'ht="([\d.]+)"', rm.group(2))
         heights[int(rm.group(1))] = float(hm.group(1)) if hm else 15.0
-    heights.update(row_heights)
-    total = sum(heights.get(r, 15.0) for r in range(2, 73))
-    scale = min(REPORT_PAGE_SCALE, int(720.0 / total * 100))
+    last_print = (_print_area_last_row(template, sheet) or 71)
+    total = sum(heights.get(r, 15.0) for r in range(2, last_print + 1))
+    scale = min(REPORT_PAGE_SCALE, int(PRINTABLE_HEIGHT_PT / total * 100))
 
     ops = dict(row_heights={sheet: row_heights},
                add_merges={sheet: merges},
                swap_merges={sheet: swaps},
                page_scale={sheet: scale},
                replace_members={"xl/styles.xml": styles_xml.encode("utf-8")})
-    return edits, ops, style_overrides
+    return edits, ops, style_overrides, notes
 
 
 def populate_results_sheet(template: str, output: str, data: ResultsData,
                            sheet: str = RESULTS_1T,
-                           apply_format: bool = True) -> None:
-    edits = build_results_edits(template, data, sheet)
-    ops = {}
+                           apply_format: bool = True) -> list[str]:
+    """Write the results sheet. Returns notes about how text was fitted."""
+    import os
+
+    notes: list[str] = []
+    grown = None
     if apply_format:
-        fmt_edits, ops, overrides = format_results_sheet(template, sheet, data)
-        for e in edits:
-            for attr, idx in overrides.items():
-                if getattr(data, attr) is not None and isinstance(e.value, str) \
-                        and e.value == getattr(data, attr):
-                    e.style = idx
-        edits += fmt_edits
-    xlsx_patch(template, output, edits={sheet: edits}, **ops)
+        plan = plan_items_growth(template, sheet, data)
+        if plan:
+            grow_edits, grow_ops, added = plan
+            grown = output + ".grow.tmp"
+            xlsx_patch(template, grown, edits={sheet: grow_edits},
+                       full_calc_on_load=False, **grow_ops)
+            template = grown
+            notes.append(
+                f"items_for_discussion: cell grown by {added} row(s); the "
+                "footer, the blank spacer row and the print area moved down "
+                "with it and no row height changed")
+    try:
+        edits = build_results_edits(template, data, sheet)
+        ops = {}
+        if apply_format:
+            fmt_edits, ops, overrides, fmt_notes = format_results_sheet(
+                template, sheet, data)
+            notes += fmt_notes
+            for e in edits:
+                for attr, idx in overrides.items():
+                    if (getattr(data, attr) is not None
+                            and isinstance(e.value, str)
+                            and e.value == getattr(data, attr)):
+                        e.style = idx
+            edits += fmt_edits
+        xlsx_patch(template, output, edits={sheet: edits}, **ops)
+    finally:
+        if grown and os.path.exists(grown):
+            os.unlink(grown)
+    return notes

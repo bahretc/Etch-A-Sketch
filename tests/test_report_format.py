@@ -181,3 +181,105 @@ def test_saved_scale_reads_the_page_setup(tmp_path):
     out = str(tmp_path / "scaled.xlsx")
     populate_results_sheet(TEMPLATE, out, data)
     assert 55 <= saved_scale(out) <= 64
+
+
+# ------------------------------------------------- native grid invariants
+
+@needs_template
+def test_row_heights_and_spacer_survive_a_long_items_block(tmp_path):
+    """The engineer never stretches a row and never takes the blank row
+    above 'Data Prepared For:'; a long block grows the cell by whole rows."""
+    # 14 wrapped lines, like a real long discussion: too tall for the
+    # native 8-row cell at any size the engineer uses, so the cell grows
+    long_items = (["• " + ("word " * 44)] * 5) + (["• " + ("word " * 15)] * 4)
+    data = ResultsData(items_for_discussion=long_items,
+                       countermeasures="Convert intersection to AWSC.")
+    out = str(tmp_path / "long.xlsx")
+    notes = populate_results_sheet(TEMPLATE, out, data)
+    assert verify_integrity(TEMPLATE, out).ok
+    xml = _sheet_xml(out)
+    tpl = _sheet_xml(TEMPLATE)
+
+    def heights(x):
+        out = {}
+        for r, attrs in re.findall(r'<row r="(\d+)"([^>]*)>', x):
+            m = re.search(r'ht="([\d.]+)"', attrs)
+            out[int(r)] = float(m.group(1)) if m else 15.0
+        return out
+
+    hb, ha = heights(tpl), heights(xml)
+    assert {h for r, h in ha.items() if 56 <= r <= 70} <= {15.0, 18.0}
+    assert all(ha[r] == 15.0 for r in range(58, 66))
+
+    items = [m for m in re.findall(r'<mergeCell ref="([^"]+)"/>', xml)
+             if m.startswith("C58:")]
+    assert items, "Items merge missing"
+    last = int(re.search(r":([A-Z]+)(\d+)", items[0]).group(2))
+    footer_row = None
+    for m in re.finditer(r'<c r="C(\d+)"[^>]*t="inlineStr"[^>]*>'
+                         r'<is><t[^>]*>([^<]*)</t>', xml):
+        if m.group(2).startswith("Data Prepared For"):
+            footer_row = int(m.group(1))
+    if footer_row:                      # blank spacer row is mandatory
+        assert footer_row - last >= 2
+    assert any("grown by" in n for n in notes)
+
+
+@needs_template
+def test_short_items_block_leaves_the_template_untouched(tmp_path):
+    data = ResultsData(items_for_discussion=["• One short bullet."])
+    out = str(tmp_path / "short.xlsx")
+    notes = populate_results_sheet(TEMPLATE, out, data)
+    xml, tpl = _sheet_xml(out), _sheet_xml(TEMPLATE)
+    assert '<mergeCell ref="C58:K65"/>' in xml          # native merge kept
+    assert not any("grown" in n for n in notes)
+    for r in range(56, 72):                            # native heights kept
+        a = re.search(rf'<row r="{r}"[^>]*ht="([\d.]+)"', xml)
+        b = re.search(rf'<row r="{r}"[^>]*ht="([\d.]+)"', tpl)
+        assert (a and b) and a.group(1) == b.group(1)
+
+
+@needs_template
+def test_items_font_is_sized_down_to_fit_not_the_cell_up(tmp_path):
+    """Two blocks of different length land at different font sizes in the
+    same cell."""
+    import zipfile
+
+    def items_size(path):
+        x = _sheet_xml(path)
+        m = re.search(r'<c r="C58"(?: s="(\d+)")?', x)
+        with zipfile.ZipFile(path) as z:
+            st = z.read("xl/styles.xml").decode()
+        xfs = re.findall(r"<xf\b[^>]*?/>|<xf\b[^>]*?>.*?</xf>",
+                         re.search(r"<cellXfs.*</cellXfs>", st, re.S).group(0),
+                         re.S)
+        fid = int(re.search(r'fontId="(\d+)"', xfs[int(m.group(1))]).group(1))
+        fonts = re.findall(r"<font>.*?</font>|<font/>",
+                           re.search(r"<fonts.*</fonts>", st, re.S).group(0),
+                           re.S)
+        return float(re.search(r'<sz val="([\d.]+)"', fonts[fid]).group(1))
+
+    short = str(tmp_path / "a.xlsx")
+    populate_results_sheet(TEMPLATE, short,
+                           ResultsData(items_for_discussion=["• Short."]))
+    dense = str(tmp_path / "b.xlsx")
+    populate_results_sheet(
+        TEMPLATE, dense,
+        ResultsData(items_for_discussion=["• " + "word " * 45
+                                          for _ in range(6)]))
+    assert items_size(short) == 11.0
+    assert items_size(dense) < items_size(short)
+
+
+@needs_template
+def test_grown_items_cell_extends_the_saved_print_area(tmp_path):
+    from safety_eval.report_pdf import saved_print_range
+    long_items = (["• " + ("word " * 44)] * 5) + \
+        (["• " + ("word " * 15)] * 4)
+    out = str(tmp_path / "grown.xlsx")
+    populate_results_sheet(TEMPLATE, out,
+                           ResultsData(items_for_discussion=long_items))
+    grown = saved_print_range(out)
+    native = saved_print_range(TEMPLATE)
+    assert int(re.search(r"(\d+)$", grown).group(1)) > \
+        int(re.search(r"(\d+)$", native).group(1))

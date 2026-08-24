@@ -101,38 +101,52 @@ joins crash times off the ID sheet for the daylight QC, and refuses to run
 warrants for a study type that does not have them.
 
 The report PDF (`safety_eval/report_pdf.py`, CLI `report-pdf`): the
-delivered "{project} Web.pdf" is the '1 page results' sheet printed
-over the completed workbooks' saved print area (B2:L72), followed by
-the standard 2020-data disclaimer page shipped at
-templates/Disclaimer_2020_Data.pdf. The WORKBOOK carries the look:
-`results_sheet.format_results_sheet` (run automatically by
-fill-template --results) reproduces the engineer's manual formatting
-against the completed AWSC workbooks: the Map/Satellite Views heading
-moved down one row with an empty 15pt spacer against the Additional
-Information table (heading rows are 18pt throughout), the last AI row
-given the bordered styles and the live K-column percent formula the
-template ships without, row labels shrink-to-fit, the bulleted
-Countermeasure(s) block left-aligned at 8pt and the Target Crashes
-list at 10pt (the template centers both, which scrambles indented
-bullets), Project Development driven by real date cells, helper counts
-in O57:O62 and per-year YEARFRAC formulas (rule 4), engineer-sized row
-heights over the countermeasure and Items blocks, and the saved print
-scale set to 64% or the largest whole percent that keeps one page.
-The print then goes through the UNO bridge in memory (python3-uno +
-libreoffice-calc; the file on disk is never modified) at that saved
-scale, which must be re-applied through the page style because
+delivered "{project} Web.pdf" is the '1 page results' sheet printed over
+the sheet's own saved print area, followed by the standard 2020-data
+disclaimer page shipped at templates/Disclaimer_2020_Data.pdf. The
+WORKBOOK carries the look: `results_sheet.format_results_sheet` (run by
+fill-template --results) reproduces the engineer's manual formatting.
+
+The rule that governs the text blocks, read off his five completed
+workbooks: **row heights are never touched** (rows 58-66 are 15.0pt and
+row 57 is 18.0pt in every one of them), and **the blank row above 'Data
+Prepared For:' is never taken**. What changes instead is the FONT SIZE,
+on a 0.5pt grid: Items for Discussion at 11.0, 10.0 and 9.5pt across the
+archive, the narrower Countermeasure(s) and Target Crashes blocks down to
+8.0pt. `safety_eval/text_fit.py` measures a block with the real font
+metrics (Times New Roman; Liberation Serif is metric-identical) against
+the merged cell computed from the sheet's own column widths and row
+heights, and picks the largest size that fits. The model reproduces his
+own choice on every archive workbook, including SS-6003Z where 10.5pt
+overflows the native cell by 0.8pt and he used 10.0pt.
+
+When even the smallest size will not fit, the code does what he does in
+SS-6202A and SS-6010O: `plan_items_growth` INSERTS whole rows under the
+Items cell (`xlsx_patch.insert_rows`), extends the merge into them,
+carries the box border down, and shifts the footer, the spacer row and
+the saved print area with them. Rows are added only while the print
+scale stays at his 64; if the text still does not fit, the build fails
+loudly rather than printing a silently clipped cell. Insertion refuses
+outright if the shifted region holds a formula, which is why only this
+block (nothing below row 55 has one) can grow.
+
+The print itself goes through the UNO bridge in memory (python3-uno +
+libreoffice-calc; the file on disk is never modified) at the workbook's
+saved scale, which must be re-applied through the page style because
 LibreOffice drops a saved xlsx print scale on import; ONLY the
 print-range selection is exported, since the `--convert-to pdf` path
-ignores print areas and prints hidden sheets. fonts-crosextra-carlito
-must be installed: column widths are defined in units of the workbook
-default font (Calibri), and without the metric-compatible Carlito face
-every column prints about 20% wide and the right edge clips. An
-annotated aerial (--map, built per site the way
+ignores print areas and prints hidden sheets. **Fonts must be the real
+msttcorefonts faces**: with only the metric-compatible clones installed
+the PDF embeds Liberation Serif and Carlito, which reflows nothing but
+looks visibly different from the engineer's own Print-To-PDF output
+(which embeds TimesNewRomanPSMT and TimesNewRomanPS-BoldMT). Install
+Times New Roman and Arial from the corefonts archive before exporting.
+An annotated aerial (--map, built per site the way
 examples/41000076160/build_aerial.py records) drops into the
-Map/Satellite Views box, whose location is measured off the print
-itself each time. "Complete Evaluation.pdf" is the same assembly with
-the two TEAAS Intersection Analysis Reports appended (--append); those
-are TEAAS output the engineer supplies.
+Map/Satellite Views box, whose location is measured off the print itself
+each time. "Complete Evaluation.pdf" is the same assembly with the two
+TEAAS Intersection Analysis Reports appended (--append); those are TEAAS
+output the engineer supplies.
 
 `safety-eval teaas-currency` reads the NCDOT Connect TEAAS page and
 reports the most recent month of loaded crash data ("TEAAS crash data

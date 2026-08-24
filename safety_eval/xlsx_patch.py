@@ -243,12 +243,75 @@ def add_merge(xml: str, ref: str) -> str:
                        f'<mergeCell ref="{ref}"/></mergeCells>', 1)
 
 
+def insert_rows(xml: str, at: int, count: int) -> str:
+    """Insert ``count`` blank rows before row ``at``, shifting what follows.
+
+    Used only where the engineer himself grows a block: he inserts whole
+    rows rather than changing row heights, so the printed grid keeps its
+    15pt pitch and the blank row above the footer survives. Rows at or
+    below ``at`` move down together with their merges, their conditional
+    formatting ranges and the sheet dimension.
+
+    Refuses when the shifted region holds a formula, whose row
+    references would have to be rewritten as well.
+    """
+    if count <= 0:
+        return xml
+
+    row_re = re.compile(r'<row r="(\d+)"([^>]*?)(/>|>.*?</row>)', re.S)
+    ref_re = re.compile(r'(\$?[A-Z]{1,3}\$?)(\d+)')
+
+    def bump(match: re.Match) -> str:
+        row = int(match.group(2))
+        return (f"{match.group(1)}{row + count}" if row >= at
+                else match.group(0))
+
+    def shift_row(m: re.Match) -> str:
+        row, attrs, body = int(m.group(1)), m.group(2), m.group(3)
+        if row < at:
+            return m.group(0)
+        if re.search(r"<f[ />]", body):
+            raise ValueError(
+                f"cannot insert rows at {at}: row {row} holds a formula "
+                "whose references would have to be rewritten")
+        body = re.sub(r'(<c r="[A-Z]{1,3})(\d+)"',
+                      lambda c: f'{c.group(1)}{int(c.group(2)) + count}"',
+                      body)
+        return f'<row r="{row + count}"{attrs}{body}'
+
+    xml = row_re.sub(shift_row, xml)
+
+    def shift_refs(text: str) -> str:
+        return " ".join(ref_re.sub(bump, part) for part in text.split())
+
+    xml = re.sub(r'<mergeCell ref="([^"]+)"/>',
+                 lambda m: f'<mergeCell ref="{shift_refs(m.group(1))}"/>', xml)
+    xml = re.sub(r'<conditionalFormatting sqref="([^"]+)"',
+                 lambda m: f'<conditionalFormatting sqref="'
+                           f'{shift_refs(m.group(1))}"', xml)
+    xml = re.sub(r'<dimension ref="([^"]+)"/>',
+                 lambda m: f'<dimension ref="{shift_refs(m.group(1))}"/>',
+                 xml, count=1)
+    return xml
+
+
 def replace_merge(xml: str, old_ref: str, new_ref: str) -> str:
     """Change one merged range (e.g. extend the Items cell downward)."""
     tag = f'<mergeCell ref="{old_ref}"/>'
     if tag not in xml:
         raise KeyError(f"merge {old_ref} not present")
     return xml.replace(tag, f'<mergeCell ref="{new_ref}"/>', 1)
+
+
+def set_print_area(workbook_xml: str, sheet: str, ref: str) -> str:
+    """Point the sheet's saved Print_Area defined name at ``ref``."""
+    pattern = re.compile(
+        r"(<definedName name=\"_xlnm.Print_Area\"[^>]*>')"
+        + re.escape(sheet) + r"('!)([^<]+)(</definedName>)")
+    if not pattern.search(workbook_xml):
+        raise KeyError(f"no Print_Area defined name for {sheet!r}")
+    return pattern.sub(lambda m: m.group(1) + sheet + m.group(2) + ref
+                       + m.group(4), workbook_xml, count=1)
 
 
 def set_page_scale(xml: str, scale: int) -> str:
@@ -351,6 +414,8 @@ def xlsx_patch(path_in: str, path_out: str,
                add_merges: dict[str, list[str]] | None = None,
                swap_merges: dict[str, dict[str, str]] | None = None,
                page_scale: dict[str, int] | None = None,
+               grow_rows: dict[str, tuple[int, int]] | None = None,
+               print_area: dict[str, str] | None = None,
                replace_members: dict[str, bytes] | None = None) -> None:
     """Apply per-sheet cell edits to a copy of ``path_in`` written at ``path_out``.
 
@@ -366,10 +431,12 @@ def xlsx_patch(path_in: str, path_out: str,
     add_merges = add_merges or {}
     swap_merges = swap_merges or {}
     page_scale = page_scale or {}
+    grow_rows = grow_rows or {}
+    print_area = print_area or {}
     replace_members = replace_members or {}
     name_to_file = sheet_files(path_in)
     touched = (set(edits) | set(row_heights) | set(add_merges)
-               | set(swap_merges) | set(page_scale))
+               | set(swap_merges) | set(page_scale) | set(grow_rows))
     unknown = touched - set(name_to_file)
     if unknown:
         raise KeyError(f"Sheets not in template: {sorted(unknown)}")
@@ -385,6 +452,11 @@ def xlsx_patch(path_in: str, path_out: str,
                 if info.filename in file_ops:
                     sheet_name = file_ops[info.filename]
                     xml = data.decode("utf-8")
+                    if sheet_name in grow_rows:
+                        # rows first: everything below is renumbered, so
+                        # edits and merges are given in final coordinates
+                        at, n = grow_rows[sheet_name]
+                        xml = insert_rows(xml, at, n)
                     sheet_edits = edits.get(sheet_name)
                     if sheet_edits:
                         patcher = SheetPatcher(
@@ -401,9 +473,14 @@ def xlsx_patch(path_in: str, path_out: str,
                     if sheet_name in page_scale:
                         xml = set_page_scale(xml, page_scale[sheet_name])
                     data = xml.encode("utf-8")
-                elif info.filename == "xl/workbook.xml" and full_calc_on_load:
+                elif info.filename == "xl/workbook.xml" and (
+                        full_calc_on_load or print_area):
                     text = data.decode("utf-8")
-                    if "fullCalcOnLoad" in text:
+                    for sname, ref in print_area.items():
+                        text = set_print_area(text, sname, ref)
+                    if not full_calc_on_load:
+                        pass
+                    elif "fullCalcOnLoad" in text:
                         pass                      # already set (idempotent)
                     elif "<calcPr" in text:
                         text = re.sub(r"<calcPr ",

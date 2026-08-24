@@ -46,10 +46,10 @@ project_development:
 # (SR 1617 west leg eastbound, SR 1619 east leg westbound); after, the
 # residual pattern is SR 1001 drivers missing or misjudging their new stop.
 additional_info:
-  - {label: "Target Crashes: SR 1617/SR 1619 At-Fault", before: 11, after: 1}
+  - {label: "Target Crashes: SR 1617/SR 1619 At-Fault", before: 12, after: 1}
   - {label: "Target Crashes: SR 1001 At-Fault", before: 0, after: 4}
   - {label: "Target Crashes: No Fault Determined", before: 0, after: 2}
-  - {label: "Target Crashes: Failed to Yield", before: 8, after: 3}
+  - {label: "Target Crashes: Failed to Yield", before: 9, after: 3}
   - {label: "Target Crashes: Ran Stop Sign", before: 3, after: 2}
 items_for_discussion:
   - "Construction period set with the project completion date of May 24, 2021 near the middle to account for any temporary warning signs or other modifications implemented before or after the conversion to AWSC. No crashes occurred at the intersection during the construction period."
@@ -58,10 +58,10 @@ items_for_discussion:
   - "The most severe after-period Target Crash was a 10/23/2025 angle crash at 12:53 PM in which a WB vehicle on SR 1001 ran the stop sign and struck a NB vehicle towing a trailer on SR 1617, resulting in one Class C injury."
   - |-
     A breakdown by the at-fault direction of the Target Crashes is as follows:
-       - Before: EB SR 1617: 6 (4 failure-to-yield, 2 ran-stop-sign); WB SR 1619: 5 (4 failure-to-yield, 1 ran-stop-sign)
+       - Before: EB SR 1617: 8 (6 failure-to-yield, 2 ran-stop-sign); WB SR 1619: 4 (3 failure-to-yield, 1 ran-stop-sign)
        - After: NB SR 1001: 3 (2 failure-to-yield, 1 ran-stop-sign); WB SR 1001: 1 (ran-stop-sign); EB SR 1617: 1 (failure-to-yield); no fault could be determined: 2
   - "The after-period Target Crashes where fault could not be determined both involved a SB vehicle on SR 1001 and a vehicle on the cross street (1 EB SR 1617 and 1 WB SR 1619) colliding in the intersection. Coded speeds in both crashes were 15 mph or less, consistent with vehicles entering from their stops rather than running them."
   - "The one non-Target Crash in the after period involved a SB vehicle on SR 1001 that failed to reduce speed and struck a vehicle stopped at the all-way stop (December 2024, Class C). Rear-end frequency did not change with the conversion: one in each period, both queue crashes."
 principal_investigator: "Chris Bahret, PE"
 work_group: "VHB"
-prepared_date: "8/22/2026"
+prepared_date: "8/24/2026"

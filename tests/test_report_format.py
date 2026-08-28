@@ -283,3 +283,42 @@ def test_grown_items_cell_extends_the_saved_print_area(tmp_path):
     native = saved_print_range(TEMPLATE)
     assert int(re.search(r"(\d+)$", grown).group(1)) > \
         int(re.search(r"(\d+)$", native).group(1))
+
+
+@needs_template
+def test_print_area_ends_on_the_box_bottom_border_row(tmp_path):
+    """The template ships Print_Area one row short of the report box's
+    heavy bottom border (B2:L71 vs border row 72); the completed
+    workbooks hand-correct it so the box prints closed."""
+    from safety_eval.report_pdf import saved_print_range
+    from safety_eval.results_sheet import _box_bottom_row
+
+    with zipfile.ZipFile(TEMPLATE) as z:
+        xml = z.read(sheet_files(TEMPLATE)[SHEET]).decode()
+        styles = z.read("xl/styles.xml").decode()
+    assert _box_bottom_row(xml, styles) == 72
+
+    out = str(tmp_path / "plain.xlsx")
+    populate_results_sheet(TEMPLATE, out,
+                           ResultsData(items_for_discussion=["• Short."]))
+    assert saved_print_range(out).endswith("72")
+
+
+@needs_template
+def test_grown_page_takes_the_narrow_margins(tmp_path):
+    """Row-inserted pages print at the engineer's 0.1in margins (the
+    SS-6010O / SS-6202A convention); ungrown pages keep the template's."""
+    long_items = (["• " + ("word " * 44)] * 5) + \
+        (["• " + ("word " * 15)] * 4)
+    out = str(tmp_path / "grown.xlsx")
+    populate_results_sheet(TEMPLATE, out,
+                           ResultsData(items_for_discussion=long_items))
+    m = re.search(r"<pageMargins [^/]*/>", _sheet_xml(out))
+    assert 'left="0.1"' in m.group(0) and 'right="0.1"' in m.group(0)
+    assert 'top="0.1"' in m.group(0) and 'bottom="0.1"' in m.group(0)
+
+    plain = str(tmp_path / "plain.xlsx")
+    populate_results_sheet(TEMPLATE, plain,
+                           ResultsData(items_for_discussion=["• Short."]))
+    m = re.search(r"<pageMargins [^/]*/>", _sheet_xml(plain))
+    assert 'left="0.1"' not in m.group(0)

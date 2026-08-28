@@ -80,12 +80,12 @@ def export_onepager(workbook: str, out_pdf: str,
                     timeout: int = 120) -> str:
     """Export one sheet's print range to a one-page PDF, in memory.
 
-    The print runs at the workbook's SAVED scale (default) or an explicit
-    ``scale`` percentage -- either way it must be re-applied through the
-    page style, because LibreOffice drops the file's saved print scale on
-    OOXML import. ``fit_to_page`` instead forces scale-to-one-page with
-    the deliverable margins, plus any ``row_heights`` expansions, for
-    workbooks that never got the results_sheet formatting pass.
+    By default the sheet is fitted to one page, which is what its own
+    Step-by-Step Instructions tell the engineer to select before
+    printing; the workbook still carries a saved scale for anyone
+    opening it in Excel. Passing ``scale`` prints at that exact
+    percentage instead (it has to be re-applied through the page style,
+    because LibreOffice drops the file's saved scale on OOXML import).
 
     Column widths depend on the workbook default font (Calibri): the
     metric-compatible Carlito face (fonts-crosextra-carlito) must be
@@ -94,8 +94,6 @@ def export_onepager(workbook: str, out_pdf: str,
     import uno
     from com.sun.star.beans import PropertyValue
 
-    if scale is None and not fit_to_page:
-        scale = saved_scale(workbook, sheet)
     if cell_range is None:
         cell_range = saved_print_range(workbook, sheet)
 
@@ -135,16 +133,19 @@ def export_onepager(workbook: str, out_pdf: str,
             cells = sh.getCellRangeByName(cell_range)
             style = doc.StyleFamilies.getByName("PageStyles").getByName(
                 sh.PageStyle)
+            # margins come from the workbook: the standard sheet keeps
+            # 0.25/0.5, a grown one takes the tighter 0.1 the engineer
+            # uses on his own grown pages
             style.HeaderIsOn = style.FooterIsOn = False
-            if fit_to_page:
-                style.ScaleToPages = 1
-                style.CenterHorizontally = True
-                style.CenterVertically = True
-                style.LeftMargin = style.RightMargin = 635      # 0.25 in
-                style.TopMargin = style.BottomMargin = 1270     # 0.5 in
-            elif scale is not None:
+            if scale is not None:
                 style.ScaleToPages = 0
                 style.PageScale = scale
+            else:
+                # the sheet's own instructions: "In the final dropdown box,
+                # select 'Fit Sheet on One Page'". LibreOffice measures the
+                # columns slightly wider than the saved percentage assumes,
+                # so fitting is the only way to guarantee a single page.
+                style.ScaleToPages = 1
             for row, ht in (row_heights or {}).items():
                 sh.Rows.getByIndex(row - 1).Height = ht
             fdata = uno.Any("[]com.sun.star.beans.PropertyValue",

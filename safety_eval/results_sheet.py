@@ -102,6 +102,49 @@ ROW_PITCH_PT = 15.0
 PRINTABLE_HEIGHT_PT = 720.0
 #: Most rows the Items cell may gain (the engineer added 1 and 2).
 MAX_ADDED_ROWS = 6
+#: Rows are worth adding down to this print scale; below it the page is
+#: harder to read than a smaller font would have been.
+MIN_PAGE_SCALE = 62
+#: Page margins, inches. The engineer prints the standard sheet at
+#: 0.25/0.25/0.5/0.5, but both workbooks where he grew the Items cell
+#: (SS-6010O, SS-6202A) use 0.1 all round, which is what lets a taller
+#: sheet still print at his 68%.
+PAGE_MARGIN_IN = 0.25
+GROWN_PAGE_MARGIN_IN = 0.1
+#: Printable height at those margins, letter portrait.
+PRINTABLE_HEIGHT_GROWN_PT = 792.0 - 2 * 72 * GROWN_PAGE_MARGIN_IN
+
+
+def _box_bottom_row(xml: str, styles_xml: str) -> int | None:
+    """Row carrying the report box's heavy bottom border.
+
+    The printed page must end on it, or the box prints open at the
+    bottom. The blank template's saved print area stops one row short of
+    it, which is why every completed workbook has a hand-corrected print
+    area (B2:L72 rather than the template's B2:L71).
+    """
+    import re as _re
+    borders = _re.search(r"<borders.*?</borders>", styles_xml, _re.S)
+    xfs = _re.search(r"<cellXfs.*?</cellXfs>", styles_xml, _re.S)
+    if not (borders and xfs):
+        return None
+    blist = _re.findall(r"<border\b[^>]*?/>|<border\b[^>]*?>.*?</border>",
+                        borders.group(0), _re.S)
+    heavy = {i for i, b in enumerate(blist)
+             if _re.search(r'<bottom style="(medium|thick|double)"', b)}
+    xflist = _re.findall(r"<xf\b[^>]*?/>|<xf\b[^>]*?>.*?</xf>",
+                         xfs.group(0), _re.S)
+    heavy_styles = set()
+    for i, xf in enumerate(xflist):
+        bid = _re.search(r'borderId="(\d+)"', xf)
+        if bid and int(bid.group(1)) in heavy:
+            heavy_styles.add(i)
+    last = None
+    for m in _re.finditer(r'<c r="([A-Z]{1,3})(\d+)"(?: s="(\d+)")?', xml):
+        if int(m.group(3) or 0) in heavy_styles and m.group(1) in set("CDEFGHIJK"):
+            row = int(m.group(2))
+            last = row if last is None else max(last, row)
+    return last
 
 
 def _print_area_last_row(template: str, sheet: str) -> int | None:
@@ -343,7 +386,11 @@ def plan_items_growth(template: str, sheet: str, data: ResultsData):
     for rm in _re.finditer(r'<row r="(\d+)"([^>]*)>', xml):
         hm = _re.search(r'ht="([\d.]+)"', rm.group(2))
         heights[int(rm.group(1))] = float(hm.group(1)) if hm else 15.0
-    last_print = _print_area_last_row(template, sheet) or (footer[1] + 4)
+    with _zipfile.ZipFile(template) as z:
+        styles = z.read("xl/styles.xml").decode("utf-8")
+    last_print = (_box_bottom_row(xml, styles)
+                  or _print_area_last_row(template, sheet)
+                  or (footer[1] + 4))
     page = sum(heights.get(r, 15.0) for r in range(2, last_print + 1))
 
     added = 0
@@ -352,8 +399,8 @@ def plan_items_growth(template: str, sheet: str, data: ResultsData):
                                    sizes=ITEMS_SIZES)
         if size is not None and size >= ITEMS_PREFERRED_MIN:
             break
-        if int(PRINTABLE_HEIGHT_PT
-               / (page + ROW_PITCH_PT * (added + 1)) * 100) < REPORT_PAGE_SCALE:
+        if int(PRINTABLE_HEIGHT_GROWN_PT
+               / (page + ROW_PITCH_PT * (added + 1)) * 100) < MIN_PAGE_SCALE:
             break
         added += 1
     if added == 0:
@@ -378,7 +425,8 @@ def plan_items_growth(template: str, sheet: str, data: ResultsData):
                swap_merges={sheet: {mref: f"{icol}{irow}:{ecol}{last + added}"}},
                row_heights={sheet: {r: ROW_PITCH_PT
                                     for r in range(last + 1, last + added + 1)}},
-               print_area={sheet: f"$B$2:$L${last_print + added}"})
+               print_area={sheet: f"$B$2:$L${last_print + added}"},
+               page_margins={sheet: GROWN_PAGE_MARGIN_IN})
     return edits, ops, added
 
 
@@ -566,7 +614,8 @@ def format_results_sheet(template: str, sheet: str = RESULTS_1T,
     for rm in _re.finditer(r'<row r="(\d+)"([^>]*)>', xml):
         hm = _re.search(r'ht="([\d.]+)"', rm.group(2))
         heights[int(rm.group(1))] = float(hm.group(1)) if hm else 15.0
-    last_print = (_print_area_last_row(template, sheet) or 71)
+    last_print = (_box_bottom_row(xml, styles_xml)
+                  or _print_area_last_row(template, sheet) or 71)
     total = sum(heights.get(r, 15.0) for r in range(2, last_print + 1))
     scale = min(REPORT_PAGE_SCALE, int(PRINTABLE_HEIGHT_PT / total * 100))
 
@@ -574,6 +623,7 @@ def format_results_sheet(template: str, sheet: str = RESULTS_1T,
                add_merges={sheet: merges},
                swap_merges={sheet: swaps},
                page_scale={sheet: scale},
+               print_area={sheet: f"$B$2:$L${last_print}"},
                replace_members={"xl/styles.xml": styles_xml.encode("utf-8")})
     return edits, ops, style_overrides, notes
 

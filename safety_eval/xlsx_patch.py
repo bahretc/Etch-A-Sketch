@@ -303,6 +303,16 @@ def replace_merge(xml: str, old_ref: str, new_ref: str) -> str:
     return xml.replace(tag, f'<mergeCell ref="{new_ref}"/>', 1)
 
 
+def set_page_margins(xml: str, inches: float, header: float = 0.05) -> str:
+    """Set all four page margins (inches) on a sheet."""
+    m = re.search(r"<pageMargins[^>]*/>", xml)
+    if m is None:
+        raise KeyError("sheet has no pageMargins")
+    tag = (f'<pageMargins left="{inches}" right="{inches}" top="{inches}" '
+           f'bottom="{inches}" header="{header}" footer="{header}"/>')
+    return xml[: m.start()] + tag + xml[m.end():]
+
+
 def set_print_area(workbook_xml: str, sheet: str, ref: str) -> str:
     """Point the sheet's saved Print_Area defined name at ``ref``."""
     pattern = re.compile(
@@ -415,6 +425,7 @@ def xlsx_patch(path_in: str, path_out: str,
                swap_merges: dict[str, dict[str, str]] | None = None,
                page_scale: dict[str, int] | None = None,
                grow_rows: dict[str, tuple[int, int]] | None = None,
+               page_margins: dict[str, float] | None = None,
                print_area: dict[str, str] | None = None,
                replace_members: dict[str, bytes] | None = None) -> None:
     """Apply per-sheet cell edits to a copy of ``path_in`` written at ``path_out``.
@@ -432,11 +443,13 @@ def xlsx_patch(path_in: str, path_out: str,
     swap_merges = swap_merges or {}
     page_scale = page_scale or {}
     grow_rows = grow_rows or {}
+    page_margins = page_margins or {}
     print_area = print_area or {}
     replace_members = replace_members or {}
     name_to_file = sheet_files(path_in)
     touched = (set(edits) | set(row_heights) | set(add_merges)
-               | set(swap_merges) | set(page_scale) | set(grow_rows))
+               | set(swap_merges) | set(page_scale) | set(grow_rows)
+               | set(page_margins))
     unknown = touched - set(name_to_file)
     if unknown:
         raise KeyError(f"Sheets not in template: {sorted(unknown)}")
@@ -470,6 +483,8 @@ def xlsx_patch(path_in: str, path_out: str,
                     for old, new in (swap_merges.get(sheet_name)
                                      or {}).items():
                         xml = replace_merge(xml, old, new)
+                    if sheet_name in page_margins:
+                        xml = set_page_margins(xml, page_margins[sheet_name])
                     if sheet_name in page_scale:
                         xml = set_page_scale(xml, page_scale[sheet_name])
                     data = xml.encode("utf-8")

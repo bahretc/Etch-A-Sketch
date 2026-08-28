@@ -1866,6 +1866,10 @@ def _sheet(body_svg: list, layout: dict, crashes) -> str:
                          layout.get("date", ""),
                          layout.get("logo_b64", "")))
     svg.extend(body_svg)
+    return _wrap_html(svg)
+
+
+def _wrap_html(svg: list) -> str:
     # svg{display:block} matters: an inline svg sits on a text baseline
     # and the descender space under it spills past the sheet, which prints
     # a second, blank page. The @page rule and overflow keep it to one.
@@ -1889,6 +1893,213 @@ def load_logo(path: str | None) -> str:
     return ""
 
 
+# --------------------------------------------------------------- bike/ped
+#: the delivered sheets' orange for infrastructure (lighting, ped heads)
+BP_ORANGE = "#F59A00"
+
+#: the four blue crash markers of the Bike/Ped legend
+BP_SYMBOLS = ("yield", "noncrosswalk", "contributing", "nofacility")
+
+
+def _bp_symbol(sym: str, x: float, y: float, s: float = 9.0) -> str:
+    """One Bike/Ped marker: driver failure to yield (triangle), bike or
+    ped at a non-crosswalk location (square), bike or ped contributing
+    action (cross), lack of sidewalk or bike lane (circle)."""
+    if sym == "yield":
+        pts = f"{x - s:.1f},{y - s * 0.8:.1f} {x + s:.1f},{y - s * 0.8:.1f} " \
+              f"{x:.1f},{y + s:.1f}"
+        return f'<polygon points="{pts}" fill="{BLUE}"/>'
+    if sym == "noncrosswalk":
+        return (f'<rect x="{x - s * 0.8:.1f}" y="{y - s * 0.8:.1f}" '
+                f'width="{s * 1.6:.1f}" height="{s * 1.6:.1f}" '
+                f'fill="{BLUE}"/>')
+    if sym == "contributing":
+        a = s * 0.34
+        d = (f"M {x - s:.1f} {y - a:.1f} H {x - a:.1f} V {y - s:.1f} "
+             f"H {x + a:.1f} V {y - a:.1f} H {x + s:.1f} V {y + a:.1f} "
+             f"H {x + a:.1f} V {y + s:.1f} H {x - a:.1f} V {y + a:.1f} "
+             f"H {x - s:.1f} Z")
+        return f'<path d="{d}" fill="{BLUE}"/>'
+    if sym == "nofacility":
+        return f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{s:.1f}" fill="{BLUE}"/>'
+    raise ValueError(f"unknown bike/ped symbol {sym!r}; expected one of "
+                     + ", ".join(BP_SYMBOLS))
+
+
+def bp_legend_extension(x: float, y: float, h: float = LEGEND_H) -> str:
+    """The Bike/Ped column beside the standard legend: the orange
+    infrastructure symbols and the four blue crash markers, labeled the
+    way the delivered 59X00239 sheet labels them."""
+    w = 250.0
+    svg = [f'<rect x="{x:.1f}" y="{y:.1f}" width="{w}" height="{h}" '
+           'fill="#fff" stroke="#000" stroke-width="1.2"/>']
+    rows = [
+        ("light", "STREET LIGHTING"),
+        ("pedhead", "PED SIGNAL HEAD"),
+        ("yield", "DRIVER FAILURE TO YIELD"),
+        ("noncrosswalk", "BIKE OR PED AT\nNON-CROSSWALK LOCATION"),
+        ("contributing", "BIKE OR PED\nCONTRIBUTING ACTION"),
+        ("nofacility", "LACK OF SIDEWALK\nOR BIKE LANE"),
+    ]
+    step = (h - 30) / len(rows)
+    cy = y + 24
+    for sym, label in rows:
+        sx = x + 24
+        if sym == "light":
+            svg.append(f'<circle cx="{sx:.1f}" cy="{cy:.1f}" r="8" '
+                       f'fill="{BP_ORANGE}"/>')
+        elif sym == "pedhead":
+            svg.append(f'<rect x="{sx - 7:.1f}" y="{cy - 7:.1f}" '
+                       f'width="14" height="14" fill="{BP_ORANGE}"/>')
+        else:
+            svg.append(_bp_symbol(sym, sx, cy, 8.0))
+        for i, line in enumerate(label.split("\n")):
+            svg.append(_stroke_text(sx + 22, cy - 4 + i * 11 + 4, line,
+                                    size=7.5, anchor="start", sw=0.7))
+        cy += step
+    return "".join(svg)
+
+
+def render_bikeped(crashes: list[DiagramCrash], layout: dict) -> str:
+    """Render the Bike/Ped HSIP collision diagram (docs/12): an aerial
+    exhibit, not a schematic.
+
+    The delivered sheets (59X00239 is the reference) place everything on
+    a provided semi-transparent aerial: the crash cells at the spot they
+    happened (the ped and bike pictograms already read blue), the orange
+    street-lighting dots and ped signal heads, the four blue Bike/Ped
+    markers, the leg labels with AADT and speed, boxed land-use labels,
+    a Notes box, a vicinity inset and the imagery-access footnotes. The
+    layout carries all of it; the aerial is embedded UNTOUCHED, and the
+    engineer pins each crash from its report (`at`), the same rule the
+    Sketch sheet follows (docs/02). Cells the layout does not pin stand
+    near the sheet centre awaiting their pin.
+    """
+    svg = []
+    underlay = layout.get("underlay")
+    if underlay and os.path.exists(underlay):
+        ext = os.path.splitext(underlay)[1].lstrip(".").lower()
+        mime = {"jpg": "jpeg", "jpeg": "jpeg", "png": "png"}.get(ext, "png")
+        b64 = base64.b64encode(open(underlay, "rb").read()).decode()
+        svg.append(f'<image x="14" y="14" width="{PAGE_W - 28}" '
+                   f'height="{PAGE_H - 28}" preserveAspectRatio="xMidYMid '
+                   'slice" href="data:image/'
+                   f'{mime};base64,{b64}" opacity="'
+                   f'{layout.get("underlay_opacity", 0.55)}"/>')
+
+    # infrastructure: lighting and ped signal heads, straight off layout
+    for lx, ly in layout.get("lights", []):
+        svg.append(f'<circle cx="{lx:.1f}" cy="{ly:.1f}" r="9" '
+                   f'fill="{BP_ORANGE}"/>')
+    for px, py in layout.get("ped_signals", []):
+        svg.append(f'<rect x="{px - 8:.1f}" y="{py - 8:.1f}" width="16" '
+                   f'height="16" fill="{BP_ORANGE}"/>')
+    for mk in layout.get("markers", []):
+        svg.append(_bp_symbol(mk["symbol"], float(mk["x"]), float(mk["y"]),
+                              float(mk.get("s", 9.0))))
+
+    # free labels: leg names with AADT and speed (angled), boxed land use
+    for lab in layout.get("labels", []):
+        lines = lab["text"] if isinstance(lab["text"], list) else [lab["text"]]
+        size = float(lab.get("size", 11.5))
+        lead = size * 1.5
+        g = []
+        for i, line in enumerate(lines):
+            g.append(_stroke_text(0, i * lead, line, size=size, sw=1.0))
+        w = max(_text_width(t, size) for t in lines)
+        if lab.get("box"):
+            g.insert(0, f'<rect x="{-w / 2 - 10:.1f}" y="{-size - 6:.1f}" '
+                        f'width="{w + 20:.1f}" '
+                        f'height="{lead * (len(lines) - 1) + size + 14:.1f}" '
+                        'fill="#fff" fill-opacity="0.85" stroke="#000" '
+                        'stroke-width="1.6"/>')
+        svg.append(f'<g transform="translate({lab["x"]},{lab["y"]}) '
+                   f'rotate({lab.get("angle", 0)})">' + "".join(g) + "</g>")
+
+    # the crashes: the standard cells, small, at their pins
+    scale = float(layout.get("cell_scale", 0.7))
+    cx0 = layout.get("center", [PAGE_W * 0.45, PAGE_H * 0.5])
+    pinned = layout.get("at", {})
+    taken: list[tuple] = []
+    for cr in crashes:
+        hd = layout.get("headings", {}).get(cr.crash_id)
+        g, box, _n = crash_glyph(cr, base_ang=0.0, route_forward="E",
+                                 heading=hd)
+        xy = pinned.get(cr.crash_id)
+        if xy:
+            ox, oy = float(xy[0]), float(xy[1])
+        else:
+            # unpinned cells queue near the centre, spaced, till the
+            # engineer pins them from the reports
+            ox, oy = cx0[0], cx0[1]
+            k = 0
+            while any(abs(ox - tx) < 90 * scale and abs(oy - ty) < 60 * scale
+                      for tx, ty in taken):
+                k += 1
+                ox = cx0[0] + (k % 4 - 1.5) * 100 * scale
+                oy = cx0[1] + (k // 4) * 80 * scale
+        taken.append((ox, oy))
+        dxn, dyn = layout.get("nudges", {}).get(cr.crash_id, (0, 0))
+        svg.append(f'<g data-crash="{cr.crash_id}" data-seq="{cr.seq}" '
+                   f'transform="translate({ox + dxn:.1f},{oy + dyn:.1f}) '
+                   f'scale({scale})">{g}</g>')
+
+    # furniture: frame, title, legend + BP extension, notes, vicinity,
+    # footnotes, needle, TSU block
+    chrome = [f'<rect x="14" y="14" width="{PAGE_W - 28}" '
+              f'height="{PAGE_H - 28}" fill="none" stroke="#000" '
+              'stroke-width="2"/>']
+    lx = layout.get("legend_x", LEGEND_X - 262)
+    chrome.append(legend_block(lx, LEGEND_Y))
+    chrome.append(bp_legend_extension(lx + LEGEND_W + 6, LEGEND_Y))
+    tx = layout.get("title_x", PAGE_W - 210)
+    ty = layout.get("title_y", 320)
+    for i, line in enumerate(layout.get("title", [])):
+        chrome.append(_stroke_text(tx, ty + i * ROUTE_LEAD, line,
+                                   size=ROUTE_SIZE, sw=1.1))
+    nb = layout.get("notes_box")
+    if nb:
+        w = float(nb.get("w", 330))
+        lines = nb["text"]
+        lead = NOTE_SIZE * 1.45
+        h = lead * len(lines) + 44
+        chrome.append(f'<rect x="{nb["x"]}" y="{nb["y"]}" width="{w}" '
+                      f'height="{h:.1f}" fill="#fff" fill-opacity="0.9" '
+                      'stroke="#000" stroke-width="1.4"/>')
+        chrome.append(_stroke_text(nb["x"] + w / 2, nb["y"] + 20, "Notes:",
+                                   size=NOTE_SIZE + 1, sw=1.0))
+        for i, line in enumerate(lines):
+            chrome.append(_stroke_text(nb["x"] + w / 2,
+                                       nb["y"] + 38 + i * lead, line,
+                                       size=NOTE_SIZE, sw=0.85))
+    vc = layout.get("vicinity")
+    if vc and vc.get("image") and os.path.exists(vc["image"]):
+        ext = os.path.splitext(vc["image"])[1].lstrip(".").lower()
+        mime = {"jpg": "jpeg", "jpeg": "jpeg", "png": "png"}.get(ext, "png")
+        b64 = base64.b64encode(open(vc["image"], "rb").read()).decode()
+        chrome.append(_stroke_text(vc["x"] + vc.get("w", 240) / 2,
+                                   vc["y"] - 12, "Vicinity Map",
+                                   size=16, sw=1.2))
+        chrome.append(f'<image x="{vc["x"]}" y="{vc["y"]}" '
+                      f'width="{vc.get("w", 240)}" '
+                      f'height="{vc.get("h", 170)}" '
+                      'preserveAspectRatio="xMidYMid slice" '
+                      f'href="data:image/{mime};base64,{b64}"/>')
+        chrome.append(f'<rect x="{vc["x"]}" y="{vc["y"]}" '
+                      f'width="{vc.get("w", 240)}" '
+                      f'height="{vc.get("h", 170)}" fill="none" '
+                      'stroke="#000" stroke-width="1.4"/>')
+    for i, line in enumerate(layout.get("footnotes", [])):
+        chrome.append(_stroke_text(40, PAGE_H - 90 + i * 14, line,
+                                   size=9.0, anchor="start", sw=0.8))
+    chrome.append(north_needle(layout.get("north_x", 1150), 830,
+                               rot=layout.get("north_rot", 0.0)))
+    chrome.append(tsu_block(1318, 842, layout.get("prepared_by", ""),
+                            layout.get("date", ""),
+                            layout.get("logo_b64", "")))
+    return _wrap_html(svg + chrome)
+
+
 def build_section_diagram(out_html: str, data_csv: str, layout_json: str):
     crashes = read_data_csv(data_csv)
     layout = json.load(open(layout_json))
@@ -1901,13 +2112,15 @@ def build_section_diagram(out_html: str, data_csv: str, layout_json: str):
 
 def build_diagram(out_html: str, data_csv: str, layout_json: str) -> int:
     """Build the TSU sheet the layout asks for: ``"kind":
-    "intersection"`` renders the junction sheet, anything else the
-    section sheet (the historical default)."""
+    "intersection"`` renders the junction sheet, ``"bikeped"`` the
+    aerial Bike/Ped exhibit (docs/12), anything else the section sheet
+    (the historical default)."""
     crashes = read_data_csv(data_csv)
     layout = json.load(open(layout_json))
     layout["logo_b64"] = load_logo(layout.get("logo"))
-    render = (render_intersection
-              if layout.get("kind") == "intersection" else render_section)
+    render = {"intersection": render_intersection,
+              "bikeped": render_bikeped}.get(layout.get("kind"),
+                                             render_section)
     html = render(crashes, layout)
     with open(out_html, "w", encoding="utf-8") as fh:
         fh.write(html)

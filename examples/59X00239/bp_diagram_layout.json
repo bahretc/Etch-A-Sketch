@@ -1,0 +1,338 @@
+{
+ "kind": "bikeped",
+ "underlay": "examples/59X00239/59X00239_TransparentMap.jpg",
+ "underlay_opacity": 0.75,
+ "title": [
+  "PH# 59X00239",
+  "WO# 41000065061",
+  "Mecklenburg County",
+  "US 29/NC 49",
+  "(N Tryon St) at",
+  "Tom Hunter Rd",
+  "7/1/2011 - 6/30/2021"
+ ],
+ "title_x": 1435,
+ "title_y": 315,
+ "cell_scale": 0.62,
+ "center": [
+  660,
+  500
+ ],
+ "at": {
+  "103410037": [
+   553,
+   680
+  ],
+  "104759993": [
+   541,
+   448
+  ],
+  "105116496": [
+   592,
+   570
+  ],
+  "105765406": [
+   724,
+   505
+  ],
+  "105798132": [
+   638,
+   522
+  ],
+  "105836695": [
+   568,
+   545
+  ],
+  "106002854": [
+   756,
+   538
+  ]
+ },
+ "lights": [
+  [
+   663,
+   198
+  ],
+  [
+   634,
+   344
+  ],
+  [
+   522,
+   406
+  ],
+  [
+   481,
+   317
+  ],
+  [
+   403,
+   317
+  ],
+  [
+   348,
+   361
+  ],
+  [
+   427,
+   437
+  ],
+  [
+   545,
+   505
+  ],
+  [
+   579,
+   754
+  ],
+  [
+   577,
+   803
+  ],
+  [
+   822,
+   754
+  ],
+  [
+   820,
+   697
+  ],
+  [
+   915,
+   218
+  ],
+  [
+   877,
+   384
+  ],
+  [
+   874,
+   496
+  ],
+  [
+   820,
+   642
+  ]
+ ],
+ "ped_signals": [
+  [
+   727,
+   465
+  ],
+  [
+   777,
+   465
+  ],
+  [
+   619,
+   602
+  ],
+  [
+   752,
+   602
+  ],
+  [
+   777,
+   630
+  ],
+  [
+   872,
+   513
+  ]
+ ],
+ "markers": [
+  {
+   "symbol": "contributing",
+   "x": 700,
+   "y": 505
+  },
+  {
+   "symbol": "contributing",
+   "x": 548,
+   "y": 421
+  },
+  {
+   "symbol": "yield",
+   "x": 528,
+   "y": 512
+  },
+  {
+   "symbol": "noncrosswalk",
+   "x": 852,
+   "y": 344
+  }
+ ],
+ "labels": [
+  {
+   "x": 455,
+   "y": 100,
+   "text": [
+    "Various",
+    "Businesses"
+   ],
+   "box": true,
+   "size": 16
+  },
+  {
+   "x": 1060,
+   "y": 305,
+   "text": [
+    "Various",
+    "Businesses"
+   ],
+   "box": true,
+   "size": 16
+  },
+  {
+   "x": 228,
+   "y": 640,
+   "text": [
+    "Various",
+    "Businesses"
+   ],
+   "box": true,
+   "size": 16
+  },
+  {
+   "x": 1038,
+   "y": 622,
+   "text": [
+    "Car Wash"
+   ],
+   "box": true,
+   "size": 16
+  },
+  {
+   "x": 975,
+   "y": 875,
+   "text": [
+    "Gas Station"
+   ],
+   "box": true,
+   "size": 16
+  },
+  {
+   "x": 596,
+   "y": 235,
+   "angle": -63,
+   "text": [
+    "US 29/NC 49 (N Tryon St)",
+    "2019 AADT: 35,000",
+    "45 MPH"
+   ],
+   "size": 10.5
+  },
+  {
+   "x": 492,
+   "y": 810,
+   "angle": -63,
+   "text": [
+    "US 29/NC 49 (N Tryon St)",
+    "2019 AADT: 35,000",
+    "45 MPH"
+   ],
+   "size": 10.5
+  },
+  {
+   "x": 396,
+   "y": 520,
+   "angle": -34,
+   "text": [
+    "Tom Hunter Rd",
+    "2019 AADT Est: 9,200",
+    "35 MPH"
+   ],
+   "size": 10.5
+  },
+  {
+   "x": 782,
+   "y": 175,
+   "angle": -87,
+   "text": [
+    "Railroad"
+   ],
+   "size": 13
+  },
+  {
+   "x": 700,
+   "y": 890,
+   "angle": -87,
+   "text": [
+    "Railroad"
+   ],
+   "size": 13
+  },
+  {
+   "x": 648,
+   "y": 165,
+   "angle": -63,
+   "text": [
+    "Sidewalk"
+   ],
+   "size": 9
+  },
+  {
+   "x": 372,
+   "y": 330,
+   "angle": -34,
+   "text": [
+    "Sidewalk"
+   ],
+   "size": 9
+  },
+  {
+   "x": 582,
+   "y": 780,
+   "angle": -87,
+   "text": [
+    "Sidewalk"
+   ],
+   "size": 9
+  },
+  {
+   "x": 826,
+   "y": 780,
+   "angle": -87,
+   "text": [
+    "Sidewalk"
+   ],
+   "size": 9
+  }
+ ],
+ "notes_box": {
+  "x": 1190,
+  "y": 480,
+  "w": 340,
+  "text": [
+   "Between March 2016 and January 2017",
+   "light rail was added. The road",
+   "configuration was changed, traffic",
+   "signals were updated and added,",
+   "pedestrian signals were added, sidewalks",
+   "were added, and crosswalks were added",
+   "at the intersection, especially in/near",
+   "the median of US 29/NC 49, with the",
+   "addition of the light rail.",
+   "",
+   "Between October 2016 and March 2018",
+   "bike lanes were added to the NB and",
+   "SB lanes of US 29/NC 49."
+  ]
+ },
+ "vicinity": {
+  "image": "examples/59X00239/59X00239_CDVicinityMap.jpg",
+  "x": 1050,
+  "y": 748,
+  "w": 230,
+  "h": 150
+ },
+ "footnotes": [
+  "Notes:",
+  "1. Basemap aerial image accessed from ArcGIS on September 7, 2021.",
+  "2. Vicinity Map image accessed from Google Maps on September 14, 2021.",
+  "3. Signage images accessed from Google Maps on September 15, 2021."
+ ],
+ "north_x": 985,
+ "prepared_by": "",
+ "date": ""
+}

@@ -1084,53 +1084,90 @@ def _hsip_tab(st) -> None:
                        "distance from any other road is a foreign "
                        "reference, and the DMV-349 diagram places that "
                        "crash (docs/03).")
+            sheet_kind = st.radio(
+                "Sheet", ["Intersection", "Bike/Ped (aerial)"],
+                horizontal=True, key="tsu_kind",
+                help="A Bike/Ped analysis is always a 10-year "
+                     "intersection pull with a 300 ft y-line (docs/12), "
+                     "and its sheet is an aerial exhibit: cells pinned on "
+                     "a provided TransparentMap, orange lighting and ped "
+                     "signal heads, the blue Bike/Ped markers "
+                     "(59X00239 is the reference).")
+            is_bp = sheet_kind.startswith("Bike")
             data_up = st.file_uploader(
                 "CollisionDiagramData (.txt)", type=["txt", "csv"],
                 key="tsu_data",
                 help="The TEAAS per-unit export "
                      "(<WO>_CollisionDiagramData.txt).")
+            underlay_up = None
+            if is_bp:
+                underlay_up = st.file_uploader(
+                    "Aerial underlay (TransparentMap .jpg/.png)",
+                    type=["jpg", "jpeg", "png"], key="tsu_underlay",
+                    help="Embedded untouched behind the sheet; pin each "
+                         "cell from its report with the layout's `at`.")
             study_no = (ws.study if ws else "")
-            starter = {
-                "kind": "intersection",
-                "title": [f"Order# {study_no}".strip(),
-                          "County", "Main St at Side St",
-                          "period"],
-                "roads": [],
-                "legs": [
-                    {"bearing": 270, "width": 36,
-                     "label": ["Main St", "AADT (Year)", "n,nnn (20xx)",
-                               "55 mph"]},
-                    {"bearing": 90, "width": 36,
-                     "label": ["Main St", "AADT (Year)", "n,nnn (20xx)",
-                               "55 mph"]},
-                    {"bearing": 0, "width": 30, "stop": True,
-                     "label": ["Side St", "AADT (Year)", "n,nnn (20xx)",
-                               "45 mph"]},
-                    {"bearing": 180, "width": 30, "stop": True,
-                     "label": ["Side St", "AADT (Year)", "n,nnn (20xx)",
-                               "45 mph"]},
-                ],
-                "notes": [],
-            }
+            if is_bp:
+                starter = {
+                    "kind": "bikeped",
+                    "title": [f"PH# {study_no}".strip(), "WO#", "County",
+                              "Main St at Side St",
+                              "10-year period"],
+                    "cell_scale": 0.62,
+                    "at": {},
+                    "lights": [], "ped_signals": [], "markers": [],
+                    "labels": [{"x": 400, "y": 120,
+                                "text": ["Land Use"], "box": True}],
+                    "footnotes": ["Notes:",
+                                  "1. Basemap aerial image accessed from "
+                                  "ArcGIS on <date>."],
+                }
+            else:
+                starter = {
+                    "kind": "intersection",
+                    "title": [f"Order# {study_no}".strip(),
+                              "County", "Main St at Side St",
+                              "period"],
+                    "roads": [],
+                    "legs": [
+                        {"bearing": 270, "width": 36,
+                         "label": ["Main St", "AADT (Year)",
+                                   "n,nnn (20xx)", "55 mph"]},
+                        {"bearing": 90, "width": 36,
+                         "label": ["Main St", "AADT (Year)",
+                                   "n,nnn (20xx)", "55 mph"]},
+                        {"bearing": 0, "width": 30, "stop": True,
+                         "label": ["Side St", "AADT (Year)",
+                                   "n,nnn (20xx)", "45 mph"]},
+                        {"bearing": 180, "width": 30, "stop": True,
+                         "label": ["Side St", "AADT (Year)",
+                                   "n,nnn (20xx)", "45 mph"]},
+                    ],
+                    "notes": [],
+                }
             layout_text = st.text_area(
                 "Layout (JSON)", value=_json.dumps(starter, indent=1),
-                height=280, key="tsu_layout")
+                height=280, key=f"tsu_layout_{'bp' if is_bp else 'int'}")
             if st.button("Build diagram", disabled=not data_up):
-                from safety_eval.collision_diagram import (load_logo,
-                                                           read_data_csv,
-                                                           render_intersection)
+                from safety_eval.collision_diagram import (
+                    load_logo, read_data_csv, render_bikeped,
+                    render_intersection)
                 try:
                     layout = _json.loads(layout_text)
                 except ValueError as exc:
                     st.error(f"Layout JSON: {exc}")
                     st.stop()
-                layout["kind"] = "intersection"
+                layout["kind"] = "bikeped" if is_bp else "intersection"
                 layout["logo_b64"] = load_logo(layout.get("logo"))
                 with tempfile.TemporaryDirectory() as tmp:
                     dpath = _save_upload(data_up, tmp)
+                    if is_bp and underlay_up is not None:
+                        layout["underlay"] = _save_upload(underlay_up, tmp)
                     try:
                         dcrashes = read_data_csv(dpath)
-                        html = render_intersection(dcrashes, layout)
+                        render = render_bikeped if is_bp \
+                            else render_intersection
+                        html = render(dcrashes, layout)
                     except (ValueError, KeyError) as exc:
                         st.error(str(exc))
                         st.stop()

@@ -134,15 +134,33 @@ County, NC-581 at SR-1960) is GIS point TSUINT672620 / Legacy PH 95I00327,
 and the completed study folder `41000077750 PH TSUINT672620` is in the team
 Drive. The same location reappears in the 2026 layer at rank 431.
 
-## Bike/Ped HSIP analyses (not built; do not lose)
+## Bike/Ped HSIP analyses
 
 Alongside the intersection and section analyses, HSIP packages include
 bicycle/pedestrian analyses. They are **always 10-year intersection
-analyses with a 300 ft y-line** (against the usual 150 ft buffer), and
-their collision diagram has its own format, distinct from the vehicle
-diagrams. Completed examples exist in the archive/Drive. Deliberately
-deferred for now; nothing in the current warrant or diagram code covers
-them, and any future implementation starts from those examples.
+analyses with a 300 ft y-line** (against the usual 150 ft buffer;
+verified on 59X00239: "*Bike/Ped Crashes Only*", 7/1/2011 to 6/30/2021),
+and their collision diagram has its own format, distinct from the
+vehicle diagrams: an AERIAL EXHIBIT, not a schematic. The delivered
+MECKLENBURG_HSIP_59X00239 sheet (examples/59X00239, with its TEAAS data
+and the TransparentMap underlay) is the reference: the crash cells sit
+small and pinned on a provided semi-transparent aerial, street lighting
+is marked with orange dots and pedestrian signal heads with orange
+squares, and four blue markers carry the Bike/Ped findings (driver
+failure to yield, bike or ped at a non-crosswalk location, bike or ped
+contributing action, lack of sidewalk or bike lane). Leg labels carry
+AADT and speed, land uses are boxed, and a Notes box records the
+infrastructure history over the 10 years; a vicinity inset and
+imagery-access footnotes complete the sheet.
+
+`collision_diagram.render_bikeped` (layout kind ``"bikeped"``) renders
+this format; the engineer pins every cell from its report (`at`), the
+same rule the Sketch sheet follows, and places the lighting, signal
+heads and markers off the field/aerial evidence. Signage photos and
+signal-face drawings remain hand-curated in the delivered sheets and are
+not generated. The Drive's Bike_Ped Training folder carries NCDOT's
+package training deck and the MicroStation seed
+(Bike_Ped_Collision Diagram_Template.dgn).
 
 ## Shares are rounded to whole percents BEFORE the test
 

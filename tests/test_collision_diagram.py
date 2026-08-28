@@ -512,7 +512,7 @@ def _crash_xy(html):
     out = {}
     for cid, x, y in re.findall(
             r'<g data-crash="(\d+)"[^>]*transform="translate\('
-            r'([-\d.]+),([-\d.]+)\)"', html):
+            r'([-\d.]+),([-\d.]+)\)(?: scale\([-\d.]+\))?"', html):
         out[cid] = (float(x), float(y))
     return out
 
@@ -671,3 +671,58 @@ def test_build_diagram_dispatches_on_kind(tmp_path):
     ix.write_text(json.dumps(_intersection_layout()))
     cd.build_diagram(str(out), str(data), str(ix))
     assert ">STOP</text>" in out.read_text()     # the junction furniture
+
+
+# --------------------------------------------------------------------------- #
+# the Bike/Ped sheet (docs/12; the delivered 59X00239 is the reference)
+# --------------------------------------------------------------------------- #
+_BP = _pl.Path(__file__).resolve().parent.parent / "examples" / "59X00239"
+_needs_bp = pytest.mark.skipif(
+    not (_BP / "59X00239_CollisionDiagramData.txt").exists(),
+    reason="59X00239 example data not present")
+
+
+def test_bp_symbols_are_the_four_legend_markers():
+    for sym in cd.BP_SYMBOLS:
+        assert "fill" in cd._bp_symbol(sym, 10, 10)
+    with pytest.raises(ValueError, match="unknown bike/ped symbol"):
+        cd._bp_symbol("sparkles", 0, 0)
+
+
+@_needs_bp
+def test_the_bikeped_example_renders_the_delivered_furniture(tmp_path):
+    out = tmp_path / "bp.html"
+    n = cd.build_diagram(str(out),
+                         str(_BP / "59X00239_CollisionDiagramData.txt"),
+                         str(_BP / "bp_diagram_layout.json"))
+    assert n == 7                       # six pedestrians and one cyclist
+    html = out.read_text()
+    assert len(_crash_xy(html)) == 7
+    # the aerial underlay and the vicinity inset are embedded images
+    assert html.count("data:image/jpeg") == 2
+    # the orange infrastructure: 16 lights and 6 ped signal heads placed,
+    # plus one of each in the legend extension
+    assert html.count(f'fill="{cd.BP_ORANGE}"') == 16 + 6 + 2
+    # every placed cell is pinned exactly where the layout pins it
+    layout = json.loads((_BP / "bp_diagram_layout.json").read_text())
+    placed = _crash_xy(html)
+    for cid, (x, y) in layout["at"].items():
+        assert placed[cid] == (float(x), float(y))
+
+
+def test_bikeped_unpinned_cells_queue_spaced_for_their_pins(tmp_path):
+    crashes = [make_crash(crash_id=str(100000000 + i), mp=None, acc_typ=14,
+                          units=[cd.Unit(1, "S", 20, 4)])
+               for i in range(5)]
+    data = tmp_path / "data.txt"
+    cd.write_data_csv(str(data), crashes)
+    lp = tmp_path / "layout.json"
+    lp.write_text(json.dumps({"kind": "bikeped", "title": ["t"],
+                              "prepared_by": "x", "date": "1/1/2026"}))
+    out = tmp_path / "bp.html"
+    cd.build_diagram(str(out), str(data), str(lp))
+    placed = list(_crash_xy(out.read_text()).values())
+    assert len(placed) == 5
+    for i in range(len(placed)):
+        for j in range(i + 1, len(placed)):
+            assert placed[i] != placed[j], "two unpinned cells stacked"

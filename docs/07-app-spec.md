@@ -109,9 +109,13 @@ TSU sheet. The layout's `"kind"` selects it: `"intersection"` draws the
 junction north up at its legs' true bearings so every unit arrow reads at
 its coded compass direction (validated against the delivered 41000077750
 sheet; example layout in `examples/41000077750/diagram_layout.json`);
-anything else draws the section sheet. The intersection sheet is also on
-the HSIP Warrants page (intersection branch). Bike/Ped diagrams are a
-distinct format and are NOT covered yet (docs/12).
+anything else draws the section sheet. ``"kind": "bikeped"`` renders the
+Bike/Ped aerial exhibit (docs/12; the delivered 59X00239 sheet is the
+reference, example layout in `examples/59X00239/bp_diagram_layout.json`):
+crash cells pinned on a provided TransparentMap underlay, orange
+lighting and ped signal heads, the four blue Bike/Ped markers, and the
+extended legend. The intersection and Bike/Ped sheets are also on the
+HSIP Warrants page (intersection branch).
 
 The HSIP flow in CLI form, end to end on a reviewed fiche workbook:
 

@@ -86,6 +86,7 @@ PAGE = {
     "evaluation": f"{PAGES_DIR}/evaluation.py",
     "report": f"{PAGES_DIR}/report.py",
     "assumptions": f"{PAGES_DIR}/assumptions.py",
+    "fatal": f"{PAGES_DIR}/fatal.py",
 }
 
 
@@ -157,7 +158,8 @@ def _stage_wb(study_wb: str | None, wb_up, tmp: str) -> str | None:
 def main() -> None:
     import streamlit as st
 
-    from safety_eval.study_type import EVALUATION, STUDY_TYPES, choices
+    from safety_eval.study_type import (EVALUATION, FATAL, STUDY_TYPES,
+                                        choices)
 
     st.set_page_config(page_title="NCDOT Safety Studies", layout="wide",
                        initial_sidebar_state="expanded")
@@ -234,6 +236,11 @@ def main() -> None:
             st.Page(PAGE["assumptions"], title="Assumptions Email",
                     icon=":material/mail:"),
         ]
+    if study_key == FATAL:
+        pages["Deliverables"] = [
+            st.Page(PAGE["fatal"], title="Field Investigation",
+                    icon=":material/fact_check:"),
+        ]
     # The shown-page titles, for the Overview page and the behaviour tests.
     st.session_state["nav_titles"] = [
         p.title for group in pages.values() for p in group]
@@ -290,8 +297,14 @@ def page_assumptions() -> None:
     _assumptions_tab(st)
 
 
+def page_fatal() -> None:
+    import streamlit as st
+    st.header("Field Investigation")
+    _fatal_tab(st)
+
+
 def _home_page(st, kind) -> None:
-    from safety_eval.study_type import EVALUATION
+    from safety_eval.study_type import EVALUATION, FATAL
 
     st.header("NCDOT Safety Studies")
     st.caption("TEAAS-faithful crash analysis, review and deliverables. "
@@ -326,6 +339,11 @@ def _home_page(st, kind) -> None:
         steps.append((PAGE["assumptions"], "Send the assumptions email",
                       "The docs/05 team-template .docx, from a YAML or the "
                       "Master Evaluation Spreadsheet row."))
+    if kind.key == FATAL:
+        steps.append((PAGE["fatal"], "Build the Field Investigation File",
+                      "Checklist prefilled from the fatal slip and the "
+                      "site's TEAAS crash history; the field "
+                      "observations are the engineer's."))
     for n, (path, title, blurb) in enumerate(steps, 1):
         with st.container(border=True):
             left, right = st.columns([3, 2], vertical_alignment="center")
@@ -485,6 +503,105 @@ def _report_text_tab(st) -> None:
         st.caption("The engineer decides: review each draft, edit it "
                    "here if useful, and paste it into the workbook's tan "
                    "cells.")
+
+
+def _fatal_tab(st) -> None:
+    st.caption("From the NCDOT Fatal Crash Notification (the slip) to the "
+               "Field Investigation File: the Checklist is prefilled with "
+               "the slip's facts and the TEAAS crash history tallied at "
+               "the site, the Photos sheet is laid out, and the Sketch "
+               "page takes the provided location map untouched (docs/02). "
+               "Everything the visit observes, from signing to "
+               "recommendations, stays blank for the engineer.")
+    ws = _active_ws()
+    slip_up = st.file_uploader("Fatal slip (.pdf)", type=["pdf", "txt"],
+                               help="The one-page NCDOT Fatal Crash "
+                                    "Notification out of Crashweb.")
+    slip_default = ws.path("fatal_slip") if ws else None
+    if slip_up is None and slip_default:
+        st.caption(f"Using the study's slip: "
+                   f"{os.path.basename(slip_default)}")
+    c1, c2 = st.columns(2)
+    investigated_by = c1.text_input("Investigated by",
+                                    placeholder="Name, PE")
+    fiche_default = ""
+    if ws:
+        fiche_default = ws.path("workbook") or ""
+    fiche_path = c2.text_input(
+        "Study fiche workbook (.xlsx path, optional)", value=fiche_default,
+        help="Tallies the Crash History block, narrowed to the slip's "
+             "roads by name stem; verify the tally against the pull.")
+    map_up = st.file_uploader(
+        "Provided location map (optional)", type=["png", "jpg", "jpeg"],
+        help="Embedded untouched on the Sketch sheet; nothing is drawn "
+             "over it (docs/02).")
+
+    have_slip = slip_up is not None or bool(slip_default)
+    if st.button("Build Field Investigation File", type="primary",
+                 disabled=not have_slip):
+        from safety_eval import workspace as wsm
+        from safety_eval.field_investigation import (
+            build_field_investigation, checklist_from_slip,
+            crash_history_lines, parse_fatal_slip)
+        with tempfile.TemporaryDirectory() as tmp:
+            spath = (_save_upload(slip_up, tmp) if slip_up
+                     else slip_default)
+            try:
+                slip = parse_fatal_slip(spath)
+            except Exception as exc:       # noqa: BLE001 - show, don't die
+                st.error(f"Could not read the slip: {exc}")
+                st.stop()
+            st.write(f"**Slip {slip.slip_number or '?'}** · crash "
+                     f"{slip.crash_id} on {slip.crash_date} "
+                     f"{slip.crash_time} · Division {slip.division}, "
+                     f"{slip.county} County"
+                     + (f", in {slip.municipality}"
+                        if slip.municipality else ""))
+            st.write(f"Location: **{slip.location_text()}**")
+            history = None
+            if fiche_path.strip():
+                if not os.path.exists(fiche_path):
+                    st.error(f"Fiche workbook not found: {fiche_path}")
+                    st.stop()
+                try:
+                    history = crash_history_lines(
+                        fiche_path,
+                        roads=[slip.on_road, slip.from_road])
+                except (KeyError, ValueError) as exc:
+                    st.error(str(exc))
+                    st.stop()
+                if history:
+                    for ln in history:
+                        st.caption("· " + ln)
+                else:
+                    st.warning("No fiche rows matched the site roads; "
+                               "the Crash History block carries only the "
+                               "fatal itself. Check the pull.")
+            try:
+                cl = checklist_from_slip(
+                    slip, investigated_by=investigated_by.strip(),
+                    crash_history=history)
+            except ValueError as exc:
+                st.error(str(exc))
+                st.stop()
+            mpath = _save_upload(map_up, tmp) if map_up else None
+            stem = slip.slip_number or "fatal"
+            out = os.path.join(tmp, f"{stem}_FieldInvestigation.xlsx")
+            build_field_investigation(out, cl, location_map=mpath)
+            if ws:
+                if slip_up is not None:
+                    wsm.copy_into(ws, "fatal_slip", slip_up)
+                if map_up is not None:
+                    wsm.copy_into(ws, "location_map", map_up)
+                saved = ws.adopt_output("field_investigation", out)
+                st.caption(f"Saved into study {ws.study}: "
+                           f"{os.path.relpath(saved)}")
+            with open(out, "rb") as fh:
+                st.download_button(
+                    f"Download {stem}_FieldInvestigation.xlsx", fh.read(),
+                    file_name=f"{stem}_FieldInvestigation.xlsx")
+            st.success("Checklist prefilled from the slip; the field "
+                       "observations are yours to fill on site.")
 
 
 def _assumptions_tab(st) -> None:

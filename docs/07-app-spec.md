@@ -81,6 +81,19 @@ Warrants (section or intersection). Tabs a study type must not use are not
 rendered (docs/12). Theme: Okabe-Ito primary, no state carried by colour
 alone; verdicts are words.
 
+Fatal crash Field Investigation File (Phase 4 item 17): `safety-eval
+fatal-checklist --slip <slip>.pdf --fiche <study>_Fiche.xlsx` parses the
+NCDOT Fatal Crash Notification by label, prefills the Checklist with the
+slip's facts (location from the coded roads, slip number, division,
+county) plus the TEAAS crash history tallied at the site (road-stem
+match against the area pull, since TEAAS truncates names), and writes
+the workbook: Checklist on the docs/02 cells, Photos skeleton at the
+documented caption spacing, Sketch page that embeds a PROVIDED location
+map untouched. Field observations stay blank for the visit; the docs/05
+style gate runs on every prefilled line. Same flow on the Field
+Investigation page (Fatal study type). Validated against the completed
+TSUINT596369 checklist and the M260408001 slip + fiche.
+
 Report text drafting (Phase 5, drafts only): `safety-eval draft-results
 --workbook Eval.xlsx --train train.jsonl` drafts the Items for Discussion
 cell and the Additional Information rows of a NEW evaluation workbook, the

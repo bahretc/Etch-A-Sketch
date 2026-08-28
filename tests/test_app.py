@@ -59,17 +59,18 @@ def test_an_evaluation_gets_the_deliverable_pages_and_no_warrants():
     assert "HSIP Warrants" not in titles
 
 
-def test_a_fatal_analysis_gets_only_the_shared_core():
+def test_a_fatal_analysis_gets_the_core_and_its_field_investigation():
     at = _app("fatal")
     assert _nav_titles(at) == ["Overview", "Fiche Workbook",
-                               "Redact Crash Reports", "Review Queue"]
+                               "Redact Crash Reports", "Review Queue",
+                               "Field Investigation"]
 
 
 def test_every_study_type_renders_every_offered_page():
     pages_for = {"hsip": ["home", "fiche", "redact", "review", "warrants"],
                  "evaluation": ["home", "fiche", "redact", "review",
                                 "evaluation", "report", "assumptions"],
-                 "fatal": ["home", "fiche", "redact", "review"]}
+                 "fatal": ["home", "fiche", "redact", "review", "fatal"]}
     for key, pages in pages_for.items():
         for page in pages:
             _app(key, page=page)
@@ -217,3 +218,12 @@ def test_the_report_text_page_gates_and_asks_for_its_inputs(monkeypatch):
     captions = " ".join(getattr(el, "value", "") or "" for el in at.caption)
     assert "AI drafting not ready" in captions
     assert "never mined" in captions       # the provenance rule, in words
+
+
+def test_the_field_investigation_page_asks_for_the_slip():
+    at = _app("fatal", page="fatal")
+    captions = " ".join(getattr(el, "value", "") or "" for el in at.caption)
+    assert "Fatal Crash Notification" in captions
+    assert "untouched" in captions          # the provided-map rule, stated
+    labels = {t.label for t in at.text_input}
+    assert "Investigated by" in labels

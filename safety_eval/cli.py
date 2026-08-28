@@ -1393,6 +1393,31 @@ def build_parser() -> argparse.ArgumentParser:
     fw.add_argument("--route", default="", help='Study route, e.g. "US 74".')
     fw.set_defaults(func=_cmd_fiche_workbook)
 
+    fi = sub.add_parser(
+        "fatal-checklist",
+        help="Parse an NCDOT Fatal Crash Notification (the slip) and "
+             "generate the Field Investigation File workbook: Checklist "
+             "prefilled with the slip's facts and the TEAAS crash history "
+             "tallied at the site, Photos skeleton, Sketch page for the "
+             "provided location map. Field observations stay blank for "
+             "the visit.")
+    fi.add_argument("--slip", required=True,
+                    help="Fatal slip PDF (or its extracted .txt).")
+    fi.add_argument("--fiche",
+                    help="Study fiche workbook; tallies the Crash History "
+                         "block, narrowed to the slip's roads.")
+    fi.add_argument("--sheet", help="Working sheet (default: found).")
+    fi.add_argument("--roads", nargs="*",
+                    help="Road name(s) that scope the tally (default: the "
+                         "slip's on/from roads).")
+    fi.add_argument("--investigated-by", dest="investigated_by", default="")
+    fi.add_argument("--location-map", dest="location_map",
+                    help="Provided location map image, embedded untouched "
+                         "on the Sketch sheet (docs/02).")
+    fi.add_argument("--out", help="Output .xlsx (default "
+                    "<slip>_FieldInvestigation.xlsx).")
+    fi.set_defaults(func=_cmd_fatal_checklist)
+
     dr = sub.add_parser(
         "draft-results",
         help="Draft the manual text of a NEW evaluation workbook (Items "
@@ -1434,6 +1459,36 @@ def build_parser() -> argparse.ArgumentParser:
     d = sub.add_parser("doctor", help="Report available optional backends.")
     d.set_defaults(func=_cmd_doctor)
     return p
+
+
+def _cmd_fatal_checklist(args) -> int:
+    from .field_investigation import (build_field_investigation,
+                                      checklist_from_slip,
+                                      crash_history_lines, parse_fatal_slip)
+
+    slip = parse_fatal_slip(args.slip)
+    print(f"Slip {slip.slip_number or '?'}: crash {slip.crash_id} on "
+          f"{slip.crash_date} {slip.crash_time}, Division {slip.division}, "
+          f"{slip.county} County"
+          + (f", in {slip.municipality}" if slip.municipality else ""))
+    print(f"  location: {slip.location_text()}")
+    history = None
+    if args.fiche:
+        roads = args.roads if args.roads else [slip.on_road, slip.from_road]
+        history = crash_history_lines(args.fiche, sheet=args.sheet,
+                                      roads=roads)
+        for ln in history:
+            print(f"  history: {ln}")
+        if not history:
+            print("  history: no rows matched the site roads; check the "
+                  "pull or pass --roads")
+    cl = checklist_from_slip(slip, investigated_by=args.investigated_by,
+                             crash_history=history)
+    out = args.out or f"{slip.slip_number or 'fatal'}_FieldInvestigation.xlsx"
+    build_field_investigation(out, cl, location_map=args.location_map)
+    print(f"Wrote {out} (Checklist, Photos, Sketch); the field "
+          "observations are yours to fill.")
+    return 0
 
 
 def _cmd_draft_results(args) -> int:

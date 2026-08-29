@@ -36,6 +36,11 @@ ROW_HEIGHTS = {**{r: 920 for r in range(18, 23)},
 _UNO_PORT = 2002
 
 
+def _page_count(pdf: str) -> int:
+    from pypdf import PdfReader
+    return len(PdfReader(pdf).pages)
+
+
 def saved_print_range(workbook: str, sheet: str = RESULTS_SHEET,
                       default: str = PRINT_RANGE) -> str:
     """The sheet's saved Print_Area as a plain range (e.g. B2:L73).
@@ -80,12 +85,13 @@ def export_onepager(workbook: str, out_pdf: str,
                     timeout: int = 120) -> str:
     """Export one sheet's print range to a one-page PDF, in memory.
 
-    By default the sheet is fitted to one page, which is what its own
-    Step-by-Step Instructions tell the engineer to select before
-    printing; the workbook still carries a saved scale for anyone
-    opening it in Excel. Passing ``scale`` prints at that exact
-    percentage instead (it has to be re-applied through the page style,
-    because LibreOffice drops the file's saved scale on OOXML import).
+    The print runs at the workbook's saved scale, the way the engineer's
+    own Web PDFs are produced, re-applied through the page style because
+    LibreOffice drops the file's saved print scale on OOXML import. If
+    the result spills past one page (LibreOffice measures columns a
+    shade wider than Excel), the scale steps down a point at a time
+    until it fits, and only as a last resort falls back to
+    fit-sheet-on-one-page. ``scale`` forces an exact percentage.
 
     Column widths depend on the workbook default font (Calibri): the
     metric-compatible Carlito face (fonts-crosextra-carlito) must be
@@ -96,6 +102,9 @@ def export_onepager(workbook: str, out_pdf: str,
 
     if cell_range is None:
         cell_range = saved_print_range(workbook, sheet)
+    forced = scale is not None
+    if scale is None:
+        scale = saved_scale(workbook, sheet)
 
     proc = subprocess.Popen(
         ["soffice", "--headless", "--norestore", "--invisible",
@@ -133,26 +142,33 @@ def export_onepager(workbook: str, out_pdf: str,
             cells = sh.getCellRangeByName(cell_range)
             style = doc.StyleFamilies.getByName("PageStyles").getByName(
                 sh.PageStyle)
-            # margins come from the workbook: the standard sheet keeps
-            # 0.25/0.5, a grown one takes the tighter 0.1 the engineer
-            # uses on his own grown pages
+            # margins and centering come from the workbook (the template
+            # ships 0.25/0.5in with center-on-page both ways)
             style.HeaderIsOn = style.FooterIsOn = False
-            if scale is not None:
-                style.ScaleToPages = 0
-                style.PageScale = scale
-            else:
-                # the sheet's own instructions: "In the final dropdown box,
-                # select 'Fit Sheet on One Page'". LibreOffice measures the
-                # columns slightly wider than the saved percentage assumes,
-                # so fitting is the only way to guarantee a single page.
-                style.ScaleToPages = 1
             for row, ht in (row_heights or {}).items():
                 sh.Rows.getByIndex(row - 1).Height = ht
             fdata = uno.Any("[]com.sun.star.beans.PropertyValue",
                             (P("Selection", cells),))
-            doc.storeToURL(uno.systemPathToFileUrl(os.path.abspath(out_pdf)),
-                           (P("FilterName", "calc_pdf_Export"),
-                            P("FilterData", fdata)))
+
+            def export(sc):
+                if sc is None:
+                    style.ScaleToPages = 1
+                else:
+                    style.ScaleToPages = 0
+                    style.PageScale = sc
+                doc.storeToURL(
+                    uno.systemPathToFileUrl(os.path.abspath(out_pdf)),
+                    (P("FilterName", "calc_pdf_Export"),
+                     P("FilterData", fdata)))
+                return _page_count(out_pdf)
+
+            if scale is None:
+                export(None)
+            else:
+                tries = [scale] if forced else                     [scale, scale - 1, scale - 2, None]
+                for sc in tries:
+                    if export(sc) == 1 or sc is None or forced:
+                        break
         finally:
             doc.close(False)
     finally:

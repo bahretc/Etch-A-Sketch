@@ -105,14 +105,11 @@ MAX_ADDED_ROWS = 6
 #: Rows are worth adding down to this print scale; below it the page is
 #: harder to read than a smaller font would have been.
 MIN_PAGE_SCALE = 62
-#: Page margins, inches. The engineer prints the standard sheet at
-#: 0.25/0.25/0.5/0.5, but both workbooks where he grew the Items cell
-#: (SS-6010O, SS-6202A) use 0.1 all round, which is what lets a taller
-#: sheet still print at his 68%.
+#: The corpus scan settled the margin question: his grown AWSC pages
+#: (SS-6001P, SS-6010AG) keep the template's 0.25/0.5in margins and
+#: print at 63; the whole page stays centered with visible margins.
+#: SS-6010O/SS-6202A ran 0.1in, but that is the minority look.
 PAGE_MARGIN_IN = 0.25
-GROWN_PAGE_MARGIN_IN = 0.1
-#: Printable height at those margins, letter portrait.
-PRINTABLE_HEIGHT_GROWN_PT = 792.0 - 2 * 72 * GROWN_PAGE_MARGIN_IN
 
 
 def _box_bottom_row(xml: str, styles_xml: str) -> int | None:
@@ -399,7 +396,7 @@ def plan_items_growth(template: str, sheet: str, data: ResultsData):
                                    sizes=ITEMS_SIZES)
         if size is not None and size >= ITEMS_PREFERRED_MIN:
             break
-        if int(PRINTABLE_HEIGHT_GROWN_PT
+        if int(PRINTABLE_HEIGHT_PT
                / (page + ROW_PITCH_PT * (added + 1)) * 100) < MIN_PAGE_SCALE:
             break
         added += 1
@@ -425,8 +422,7 @@ def plan_items_growth(template: str, sheet: str, data: ResultsData):
                swap_merges={sheet: {mref: f"{icol}{irow}:{ecol}{last + added}"}},
                row_heights={sheet: {r: ROW_PITCH_PT
                                     for r in range(last + 1, last + added + 1)}},
-               print_area={sheet: f"$B$2:$L${last_print + added}"},
-               page_margins={sheet: GROWN_PAGE_MARGIN_IN})
+               print_area={sheet: f"$B$2:$L${last_print + added}"})
     return edits, ops, added
 
 

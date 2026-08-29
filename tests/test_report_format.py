@@ -305,20 +305,18 @@ def test_print_area_ends_on_the_box_bottom_border_row(tmp_path):
 
 
 @needs_template
-def test_grown_page_takes_the_narrow_margins(tmp_path):
-    """Row-inserted pages print at the engineer's 0.1in margins (the
-    SS-6010O / SS-6202A convention); ungrown pages keep the template's."""
+def test_grown_page_keeps_the_template_margins(tmp_path):
+    """Row-inserted pages keep the template's 0.25/0.5in margins and
+    center-on-page flags -- the SS-6001P / SS-6010AG convention from
+    the corpus scan -- so every Web PDF prints with the same look."""
     long_items = (["• " + ("word " * 44)] * 5) + \
         (["• " + ("word " * 15)] * 4)
     out = str(tmp_path / "grown.xlsx")
     populate_results_sheet(TEMPLATE, out,
                            ResultsData(items_for_discussion=long_items))
-    m = re.search(r"<pageMargins [^/]*/>", _sheet_xml(out))
-    assert 'left="0.1"' in m.group(0) and 'right="0.1"' in m.group(0)
-    assert 'top="0.1"' in m.group(0) and 'bottom="0.1"' in m.group(0)
-
-    plain = str(tmp_path / "plain.xlsx")
-    populate_results_sheet(TEMPLATE, plain,
-                           ResultsData(items_for_discussion=["• Short."]))
-    m = re.search(r"<pageMargins [^/]*/>", _sheet_xml(plain))
-    assert 'left="0.1"' not in m.group(0)
+    xml = _sheet_xml(out)
+    m = re.search(r"<pageMargins [^/]*/>", xml)
+    assert 'left="0.25"' in m.group(0) and 'top="0.5"' in m.group(0)
+    po = re.search(r"<printOptions[^/]*/>", xml)
+    assert 'horizontalCentered="1"' in po.group(0)
+    assert 'verticalCentered="1"' in po.group(0)

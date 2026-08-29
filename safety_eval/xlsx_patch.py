@@ -340,14 +340,18 @@ def set_page_scale(xml: str, scale: int) -> str:
 def clone_style(styles_xml: str, base_xf: int, *, font_size: float | None = None,
                 halign: str | None = None, valign: str | None = None,
                 wrap: bool | None = None,
-                shrink: bool | None = None) -> tuple[str, int]:
+                shrink: bool | None = None,
+                bold: bool | None = None,
+                fill_theme: tuple[int, str] | None = None) -> tuple[str, int]:
     """Append a variant of cellXfs[base_xf] and return (new xml, new index).
 
     The variant keeps the base's border, fill and number format; only the
-    font size (a same-family font is appended when none matches) and the
-    alignment change. This is how the engineer's one-off cell formats
-    (left-aligned bullet blocks, shrunken text) are reproduced without
-    touching any existing style index.
+    font (size or weight; a same-family font is appended when none
+    matches), the alignment, and -- when ``fill_theme`` gives a
+    (theme, tint-string) pair -- the fill change. This is how the
+    engineer's one-off cell formats (left-aligned bullet blocks, banner
+    bands, shrunken text) are reproduced without touching any existing
+    style index.
     """
     xfs_m = re.search(r"<cellXfs count=\"(\d+)\">(.*)</cellXfs>",
                      styles_xml, re.S)
@@ -357,15 +361,20 @@ def clone_style(styles_xml: str, base_xf: int, *, font_size: float | None = None
                          xfs_m.group(2), re.S)
     xf = xf_list[base_xf]
 
-    if font_size is not None:
+    if font_size is not None or bold:
         base_font = int(re.search(r'fontId="(\d+)"', xf).group(1))
         fonts_m = re.search(r"<fonts count=\"(\d+)\"[^>]*>(.*?)</fonts>",
                            styles_xml, re.S)
         font_list = re.findall(r"<font>.*?</font>|<font/>", fonts_m.group(2),
                                re.S)
         fxml = font_list[base_font]
-        new_font = re.sub(r'<sz val="[\d.]+"/>', f'<sz val="{font_size:g}"/>',
-                          fxml)
+        new_font = fxml
+        if font_size is not None:
+            new_font = re.sub(r'<sz val="[\d.]+"/>',
+                              f'<sz val="{font_size:g}"/>', new_font)
+        if bold and "<b/>" not in new_font:
+            new_font = (new_font.replace("<font>", "<font><b/>", 1)
+                        if "<font>" in new_font else "<font><b/></font>")
         try:
             fid = font_list.index(new_font)
         except ValueError:
@@ -404,6 +413,31 @@ def clone_style(styles_xml: str, base_xf: int, *, font_size: float | None = None
             xf = xf.replace("</xf>", tag + "</xf>", 1)
         if 'applyAlignment=' not in xf:
             xf = xf.replace("<xf ", '<xf applyAlignment="1" ', 1)
+
+    if fill_theme is not None:
+        theme, tint = fill_theme
+        new_fill = ('<fill><patternFill patternType="solid">'
+                    f'<fgColor theme="{theme}" tint="{tint}"/>'
+                    '<bgColor indexed="64"/></patternFill></fill>')
+        fills_m = re.search(r'<fills count="(\d+)">(.*?)</fills>',
+                            styles_xml, re.S)
+        fill_list = re.findall(r"<fill>.*?</fill>|<fill/>",
+                               fills_m.group(2), re.S)
+        try:
+            flid = fill_list.index(new_fill)
+        except ValueError:
+            flid = len(fill_list)
+            styles_xml = styles_xml.replace(
+                fills_m.group(0),
+                fills_m.group(0).replace(
+                    "</fills>", new_fill + "</fills>").replace(
+                    f'<fills count="{fills_m.group(1)}"',
+                    f'<fills count="{int(fills_m.group(1)) + 1}"', 1), 1)
+        xf = re.sub(r'fillId="\d+"', f'fillId="{flid}"', xf)
+        if 'fillId=' not in xf:
+            xf = xf.replace("<xf ", f'<xf fillId="{flid}" ', 1)
+        if 'applyFill=' not in xf:
+            xf = xf.replace("<xf ", '<xf applyFill="1" ', 1)
 
     # re-find cellXfs (the fonts block above may have shifted offsets)
     xfs_m = re.search(r"<cellXfs count=\"(\d+)\">(.*)</cellXfs>",

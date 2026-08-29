@@ -166,6 +166,12 @@ added, modified = add_sheet_picture(
     "1 page results - 1 Target", AERIAL, rows=(41, 56), cols=("H", "L"))
 os.replace(f"{SP}/eval_map.xlsx", f"{SP}/eval_final.xlsx")
 print("aerial embedded:", added, "touching", modified)
+
+# banner bands, the SS-6002AD palette (green study/period, gray NIS)
+from safety_eval.binned_sheet import apply_banner_fills
+counts = apply_banner_fills(f"{SP}/eval_final.xlsx", f"{SP}/eval_band.xlsx")
+os.replace(f"{SP}/eval_band.xlsx", f"{SP}/eval_final.xlsx")
+print("banner fills:", counts)
 rep = verify_integrity(TEMPLATE, f"{SP}/eval_final.xlsx",
                        allow_added=set(added), allow_modified=set(modified))
 print("integrity:", rep)

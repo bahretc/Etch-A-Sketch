@@ -711,8 +711,16 @@ class IntegrityReport:
     checked_members: int = 0
 
 
-def verify_integrity(original: str, output: str) -> IntegrityReport:
-    """Acceptance gate per docs/06: drawings/media byte-identical, inventory equal."""
+def verify_integrity(original: str, output: str,
+                     allow_added: set[str] | frozenset[str] = frozenset(),
+                     allow_modified: set[str] | frozenset[str] = frozenset(),
+                     ) -> IntegrityReport:
+    """Acceptance gate per docs/06: drawings/media byte-identical, inventory equal.
+
+    ``allow_added``/``allow_modified`` name the exact members a deliberate
+    picture embed touched (from add_sheet_picture); everything else is
+    still held byte-identical, and nothing may ever be removed.
+    """
     rep = IntegrityReport(ok=True)
 
     def _load(path):
@@ -731,12 +739,13 @@ def verify_integrity(original: str, output: str) -> IntegrityReport:
     names_b, hash_b, sheets_b, defined_b = _load(output)
     rep.checked_members = len(hash_a)
 
-    if set(hash_a) != set(hash_b):
+    unexplained = (set(hash_a) ^ set(hash_b)) - set(allow_added)
+    if unexplained:
         rep.ok = False
         rep.problems.append(
-            f"drawings/media inventory differs: {sorted(set(hash_a) ^ set(hash_b))}")
+            f"drawings/media inventory differs: {sorted(unexplained)}")
     for n in sorted(set(hash_a) & set(hash_b)):
-        if hash_a[n] != hash_b[n]:
+        if hash_a[n] != hash_b[n] and n not in allow_modified:
             rep.ok = False
             rep.problems.append(f"byte mismatch: {n}")
     if sheets_a != sheets_b:
@@ -749,3 +758,134 @@ def verify_integrity(original: str, output: str) -> IntegrityReport:
         rep.ok = False
         rep.problems.append(f"members missing from output: {sorted(names_a - names_b)}")
     return rep
+
+
+def add_sheet_picture(path_in: str, path_out: str, sheet: str,
+                      image: str, rows: tuple[int, int],
+                      cols: tuple[str, str],
+                      name: str = "Map Aerial") -> tuple[list, list]:
+    """Embed a picture on ``sheet``, filling the given cell region.
+
+    The completed workbooks carry the aerial INSIDE the workbook (the
+    SS-6010AG convention: a picture anchored over H..L in the
+    Map/Satellite region with a hairline border), so anyone printing
+    the workbook from Excel gets the full one-pager. The image is
+    contain-fitted and centered in the region, anchored with a
+    twoCellAnchor, added by direct zip surgery -- never a resave.
+
+    Returns (added_members, modified_members) for the integrity gate.
+    """
+    from PIL import Image as _Image
+
+    from .text_fit import sheet_geometry
+
+    EMU_PT = 12700
+
+    with zipfile.ZipFile(path_in) as z:
+        members = {n: z.read(n) for n in z.namelist()}
+        order = z.namelist()
+
+    # sheet file, its drawing part, geometry
+    wb = members["xl/workbook.xml"].decode("utf-8")
+    rels = members["xl/_rels/workbook.xml.rels"].decode("utf-8")
+    rid = re.search(rf'<sheet name="{re.escape(sheet)}"[^>]*r:id="(rId\d+)"',
+                    wb).group(1)
+    target = re.search(rf'Id="{rid}"[^>]*Target="([^"]+)"', rels)
+    target = target or re.search(rf'Target="([^"]+)"[^>]*Id="{rid}"', rels)
+    sheet_file = "xl/" + target.group(1).lstrip("/")
+    sheet_xml = members[sheet_file].decode("utf-8")
+    srel_file = (sheet_file.rsplit("/", 1)[0] + "/_rels/"
+                 + sheet_file.rsplit("/", 1)[1] + ".rels")
+    srels = members[srel_file].decode("utf-8")
+    d_rid = re.search(r'<drawing r:id="(rId\d+)"/>', sheet_xml).group(1)
+    d_target = re.search(rf'Id="{d_rid}"[^>]*Target="([^"]+)"', srels).group(1)
+    drawing_file = "xl/drawings/" + d_target.rsplit("/", 1)[-1]
+    drels_file = ("xl/drawings/_rels/"
+                  + drawing_file.rsplit("/", 1)[-1] + ".rels")
+
+    # region geometry in points
+    widths_l, heights = sheet_geometry(sheet_xml)
+    widths = {_col_index(k): v for k, v in widths_l.items()}
+    c1, c2 = (_col_index(c) for c in cols)
+    r1, r2 = rows
+    box_w = sum(widths.get(i, 48.75) for i in range(c1, c2 + 1))
+    box_h = sum(heights.get(r, 15.0) for r in range(r1, r2 + 1))
+    with _Image.open(image) as im:
+        iw, ih = im.size
+    scale = min(box_w / iw, box_h / ih)
+    pic_w, pic_h = iw * scale, ih * scale
+    off_x, off_y = (box_w - pic_w) / 2, (box_h - pic_h) / 2
+
+    def walk(start_idx, sizes, offset_pt):
+        idx, left = start_idx, offset_pt
+        while left >= sizes(idx) and left > 0:
+            left -= sizes(idx)
+            idx += 1
+        return idx, int(round(left * EMU_PT))
+
+    colsz = lambda i: widths.get(i, 48.75)          # noqa: E731
+    rowsz = lambda r: heights.get(r, 15.0)          # noqa: E731
+    fc, fco = walk(c1, colsz, off_x)
+    fr, fro = walk(r1, rowsz, off_y)
+    tc, tco = walk(c1, colsz, off_x + pic_w)
+    tr, tro = walk(r1, rowsz, off_y + pic_h)
+
+    # media member
+    ext = image.rsplit(".", 1)[-1].lower()
+    nums = [int(m.group(1)) for n in members
+            for m in [re.match(r"xl/media/image(\d+)\.", n)] if m]
+    media = f"xl/media/image{max(nums, default=0) + 1}.{ext}"
+
+    # content type default
+    ct = members["[Content_Types].xml"].decode("utf-8")
+    if f'Extension="{ext}"' not in ct:
+        ct = ct.replace("</Types>",
+                        f'<Default Extension="{ext}" ContentType="image/'
+                        f'{"jpeg" if ext in ("jpg", "jpeg") else ext}"/>'
+                        "</Types>")
+
+    # drawing rels: next rId
+    drels = members[drels_file].decode("utf-8")
+    rmax = max(int(m) for m in re.findall(r'Id="rId(\d+)"', drels))
+    new_rid = f"rId{rmax + 1}"
+    drels = drels.replace(
+        "</Relationships>",
+        f'<Relationship Id="{new_rid}" Type="http://schemas.openxmlformats.'
+        f'org/officeDocument/2006/relationships/image" '
+        f'Target="../media/{media.rsplit("/", 1)[-1]}"/></Relationships>')
+
+    # drawing anchor
+    dx = members[drawing_file].decode("utf-8")
+    ids = [int(i) for i in re.findall(r'<xdr:cNvPr id="(\d+)"', dx)]
+    pid = max(ids, default=1) + 1
+    anchor = (
+        '<xdr:twoCellAnchor editAs="oneCell">'
+        f"<xdr:from><xdr:col>{fc - 1}</xdr:col><xdr:colOff>{fco}</xdr:colOff>"
+        f"<xdr:row>{fr - 1}</xdr:row><xdr:rowOff>{fro}</xdr:rowOff></xdr:from>"
+        f"<xdr:to><xdr:col>{tc - 1}</xdr:col><xdr:colOff>{tco}</xdr:colOff>"
+        f"<xdr:row>{tr - 1}</xdr:row><xdr:rowOff>{tro}</xdr:rowOff></xdr:to>"
+        f'<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="{pid}" name="{name}"/>'
+        '<xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr>'
+        "</xdr:nvPicPr><xdr:blipFill>"
+        '<a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/'
+        f'2006/relationships" r:embed="{new_rid}"/>'
+        "<a:stretch><a:fillRect/></a:stretch></xdr:blipFill>"
+        "<xdr:spPr><a:xfrm>"
+        f'<a:ext cx="{int(round(pic_w * EMU_PT))}" '
+        f'cy="{int(round(pic_h * EMU_PT))}"/></a:xfrm>'
+        '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
+        '<a:ln w="9525" cap="sq"><a:solidFill><a:srgbClr val="000000"/>'
+        '</a:solidFill></a:ln>'
+        "</xdr:spPr></xdr:pic><xdr:clientData/></xdr:twoCellAnchor>")
+    dx = dx.replace("</xdr:wsDr>", anchor + "</xdr:wsDr>")
+
+    with open(image, "rb") as fh:
+        img_bytes = fh.read()
+    changed = {drawing_file: dx.encode("utf-8"),
+               drels_file: drels.encode("utf-8"),
+               "[Content_Types].xml": ct.encode("utf-8")}
+    with zipfile.ZipFile(path_out, "w", zipfile.ZIP_DEFLATED) as z:
+        for n in order:
+            z.writestr(n, changed.get(n, members[n]))
+        z.writestr(media, img_bytes)
+    return [media], sorted(changed)

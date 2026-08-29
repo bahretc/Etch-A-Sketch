@@ -153,7 +153,21 @@ ok = recalc(f"{SP}/eval_final.xlsx")
 print("recalc:", ok)
 if not ok:
     raise SystemExit("recalc failed; reinstall libreoffice-calc/-core")
-rep = verify_integrity(TEMPLATE, f"{SP}/eval_final.xlsx")
+
+# the aerial lives INSIDE the workbook like the completed examples
+# (SS-6010AG anchors its map picture over H..L in the Map/Satellite
+# region); the Web PDF then needs no overlay step
+from safety_eval.xlsx_patch import add_sheet_picture
+AERIAL = f"{os.path.dirname(SP)}/aerial/annotated.png"
+if not os.path.exists(AERIAL):
+    raise SystemExit(f"aerial missing: {AERIAL} (run build_aerial.py)")
+added, modified = add_sheet_picture(
+    f"{SP}/eval_final.xlsx", f"{SP}/eval_map.xlsx",
+    "1 page results - 1 Target", AERIAL, rows=(41, 56), cols=("H", "L"))
+os.replace(f"{SP}/eval_map.xlsx", f"{SP}/eval_final.xlsx")
+print("aerial embedded:", added, "touching", modified)
+rep = verify_integrity(TEMPLATE, f"{SP}/eval_final.xlsx",
+                       allow_added=set(added), allow_modified=set(modified))
 print("integrity:", rep)
 if not rep.ok:
     raise SystemExit(f"integrity failed: {rep.problems}")

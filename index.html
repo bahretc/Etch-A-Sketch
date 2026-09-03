@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NotePad Texts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Shadows+Into+Light&family=Patrick+Hand&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>📝 NotePad Texts</h1>
+    <p class="tagline">Write it by hand. Send it anywhere.</p>
+  </header>
+
+  <main class="app-layout">
+    <!-- Left: conversations -->
+    <aside class="conversations-panel">
+      <div class="panel-header">
+        <h2>Conversations</h2>
+        <button id="new-note-btn" class="pill-btn" type="button">+ New note</button>
+      </div>
+      <ul id="conversation-list" class="conversation-list"></ul>
+      <p id="no-conversations" class="empty-hint">No conversations yet.<br>Write a note and send it!</p>
+    </aside>
+
+    <!-- Center: composer -->
+    <section class="composer-panel" id="composer-panel">
+      <div class="pad-picker" role="radiogroup" aria-label="Choose a pad style">
+        <button type="button" class="pad-choice selected" data-pad="lined" aria-pressed="true">
+          <span class="swatch swatch-lined"></span>Notepad
+        </button>
+        <button type="button" class="pad-choice" data-pad="blank" aria-pressed="false">
+          <span class="swatch swatch-blank"></span>Blank pad
+        </button>
+        <button type="button" class="pad-choice" data-pad="sticky" aria-pressed="false">
+          <span class="swatch swatch-sticky"></span>Sticky note
+        </button>
+        <button type="button" class="pad-choice" data-pad="grid" aria-pressed="false">
+          <span class="swatch swatch-grid"></span>Grid pad
+        </button>
+      </div>
+
+      <div class="font-picker">
+        <label for="font-select">Pen style</label>
+        <select id="font-select">
+          <option value="caveat" selected>Casual script</option>
+          <option value="shadows">Quick scrawl</option>
+          <option value="patrick">Neat print</option>
+        </select>
+      </div>
+
+      <div id="pad" class="pad pad-lined font-caveat">
+        <div class="pad-binding" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <textarea id="message-input" class="pad-text"
+          placeholder="Scribble your message here..."
+          maxlength="500" rows="8" aria-label="Message"></textarea>
+        <div class="pad-footer">
+          <span id="char-count">0 / 500</span>
+        </div>
+      </div>
+
+      <form id="send-form" class="send-bar" autocomplete="off">
+        <label for="phone-input" class="sr-only">Recipient phone number</label>
+        <input id="phone-input" type="tel" inputmode="tel"
+          placeholder="To: (555) 123-4567" required>
+        <button type="submit" class="send-btn">Send 📨</button>
+      </form>
+      <p id="form-error" class="form-error" role="alert" hidden></p>
+      <p class="sms-hint">Tip: after sending, use “Open in Messages” on a phone to deliver it as a real text.</p>
+    </section>
+
+    <!-- Right: selected conversation thread -->
+    <section class="thread-panel" id="thread-panel" hidden>
+      <div class="panel-header">
+        <h2 id="thread-title">Thread</h2>
+        <div class="thread-actions">
+          <a id="sms-link" class="pill-btn" href="#" target="_blank" rel="noopener">Open in Messages</a>
+          <button id="delete-thread-btn" class="pill-btn danger" type="button">Delete</button>
+        </div>
+      </div>
+      <div id="thread-messages" class="thread-messages"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -15,10 +15,20 @@ https://github.com/bahretc/Etch-A-Sketch.git
 
 ## Running it
 
-It's a static site — no build step. Open `index.html` in a browser, or serve the folder:
+No build step and no dependencies. Either open `index.html` directly in a browser, or run the included server:
 
 ```
-python3 -m http.server 8000
+node server.js
 ```
 
 then visit http://localhost:8000.
+
+## Sending real SMS (optional)
+
+The server can deliver notes as actual text messages through [Twilio](https://console.twilio.com):
+
+1. Copy `.env.example` to `.env`
+2. Fill in `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER` (a free trial account works)
+3. Restart `node server.js`
+
+Without credentials the app runs in simulated mode — notes are saved to conversation threads, and you can still deliver one for real with the "Open in Messages" button on a phone.

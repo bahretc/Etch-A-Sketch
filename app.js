@@ -90,6 +90,26 @@ messageInput.addEventListener("input", () => {
 
 // ---------- Sending ----------
 
+// When served by server.js, POST the note to /api/send so it can be
+// delivered as a real SMS via Twilio. Returns a short status string.
+async function deliverNote(number, text) {
+  if (location.protocol === "file:") return "saved";
+  try {
+    const response = await fetch("/api/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: number, body: text }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Send failed");
+    return data.delivered ? "delivered" : "saved";
+  } catch (err) {
+    // Static hosting (no API) is normal; a real Twilio failure is not.
+    if (err instanceof TypeError || err instanceof SyntaxError) return "saved";
+    throw err;
+  }
+}
+
 sendForm.addEventListener("submit", (event) => {
   event.preventDefault();
   formError.hidden = true;
@@ -128,7 +148,18 @@ sendForm.addEventListener("submit", (event) => {
 
   renderConversationList();
   openThread(number);
-  showToast(`Note sent to ${formatNumber(number)} 📨`);
+
+  deliverNote(number, text)
+    .then((status) => {
+      showToast(
+        status === "delivered"
+          ? `Note delivered by SMS to ${formatNumber(number)} 📨`
+          : `Note sent to ${formatNumber(number)} 📨`
+      );
+    })
+    .catch((err) => {
+      showToast(`Saved, but SMS delivery failed: ${err.message} ⚠️`);
+    });
 });
 
 function showError(message) {

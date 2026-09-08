@@ -11,15 +11,14 @@
 # =============================================================================
 
 # --- Which fiche column plays which semantic role -----------------------------
-# TEAAS fiche coded columns print as: T C F L S  (docs/02, docs/09).
-# docs/09 confirms T = crash-type code and S = severity (KABCO).
-# The meaning of C / F / L is NOT defined in the context pack; the road-surface
-# and light roles below are a best guess and are only used for secondary
-# "Additional Information" cuts, never for the primary crash-type targets.
+# TEAAS fiche coded columns print as: T C F L S. The fiche report legend
+# (observed on 41000079307_Fiche.csv, 2026-08) defines them authoritatively:
+# T - Accident Type, C - Road Condition, F - Roadway Feature,
+# L - Light Condition, S - Accident Severity.
 column_roles:
   crash_type: T      # [CONFIRMED docs/09] NCDOT crash-type code
-  units: C           # [VERIFY] not defined in context pack
-  road_surface: F    # [VERIFY] not defined in context pack (wet = road codes 2-6)
+  road_surface: C    # [CONFIRMED] fiche legend: 'C - Road Condition' (wet = 2-6)
+  roadway_feature: F # [CONFIRMED] fiche legend: 'F - Roadway Feature'
   light: L           # [VERIFY] not defined in context pack (night = light codes 4-6)
   severity: S        # [CONFIRMED docs/09] KABCO severity letter
 

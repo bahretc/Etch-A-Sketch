@@ -173,7 +173,7 @@ def _sheet_assumptions(ws, result, cfg):
     r += 1
     ws.cell(row=r, column=1, value="Column roles").font = Font(bold=True)
     r += 1
-    for role in ("crash_type", "units", "road_surface", "light", "severity"):
+    for role in ("crash_type", "road_surface", "roadway_feature", "light", "severity"):
         ws.cell(row=r, column=1, value=role)
         ws.cell(row=r, column=2, value=cfg.role_letter(role))
         r += 1

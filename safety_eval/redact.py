@@ -459,16 +459,21 @@ def pdf_to_images(pdf_path: str, workdir: str, dpi: int = 200) -> list[str]:
         if f.startswith("page") and f.endswith(".png"))
 
 
-def _load_input_pages(path: str, workdir: str, dpi: int) -> list:
-    """Return PIL images for a PDF, multi-frame TIFF, or single image."""
+def _load_input_pages(path: str, workdir: str, dpi: int) -> tuple[list, bool]:
+    """Return (PIL images, source_was_bilevel) for a PDF, multi-frame TIFF,
+    or single image."""
     from PIL import Image, ImageSequence
 
     ext = os.path.splitext(path)[1].lower()
     if ext == ".pdf":
         return [Image.open(p).convert("RGB")
-                for p in pdf_to_images(path, workdir, dpi)]
+                for p in pdf_to_images(path, workdir, dpi)], False
     img = Image.open(path)
-    return [frame.convert("RGB") for frame in ImageSequence.Iterator(img)]
+    pages, bilevel = [], True
+    for frame in ImageSequence.Iterator(img):
+        bilevel = bilevel and frame.mode == "1"
+        pages.append(frame.convert("RGB"))
+    return pages, bilevel
 
 
 @dataclass
@@ -490,7 +495,7 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
 
     report = RedactionReport()
     with tempfile.TemporaryDirectory(prefix="redact-") as tmp:
-        pages = _load_input_pages(input_path, tmp, dpi)
+        pages, bilevel = _load_input_pages(input_path, tmp, dpi)
         report.pages = len(pages)
         out_pages = []
         for i, img in enumerate(pages):
@@ -516,6 +521,10 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
                 report.boxes += 1
                 report.by_reason[b.reason] = report.by_reason.get(b.reason, 0) + 1
             out_pages.append(img)
+        if bilevel:
+            # bilevel scans stay bilevel: burned boxes are pure black, and
+            # an RGB save inflates a 50-page binder past 20 MB
+            out_pages = [p.convert("1") for p in out_pages]
         first, rest = out_pages[0], out_pages[1:]
         first.save(output_path, format="PDF", save_all=True,
                    append_images=rest, resolution=dpi)

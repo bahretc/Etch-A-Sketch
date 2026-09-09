@@ -254,3 +254,29 @@ def test_harvest_collects_names_from_bands_only():
     assert "JEREMY" in names and "SWETT" in names
     assert "ROBESON" not in names
     assert "FIRST" not in names                     # caption stoplist
+
+
+def test_subcaption_row_covers_name_above_it():
+    # "Dnver" (misread caption) + typed name, with First/Middle below
+    words = [W("Dnver", 187, 75, w=60, h=14),
+             W("JEREMY", 259, 65, w=90, h=22),
+             W("SWETT", 638, 61, w=80, h=22),
+             W("First", 324, 87, w=40, h=10),
+             W("Middle", 474, 87, w=50, h=10)]
+    boxes = plan_redactions(words, page_width=1024, page_height=1350)
+    subs = [b for b in boxes if b.reason == "name-above-subcaption"]
+    assert subs, "First/Middle row must anchor a band over the name row"
+    b = subs[0]
+    assert b.left <= 259 and b.right >= 638 + 80
+    assert b.top <= 61 and b.bottom >= 85
+    # and the dist-2 fuzzy anchor now also catches "Dnver" itself
+    assert any(x.reason == "band:name" for x in boxes)
+
+
+def test_harvest_includes_structurally_found_names():
+    from safety_eval.redact import harvest_name_tokens
+    words = [W("Dnver", 187, 75, w=60, h=14),
+             W("JEREMY", 259, 65, w=90, h=22),
+             W("First", 324, 87, w=40, h=10),
+             W("Middle", 474, 87, w=50, h=10)]
+    assert "JEREMY" in harvest_name_tokens(words, 1024, 1350)

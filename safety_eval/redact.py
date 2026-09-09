@@ -207,7 +207,7 @@ def _match_anchor(tok: str):
             return s
     for key, s in _BAND_ANCHORS.items():
         if len(key) >= 5 and len(tok) >= 4 and \
-                _edit_distance_at_most(tok, key, 1):
+                _edit_distance_at_most(tok, key, 1 if len(key) < 6 else 2):
             return s
     return None
 
@@ -241,6 +241,34 @@ def _band_boxes(words: list[Word], page_w: int, page_h: int,
         if right > a.left:
             out.append(Redaction(a.page, max(0, a.left - pad), top,
                                  right, bottom, f"band:{kind}"))
+    return out
+
+
+def _sub_caption_boxes(words: list[Word], page_w: int, page_h: int,
+                       pad: int = 4) -> list[Redaction]:
+    """Structural anchor: on the DMV-349 the typed name row sits directly
+    ABOVE a "First   Middle   Last   Suffix" sub-caption row. When the
+    Driver/Owner caption itself is misread beyond fuzzy reach ("Dnver"),
+    this row still locates the name."""
+    med_h = _median_height(words)
+    firsts = [w for w in words
+              if _edit_distance_at_most(_norm(w.text), "first", 1)]
+    mids = [w for w in words
+            if _edit_distance_at_most(_norm(w.text), "middle", 1)]
+    out: list[Redaction] = []
+    for f in firsts:
+        for m in mids:
+            if m.left > f.left and abs(m.top - f.top) <= 1.5 * med_h \
+                    and m.left - f.left < 0.35 * page_w:
+                h_eff = max(f.height, med_h)
+                out.append(Redaction(
+                    f.page,
+                    max(0, f.left - int(0.10 * page_w)),
+                    max(0, f.top - int(3.0 * h_eff)),
+                    min(page_w, m.left + int(0.30 * page_w)),
+                    max(0, f.top - 2),
+                    "name-above-subcaption"))
+                break
     return out
 
 
@@ -347,6 +375,7 @@ def harvest_name_tokens(words: list[Word], page_w: int,
     driver's surname in plain prose with no caption nearby."""
     rects = [b for b in _band_boxes(words, page_w, page_h)
              if b.reason == "band:name"]
+    rects += _sub_caption_boxes(words, page_w, page_h)
     out: set[str] = set()
     for w in words:
         t = re.sub(r"[^A-Za-z]", "", w.text).upper()
@@ -456,6 +485,7 @@ def plan_redactions(words: list[Word], keep_zip: bool = True,
             ))
 
     out.extend(_band_boxes(words, page_width, page_height))
+    out.extend(_sub_caption_boxes(words, page_width, page_height))
     out.extend(_section32_boxes(words, page_width, page_height))
     out.extend(_token_boxes(words, keep_zip))
     if known_names:
@@ -585,6 +615,7 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
         # whole bands; noise words only ever ADD redaction.
         ocr: list[tuple[list[Word], list[Word]]] = []
         names: set[str] = set()
+        loc_words: set[str] = set()
         for i, img in enumerate(pages):
             page_png = os.path.join(tmp, f"ocr-{i}.png")
             img.save(page_png)
@@ -599,6 +630,14 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
             pw, ph = img.size
             names |= harvest_name_tokens(words_sparse, pw, ph)
             names |= harvest_name_tokens(words_page, pw, ph)
+            # the DMV-349 location block (municipality, routes) sits in the
+            # top fifth of the form; anything appearing there is a place
+            # word, and scrubbing it would black the crash location on
+            # every page (e.g. SPRINGS from a RED SPRINGS home address)
+            for w in words_sparse + words_page:
+                if w.top < 0.20 * ph:
+                    loc_words.add(re.sub(r"[^A-Za-z]", "", w.text).upper())
+        names -= loc_words
 
         # pass 2: plan (each OCR pass separately; line grouping differs) and
         # draw, scrubbing every harvested name document-wide

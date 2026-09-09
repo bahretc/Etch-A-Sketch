@@ -280,3 +280,21 @@ def test_harvest_includes_structurally_found_names():
              W("First", 324, 87, w=40, h=10),
              W("Middle", 474, 87, w=50, h=10)]
     assert "JEREMY" in harvest_name_tokens(words, 1024, 1350)
+
+
+@needs_ocr
+def test_ocr_words_survive_stray_quote_glyph(tmp_path):
+    # a lone " glyph must not make csv swallow the rest of the TSV
+    from PIL import Image, ImageDraw
+    from safety_eval.redact import ocr_words
+    img = Image.new("RGB", (900, 300), "white")
+    d = ImageDraw.Draw(img)
+    f = _font(30)
+    d.text((40, 40), '"FAULT " 11409384563', font=f, fill="black")
+    d.text((40, 140), "Names and Addresses for All Persons", font=f, fill="black")
+    p = str(tmp_path / "q.png")
+    img.save(p)
+    words = ocr_words(p, psm=3)
+    texts = {w.text for w in words}
+    assert any("Addresses" in t for t in texts), texts
+    assert all("\t" not in w.text for w in words)

@@ -539,7 +539,11 @@ def ocr_words(image_path: str, page: int = 0, timeout: int = 120,
         [tesseract, image_path, "stdout", "--psm", str(psm), "tsv"],
         capture_output=True, text=True, timeout=timeout, check=True)
     words: list[Word] = []
-    reader = csv.DictReader(io.StringIO(proc.stdout), delimiter="\t")
+    # QUOTE_NONE is load-bearing: tesseract TSV never quotes, and default
+    # csv quoting makes a stray OCR'd " glyph swallow every following row
+    # into one mega-token that hides names from the planner
+    reader = csv.DictReader(io.StringIO(proc.stdout), delimiter="\t",
+                            quoting=csv.QUOTE_NONE)
     for row in reader:
         text = (row.get("text") or "").strip()
         try:

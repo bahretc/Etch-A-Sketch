@@ -9,10 +9,20 @@ review workflow key on them).
 
 Pipeline:
     PDF -> page images (poppler ``pdftoppm``)  [or TIFF/PNG/JPG input]
-        -> OCR word boxes (``tesseract`` TSV)
-        -> redaction plan (label-driven + pattern-driven, ZIP-preserving)
+        -> OCR word boxes (``tesseract`` TSV, two passes: page and sparse)
+        -> redaction plan (label bands + section-32 region + token patterns
+           + legacy line rules, ZIP-preserving)
         -> black boxes burned into the page image (PIL)
         -> image-only PDF output (NO text layer, so nothing can leak)
+
+Why geometry bands and not OCR line structure: on the DMV-349 the field
+captions ("Driver", "Address", "DOB") are tiny machine print while the values
+are typed or handwritten in the box beside/below them. Sparse-mode OCR puts
+caption and value in different text blocks, so "redact the rest of the line"
+finds nothing - that failure leaked names on a real binder. Captions are
+printed, so they OCR reliably even when the value is handwriting OCR cannot
+read; a band anchored on the caption covers the value AREA regardless of
+whether the value itself was recognized.
 
 The output is rasterized on purpose: redacting a text-layer PDF by drawing
 rectangles leaves the underlying text extractable; burning boxes into images
@@ -82,14 +92,45 @@ _LABELS = {
 _LABEL_WORDS = {w for group in _LABELS.values() for w in group}
 
 _ZIP_RE = re.compile(r"^\d{5}(?:-\d{4})?$")
+_ZIP5_RE = re.compile(r"^\d{5}$")
 _PHONE_RE = re.compile(r"^\(?\d{3}\)?[-. ]?\d{3}[-. ]?\d{4}$")
+_PHONE_TAIL_RE = re.compile(r"^\d{3}[-.]\d{4}$")
 _DATE_RE = re.compile(r"^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$")
 _STREET_SUFFIXES = (
     "ST", "STREET", "RD", "ROAD", "AVE", "AVENUE", "DR", "DRIVE", "LN",
     "LANE", "CT", "COURT", "HWY", "HIGHWAY", "BLVD", "CIR", "CIRCLE", "PL",
     "PLACE", "WAY", "TRL", "TRAIL", "PKWY", "LOOP",
 )
-_CRASH_ID_RE = re.compile(r"^\d{9}$")
+# TEAAS crash IDs start 10x; DMV document numbers start 60x. A bare ^\d{9}$
+# also matches 9-digit ZIP+4 strings (e.g. 283526345), which must NOT be
+# protected - that mistake kept ZIP+4 values visible on a real binder.
+_CRASH_ID_RE = re.compile(r"^(?:1\d{8}|60\d{7})$")
+# DL and policy/account numbers: 7-8 or 10-14 digit runs (9-digit runs get
+# their own crash-id / ZIP+4 handling below)
+_DIGITS7_8_RE = re.compile(r"^\d{7,8}$|^\d{10,14}$")
+_DIGITS9_RE = re.compile(r"^\d{9}$")
+_ZIP4_DASH_RE = re.compile(r"^\d{5}-\d{4}$")
+
+# Geometry bands anchored on printed field captions. Per kind:
+# (width as fraction of page width, height as multiple of row height).
+# Bands start at the caption and extend right/down over the value box.
+_BAND_ANCHORS = {
+    "driver": ("name", 0.42, 1.9),
+    "owner": ("name", 0.42, 1.9),
+    "insured": ("name", 0.42, 1.9),
+    "witness": ("name", 0.42, 2.8),
+    "witnesses": ("name", 0.42, 2.8),
+    "passenger": ("name", 0.42, 2.8),
+    "address": ("address", 0.42, 1.6),
+    "dob": ("dob", 0.17, 1.6),
+    "birth": ("dob", 0.17, 1.6),
+    "dl#": ("license", 0.17, 1.6),
+    "dl": ("license", 0.17, 1.6),
+    "cdl": ("license", 0.17, 1.6),
+    "phone": ("phone", 0.32, 2.6),
+    "telephone": ("phone", 0.32, 2.6),
+    "policy": ("policy", 0.22, 1.6),
+}
 
 
 def _norm(token: str) -> str:
@@ -134,21 +175,139 @@ def _line_has_street_address(tokens: list[str]) -> bool:
     return False
 
 
+def _median_height(words: list[Word]) -> int:
+    hs = sorted(w.height for w in words)
+    return hs[len(hs) // 2] if hs else 20
+
+
+def _band_boxes(words: list[Word], page_w: int, page_h: int,
+                pad: int = 4) -> list[Redaction]:
+    """Caption-anchored field bands (see module docstring)."""
+    med_h = _median_height(words)
+    zips = [w for w in words if _norm(w.text) == "zip"]
+    out: list[Redaction] = []
+    for a in words:
+        tok = _norm(a.text)
+        spec = _BAND_ANCHORS.get(tok)
+        if not spec:
+            # OCR often glues caption and value into one token
+            # ("OwnerJALEAH"); match longer captions by prefix too.
+            for key, s in _BAND_ANCHORS.items():
+                if len(key) >= 5 and tok.startswith(key):
+                    spec = s
+                    break
+        if not spec:
+            continue
+        kind, w_frac, h_mult = spec
+        h_eff = max(a.height, med_h)
+        # typed values are taller than the tiny caption, so the band must
+        # reach above the caption's own top or ascenders stay readable
+        top = max(0, a.top - max(pad, int(0.8 * h_eff)))
+        if kind == "phone":
+            # "Driver's Phone Numbers" is a stacked caption; the H (home)
+            # number row sits one row ABOVE the "Phone" word.
+            top = max(0, a.top - int(1.4 * h_eff))
+        bottom = min(page_h, a.top + int(h_mult * h_eff))
+        right = min(page_w, a.left + int(w_frac * page_w))
+        # keep the form's dedicated Zip box visible: clip at a "Zip" caption
+        # sitting to the right of the anchor inside the band
+        for z in zips:
+            if a.left < z.left < right and top <= z.top <= bottom:
+                right = min(right, z.left - 2)
+        if right > a.left:
+            out.append(Redaction(a.page, max(0, a.left - pad), top,
+                                 right, bottom, f"band:{kind}"))
+    return out
+
+
+def _section32_boxes(words: list[Word], page_w: int,
+                     page_h: int) -> list[Redaction]:
+    """DMV-349 section 32, 'Names and Addresses for All Persons': a table
+    whose rows carry name, DOB, and home address for every occupant and
+    witness. The coded columns (seat position, injury, etc.) are crash data
+    and stay visible; the DOB column and the name/address column are covered
+    wholesale (handwriting-safe)."""
+    med_h = _median_height(words)
+    names = [w for w in words if _norm(w.text) == "names"]
+    addrs = [w for w in words if _norm(w.text) == "addresses"]
+    header = None
+    for n in names:
+        for ad in addrs:
+            if n.page == ad.page and abs(n.top - ad.top) <= 2 * med_h:
+                header = n if header is None or n.top < header.top else header
+    if header is None:
+        return []
+    ems = [w.top for w in words
+           if w.page == header.page and _norm(w.text) == "ems"
+           and w.top > header.top + 2 * med_h]
+    bottom = min(min(ems) - 2 if ems else page_h,
+                 header.top + int(0.26 * page_h), page_h)
+    top = header.bottom + 2
+    if bottom <= top:
+        return []
+    return [
+        Redaction(header.page, int(0.125 * page_w), top,
+                  int(0.25 * page_w), bottom, "section32:dob"),
+        Redaction(header.page, int(0.40 * page_w), top,
+                  int(0.95 * page_w), bottom, "section32:names"),
+    ]
+
+
+def _token_boxes(words: list[Word], keep_zip: bool,
+                 pad: int = 3) -> list[Redaction]:
+    """Pattern layer over individual tokens: phone numbers, 7-8 digit
+    DL/policy numbers, and ZIP+4 (the +4 narrows to a block face, so only
+    the 5-digit prefix stays visible)."""
+    out: list[Redaction] = []
+
+    def box(w: Word, reason: str, left: int | None = None) -> None:
+        out.append(Redaction(w.page, max(0, (w.left if left is None else left) - pad),
+                             max(0, w.top - pad), w.right + pad,
+                             w.bottom + pad, reason))
+
+    for w in words:
+        t = w.text.strip().strip(",.;:")
+        if not t or _CRASH_ID_RE.match(t):
+            continue
+        if _PHONE_RE.match(t) or _PHONE_TAIL_RE.match(t):
+            box(w, "phone")
+        elif _DIGITS7_8_RE.match(t):
+            box(w, "digits7-8")
+        elif _ZIP4_DASH_RE.match(t):
+            if keep_zip:
+                box(w, "zip+4", left=w.left + int(0.50 * w.width))
+            else:
+                box(w, "zip+4")
+        elif _DIGITS9_RE.match(t):
+            if keep_zip and t.startswith("2"):     # NC-region ZIP+4 run-on
+                box(w, "zip+4", left=w.left + int(0.52 * w.width))
+            else:
+                box(w, "digits9")
+    return out
+
+
 def plan_redactions(words: list[Word], keep_zip: bool = True,
-                    pad: int = 3) -> list[Redaction]:
+                    pad: int = 3, page_width: int | None = None,
+                    page_height: int | None = None) -> list[Redaction]:
     """Decide what to black out.
 
     Rules (conservative: over-redact rather than leak):
 
-    * A line containing a PII field label: everything AFTER the label on that
-      line, plus the entire NEXT line when the label line holds no value
-      (DMV-349 boxes put the caption above the handwritten/typed value).
-    * A line that looks like a street address (number followed by a street
-      suffix) is redacted wholly.
-    * Standalone phone numbers and dates following a DOB label.
-    * ZIP-looking tokens are carved OUT of any planned box when ``keep_zip``.
-    * 9-digit crash IDs are never redacted.
+    * Caption-anchored geometry bands over every Driver/Owner/Witness/
+      Address/DOB/DL/Phone/Policy field (covers handwriting OCR cannot read).
+    * The section-32 names-and-addresses table (DOB + name/address columns).
+    * Token patterns: phone numbers, 7-8 digit DL/policy numbers, ZIP+4
+      (only the +4 part; the 5-digit ZIP stays).
+    * Legacy line rules: everything AFTER a PII label on its line, plus the
+      entire NEXT line when the label line holds no value; whole lines that
+      look like a street address; city/state continuation lines.
+    * ZIP-looking tokens are carved OUT of line-rule boxes when ``keep_zip``.
+    * Crash IDs (10x/60x 9-digit) are never redacted.
     """
+    if page_width is None:
+        page_width = max((w.right for w in words), default=0) + 10
+    if page_height is None:
+        page_height = max((w.bottom for w in words), default=0) + 10
     lines = _lines(words)
     planned: list[tuple[list[Word], str]] = []
     redact_next_line_of: dict[tuple, str] = {}
@@ -221,6 +380,10 @@ def plan_redactions(words: list[Word], keep_zip: bool = True,
                 bottom=max(w.bottom for w in seg) + pad,
                 reason=reason,
             ))
+
+    out.extend(_band_boxes(words, page_width, page_height))
+    out.extend(_section32_boxes(words, page_width, page_height))
+    out.extend(_token_boxes(words, keep_zip))
     return out
 
 
@@ -258,11 +421,11 @@ def _require(binary: str) -> str:
 
 
 def ocr_words(image_path: str, page: int = 0, timeout: int = 120,
-              min_conf: float = 30.0) -> list[Word]:
+              min_conf: float = 30.0, psm: int = 11) -> list[Word]:
     """OCR one page image into word boxes via tesseract TSV."""
     tesseract = _require("tesseract")
     proc = subprocess.run(
-        [tesseract, image_path, "stdout", "--psm", "11", "tsv"],
+        [tesseract, image_path, "stdout", "--psm", str(psm), "tsv"],
         capture_output=True, text=True, timeout=timeout, check=True)
     words: list[Word] = []
     reader = csv.DictReader(io.StringIO(proc.stdout), delimiter="\t")
@@ -333,11 +496,19 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
         for i, img in enumerate(pages):
             page_png = os.path.join(tmp, f"ocr-{i}.png")
             img.save(page_png)
-            words = ocr_words(page_png, page=i)
-            if not words:
+            # two passes: sparse (psm 11) finds isolated form values, page
+            # mode (psm 3) reads flowing text and tiny captions sparse mode
+            # drops. Each pass is planned separately (line grouping differs).
+            words_sparse = ocr_words(page_png, page=i, psm=11, timeout=300)
+            words_page = ocr_words(page_png, page=i, psm=3, timeout=300)
+            if not words_sparse and not words_page:
                 report.warnings.append(
                     f"page {i + 1}: no OCR text found; verify manually")
-            boxes = plan_redactions(words, keep_zip=keep_zip)
+            pw, ph = img.size
+            boxes = (plan_redactions(words_sparse, keep_zip=keep_zip,
+                                     page_width=pw, page_height=ph)
+                     + plan_redactions(words_page, keep_zip=keep_zip,
+                                       page_width=pw, page_height=ph))
             draw = ImageDraw.Draw(img)
             for b in boxes:
                 draw.rectangle([b.left, b.top, b.right, b.bottom],

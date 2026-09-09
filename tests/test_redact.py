@@ -145,3 +145,69 @@ def test_city_line_under_street_address_redacted_keeping_zip():
     for b in boxes:
         if b.reason == "address-continuation":
             assert b.right < 160
+
+
+# --- v2 planner: geometry bands, section 32, token patterns ----------------
+def test_band_covers_value_even_when_ocr_missed_it():
+    # handwriting case: only the printed caption OCRs; the value area right
+    # of/below it must still be covered by the band
+    words = [W("Driver", 100, 200, w=50, h=14),
+             W("filler", 900, 900)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200)
+    bands = [b for b in boxes if b.reason == "band:name"]
+    assert bands, "caption alone must produce a band"
+    b = bands[0]
+    assert b.right >= 100 + int(0.40 * 1700)
+    assert b.bottom > 214, "band must cover the value row"
+    assert b.top < 200, "band must reach above the caption for tall values"
+
+
+def test_band_fires_on_caption_glued_to_value():
+    # tesseract often merges caption and value: "OwnerJALEAH"
+    words = [W("OwnerJALEAH", 100, 200, w=200, h=20)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200)
+    assert any(b.reason == "band:name" for b in boxes)
+
+
+def test_band_clips_at_zip_caption():
+    words = [W("Address", 100, 200, w=60, h=14),
+             W("Zip", 500, 200, w=30, h=14)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200)
+    addr = [b for b in boxes if b.reason == "band:address"]
+    assert addr and addr[0].right <= 498, "band must stop before the Zip box"
+
+
+def test_zip4_run_on_is_partially_redacted():
+    # 9-digit ZIP+4 (e.g. 283526345) is NOT a crash id and its +4 must go
+    words = [W("283526345", 100, 100, w=90, h=20)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200)
+    z = [b for b in boxes if b.reason == "zip+4"]
+    assert z, "ZIP+4 run-on must be redacted"
+    assert z[0].left > 130, "the 5-digit prefix stays visible"
+
+
+def test_crash_and_document_ids_still_protected():
+    words = [W("107822778", 100, 100, w=90, h=20),
+             W("600504078", 100, 140, w=90, h=20)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200)
+    assert boxes == []
+
+
+def test_long_digit_runs_redacted():
+    # DL numbers (7-8 digits) and policy numbers (10+ digits)
+    words = [W("21758723", 100, 100, w=80, h=20),
+             W("11408502130", 100, 140, w=110, h=20)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200)
+    assert len(boxes) == 2
+
+
+def test_section32_table_columns_covered():
+    words = [W("Names", 700, 1600, w=60, h=16),
+             W("Addresses", 780, 1600, w=90, h=16),
+             W("EMS", 200, 2100, w=40, h=16)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200)
+    reasons = {b.reason for b in boxes}
+    assert "section32:dob" in reasons and "section32:names" in reasons
+    names = next(b for b in boxes if b.reason == "section32:names")
+    assert names.top >= 1616 and names.bottom <= 2100
+    assert names.left >= int(0.35 * 1700)

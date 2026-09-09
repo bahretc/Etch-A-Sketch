@@ -58,6 +58,7 @@ class Word:
     height: int
     page: int = 0
     line_id: tuple = (0, 0, 0)      # (block, par, line) from tesseract
+    conf: float = 100.0             # tesseract confidence, 0-100
 
     @property
     def right(self) -> int:
@@ -234,8 +235,12 @@ def _band_boxes(words: list[Word], page_w: int, page_h: int,
         bottom = min(page_h, a.top + int(h_mult * h_eff))
         right = min(page_w, a.left + int(w_frac * page_w))
         # keep the form's dedicated Zip box visible: clip at a "Zip" caption
-        # sitting to the right of the anchor inside the band
+        # sitting to the right of the anchor inside the band. Only a
+        # confident "Zip" may shrink a band - preserving visibility demands
+        # confidence, adding coverage does not.
         for z in zips:
+            if z.conf < 40:
+                continue
             if a.left < z.left < right and top <= z.top <= bottom:
                 right = min(right, z.left - 2)
         if right > a.left:
@@ -342,12 +347,13 @@ def _token_boxes(words: list[Word], keep_zip: bool,
         elif _DIGITS7_8_RE.match(t):
             box(w, "digits7-8")
         elif _ZIP4_DASH_RE.match(t):
-            if keep_zip:
+            if keep_zip and w.conf >= 40:
                 box(w, "zip+4", left=w.left + int(0.50 * w.width))
             else:
                 box(w, "zip+4")
         elif _DIGITS9_RE.match(t):
-            if keep_zip and t.startswith("2"):     # NC-region ZIP+4 run-on
+            # partial keep (5-digit prefix) only for a confident read
+            if keep_zip and t.startswith("2") and w.conf >= 40:
                 box(w, "zip+4", left=w.left + int(0.52 * w.width))
             else:
                 box(w, "digits9")
@@ -504,7 +510,8 @@ def _split_keeping_zip(group: list[Word], keep_zip: bool) -> list[list[Word]]:
     segments: list[list[Word]] = []
     current: list[Word] = []
     for w in group:
-        if _ZIP_RE.match(w.text.strip()):
+        # carving a hole to keep a ZIP visible demands a confident read
+        if _ZIP_RE.match(w.text.strip()) and w.conf >= 40:
             if current:
                 segments.append(current)
                 current = []
@@ -559,6 +566,7 @@ def ocr_words(image_path: str, page: int = 0, timeout: int = 120,
             page=page,
             line_id=(int(row["block_num"]), int(row["par_num"]),
                      int(row["line_num"])),
+            conf=conf,
         ))
     return words
 
@@ -623,10 +631,14 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
         for i, img in enumerate(pages):
             page_png = os.path.join(tmp, f"ocr-{i}.png")
             img.save(page_png)
+            # zero confidence floor: a real caption can come back at conf 1
+            # (p39 "Owner" did) and losing it loses the whole band; noise
+            # words only ever ADD redaction, and anything that preserves
+            # visibility (ZIP keeps) demands conf >= 40 on its own
             words_sparse = ocr_words(page_png, page=i, psm=11, timeout=300,
-                                     min_conf=15.0)
+                                     min_conf=0.0)
             words_page = ocr_words(page_png, page=i, psm=3, timeout=300,
-                                   min_conf=15.0)
+                                   min_conf=0.0)
             if not words_sparse and not words_page:
                 report.warnings.append(
                     f"page {i + 1}: no OCR text found; verify manually")

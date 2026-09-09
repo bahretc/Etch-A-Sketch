@@ -211,3 +211,46 @@ def test_section32_table_columns_covered():
     names = next(b for b in boxes if b.reason == "section32:names")
     assert names.top >= 1616 and names.bottom <= 2100
     assert names.left >= int(0.35 * 1700)
+
+
+# --- v3 hardening: fuzzy captions, era dates, name scrub -------------------
+def test_fuzzy_caption_matches_degraded_scan():
+    from safety_eval.redact import _match_anchor
+    assert _match_anchor("drlver") is not None    # misread i -> l
+    assert _match_anchor("owher") is not None
+    assert _match_anchor("random") is None
+
+
+def test_dob_aged_dates_redacted_but_crash_dates_kept():
+    # era = 2025 (crash + received date); DOBs are years older
+    words = [W("04/05/2025", 100, 100, w=120, h=20),
+             W("04/11/2025", 100, 140, w=120, h=20),
+             W("09/12/2007", 100, 400, w=120, h=20),
+             W("10/20/1976", 100, 440, w=120, h=20)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200)
+    aged = [b for b in boxes if b.reason == "dob-aged-date"]
+    assert len(aged) == 2
+    assert all(b.top >= 390 for b in aged), "crash-era dates must stay"
+
+
+def test_known_names_scrubbed_everywhere():
+    words = [W("VEHICLE", 100, 900, w=80, h=20),
+             W("SWETT", 200, 900, w=60, h=20),
+             W("OVERTURNED", 280, 900, w=110, h=20)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200,
+                            known_names={"SWETT"})
+    named = [b for b in boxes if b.reason == "known-name"]
+    assert len(named) == 1 and named[0].left <= 200 <= named[0].right
+
+
+def test_harvest_collects_names_from_bands_only():
+    from safety_eval.redact import harvest_name_tokens
+    words = [W("Driver", 100, 200, w=50, h=14),
+             W("JEREMY", 180, 200, w=70, h=20),
+             W("SWETT", 270, 200, w=60, h=20),
+             W("First", 180, 224, w=40, h=10),
+             W("ROBESON", 900, 100, w=90, h=20)]   # outside any band
+    names = harvest_name_tokens(words, 1700, 2200)
+    assert "JEREMY" in names and "SWETT" in names
+    assert "ROBESON" not in names
+    assert "FIRST" not in names                     # caption stoplist

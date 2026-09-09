@@ -180,6 +180,38 @@ def _median_height(words: list[Word]) -> int:
     return hs[len(hs) // 2] if hs else 20
 
 
+def _edit_distance_at_most(a: str, b: str, k: int) -> bool:
+    """True when levenshtein(a, b) <= k (small k; early exit)."""
+    if abs(len(a) - len(b)) > k:
+        return False
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[-1] + 1,
+                           prev[j - 1] + (ca != cb)))
+        if min(cur) > k:
+            return False
+        prev = cur
+    return prev[-1] <= k
+
+
+def _match_anchor(tok: str):
+    """Match an OCR token against the caption anchors: exact, glued prefix
+    ("OwnerJALEAH"), or fuzzy (degraded scans misread small print)."""
+    spec = _BAND_ANCHORS.get(tok)
+    if spec:
+        return spec
+    for key, s in _BAND_ANCHORS.items():
+        if len(key) >= 5 and tok.startswith(key):
+            return s
+    for key, s in _BAND_ANCHORS.items():
+        if len(key) >= 5 and len(tok) >= 4 and \
+                _edit_distance_at_most(tok, key, 1):
+            return s
+    return None
+
+
 def _band_boxes(words: list[Word], page_w: int, page_h: int,
                 pad: int = 4) -> list[Redaction]:
     """Caption-anchored field bands (see module docstring)."""
@@ -187,15 +219,7 @@ def _band_boxes(words: list[Word], page_w: int, page_h: int,
     zips = [w for w in words if _norm(w.text) == "zip"]
     out: list[Redaction] = []
     for a in words:
-        tok = _norm(a.text)
-        spec = _BAND_ANCHORS.get(tok)
-        if not spec:
-            # OCR often glues caption and value into one token
-            # ("OwnerJALEAH"); match longer captions by prefix too.
-            for key, s in _BAND_ANCHORS.items():
-                if len(key) >= 5 and tok.startswith(key):
-                    spec = s
-                    break
+        spec = _match_anchor(_norm(a.text))
         if not spec:
             continue
         kind, w_frac, h_mult = spec
@@ -228,15 +252,17 @@ def _section32_boxes(words: list[Word], page_w: int,
     and stay visible; the DOB column and the name/address column are covered
     wholesale (handwriting-safe)."""
     med_h = _median_height(words)
-    names = [w for w in words if _norm(w.text) == "names"]
-    addrs = [w for w in words if _norm(w.text) == "addresses"]
-    header = None
-    for n in names:
-        for ad in addrs:
-            if n.page == ad.page and abs(n.top - ad.top) <= 2 * med_h:
-                header = n if header is None or n.top < header.top else header
-    if header is None:
+    # header anchor: a token fuzzy-matching the distinctive words of
+    # "Names and Addresses for All Persons" (degraded scans misread them),
+    # in the lower half of the page where section 32 lives. Distance 1 only:
+    # distance 2 would swallow every plain "Address" caption.
+    cands = [w for w in words
+             if w.top > 0.5 * page_h
+             and (_edit_distance_at_most(_norm(w.text), "addresses", 1)
+                  or _edit_distance_at_most(_norm(w.text), "persons", 1))]
+    if not cands:
         return []
+    header = min(cands, key=lambda w: w.top)
     ems = [w.top for w in words
            if w.page == header.page and _norm(w.text) == "ems"
            and w.top > header.top + 2 * med_h]
@@ -256,9 +282,23 @@ def _section32_boxes(words: list[Word], page_w: int,
 def _token_boxes(words: list[Word], keep_zip: bool,
                  pad: int = 3) -> list[Redaction]:
     """Pattern layer over individual tokens: phone numbers, 7-8 digit
-    DL/policy numbers, and ZIP+4 (the +4 narrows to a block face, so only
-    the 5-digit prefix stays visible)."""
+    DL/policy numbers, ZIP+4 (the +4 narrows to a block face, so only the
+    5-digit prefix stays visible), and DOB-aged dates.
+
+    Date-of-birth net: the legitimate dates on a DMV-349 (crash date, DMV
+    received date) all sit within a year of each other, while any DOB is
+    years older. Per page, take the newest 4-digit year among date tokens
+    as the report era and redact every date 2+ years older - this catches
+    DOBs even when the tiny "DOB" caption fails to OCR on a poor scan."""
     out: list[Redaction] = []
+
+    date_re = re.compile(r"^\d{1,2}[/-]\d{1,2}[/-](\d{4})$")
+    years = []
+    for w in words:
+        m = date_re.match(w.text.strip().strip(",.;:"))
+        if m:
+            years.append(int(m.group(1)))
+    era = max(years) if years else None
 
     def box(w: Word, reason: str, left: int | None = None) -> None:
         out.append(Redaction(w.page, max(0, (w.left if left is None else left) - pad),
@@ -283,12 +323,46 @@ def _token_boxes(words: list[Word], keep_zip: bool,
                 box(w, "zip+4", left=w.left + int(0.52 * w.width))
             else:
                 box(w, "digits9")
+        elif era is not None:
+            m = date_re.match(t)
+            if m and int(m.group(1)) <= era - 2:
+                box(w, "dob-aged-date")
+    return out
+
+
+# form caption noise that lands inside name bands; never treat as a name
+_NAME_HARVEST_STOP = {
+    "FIRST", "MIDDLE", "LAST", "SUFFIX", "NAME", "NAMES", "SAME", "DRIVER",
+    "DRIVERS", "OWNER", "WITNESS", "WITNESSES", "PASSENGER", "INSURED",
+    "ADDRESS", "ADDRESSES", "STREET", "CITY", "STATE", "PHONE", "NUMBERS",
+    "LICENSE", "CLASS", "VEHICLE", "PEDESTRIAN", "COMMERCIAL", "TOWED",
+    "DESTINATON", "DESTINATION", "ABOVE", "UNIT", "YES", "NULL",
+}
+
+
+def harvest_name_tokens(words: list[Word], page_w: int,
+                        page_h: int) -> set[str]:
+    """Collect the name tokens sitting inside Driver/Owner/Witness bands so
+    they can be scrubbed EVERYWHERE in the document - narratives repeat the
+    driver's surname in plain prose with no caption nearby."""
+    rects = [b for b in _band_boxes(words, page_w, page_h)
+             if b.reason == "band:name"]
+    out: set[str] = set()
+    for w in words:
+        t = re.sub(r"[^A-Za-z]", "", w.text).upper()
+        if len(t) < 4 or t in _NAME_HARVEST_STOP:
+            continue
+        cx, cy = w.left + w.width // 2, w.top + w.height // 2
+        if any(r.left <= cx <= r.right and r.top <= cy <= r.bottom
+               for r in rects):
+            out.add(t)
     return out
 
 
 def plan_redactions(words: list[Word], keep_zip: bool = True,
                     pad: int = 3, page_width: int | None = None,
-                    page_height: int | None = None) -> list[Redaction]:
+                    page_height: int | None = None,
+                    known_names: set[str] | None = None) -> list[Redaction]:
     """Decide what to black out.
 
     Rules (conservative: over-redact rather than leak):
@@ -384,6 +458,13 @@ def plan_redactions(words: list[Word], keep_zip: bool = True,
     out.extend(_band_boxes(words, page_width, page_height))
     out.extend(_section32_boxes(words, page_width, page_height))
     out.extend(_token_boxes(words, keep_zip))
+    if known_names:
+        for w in words:
+            t = re.sub(r"[^A-Za-z]", "", w.text).upper()
+            if len(t) >= 4 and t in known_names:
+                out.append(Redaction(w.page, max(0, w.left - pad),
+                                     max(0, w.top - pad), w.right + pad,
+                                     w.bottom + pad, "known-name"))
     return out
 
 
@@ -497,23 +578,40 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
     with tempfile.TemporaryDirectory(prefix="redact-") as tmp:
         pages, bilevel = _load_input_pages(input_path, tmp, dpi)
         report.pages = len(pages)
-        out_pages = []
+        # pass 1: OCR every page twice. Sparse mode (psm 11) finds isolated
+        # form values, page mode (psm 3) reads flowing text and tiny captions
+        # sparse mode drops. Low confidence floor: on degraded scans the
+        # caption anchors come back at conf 15-30, and dropping them loses
+        # whole bands; noise words only ever ADD redaction.
+        ocr: list[tuple[list[Word], list[Word]]] = []
+        names: set[str] = set()
         for i, img in enumerate(pages):
             page_png = os.path.join(tmp, f"ocr-{i}.png")
             img.save(page_png)
-            # two passes: sparse (psm 11) finds isolated form values, page
-            # mode (psm 3) reads flowing text and tiny captions sparse mode
-            # drops. Each pass is planned separately (line grouping differs).
-            words_sparse = ocr_words(page_png, page=i, psm=11, timeout=300)
-            words_page = ocr_words(page_png, page=i, psm=3, timeout=300)
+            words_sparse = ocr_words(page_png, page=i, psm=11, timeout=300,
+                                     min_conf=15.0)
+            words_page = ocr_words(page_png, page=i, psm=3, timeout=300,
+                                   min_conf=15.0)
             if not words_sparse and not words_page:
                 report.warnings.append(
                     f"page {i + 1}: no OCR text found; verify manually")
+            ocr.append((words_sparse, words_page))
+            pw, ph = img.size
+            names |= harvest_name_tokens(words_sparse, pw, ph)
+            names |= harvest_name_tokens(words_page, pw, ph)
+
+        # pass 2: plan (each OCR pass separately; line grouping differs) and
+        # draw, scrubbing every harvested name document-wide
+        out_pages = []
+        for i, img in enumerate(pages):
+            words_sparse, words_page = ocr[i]
             pw, ph = img.size
             boxes = (plan_redactions(words_sparse, keep_zip=keep_zip,
-                                     page_width=pw, page_height=ph)
+                                     page_width=pw, page_height=ph,
+                                     known_names=names)
                      + plan_redactions(words_page, keep_zip=keep_zip,
-                                       page_width=pw, page_height=ph))
+                                       page_width=pw, page_height=ph,
+                                       known_names=names))
             draw = ImageDraw.Draw(img)
             for b in boxes:
                 draw.rectangle([b.left, b.top, b.right, b.bottom],

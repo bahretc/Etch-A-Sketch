@@ -65,12 +65,23 @@ def sheet_files(template: str) -> dict[str, str]:
     with zipfile.ZipFile(template) as z:
         wb = z.read("xl/workbook.xml").decode("utf-8")
         rels = z.read("xl/_rels/workbook.xml.rels").decode("utf-8")
-    rid_to_target = dict(re.findall(r'Id="(rId\d+)"[^>]*Target="([^"]+)"', rels))
+    rid_to_target: dict[str, str] = {}
+    for rel in re.findall(r"<Relationship [^>]*/>", rels):
+        rid = re.search(r'\bId="(rId\d+)"', rel)
+        tgt = re.search(r'\bTarget="([^"]+)"', rel)
+        if rid and tgt:
+            rid_to_target[rid.group(1)] = tgt.group(1)
     out: dict[str, str] = {}
-    for name, rid in re.findall(r'<sheet name="([^"]+)"[^>]*r:id="(rId\d+)"', wb):
+    for sheet_tag in re.findall(r"<sheet [^>]*/>", wb):
+        nm = re.search(r'\bname="([^"]+)"', sheet_tag)
+        rm = re.search(r'\br:id="(rId\d+)"', sheet_tag)
+        if not (nm and rm):
+            continue
+        name, rid = nm.group(1), rm.group(1)
         target = rid_to_target[rid]
+        target = target.lstrip("/")
         if not target.startswith("xl/"):
-            target = "xl/" + target.lstrip("/")
+            target = "xl/" + target
         out[name.replace("&amp;", "&")] = target
     return out
 

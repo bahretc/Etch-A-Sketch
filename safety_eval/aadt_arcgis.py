@@ -26,10 +26,18 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 
-STATIONS_URL = ("https://services.arcgis.com/NuWFvHYDMVmmxMeM/ArcGIS/rest/"
-                "services/NCDOT_AADT_Stations/FeatureServer/0")
-SEGMENTS_URL = ("https://services.arcgis.com/NuWFvHYDMVmmxMeM/arcgis/rest/"
-                "services/NCDOT_AADT_Traffic_Segmentation/FeatureServer/2")
+_BASE = "https://services.arcgis.com/NuWFvHYDMVmmxMeM/arcgis/rest/services/"
+# Legacy station layer: yearly columns through AADT_2022 only.
+STATIONS_URL = _BASE + "NCDOT_AADT_Stations/FeatureServer/0"
+SEGMENTS_URL = _BASE + "NCDOT_AADT_Traffic_Segmentation/FeatureServer/2"
+# Current layers (verified 2026-09): the 2025 geodatabase publishes AADT_2002
+# through AADT_2025 per station; the September 2025 official release carries
+# the collection cycle (Coll_Cycle E/O) and Active flag through AADT_2024.
+STATIONS_2025_URL = _BASE + "NCDOT_2025_AADTandTrafficSegments_gdb/FeatureServer/1"
+SEGMENTS_2025_URL = _BASE + "NCDOT_2025_AADTandTrafficSegments_gdb/FeatureServer/0"
+STATIONS_2024_RELEASE_URL = (
+    _BASE + "NCDOT__2024_AADT_Stations_published_September_2025/FeatureServer/0")
+DEFAULT_STATIONS_URL = STATIONS_2025_URL
 
 _YEAR_FIELD_RE = re.compile(r"^(?:AADT[_ ]?|YR[_ ]?|Y)?(19|20)(\d{2})$", re.I)
 
@@ -76,6 +84,14 @@ def _first(attributes: dict, *candidates: str) -> str:
     return ""
 
 
+def _num(attributes: dict, *candidates: str) -> float | None:
+    v = _first(attributes, *candidates)
+    try:
+        return float(v) if v != "" else None
+    except ValueError:
+        return None
+
+
 def parse_features(payload: dict) -> list[AadtStation]:
     """Convert an ArcGIS ``query`` response into :class:`AadtStation` records.
 
@@ -89,17 +105,24 @@ def parse_features(payload: dict) -> list[AadtStation]:
     for feat in payload.get("features", []):
         attrs = feat.get("attributes", {}) or {}
         geom = feat.get("geometry", {}) or {}
-        sid = _first(attrs, "STATION_ID", "STATION", "LOCATION_ID", "LOC_ID",
-                     "SITE_ID", "OBJECTID")
+        sid = _first(attrs, "STATION_ID", "STATION", "LOCATION_ID", "LOCATIONID",
+                     "LOC_ID", "SITE_ID", "OBJECTID")
         st = stations.get(sid)
         if st is None:
+            located = _first(attrs, "LOCATED_ON")
+            approach = _first(attrs, "APPROACH")
+            crossroad = _first(attrs, "CROSSROAD")
+            desc = _first(attrs, "LOCATION", "DESCRIPTION", "LOC_DESC")
+            if not desc and located:
+                desc = " ".join(x for x in (located, approach, crossroad) if x)
             st = AadtStation(
                 station_id=sid,
                 route=_first(attrs, "ROUTE", "ROUTE_NAME", "RTE_NM", "ROAD",
-                             "STREET_NAME"),
+                             "STREET_NAME") or located,
                 county=_first(attrs, "COUNTY", "COUNTY_NAME", "CO_NAME"),
-                location=_first(attrs, "LOCATION", "DESCRIPTION", "LOC_DESC"),
-                x=geom.get("x"), y=geom.get("y"),
+                location=desc,
+                x=geom.get("x") if geom.get("x") is not None else _num(attrs, "LONGITUDE"),
+                y=geom.get("y") if geom.get("y") is not None else _num(attrs, "LATITUDE"),
                 attributes=attrs,
             )
             stations[sid] = st
@@ -130,7 +153,7 @@ def query_stations(
     where: str = "1=1",
     point: tuple[float, float] | None = None,
     radius_meters: float = 800.0,
-    service_url: str = STATIONS_URL,
+    service_url: str = DEFAULT_STATIONS_URL,
     max_records: int = 200,
     timeout: int = 60,
 ) -> list[AadtStation]:

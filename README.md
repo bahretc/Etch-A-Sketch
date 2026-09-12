@@ -80,6 +80,48 @@ The **assignment** is a small YAML you transcribe once from the assignment /
 assumptions email — it is the auditable record of study scope. See
 [`examples/example_assignment.yaml`](examples/example_assignment.yaml).
 
+## Finishing a deliverable (AADT, map block, print, bind, QA, assistant)
+
+The steps that used to be done by hand on a completed package are commands
+and app pages now. Each one keeps the docs/06 rules: XML level edits on a
+copy, every other zip member byte for byte, drawings verified.
+
+```bash
+# Leg AADT table with the black/red convention. Legs take a station id
+# (NCDOT 2025 AADT Stations layer), a manual year:aadt list, or =legN to
+# assume a leg equal to another. Minor legs round to the nearest hundred,
+# 2020 is never representative, the representative year is the last year in
+# each period with a published value on any leg.
+safety-eval aadt-table --leg1 0900000008 --leg2 0900000575 --leg4 0900000621 --leg3 =leg4 \
+  --before-end 2020 --workbook Evaluation.xlsx
+
+# Map/Satellite Views block in the team format (aerial, inset in the corner
+# no leg crosses, a box per leg, north arrow, credit), embedded at H41:K56.
+safety-eval map-block --aerial nearmap.png --inset location_map.png --spec legs.json \
+  --output block.png --workbook Evaluation.xlsx
+
+# Results page printed with LibreOffice at the Excel print's geometry
+# (needs Carlito + Liberation Serif), then bound into the two deliverables.
+safety-eval print-results --workbook Evaluation.xlsx --output page1.pdf \
+  --disclaimer disclaimer.pdf --appendix BEFORE.pdf --appendix AFTER.pdf \
+  --complete "Complete Evaluation.pdf" --web Web.pdf
+
+# Deterministic QA: workbook structure and drawings gate, results text style
+# (no em or en dashes), fiche Type vs T code, AADT colours, PDF assembly.
+safety-eval qa --workbook Evaluation.xlsx --reference original.xlsx \
+  --complete "Complete Evaluation.pdf" --web Web.pdf --diff
+
+# Assistant (drafts and checks only; needs ANTHROPIC_API_KEY)
+safety-eval chat "Run the QA checks on Evaluation.xlsx and summarize"
+```
+
+The Streamlit app (`streamlit run safety_eval/app.py`) has a tab for each of
+these plus a chat page over the session's workspace. `safety-eval doctor`
+reports whether LibreOffice, the fonts, pikepdf, Streamlit and the Anthropic
+SDK are present. Install extras with `pip install -e '.[deliverables,ui,llm]'`
+and, on Debian/Ubuntu, `apt install fonts-crosextra-carlito fonts-liberation
+libreoffice-calc poppler-utils`.
+
 ## Inputs
 
 | Input | Formats | Notes |

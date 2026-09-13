@@ -22,7 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 from .redact import (_NAME_HARVEST_STOP, _band_boxes, _line_has_street_address, _lines, _load_input_pages,
-                     _require, _sub_caption_boxes, ocr_words)
+                     _median_height, _require, _sub_caption_boxes, ocr_words)
 
 _NAME_STOP = _NAME_HARVEST_STOP | {"SAME", "NONE", "NULL", "SELF", "OWNER", "DRIVER", "MALE", "FEMALE", "WHITE",
                                    "BLACK", "OTHER", "HOME", "WORK", "CELL", "NAME", "FIRST", "LAST", "MIDDLE"}
@@ -118,12 +118,15 @@ def _oracle_page(png: str, i: int, pw: int, ph: int) -> dict:
             out["years"].append(int(m.group(3)))
         for m in _PHONE_RE.finditer(text):
             out["phone"].add(re.sub(r"\D", "", m.group(0))[-7:])
+        med_h = _median_height(words) or 1
         for line in _lines(words):
             toks = [w.text for w in line]
             if not _line_has_street_address(toks):
                 continue
             clean = [re.sub(r"[^A-Za-z0-9]", "", t).upper() for t in toks]
-            house_idx = [k for k, c in enumerate(clean) if _HOUSE_NO_RE.match(c) and len(c) >= 3]
+            # typed values are body height; the form's tiny field numerals ("39 Results") are not
+            house_idx = [k for k, c in enumerate(clean)
+                         if _HOUSE_NO_RE.match(c) and len(c) >= 3 and line[k].height >= 0.7 * med_h]
             for k in house_idx:
                 out["address"].add(clean[k])       # the house number itself
                 for c in clean[k + 1:k + 4]:          # the street name follows it

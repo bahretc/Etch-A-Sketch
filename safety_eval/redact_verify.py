@@ -102,7 +102,8 @@ def _band_names(words, pw: int, ph: int) -> set[str]:
 
 
 def _oracle_page(png: str, i: int, pw: int, ph: int) -> dict:
-    out = {"name": set(), "phone": set(), "address": set(), "id": set(), "loc": set(), "years": [], "all": set()}
+    out = {"name": set(), "phone": set(), "address": set(), "id": set(), "loc": set(), "years": [], "all": set(),
+           "address_pair": set()}
     for psm in (11, 3):
         words = ocr_words(png, page=i, psm=psm, timeout=OCR_TIMEOUT, min_conf=0.0)
         out["name"] |= _band_names(words, pw, ph)
@@ -128,10 +129,10 @@ def _oracle_page(png: str, i: int, pw: int, ph: int) -> dict:
             house_idx = [k for k, c in enumerate(clean)
                          if _HOUSE_NO_RE.match(c) and len(c) >= 3 and line[k].height >= 0.7 * med_h]
             for k in house_idx:
-                out["address"].add(clean[k])       # the house number itself
-                for c in clean[k + 1:k + 4]:          # the street name follows it
+                for c in clean[k + 1:k + 4]:          # the street name follows the house number
                     if len(c) >= 5 and c.isalpha() and c not in _ADDRESS_STOP:
-                        out["address"].add(c)
+                        out["address"].add(c)          # the street name on its own identifies
+                        out["address_pair"].add((clean[k], c))   # the number only with its street
         for line in _lines(words):
             # citation numbers on the charges line are not personal identifiers and stay visible
             if any(re.sub(r"[^A-Za-z]", "", w.text).upper().startswith(("CHARGE", "CITATION")) for w in line):
@@ -153,7 +154,7 @@ def _oracle_page(png: str, i: int, pw: int, ph: int) -> dict:
 
 def build_oracle(original_path: str, dpi: int = 200, workers: int = WORKERS, keep_zip: bool = True) -> dict[str, set]:
     """Personal tokens harvested from the original's OCR, by kind (pages OCRed in parallel)."""
-    oracle = {"name": set(), "dob": set(), "phone": set(), "id": set(), "address": set()}
+    oracle = {"name": set(), "dob": set(), "phone": set(), "id": set(), "address": set(), "address_pair": set()}
     with tempfile.TemporaryDirectory(prefix="oracle-") as tmp:
         pages, _ = _load_input_pages(original_path, tmp, dpi)
         jobs = []
@@ -165,7 +166,7 @@ def build_oracle(original_path: str, dpi: int = 200, workers: int = WORKERS, kee
             results = list(ex.map(lambda j: _oracle_page(*j), jobs))
     loc_words: set[str] = set()
     for r in results:
-        for kind in ("name", "phone", "address", "id", "dob"):
+        for kind in ("name", "phone", "address", "id", "dob", "address_pair"):
             oracle[kind] |= r[kind]
         loc_words |= r["loc"]
     # a token printed on many pages of the original is form vocabulary (a caption, the form
@@ -175,8 +176,7 @@ def build_oracle(original_path: str, dpi: int = 200, workers: int = WORKERS, kee
     limit = 4
     for kind in ("name", "address"):
         oracle[kind] = {t for t in oracle[kind] if sum(1 for r in results if t in r["all"]) <= limit}
-    if keep_zip:      # five digit ZIP codes stay visible by design (NC ZIPs 27000 to 28999)
-        oracle["address"] = {t for t in oracle["address"] if not (t.isdigit() and len(t) == 5 and t[:2] in ("27", "28"))}
+    oracle["address_pair"] = {(h, st) for h, st in oracle["address_pair"] if st in oracle["address"]}
     for kind in ("name", "address", "id", "phone"):
         oracle[kind] -= loc_words
     # crash ids, route ids and anything printed in the location block must not count
@@ -199,12 +199,13 @@ def _verify_page(png: str, i: int, oracle: dict) -> tuple[list, list]:
                 hit = t in digit_tokens or any(d.endswith(t) and len(d) <= len(t) + 3 for d in digit_tokens)
             elif kind == "dob":
                 hit = t in txt or t.replace("/", "") in digit_tokens
-            elif kind == "address" and t.isdigit():
-                hit = t in bare_digit_tokens
+            elif kind == "address_pair":
+                house, street = t
+                hit = re.search(rf"\b{house}\b\W+(?:\w+\W+){{0,2}}{re.escape(street)}\b", txt) is not None
             else:
                 hit = re.search(rf"\b{re.escape(t)}\b", txt) is not None
             if hit:
-                leaks.append((i + 1, kind, _mask(t)))
+                leaks.append((i + 1, kind, _mask(" ".join(t) if isinstance(t, tuple) else t)))
     for m in _PHONE_RE.finditer(txt):
         patterns.append((i + 1, "phone-pattern", _mask(m.group(0))))
     return leaks, patterns

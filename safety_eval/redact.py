@@ -542,9 +542,12 @@ def ocr_words(image_path: str, page: int = 0, timeout: int = 120,
               min_conf: float = 30.0, psm: int = 11) -> list[Word]:
     """OCR one page image into word boxes via tesseract TSV."""
     tesseract = _require("tesseract")
+    # one OpenMP thread per tesseract process: the callers parallelise across
+    # pages, and oversubscribed OMP threads make every page many times slower
+    env = {**os.environ, "OMP_THREAD_LIMIT": "1"}
     proc = subprocess.run(
         [tesseract, image_path, "stdout", "--psm", str(psm), "tsv"],
-        capture_output=True, text=True, timeout=timeout, check=True)
+        capture_output=True, text=True, timeout=timeout, check=True, env=env)
     words: list[Word] = []
     # QUOTE_NONE is load-bearing: tesseract TSV never quotes, and default
     # csv quoting makes a stray OCR'd " glyph swallow every following row

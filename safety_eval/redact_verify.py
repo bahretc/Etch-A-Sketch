@@ -75,7 +75,7 @@ def _ocr_text(png: str, timeout: int = OCR_TIMEOUT) -> str:
     out = ""
     for psm in ("3", "11"):
         r = subprocess.run([tesseract, png, "stdout", "--psm", psm], capture_output=True, text=True,
-                           timeout=timeout)
+                           timeout=timeout, env={**os.environ, "OMP_THREAD_LIMIT": "1"})
         out += "\n" + r.stdout
     return out.upper()
 

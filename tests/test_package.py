@@ -63,10 +63,11 @@ def test_finish_without_print_runs_qa_and_zips(tmp_path):
                          reference_workbook=TEMPLATE, zip_out=str(tmp_path / "fin.zip"))
     rep = finish_package(str(root), opts)
     names = [s.name for s in rep.steps]
-    assert names == ["QA checks", "zip"] and rep.ok, [(s.name, s.detail) for s in rep.steps]
+    assert names == ["QA checks", "QA certificate", "zip"] and rep.ok, [(s.name, s.detail) for s in rep.steps]
     assert os.path.exists(rep.zip_path)
     logs = [f for f in os.listdir(root / "Notes") if f.startswith("QA Checks")]
     assert logs and "Verified" in (root / "Notes" / logs[0]).read_text()
+    assert rep.certificate and os.path.exists(rep.certificate) and rep.certificate.endswith(".docx")
 
 
 def test_finish_reports_missing_workbook(tmp_path):

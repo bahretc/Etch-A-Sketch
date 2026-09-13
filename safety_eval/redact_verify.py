@@ -18,6 +18,7 @@ import os
 import re
 import subprocess
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 from .redact import (_line_has_street_address, _lines, _load_input_pages, _require, harvest_name_tokens,
@@ -65,7 +66,11 @@ class RedactionVerification:
                 f"{sorted({p for p, _, _ in self.leaks + self.patterns})}; see details.")
 
 
-def _ocr_text(png: str, timeout: int = 300) -> str:
+OCR_TIMEOUT = 900
+WORKERS = max(1, (os.cpu_count() or 2) // 2)
+
+
+def _ocr_text(png: str, timeout: int = OCR_TIMEOUT) -> str:
     tesseract = _require("tesseract")
     out = ""
     for psm in ("3", "11"):
@@ -75,60 +80,67 @@ def _ocr_text(png: str, timeout: int = 300) -> str:
     return out.upper()
 
 
-def build_oracle(original_path: str, dpi: int = 200, era_margin: int = 2) -> dict[str, set]:
-    """Personal tokens harvested from the original's OCR, by kind."""
+def _oracle_page(png: str, i: int, pw: int, ph: int) -> dict:
+    out = {"name": set(), "phone": set(), "address": set(), "id": set(), "loc": set(), "years": []}
+    for psm in (11, 3):
+        words = ocr_words(png, page=i, psm=psm, timeout=OCR_TIMEOUT, min_conf=0.0)
+        out["name"] |= harvest_name_tokens(words, pw, ph)
+        for w in words:
+            if w.top < 0.25 * ph:          # location block: routes, crash id, dates, coordinates
+                out["loc"].add(re.sub(r"[^A-Za-z]", "", w.text).upper())
+                out["loc"].add(re.sub(r"\D", "", w.text))
+        text = " ".join(w.text for w in words)
+        for m in _DATE_RE.finditer(text):
+            out["years"].append(int(m.group(3)))
+        for m in _PHONE_RE.finditer(text):
+            out["phone"].add(re.sub(r"\D", "", m.group(0))[-7:])
+        for line in _lines(words):
+            toks = [w.text for w in line]
+            if not _line_has_street_address(toks):
+                continue
+            clean = [re.sub(r"[^A-Za-z0-9]", "", t).upper() for t in toks]
+            house_idx = [k for k, c in enumerate(clean) if _HOUSE_NO_RE.match(c) and len(c) >= 3]
+            for k in house_idx:
+                out["address"].add(clean[k])       # the house number itself
+                for c in clean[k + 1:k + 4]:          # the street name follows it
+                    if len(c) >= 5 and c.isalpha() and c not in _ADDRESS_STOP:
+                        out["address"].add(c)
+        for w in words:
+            raw = w.text.strip().strip(",;:")
+            # licence, policy and similar numbers print as plain digit runs (a hyphen at most);
+            # dates, coordinates and decimals never count
+            if w.conf >= 40 and re.fullmatch(r"\d[\d-]{5,8}\d", raw) and _ID_RE.fullmatch(re.sub(r"\D", "", raw)):
+                out["id"].add(re.sub(r"\D", "", raw))
+    out["dates"] = [m.group(0) for m in _DATE_RE.finditer(_ocr_text(png))]
+    return out
+
+
+def build_oracle(original_path: str, dpi: int = 200, era_margin: int = 2, workers: int = WORKERS) -> dict[str, set]:
+    """Personal tokens harvested from the original's OCR, by kind (pages OCRed in parallel)."""
     oracle = {"name": set(), "dob": set(), "phone": set(), "id": set(), "address": set()}
     with tempfile.TemporaryDirectory(prefix="oracle-") as tmp:
         pages, _ = _load_input_pages(original_path, tmp, dpi)
-        loc_words: set[str] = set()
-        all_years: list[int] = []
+        jobs = []
         for i, img in enumerate(pages):
             png = os.path.join(tmp, f"o-{i}.png")
             img.save(png)
-            pw, ph = img.size
-            for psm in (11, 3):
-                words = ocr_words(png, page=i, psm=psm, timeout=300, min_conf=0.0)
-                oracle["name"] |= harvest_name_tokens(words, pw, ph)
-                for w in words:
-                    if w.top < 0.25 * ph:          # location block: routes, crash id, dates, coordinates
-                        loc_words.add(re.sub(r"[^A-Za-z]", "", w.text).upper())
-                        loc_words.add(re.sub(r"\D", "", w.text))
-                text = " ".join(w.text for w in words)
-                for m in _DATE_RE.finditer(text):
-                    all_years.append(int(m.group(3)))
-                for m in _PHONE_RE.finditer(text):
-                    oracle["phone"].add(re.sub(r"\D", "", m.group(0))[-7:])
-                for line in _lines(words):
-                    toks = [w.text for w in line]
-                    if not _line_has_street_address(toks):
-                        continue
-                    clean = [re.sub(r"[^A-Za-z0-9]", "", t).upper() for t in toks]
-                    if not any(_HOUSE_NO_RE.match(c) for c in clean):
-                        continue
-                    house_idx = [k for k, c in enumerate(clean) if _HOUSE_NO_RE.match(c) and len(c) >= 3]
-                    for k in house_idx:
-                        oracle["address"].add(clean[k])       # the house number itself
-                        for c in clean[k + 1:k + 4]:          # the street name follows it
-                            if len(c) >= 5 and c.isalpha() and c not in _ADDRESS_STOP:
-                                oracle["address"].add(c)
-                for w in words:
-                    raw = w.text.strip().strip(",;:")
-                    # licence, policy and similar numbers print as plain digit runs (a hyphen at most);
-                    # dates, coordinates and decimals never count
-                    if w.conf >= 40 and re.fullmatch(r"\d[\d-]{5,8}\d", raw) and _ID_RE.fullmatch(re.sub(r"\D", "", raw)):
-                        oracle["id"].add(re.sub(r"\D", "", raw))
-            # DOB: dates well before the crash era (the report's own dates cluster at the era)
-        era = max(all_years) if all_years else None
-        for i, img in enumerate(pages):
-            pass
-        if era:
-            with tempfile.TemporaryDirectory(prefix="oracle2-") as tmp2:
-                for i, img in enumerate(pages):
-                    png = os.path.join(tmp2, f"o-{i}.png")
-                    img.save(png)
-                    for m in _DATE_RE.finditer(_ocr_text(png)):
-                        if int(m.group(3)) <= era - era_margin:
-                            oracle["dob"].add(m.group(0))
+            jobs.append((png, i, img.size[0], img.size[1]))
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            results = list(ex.map(lambda j: _oracle_page(*j), jobs))
+    loc_words: set[str] = set()
+    all_years: list[int] = []
+    all_dates: list[str] = []
+    for r in results:
+        for kind in ("name", "phone", "address", "id"):
+            oracle[kind] |= r[kind]
+        loc_words |= r["loc"]
+        all_years += r["years"]
+        all_dates += r["dates"]
+    era = max(all_years) if all_years else None
+    if era:
+        for d in all_dates:
+            if int(d.split("/")[-1]) <= era - era_margin:
+                oracle["dob"].add(d)
     for kind in ("name", "address", "id", "phone"):
         oracle[kind] -= loc_words
     # crash ids, route ids and anything printed in the location block must not count
@@ -137,34 +149,47 @@ def build_oracle(original_path: str, dpi: int = 200, era_margin: int = 2) -> dic
     return oracle
 
 
+def _verify_page(png: str, i: int, oracle: dict) -> tuple[list, list]:
+    leaks, patterns = [], []
+    txt = _ocr_text(png)
+    # digit runs per token (hyphens and dots inside a token collapse); never across words
+    digit_tokens = {re.sub(r"\D", "", w) for w in txt.split()}
+    digit_tokens = {d for d in digit_tokens if d}
+    for kind, toks in oracle.items():
+        for t in toks:
+            if kind in ("phone", "id"):
+                hit = t in digit_tokens or any(d.endswith(t) and len(d) <= len(t) + 3 for d in digit_tokens)
+            elif kind == "dob":
+                hit = t in txt or t.replace("/", "") in digit_tokens
+            elif kind == "address" and t.isdigit():
+                hit = t in digit_tokens
+            else:
+                hit = re.search(rf"\b{re.escape(t)}\b", txt) is not None
+            if hit:
+                leaks.append((i + 1, kind, _mask(t)))
+    for m in _PHONE_RE.finditer(txt):
+        patterns.append((i + 1, "phone-pattern", _mask(m.group(0))))
+    return leaks, patterns
+
+
 def verify_redaction(original_path: str, redacted_pdf: str, dpi: int = 200,
-                     oracle: dict | None = None) -> RedactionVerification:
-    """OCR the redacted output and search it for the original's personal tokens."""
+                     oracle: dict | None = None, workers: int = WORKERS) -> RedactionVerification:
+    """OCR the redacted output (pages in parallel) and search it for the original's personal tokens."""
     rep = RedactionVerification()
-    oracle = oracle or build_oracle(original_path, dpi)
+    oracle = oracle or build_oracle(original_path, dpi, workers=workers)
     rep.oracle_size = sum(len(v) for v in oracle.values())
     with tempfile.TemporaryDirectory(prefix="verify-") as tmp:
         pages, _ = _load_input_pages(redacted_pdf, tmp, dpi)
         rep.pages = len(pages)
+        jobs = []
         for i, img in enumerate(pages):
             png = os.path.join(tmp, f"r-{i}.png")
             img.save(png)
-            txt = _ocr_text(png)
-            # digit runs per token (hyphens and dots inside a token collapse); never across words
-            digit_tokens = {re.sub(r"\D", "", w) for w in txt.split()}
-            digit_tokens = {d for d in digit_tokens if d}
-            for kind, toks in oracle.items():
-                for t in toks:
-                    if kind in ("phone", "id"):
-                        hit = t in digit_tokens or any(d.endswith(t) and len(d) <= len(t) + 3 for d in digit_tokens)
-                    elif kind == "dob":
-                        hit = t in txt or t.replace("/", "") in digit_tokens
-                    elif kind == "address" and t.isdigit():
-                        hit = t in digit_tokens
-                    else:
-                        hit = re.search(rf"\b{re.escape(t)}\b", txt) is not None
-                    if hit:
-                        rep.leaks.append((i + 1, kind, _mask(t)))
-            for m in _PHONE_RE.finditer(txt):
-                rep.patterns.append((i + 1, "phone-pattern", _mask(m.group(0))))
+            jobs.append((png, i))
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            for leaks, patterns in ex.map(lambda j: _verify_page(j[0], j[1], oracle), jobs):
+                rep.leaks += leaks
+                rep.patterns += patterns
+    rep.leaks.sort()
+    rep.patterns.sort()
     return rep

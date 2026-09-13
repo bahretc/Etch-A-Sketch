@@ -391,6 +391,8 @@ def page_qa(st, ws: str) -> None:
             md = sweep_to_markdown(rep, title=f"QA sweep, {os.path.basename(pkg_dir)}")
             st.session_state["sweep_md"] = md
             c = len(rep.by_status("CONFIRMED")); r = len(rep.by_status("REFUTED")); p_ = len(rep.by_status("PARTIAL"))
+            st.session_state["sweep_summary"] = {"confirmed": c, "partial": p_, "refuted": r,
+                                                 "items": [f"{f.id} [{f.severity}] {f.where}: {f.claim}" for f in rep.by_status("CONFIRMED")]}
             st.success(f"{len(rep.findings)} findings: {c} confirmed, {p_} partial, {r} refuted. Tokens: {rep.usage}")
         if st.session_state.get("sweep_md"):
             st.markdown(st.session_state["sweep_md"])
@@ -528,12 +530,15 @@ def page_finish(st, ws: str) -> None:
         opts = FinishOptions(map_block_png=st.session_state.get("map_block") if use_map else None,
                              disclaimer_pdf=_save_upload(disc_up, ws), redact_reports=redact, strip_tip_prefix=strip,
                              reference_workbook=_save_upload(ref_up, ws), lossless_aerial=lossless,
-                             zip_out=os.path.join(ws, "package_out.zip"))
+                             zip_out=os.path.join(ws, "package_out.zip"),
+                             sweep_summary=st.session_state.get("sweep_summary"))
         rep = finish_package(pkg_dir, opts, progress=_p)
         st.table([{"step": s.name, "ok": "✅" if s.ok else "❌", "detail": s.detail[:160]} for s in rep.steps])
         if rep.qa_text:
             with st.expander("QA checks"):
                 st.code(rep.qa_text)
+        if rep.certificate and os.path.exists(rep.certificate):
+            _download(st, "Download QA certificate (.docx)", rep.certificate)
         if rep.zip_path and os.path.exists(rep.zip_path):
             from safety_eval.package import clean_name
             _download(st, "Download finished package zip", rep.zip_path,

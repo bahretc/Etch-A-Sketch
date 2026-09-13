@@ -84,6 +84,7 @@ class FinishOptions:
     zip_out: str | None = None
     reference_workbook: str | None = None
     lossless_aerial: bool = False
+    sweep_summary: dict | None = None      # from the multi-agent sweep, goes on the certificate
 
 
 @dataclass
@@ -97,9 +98,12 @@ class StepResult:
 class FinishReport:
     steps: list = field(default_factory=list)
     qa_text: str = ""
+    qa_report: object = None
     zip_path: str | None = None
     complete_pdf: str | None = None
     web_pdf: str | None = None
+    certificate: str | None = None
+    redaction_lines: list = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
@@ -168,6 +172,7 @@ def finish_package(root: str, opts: FinishOptions | None = None, progress=None) 
                     if not v.clean:
                         raise RuntimeError(line)
                 lines.append(line)
+            rep.redaction_lines = lines
             return "; ".join(lines)
         step("redact crash reports", _redact)
 
@@ -218,6 +223,7 @@ def finish_package(root: str, opts: FinishOptions | None = None, progress=None) 
             r = run_package_checks(pkg.workbook, opts.reference_workbook, rep.complete_pdf or pkg.complete_pdf,
                                    rep.web_pdf or pkg.web_pdf, [p for p in (pkg.before_pdf, pkg.after_pdf) if p])
             rep.qa_text = format_report(r)
+            rep.qa_report = r
             os.makedirs(pkg.notes_dir, exist_ok=True)
             with open(os.path.join(pkg.notes_dir, f"QA Checks {date.today().isoformat()}.md"), "w", encoding="utf-8") as fh:
                 fh.write(f"# Deterministic QA checks, {date.today().isoformat()}\n\n" + rep.qa_text + "\n")
@@ -225,7 +231,30 @@ def finish_package(root: str, opts: FinishOptions | None = None, progress=None) 
             return f"{len(r.findings)} finding(s), {n_hm} High/Medium"
         step("QA checks", _qa)
 
-    # 5. zip
+    # 5. QA certificate for the reviewer (docx in Notes)
+    if opts.run_qa:
+        from .certificate import CertificateData, write_certificate
+
+        def _cert():
+            inv = []
+            for dp, _, fn in os.walk(root):
+                for f in sorted(fn):
+                    if not f.startswith("."):
+                        inv.append(os.path.relpath(os.path.join(dp, f), root))
+            r = rep.qa_report
+            data = CertificateData(
+                package_name=clean_name(os.path.basename(os.path.normpath(root))) if opts.strip_tip_prefix else os.path.basename(os.path.normpath(root)),
+                prepared_by=opts.author, results=workbook_summary(pkg.workbook), inventory=inv,
+                steps=[(s.name, s.ok, s.detail) for s in rep.steps],
+                qa_findings=[(f.severity, f.where, f.claim) for f in (r.findings if r else [])],
+                qa_verified=list(r.verified) if r else [], sweep=opts.sweep_summary or {},
+                redaction=rep.redaction_lines)
+            os.makedirs(pkg.notes_dir, exist_ok=True)
+            rep.certificate = write_certificate(data, os.path.join(pkg.notes_dir, f"QA Certificate {date.today().isoformat()}.docx"))
+            return os.path.basename(rep.certificate)
+        step("QA certificate", _cert)
+
+    # 6. zip
     def _zip():
         out = opts.zip_out or os.path.join(os.path.dirname(os.path.normpath(root)),
                                            (clean_name(os.path.basename(os.path.normpath(root))) if opts.strip_tip_prefix

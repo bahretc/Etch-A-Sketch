@@ -25,6 +25,7 @@ You help check and draft, the engineer decides. Rules you must keep:
 - Intersection studies are road-combination dependent, strip studies are milepost dependent.
 - Never claim a check was run unless a tool returned it. Quote cell addresses and file names when you cite evidence.
 - When asked to draft Items for Discussion or similar text, draft it as bullets the engineer can paste, then run the style check tool on it.
+- Tools you have: run_qa_checks, query_aadt_stations, read_cells, package_summary, verify_redaction, list_files, style_check. Use package_summary first when a package folder is mentioned.
 Keep answers short and concrete."""
 
 
@@ -58,6 +59,20 @@ def _tool_defs() -> list[dict]:
              "workbook": {"type": "string"}, "sheet": {"type": "string"},
              "cell_range": {"type": "string"}},
              "required": ["workbook", "sheet", "cell_range"], "additionalProperties": False}, "strict": True},
+        {"name": "package_summary",
+         "description": "Inventory a package folder (workbook, TEAAS reports, deliverables, crash reports, notes) "
+                        "and the headline numbers of its results page.",
+         "input_schema": {"type": "object", "properties": {"package_dir": {"type": "string"}},
+                          "required": ["package_dir"], "additionalProperties": False}, "strict": True},
+        {"name": "verify_redaction",
+         "description": "OCR a redacted crash report PDF and search it for the personal tokens of the original "
+                        "(names, DOB, phone, licence numbers, addresses). Returns masked hits only.",
+         "input_schema": {"type": "object", "properties": {"original": {"type": "string"}, "redacted_pdf": {"type": "string"}},
+                          "required": ["original", "redacted_pdf"], "additionalProperties": False}, "strict": True},
+        {"name": "list_files",
+         "description": "List files under a folder (relative paths and sizes).",
+         "input_schema": {"type": "object", "properties": {"folder": {"type": "string"}},
+                          "required": ["folder"], "additionalProperties": False}, "strict": True},
         {"name": "style_check",
          "description": "Check draft report text against the docs/05 style rules (dashes, placeholders).",
          "input_schema": {"type": "object", "properties": {"text": {"type": "string"}},
@@ -95,6 +110,25 @@ def _run_tool(name: str, inp: dict, allowed_dirs: list[str] | None) -> str:
         for row in ws[inp["cell_range"]]:
             rows.append({c.coordinate: c.value for c in row if c.value is not None})
         return json.dumps(rows, default=str)
+    if name == "package_summary":
+        from .package import discover, workbook_summary
+        pkg = discover(_check_path(inp["package_dir"]))
+        out = {k: v for k, v in pkg.__dict__.items()}
+        if pkg.workbook:
+            out["results"] = {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in workbook_summary(pkg.workbook).items()}
+        return json.dumps(out, default=str)
+    if name == "verify_redaction":
+        from .redact_verify import verify_redaction
+        v = verify_redaction(_check_path(inp["original"]), _check_path(inp["redacted_pdf"]))
+        return json.dumps({"clean": v.clean, "summary": v.summary(), "leaks": v.leaks, "patterns": v.patterns})
+    if name == "list_files":
+        root = _check_path(inp["folder"])
+        rows = []
+        for dp, _, fn in os.walk(root):
+            for f in sorted(fn):
+                p = os.path.join(dp, f)
+                rows.append(f"{os.path.relpath(p, root)} ({os.path.getsize(p)} bytes)")
+        return "\n".join(rows[:400])
     if name == "style_check":
         from .qa_checks import DASHES
         text = inp["text"]

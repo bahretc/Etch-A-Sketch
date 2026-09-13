@@ -223,6 +223,21 @@ def page_map(st, ws: str) -> None:
     aerial_up = c1.file_uploader("Aerial (PNG/JPG, junction near the centre)", type=["png", "jpg", "jpeg"], key="map_aerial")
     inset_up = c2.file_uploader("Location map (PNG/JPG)", type=["png", "jpg", "jpeg"], key="map_inset")
     credit = st.text_input("Imagery credit", "Nearmap imagery", key="map_credit")
+    with st.expander("No Nearmap export? Fetch Esri World Imagery for a point"):
+        e1, e2, e3 = st.columns(3)
+        elat = e1.number_input("Latitude", value=35.081578, format="%.6f", key="esri_lat")
+        elon = e2.number_input("Longitude", value=-80.500362, format="%.6f", key="esri_lon")
+        ewid = e3.number_input("Ground width (m)", value=520, step=20, key="esri_w")
+        if st.button("Fetch Esri aerial", key="esri_fetch"):
+            from safety_eval.map_block import fetch_esri_world_imagery
+            try:
+                img = fetch_esri_world_imagery(elat, elon, ground_width_m=float(ewid))
+                p = os.path.join(ws, "esri_aerial.png")
+                img.save(p)
+                st.session_state["esri_aerial"] = p
+                st.image(p, caption="Esri World Imagery (credit: Esri, Maxar, Earthstar Geographics)", use_container_width=True)
+            except Exception as exc:  # noqa: BLE001
+                st.error(f"Fetch failed: {exc}")
     st.markdown("**Legs** (direction in image pixels from the junction, x right, y down)")
     rows = st.data_editor([
         {"route": "SR 1001", "name": "Sikes Mill Road", "speed": 45, "aadt": 3200, "year": 2025, "dx": 437, "dy": -481, "side": 1, "distance": 420},
@@ -230,9 +245,12 @@ def page_map(st, ws: str) -> None:
         {"route": "SR 1617", "name": "Tom Boyd Road", "speed": 45, "aadt": 1900, "year": 2025, "dx": -513, "dy": -481, "side": 1, "distance": 420},
         {"route": "SR 1619", "name": "Tom Boyd Road", "speed": 45, "aadt": 1900, "year": 2025, "dx": 813, "dy": 509, "side": -1, "distance": 430},
     ], num_rows="dynamic", key="map_legs")
-    if aerial_up:
+    aerial_path = _save_upload(aerial_up, ws) if aerial_up else st.session_state.get("esri_aerial")
+    if aerial_path:
         from PIL import Image
-        aerial = Image.open(_save_upload(aerial_up, ws)).convert("RGB")
+        aerial = Image.open(aerial_path).convert("RGB")
+        if not aerial_up and not credit.lower().startswith("esri"):
+            credit = "Esri World Imagery"
         cx = st.number_input("Junction x (px)", value=aerial.width // 2, key="map_cx")
         cy = st.number_input("Junction y (px)", value=aerial.height // 2, key="map_cy")
         crop_w = st.number_input("Crop width (px)", value=min(aerial.width, 2600), key="map_cw")
@@ -344,21 +362,215 @@ def page_qa(st, ws: str) -> None:
                     st.dataframe([{"cell": c, "reference": str(a), "value": str(b)} for c, a, b in d[:400]])
 
 
+    st.markdown("---")
+    st.markdown("**Multi-agent QA sweep** (six reviewers, three refuters, Claude Opus 5)")
+    from safety_eval.chat import Assistant
+    from safety_eval.qa_sweep import DIMENSIONS
+    pkg_dir = st.session_state.get("package_dir")
+    if not pkg_dir:
+        st.info("Load a package zip on the Home tab first; the sweep reads the whole folder.")
+    elif not Assistant.available():
+        st.info("Set ANTHROPIC_API_KEY to run the sweep.")
+    else:
+        dims = st.multiselect("Dimensions", list(DIMENSIONS), default=list(DIMENSIONS),
+                              format_func=lambda k: DIMENSIONS[k][0], key="sweep_dims")
+        c1, c2 = st.columns(2)
+        refuters = c1.number_input("Refuters per finding", 0, 5, 3, key="sweep_ref")
+        effort = c2.selectbox("Effort", ["medium", "high", "xhigh", "max"], index=1, key="sweep_effort")
+        if st.button("Run sweep", type="primary", key="sweep_run"):
+            from safety_eval.qa_sweep import gather_context, run_sweep, sweep_to_markdown
+            log = st.empty()
+            lines = []
+            def _p(m):
+                lines.append(m)
+                log.code("\n".join(lines))
+            with st.spinner("Reading the package"):
+                ctx = gather_context(pkg_dir)
+            _p(f"context: {len(ctx)} parts, {sum(len(v) for v in ctx.values())} chars")
+            rep = run_sweep(ctx, dimensions=dims, n_refuters=int(refuters), effort=effort, progress=_p)
+            md = sweep_to_markdown(rep, title=f"QA sweep, {os.path.basename(pkg_dir)}")
+            st.session_state["sweep_md"] = md
+            c = len(rep.by_status("CONFIRMED")); r = len(rep.by_status("REFUTED")); p_ = len(rep.by_status("PARTIAL"))
+            st.success(f"{len(rep.findings)} findings: {c} confirmed, {p_} partial, {r} refuted. Tokens: {rep.usage}")
+        if st.session_state.get("sweep_md"):
+            st.markdown(st.session_state["sweep_md"])
+            st.download_button("Download sweep report (.md)", st.session_state["sweep_md"], file_name="QA sweep.md")
+
+
+# --------------------------------------------------------------------------- #
+def page_home(st, ws: str) -> None:
+    from safety_eval.package import discover, workbook_summary
+    from safety_eval.print_results import fonts_report, soffice_path
+
+    st.caption("Load a package zip (the team's WO folder) and every tab works on it. "
+               "Or work file by file on the other tabs.")
+    zip_up = st.file_uploader("Package zip", type=["zip"], key="home_zip")
+    if zip_up and st.button("Load package", type="primary", key="home_load"):
+        import zipfile
+        dest = os.path.join(ws, "package")
+        if os.path.isdir(dest):
+            import shutil
+            shutil.rmtree(dest)
+        with zipfile.ZipFile(_save_upload(zip_up, ws)) as z:
+            z.extractall(dest)
+        tops = [d for d in os.listdir(dest) if os.path.isdir(os.path.join(dest, d))]
+        st.session_state["package_dir"] = os.path.join(dest, tops[0]) if len(tops) == 1 else dest
+    pkg_dir = st.session_state.get("package_dir")
+    c1, c2 = st.columns([2, 1])
+    with c2:
+        st.markdown("**Tool chain**")
+        fr = fonts_report()
+        import shutil as _sh
+        rows = {"LibreOffice": bool(soffice_path()), "Carlito (Calibri metrics)": fr.get("carlito", False),
+                "Liberation Serif": fr.get("liberation_serif", False), "tesseract (redaction)": bool(_sh.which("tesseract")),
+                "poppler (pdftoppm)": bool(_sh.which("pdftoppm"))}
+        for mod in ("pikepdf", "matplotlib", "anthropic"):
+            try:
+                __import__(mod)
+                rows[mod] = True
+            except ImportError:
+                rows[mod] = False
+        rows["ANTHROPIC_API_KEY"] = bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
+        for k, v in rows.items():
+            st.write(("✅ " if v else "⚠️ ") + k)
+    with c1:
+        if pkg_dir:
+            pkg = discover(pkg_dir)
+            st.markdown(f"**Package:** `{os.path.basename(pkg_dir)}`")
+            st.write({"workbook": os.path.basename(pkg.workbook) if pkg.workbook else None,
+                      "TEAAS reports": [os.path.basename(p) for p in (pkg.before_pdf, pkg.after_pdf) if p],
+                      "deliverables": [os.path.basename(p) for p in (pkg.complete_pdf, pkg.web_pdf) if p],
+                      "disclaimer": bool(pkg.disclaimer_pdf), "crash reports to redact": len(pkg.crash_reports),
+                      "notes": sorted(os.listdir(pkg.notes_dir)) if pkg.notes_dir and os.path.isdir(pkg.notes_dir) else []})
+            if pkg.workbook:
+                st.session_state["workbook"] = pkg.workbook
+                summ = workbook_summary(pkg.workbook)
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("Total crashes", f"{summ.get('total_before')} → {summ.get('total_after')}")
+                m2.metric("Severity index", f"{summ.get('si_before') or 0:.2f} → {summ.get('si_after') or 0:.2f}")
+                m3.metric("Target crashes", f"{summ.get('target_before')} → {summ.get('target_after')}")
+                m4.metric(str(summ.get("volume_label") or "Volume"), f"{summ.get('volume_before')} → {summ.get('volume_after')}")
+                st.write({k: (v.date().isoformat() if hasattr(v, "date") else v) for k, v in summ.items()
+                          if k in ("order_id", "project_id", "location", "county", "date")})
+        else:
+            st.info("No package loaded.")
+    files = []
+    for dp, _, fn in os.walk(ws):
+        for f in fn:
+            files.append(os.path.relpath(os.path.join(dp, f), ws))
+    with st.expander(f"Workspace files ({len(files)})"):
+        st.write(sorted(files))
+
+
+# --------------------------------------------------------------------------- #
+def page_diagram(st, ws: str) -> None:
+    from safety_eval.collision_diagram import CrashSymbol, Feature, StripSpec, draw_strip_diagram, parse_units
+
+    st.caption("Strip collision diagram: fan-out callouts with leaders to the true milepost, arrows by travel "
+               "direction, open square for a stopped unit, colour by severity, N/W flags for night and wet.")
+    c1, c2, c3 = st.columns(3)
+    title = c1.text_input("Title", "Collision Diagram - Order 41000079307 (PH 77S00141)", key="cd_title")
+    mp0 = c2.number_input("Begin MP", value=1.31, format="%.3f", key="cd_mp0")
+    mp1 = c3.number_input("End MP", value=1.80, format="%.3f", key="cd_mp1")
+    subtitle = st.text_input("Subtitle", "SR 1320 (Milk Dairy Road), Stone Drive (MP 1.31) to SR 1387 (Springside Road) (MP 1.80)", key="cd_sub")
+    feats = st.text_input("Features (mp:label; ...)", "1.31:Stone Dr; 1.45:SR 1321; 1.80:SR 1387 (Springside Rd)", key="cd_feats")
+    rows = st.data_editor([
+        {"crash_id": "107089722", "mp": 1.450, "units": "W:mv", "type": "FO", "severity": "B", "date": "09/23/22", "night": True, "wet": False},
+        {"crash_id": "107304540", "mp": 1.469, "units": "W:mv;W:st", "type": "RE", "severity": "O", "date": "04/14/23", "night": False, "wet": False},
+    ], num_rows="dynamic", key="cd_rows")
+    csv_up = st.file_uploader("Or upload a CSV (crash_id,mp,units,type,severity,date,night,wet)", type=["csv"], key="cd_csv")
+    if st.button("Draw diagram", type="primary", key="cd_draw"):
+        if csv_up:
+            from safety_eval.collision_diagram import load_csv
+            crashes = load_csv(_save_upload(csv_up, ws))
+        else:
+            crashes = [CrashSymbol(str(r["crash_id"]), float(r["mp"]), parse_units(str(r.get("units") or "")),
+                                   str(r.get("type") or ""), str(r.get("severity") or "O")[:1].upper(), str(r.get("date") or ""),
+                                   bool(r.get("night")), bool(r.get("wet"))) for r in rows if r.get("crash_id")]
+        features = []
+        for tok in feats.split(";"):
+            if ":" in tok:
+                mp, _, label = tok.strip().partition(":")
+                features.append(Feature(float(mp), label.strip()))
+        out = draw_strip_diagram(crashes, StripSpec(title, subtitle, float(mp0), float(mp1), features),
+                                 os.path.join(ws, "collision_diagram"))
+        st.image(out["png"], use_container_width=True)
+        st.write(out)
+        _download(st, "Download diagram PDF", out["pdf"])
+
+
+# --------------------------------------------------------------------------- #
+def page_finish(st, ws: str) -> None:
+    from safety_eval.package import FinishOptions, discover, finish_package
+
+    pkg_dir = st.session_state.get("package_dir")
+    st.caption("One pass over the loaded package: redact and verify crash reports, embed the map block, print the "
+               "results page, bind Complete Evaluation and Web, run the QA checks, write the QA log, zip with clean names.")
+    if not pkg_dir:
+        st.info("Load a package zip on the Home tab first.")
+        return
+    pkg = discover(pkg_dir)
+    st.write({"workbook": os.path.basename(pkg.workbook or ""), "crash reports": len(pkg.crash_reports),
+              "disclaimer": bool(pkg.disclaimer_pdf), "TEAAS": [os.path.basename(p) for p in (pkg.before_pdf, pkg.after_pdf) if p]})
+    c1, c2 = st.columns(2)
+    use_map = c1.checkbox("Embed the map block from the Map Block tab", bool(st.session_state.get("map_block")), key="fin_map")
+    strip = c1.checkbox("Drop 'TIP #' from file and folder names", True, key="fin_strip")
+    redact = c2.checkbox("Redact and verify crash reports", True, key="fin_redact")
+    lossless = c2.checkbox("Lossless aerial", False, key="fin_lossless")
+    disc_up = st.file_uploader("Disclaimer page PDF (if not in the package)", type=["pdf"], key="fin_disc")
+    ref_up = st.file_uploader("Original workbook for the drawings gate (optional)", type=["xlsx"], key="fin_ref")
+    if st.button("Finish package", type="primary", key="fin_run"):
+        log = st.empty()
+        lines = []
+        def _p(m):
+            lines.append(m)
+            log.code("\n".join(lines))
+        opts = FinishOptions(map_block_png=st.session_state.get("map_block") if use_map else None,
+                             disclaimer_pdf=_save_upload(disc_up, ws), redact_reports=redact, strip_tip_prefix=strip,
+                             reference_workbook=_save_upload(ref_up, ws), lossless_aerial=lossless,
+                             zip_out=os.path.join(ws, "package_out.zip"))
+        rep = finish_package(pkg_dir, opts, progress=_p)
+        st.table([{"step": s.name, "ok": "✅" if s.ok else "❌", "detail": s.detail[:160]} for s in rep.steps])
+        if rep.qa_text:
+            with st.expander("QA checks"):
+                st.code(rep.qa_text)
+        if rep.zip_path and os.path.exists(rep.zip_path):
+            from safety_eval.package import clean_name
+            _download(st, "Download finished package zip", rep.zip_path,
+                      (clean_name(os.path.basename(pkg_dir)) if strip else os.path.basename(pkg_dir)) + ".zip")
+
+
 # --------------------------------------------------------------------------- #
 def page_redact(st, ws: str) -> None:
     st.caption("Crash reports are redacted BEFORE review: names, addresses, DOB, phone, and license "
                "numbers are removed. ZIP codes and crash IDs are kept. Spot-check the result; OCR can miss handwriting.")
     report_up = st.file_uploader("Crash report (PDF/TIFF/PNG/JPG)", type=["pdf", "tif", "tiff", "png", "jpg"], key="rd_up")
     keep_zip = st.checkbox("Keep ZIP codes visible", True, key="rd_zip")
+    verify = st.checkbox("Verify the output (OCR the redacted pages and search for the original's personal tokens)",
+                         True, key="rd_verify")
     if report_up and st.button("Redact", type="primary", key="rd_run"):
         from safety_eval.redact import redact_file
         src = _save_upload(report_up, ws)
-        out = os.path.join(ws, "redacted.pdf")
-        rep = redact_file(src, out, keep_zip=keep_zip)
+        out = os.path.join(ws, os.path.splitext(report_up.name)[0] + "_REDACTED.pdf")
+        with st.spinner("Redacting"):
+            rep = redact_file(src, out, keep_zip=keep_zip)
         st.write(f"Redacted {rep.boxes} region(s) across {rep.pages} page(s): {rep.by_reason}")
         for w in rep.warnings:
             st.warning(w)
+        if verify:
+            from safety_eval.redact_verify import verify_redaction
+            with st.spinner("Verifying"):
+                v = verify_redaction(src, out)
+            (st.success if v.clean else st.error)(v.summary())
+            for page, kind, tok in v.leaks + v.patterns:
+                st.write(f"page {page}: {kind} {tok}")
+            st.session_state.setdefault("redaction_log", []).append(
+                f"{report_up.name}: {rep.boxes} regions on {rep.pages} pages; {v.summary()}")
         _download(st, "Download redacted report", out)
+        try:
+            os.remove(src)          # the unredacted upload does not stay in the workspace
+        except OSError:
+            pass
 
 
 def page_review(st, ws: str) -> None:
@@ -399,6 +611,7 @@ def page_assistant(st, ws: str) -> None:
         return
     if "assistant" not in st.session_state:
         st.session_state.assistant = Assistant(allowed_dirs=[ws, os.getcwd()])
+    pkg_hint = f"Loaded package folder: {st.session_state['package_dir']}\n" if st.session_state.get("package_dir") else ""
     asst: Assistant = st.session_state.assistant
     for t in asst.turns:
         with st.chat_message(t.role):
@@ -414,7 +627,7 @@ def page_assistant(st, ws: str) -> None:
         with st.chat_message("assistant"):
             with st.spinner("Working"):
                 try:
-                    turn = asst.send(f"Workspace folder: {ws}\n\n{prompt}")
+                    turn = asst.send(f"Workspace folder: {ws}\n{pkg_hint}\n{prompt}")
                 except Exception as exc:  # noqa: BLE001 - shown to the engineer
                     st.error(f"Assistant error: {exc}")
                     return
@@ -426,9 +639,10 @@ def page_assistant(st, ws: str) -> None:
 
 
 PAGES = [
-    ("Build Evaluation", page_build), ("AADT and Set-up", page_aadt), ("Map Block", page_map),
-    ("Print and Assemble", page_print), ("QA Checks", page_qa), ("Redact Crash Reports", page_redact),
-    ("Review Filtered Fiche", page_review), ("Assistant", page_assistant),
+    ("Home", page_home), ("Build Evaluation", page_build), ("AADT and Set-up", page_aadt), ("Map Block", page_map),
+    ("Collision Diagram", page_diagram), ("Print and Assemble", page_print), ("QA Checks", page_qa),
+    ("Redact Crash Reports", page_redact), ("Review Filtered Fiche", page_review),
+    ("Finish Package", page_finish), ("Assistant", page_assistant),
 ]
 
 

@@ -54,6 +54,21 @@ This merges the April 2026 TEAAS application spec with everything learned from t
 **Phase 6 - Stretch**
 22. DMV-349 structured parsing (fields beyond the ID box), batch multi-study processing, GIS/mapping, SVG collision diagrams.
 
+## Implemented finishing layer (September 2026)
+
+Built from the live 10-18-223 and 77S00141 sessions, each step a module, a
+CLI command and an app tab, all tested:
+
+- `aadt_table` + `aadt_arcgis` (NCDOT 2025 AADT Stations layer): leg table with the black/red convention, representative years, colours written by `workbook_cells`.
+- `map_block`: team-format Map/Satellite Views composition and oneCellAnchor embedding; Esri World Imagery fallback.
+- `print_results`: LibreOffice print matched to the Excel print (Carlito, column padding), pikepdf binding with metadata.
+- `qa_checks`: deterministic QA (structure, docs/06 drawings gate, cached diff, AADT colours, text style, Type vs T code, PDF assembly).
+- `qa_sweep`: six LLM reviewers plus three refuters over the package folder (Claude Opus 5, structured output, cached context); CONFIRMED / PARTIAL / REFUTED by verifier agreement.
+- `redact` + `redact_verify`: PII redaction before review, then an OCR oracle check of the output (names, DOB, phone, licence, addresses), masked reporting.
+- `collision_diagram`: strip diagram with fan-out callouts.
+- `package`: discover a WO folder, finish it in one pass (redact, map, print, bind, QA log, zip with clean names).
+- `chat`: assistant with strict tools over the loaded package (drafts and checks only).
+
 ## Non-negotiables carried from live work
 
 - Combination-dependent (intersection) vs milepost-dependent (strip) crash identification implemented as separate, tested code paths.

@@ -113,10 +113,33 @@ safety-eval qa --workbook Evaluation.xlsx --reference original.xlsx \
 
 # Assistant (drafts and checks only; needs ANTHROPIC_API_KEY)
 safety-eval chat "Run the QA checks on Evaluation.xlsx and summarize"
+
+# Multi-agent QA sweep: six reviewers (workbook, fiche chain, calculations,
+# report text, TEAAS cross-check, PDF assembly) and three refuters over the
+# whole package folder, findings CONFIRMED / PARTIAL / REFUTED by verifier
+# agreement. Claude Opus 5, structured output, cached package context.
+safety-eval qa-sweep --package "WO-41000076160 10-18-223 (TIP #W-5710AM)" --output "Notes/QA sweep.md"
+
+# Crash report redaction with independent verification: the output is OCRed
+# and searched for the original's names, DOB, phone, licence numbers and
+# street addresses (masked in the report; exit 2 on any hit).
+safety-eval redact --input 600504376.tif --output 600504376_REDACTED.pdf --verify
+
+# Strip collision diagram (fan-out callouts, leaders to the true milepost)
+safety-eval collision-diagram --crashes crashes.csv --title "Collision Diagram - 41000079307" \
+  --mp-start 1.31 --mp-end 1.80 --feature "1.45:SR 1321" --output diagram
+
+# One pass to ship: redact + verify crash reports, embed the map block, print,
+# bind, QA checks, QA log in Notes, zip with 'TIP #' dropped from names.
+safety-eval finish --package "WO-41000076160 10-18-223 (TIP #W-5710AM)" --map-block block.png
 ```
 
-The Streamlit app (`streamlit run safety_eval/app.py`) has a tab for each of
-these plus a chat page over the session's workspace. `safety-eval doctor`
+The Streamlit app (`streamlit run safety_eval/app.py`) opens on a Home tab
+that loads a package zip and shows the headline numbers and tool chain, then
+has a tab for each step above (AADT and Set-up, Map Block with an Esri World
+Imagery fallback, Collision Diagram, Print and Assemble, QA Checks with the
+multi-agent sweep, Redact with verification, Review, Finish Package) and a
+chat assistant with tools over the loaded package. `safety-eval doctor`
 reports whether LibreOffice, the fonts, pikepdf, Streamlit and the Anthropic
 SDK are present. Install extras with `pip install -e '.[deliverables,ui,llm]'`
 and, on Debian/Ubuntu, `apt install fonts-crosextra-carlito fonts-liberation

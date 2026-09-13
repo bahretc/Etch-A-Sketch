@@ -245,6 +245,14 @@ def _cmd_redact(args) -> int:
                          keep_zip=not args.no_keep_zip, dpi=args.dpi)
     print(f"Redacted {report.boxes} region(s) across {report.pages} page(s) "
           f"-> {args.output}")
+    if args.verify:
+        from .redact_verify import verify_redaction
+        v = verify_redaction(args.input, args.output, dpi=args.dpi)
+        print("Verification:", v.summary())
+        for page, kind, tok in v.leaks + v.patterns:
+            print(f"  page {page}: {kind} {tok}")
+        if not v.clean:
+            return 2
     for reason, n in sorted(report.by_reason.items()):
         print(f"  {reason}: {n}")
     for w in report.warnings:
@@ -391,6 +399,53 @@ def _cmd_chat(args) -> int:
     return 0
 
 
+def _cmd_collision_diagram(args) -> int:
+    import json as _json
+
+    from .collision_diagram import Feature, StripSpec, draw_strip_diagram, load_csv
+    crashes = load_csv(args.crashes)
+    feats = []
+    for tok in (args.feature or []):
+        mp, _, label = tok.partition(":")
+        feats.append(Feature(float(mp), label.replace("\\n", "\n")))
+    spec = StripSpec(args.title, args.subtitle or "", args.mp_start, args.mp_end, feats)
+    out = draw_strip_diagram(crashes, spec, args.output)
+    print(_json.dumps(out))
+    return 0
+
+
+def _cmd_qa_sweep(args) -> int:
+    from .qa_sweep import DIMENSIONS, gather_context, run_sweep, sweep_to_markdown
+    ctx = gather_context(args.package, args.workbook)
+    print(f"context: {len(ctx)} parts, {sum(len(v) for v in ctx.values())} chars")
+    dims = args.dimension or list(DIMENSIONS)
+    rep = run_sweep(ctx, model=args.model, dimensions=dims, n_refuters=args.refuters, effort=args.effort,
+                    progress=lambda m: print("  " + m))
+    md = sweep_to_markdown(rep, title=f"QA sweep, {os.path.basename(os.path.normpath(args.package))}")
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as fh:
+            fh.write(md)
+        print(f"wrote {args.output}")
+    else:
+        print(md)
+    return 0 if not rep.by_status("CONFIRMED") else 1
+
+
+def _cmd_finish(args) -> int:
+    from .package import FinishOptions, finish_package
+    opts = FinishOptions(map_block_png=args.map_block, disclaimer_pdf=args.disclaimer,
+                         redact_reports=not args.no_redact, verify_redaction=not args.no_verify,
+                         strip_tip_prefix=not args.keep_tip, title=args.title, zip_out=args.zip,
+                         reference_workbook=args.reference, lossless_aerial=args.lossless)
+    rep = finish_package(args.package, opts, progress=lambda m: print("  " + m))
+    for s in rep.steps:
+        print(("OK   " if s.ok else "FAIL ") + s.name + (": " + s.detail if s.detail else ""))
+    if rep.qa_text:
+        print(rep.qa_text)
+    print("zip:", rep.zip_path)
+    return 0 if rep.ok else 1
+
+
 def _cmd_doctor(args) -> int:
     print("OCR / PDF backends:")
     for name, ok in available_backends().items():
@@ -513,6 +568,9 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Also redact ZIP codes (kept by default).")
     rd.add_argument("--dpi", type=int, default=200,
                     help="Rasterization DPI for PDF input (default 200).")
+    rd.add_argument("--verify", action="store_true",
+                    help="OCR the output and search it for the original's personal tokens; "
+                         "exit 2 on any hit.")
     rd.set_defaults(func=_cmd_redact)
 
     ae = sub.add_parser(
@@ -573,6 +631,41 @@ def build_parser() -> argparse.ArgumentParser:
     ch.add_argument("prompt")
     ch.add_argument("--allow", action="append", help="Extra folders the tools may read")
     ch.set_defaults(func=_cmd_chat)
+
+    cd = sub.add_parser("collision-diagram", help="Strip collision diagram (fan-out callouts) from a crash CSV.")
+    cd.add_argument("--crashes", required=True, help="CSV: crash_id,mp,units,type,severity,date,night,wet")
+    cd.add_argument("--title", required=True)
+    cd.add_argument("--subtitle")
+    cd.add_argument("--mp-start", dest="mp_start", type=float, required=True)
+    cd.add_argument("--mp-end", dest="mp_end", type=float, required=True)
+    cd.add_argument("--feature", action="append", help="mp:label, repeatable (label may contain \\n)")
+    cd.add_argument("--output", required=True, help="Output stem (.pdf and .png are written)")
+    cd.set_defaults(func=_cmd_collision_diagram)
+
+    qs = sub.add_parser("qa-sweep", help="Multi-agent QA sweep: six reviewers plus three refuters over a "
+                        "package folder (needs ANTHROPIC_API_KEY).")
+    qs.add_argument("--package", required=True, help="Package folder")
+    qs.add_argument("--workbook", help="Which workbook to read when the folder has several")
+    qs.add_argument("--dimension", action="append", help="Subset of dimensions (workbook, fiche, calculations, text, teaas, pdf)")
+    qs.add_argument("--refuters", type=int, default=3)
+    qs.add_argument("--model", default="claude-opus-5")
+    qs.add_argument("--effort", default="high", choices=["low", "medium", "high", "xhigh", "max"])
+    qs.add_argument("--output", help="Markdown report path")
+    qs.set_defaults(func=_cmd_qa_sweep)
+
+    fi = sub.add_parser("finish", help="Finish a package: redact and verify crash reports, embed the map block, "
+                        "print, bind, QA, zip with clean names.")
+    fi.add_argument("--package", required=True)
+    fi.add_argument("--map-block", dest="map_block")
+    fi.add_argument("--disclaimer")
+    fi.add_argument("--reference", help="Original workbook for the drawings gate")
+    fi.add_argument("--title")
+    fi.add_argument("--zip")
+    fi.add_argument("--no-redact", dest="no_redact", action="store_true")
+    fi.add_argument("--no-verify", dest="no_verify", action="store_true")
+    fi.add_argument("--keep-tip", dest="keep_tip", action="store_true", help="Keep 'TIP #' in names")
+    fi.add_argument("--lossless", action="store_true")
+    fi.set_defaults(func=_cmd_finish)
 
     d = sub.add_parser("doctor", help="Report available optional backends.")
     d.set_defaults(func=_cmd_doctor)

@@ -20,8 +20,9 @@ def test_all_tabs_render(app):
     assert not app.exception
     assert app.title[0].value == "NCDOT HSIP Safety Evaluations"
     labels = [t.label for t in app.tabs]
-    assert labels == ["Build Evaluation", "AADT and Set-up", "Map Block", "Print and Assemble",
-                      "QA Checks", "Redact Crash Reports", "Review Filtered Fiche", "Assistant"]
+    assert labels == ["Home", "Build Evaluation", "AADT and Set-up", "Map Block", "Collision Diagram",
+                      "Print and Assemble", "QA Checks", "Redact Crash Reports", "Review Filtered Fiche",
+                      "Finish Package", "Assistant"]
 
 
 def test_assistant_explains_missing_key(app):

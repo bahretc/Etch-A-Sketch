@@ -21,8 +21,11 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
-from .redact import (_line_has_street_address, _lines, _load_input_pages, _require, harvest_name_tokens,
-                     ocr_words)
+from .redact import (_NAME_HARVEST_STOP, _band_boxes, _line_has_street_address, _lines, _load_input_pages,
+                     _require, _sub_caption_boxes, ocr_words)
+
+_NAME_STOP = _NAME_HARVEST_STOP | {"SAME", "NONE", "NULL", "SELF", "OWNER", "DRIVER", "MALE", "FEMALE", "WHITE",
+                                   "BLACK", "OTHER", "HOME", "WORK", "CELL", "NAME", "FIRST", "LAST", "MIDDLE"}
 
 # form vocabulary and generic words that appear on every DMV-349; never PII
 _ADDRESS_STOP = {
@@ -80,11 +83,27 @@ def _ocr_text(png: str, timeout: int = OCR_TIMEOUT) -> str:
     return out.upper()
 
 
+def _band_names(words, pw: int, ph: int) -> set[str]:
+    """Name tokens inside the driver/owner/witness bands; four letter tokens
+    only when OCR is confident (short low confidence tokens are fragments)."""
+    rects = [b for b in _band_boxes(words, pw, ph) if b.reason == "band:name"]
+    rects += _sub_caption_boxes(words, pw, ph)
+    out: set[str] = set()
+    for w in words:
+        t = re.sub(r"[^A-Za-z]", "", w.text).upper()
+        if len(t) < 4 or t in _NAME_STOP or (len(t) == 4 and w.conf < 60):
+            continue
+        cx, cy = w.left + w.width // 2, w.top + w.height // 2
+        if any(r.left <= cx <= r.right and r.top <= cy <= r.bottom for r in rects):
+            out.add(t)
+    return out
+
+
 def _oracle_page(png: str, i: int, pw: int, ph: int) -> dict:
     out = {"name": set(), "phone": set(), "address": set(), "id": set(), "loc": set(), "years": []}
     for psm in (11, 3):
         words = ocr_words(png, page=i, psm=psm, timeout=OCR_TIMEOUT, min_conf=0.0)
-        out["name"] |= harvest_name_tokens(words, pw, ph)
+        out["name"] |= _band_names(words, pw, ph)
         for w in words:
             if w.top < 0.25 * ph:          # location block: routes, crash id, dates, coordinates
                 out["loc"].add(re.sub(r"[^A-Za-z]", "", w.text).upper())
@@ -111,11 +130,16 @@ def _oracle_page(png: str, i: int, pw: int, ph: int) -> dict:
             # dates, coordinates and decimals never count
             if w.conf >= 40 and re.fullmatch(r"\d[\d-]{5,8}\d", raw) and _ID_RE.fullmatch(re.sub(r"\D", "", raw)):
                 out["id"].add(re.sub(r"\D", "", raw))
-    out["dates"] = [m.group(0) for m in _DATE_RE.finditer(_ocr_text(png))]
+    # date of birth: on THIS page, any date three or more years before the page's own era
+    # (a binder holds reports from several years; the document era would flag old crash dates)
+    dates = [m.group(0) for m in _DATE_RE.finditer(_ocr_text(png))]
+    years = [int(d.split("/")[-1]) for d in dates] + out["years"]
+    era = max(years) if years else None
+    out["dob"] = {d for d in dates if era and int(d.split("/")[-1]) <= era - 3}
     return out
 
 
-def build_oracle(original_path: str, dpi: int = 200, era_margin: int = 2, workers: int = WORKERS) -> dict[str, set]:
+def build_oracle(original_path: str, dpi: int = 200, workers: int = WORKERS) -> dict[str, set]:
     """Personal tokens harvested from the original's OCR, by kind (pages OCRed in parallel)."""
     oracle = {"name": set(), "dob": set(), "phone": set(), "id": set(), "address": set()}
     with tempfile.TemporaryDirectory(prefix="oracle-") as tmp:
@@ -128,19 +152,19 @@ def build_oracle(original_path: str, dpi: int = 200, era_margin: int = 2, worker
         with ThreadPoolExecutor(max_workers=workers) as ex:
             results = list(ex.map(lambda j: _oracle_page(*j), jobs))
     loc_words: set[str] = set()
-    all_years: list[int] = []
-    all_dates: list[str] = []
-    for r in results:
-        for kind in ("name", "phone", "address", "id"):
+    pages_with: dict[str, set] = {}
+    for pi, r in enumerate(results):
+        for kind in ("name", "phone", "address", "id", "dob"):
             oracle[kind] |= r[kind]
+            for t in r[kind]:
+                pages_with.setdefault((kind, t), set()).add(pi)
         loc_words |= r["loc"]
-        all_years += r["years"]
-        all_dates += r["dates"]
-    era = max(all_years) if all_years else None
-    if era:
-        for d in all_dates:
-            if int(d.split("/")[-1]) <= era - era_margin:
-                oracle["dob"].add(d)
+    # a token printed on many pages of the original is form vocabulary (a caption, the form
+    # number, a checkbox label), not a person: nobody's name recurs across a whole binder
+    limit = max(4, len(results) // 3)
+    for (kind, t), pgs in pages_with.items():
+        if kind in ("name", "address") and len(pgs) > limit:
+            oracle[kind].discard(t)
     for kind in ("name", "address", "id", "phone"):
         oracle[kind] -= loc_words
     # crash ids, route ids and anything printed in the location block must not count

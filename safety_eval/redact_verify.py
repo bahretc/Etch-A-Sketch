@@ -191,6 +191,8 @@ def _verify_page(png: str, i: int, oracle: dict) -> tuple[list, list]:
     # digit runs per token (hyphens and dots inside a token collapse); never across words
     digit_tokens = {re.sub(r"\D", "", w) for w in txt.split()}
     digit_tokens = {d for d in digit_tokens if d}
+    # house numbers print as bare digits; "3.12" (a milepost) or "9:12" (a time) are not 312
+    bare_digit_tokens = {w.strip(",.;:()") for w in txt.split() if w.strip(",.;:()").isdigit()}
     for kind, toks in oracle.items():
         for t in toks:
             if kind in ("phone", "id"):
@@ -198,7 +200,7 @@ def _verify_page(png: str, i: int, oracle: dict) -> tuple[list, list]:
             elif kind == "dob":
                 hit = t in txt or t.replace("/", "") in digit_tokens
             elif kind == "address" and t.isdigit():
-                hit = t in digit_tokens
+                hit = t in bare_digit_tokens
             else:
                 hit = re.search(rf"\b{re.escape(t)}\b", txt) is not None
             if hit:

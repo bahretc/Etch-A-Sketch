@@ -91,7 +91,9 @@ def _band_names(words, pw: int, ph: int) -> set[str]:
     out: set[str] = set()
     for w in words:
         t = re.sub(r"[^A-Za-z]", "", w.text).upper()
-        if len(t) < 4 or t in _NAME_STOP or (len(t) == 4 and w.conf < 60):
+        # printed names come back at high confidence; low confidence short tokens are
+        # fragments or misread captions ("Typer" for "Type/")
+        if len(t) < 4 or t in _NAME_STOP or w.conf < 50 or (len(t) == 4 and w.conf < 60):
             continue
         cx, cy = w.left + w.width // 2, w.top + w.height // 2
         if any(r.left <= cx <= r.right and r.top <= cy <= r.bottom for r in rects):
@@ -165,7 +167,9 @@ def build_oracle(original_path: str, dpi: int = 200, workers: int = WORKERS, kee
         loc_words |= r["loc"]
     # a token printed on many pages of the original is form vocabulary (a caption, the form
     # number, a checkbox label), not a person: nobody's name recurs across a whole binder
-    limit = max(4, len(results) // 3)
+    # a person's name or address sits on the pages of one report (four at most); anything
+    # on more pages than that is a caption or a checkbox label repeated on every form
+    limit = 4
     for kind in ("name", "address"):
         oracle[kind] = {t for t in oracle[kind] if sum(1 for r in results if t in r["all"]) <= limit}
     if keep_zip:      # five digit ZIP codes stay visible by design (NC ZIPs 27000 to 28999)

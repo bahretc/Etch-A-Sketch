@@ -100,10 +100,13 @@ def _band_names(words, pw: int, ph: int) -> set[str]:
 
 
 def _oracle_page(png: str, i: int, pw: int, ph: int) -> dict:
-    out = {"name": set(), "phone": set(), "address": set(), "id": set(), "loc": set(), "years": []}
+    out = {"name": set(), "phone": set(), "address": set(), "id": set(), "loc": set(), "years": [], "all": set()}
     for psm in (11, 3):
         words = ocr_words(png, page=i, psm=psm, timeout=OCR_TIMEOUT, min_conf=0.0)
         out["name"] |= _band_names(words, pw, ph)
+        for w in words:                    # every token on the page, for the form-vocabulary rule
+            out["all"].add(re.sub(r"[^A-Za-z]", "", w.text).upper())
+            out["all"].add(re.sub(r"\D", "", w.text))
         for w in words:
             if w.top < 0.25 * ph:          # location block: routes, crash id, dates, coordinates
                 out["loc"].add(re.sub(r"[^A-Za-z]", "", w.text).upper())
@@ -124,12 +127,16 @@ def _oracle_page(png: str, i: int, pw: int, ph: int) -> dict:
                 for c in clean[k + 1:k + 4]:          # the street name follows it
                     if len(c) >= 5 and c.isalpha() and c not in _ADDRESS_STOP:
                         out["address"].add(c)
-        for w in words:
-            raw = w.text.strip().strip(",;:")
-            # licence, policy and similar numbers print as plain digit runs (a hyphen at most);
-            # dates, coordinates and decimals never count
-            if w.conf >= 40 and re.fullmatch(r"\d[\d-]{5,8}\d", raw) and _ID_RE.fullmatch(re.sub(r"\D", "", raw)):
-                out["id"].add(re.sub(r"\D", "", raw))
+        for line in _lines(words):
+            # citation numbers on the charges line are not personal identifiers and stay visible
+            if any(re.sub(r"[^A-Za-z]", "", w.text).upper().startswith(("CHARGE", "CITATION")) for w in line):
+                continue
+            for w in line:
+                raw = w.text.strip().strip(",;:")
+                # licence, policy and similar numbers print as plain digit runs (a hyphen at most);
+                # dates, coordinates and decimals never count
+                if w.conf >= 40 and re.fullmatch(r"\d[\d-]{5,8}\d", raw) and _ID_RE.fullmatch(re.sub(r"\D", "", raw)):
+                    out["id"].add(re.sub(r"\D", "", raw))
     # date of birth: on THIS page, any date three or more years before the page's own era
     # (a binder holds reports from several years; the document era would flag old crash dates)
     dates = [m.group(0) for m in _DATE_RE.finditer(_ocr_text(png))]
@@ -139,7 +146,7 @@ def _oracle_page(png: str, i: int, pw: int, ph: int) -> dict:
     return out
 
 
-def build_oracle(original_path: str, dpi: int = 200, workers: int = WORKERS) -> dict[str, set]:
+def build_oracle(original_path: str, dpi: int = 200, workers: int = WORKERS, keep_zip: bool = True) -> dict[str, set]:
     """Personal tokens harvested from the original's OCR, by kind (pages OCRed in parallel)."""
     oracle = {"name": set(), "dob": set(), "phone": set(), "id": set(), "address": set()}
     with tempfile.TemporaryDirectory(prefix="oracle-") as tmp:
@@ -152,19 +159,17 @@ def build_oracle(original_path: str, dpi: int = 200, workers: int = WORKERS) -> 
         with ThreadPoolExecutor(max_workers=workers) as ex:
             results = list(ex.map(lambda j: _oracle_page(*j), jobs))
     loc_words: set[str] = set()
-    pages_with: dict[str, set] = {}
-    for pi, r in enumerate(results):
+    for r in results:
         for kind in ("name", "phone", "address", "id", "dob"):
             oracle[kind] |= r[kind]
-            for t in r[kind]:
-                pages_with.setdefault((kind, t), set()).add(pi)
         loc_words |= r["loc"]
     # a token printed on many pages of the original is form vocabulary (a caption, the form
     # number, a checkbox label), not a person: nobody's name recurs across a whole binder
     limit = max(4, len(results) // 3)
-    for (kind, t), pgs in pages_with.items():
-        if kind in ("name", "address") and len(pgs) > limit:
-            oracle[kind].discard(t)
+    for kind in ("name", "address"):
+        oracle[kind] = {t for t in oracle[kind] if sum(1 for r in results if t in r["all"]) <= limit}
+    if keep_zip:      # five digit ZIP codes stay visible by design (NC ZIPs 27000 to 28999)
+        oracle["address"] = {t for t in oracle["address"] if not (t.isdigit() and len(t) == 5 and t[:2] in ("27", "28"))}
     for kind in ("name", "address", "id", "phone"):
         oracle[kind] -= loc_words
     # crash ids, route ids and anything printed in the location block must not count
@@ -197,10 +202,10 @@ def _verify_page(png: str, i: int, oracle: dict) -> tuple[list, list]:
 
 
 def verify_redaction(original_path: str, redacted_pdf: str, dpi: int = 200,
-                     oracle: dict | None = None, workers: int = WORKERS) -> RedactionVerification:
+                     oracle: dict | None = None, workers: int = WORKERS, keep_zip: bool = True) -> RedactionVerification:
     """OCR the redacted output (pages in parallel) and search it for the original's personal tokens."""
     rep = RedactionVerification()
-    oracle = oracle or build_oracle(original_path, dpi, workers=workers)
+    oracle = oracle or build_oracle(original_path, dpi, workers=workers, keep_zip=keep_zip)
     rep.oracle_size = sum(len(v) for v in oracle.values())
     with tempfile.TemporaryDirectory(prefix="verify-") as tmp:
         pages, _ = _load_input_pages(redacted_pdf, tmp, dpi)

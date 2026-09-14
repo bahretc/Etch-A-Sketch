@@ -1,0 +1,16 @@
+# Evaluation Set-up inputs for 04-15-39049 (SR 1003, Johnston County).
+# Yearly AADTs are actual station values (pull with `safety-eval aadt` from the
+# NCDOT AADT map service, or read from the published AADT shapefiles).
+# Interpolated/assumed years are left to the analyst per the black/red font
+# convention; 2020 is never a representative year.
+teaas_date: 2026-05-31
+construction_months: 14
+construction_end: 2021-06-30
+rep_before_year: 2018
+rep_after_year: 2024
+subsections:
+  - begin_mp: 17.691
+    end_mp: 17.811
+    aadt: {2012: 3600, 2013: 4100, 2014: 4600, 2015: 5100, 2016: 5600,
+           2018: 8100, 2019: 8000, 2020: 7500, 2021: 8000, 2022: 8300,
+           2023: 8500, 2024: 8700, 2025: 8700, 2026: 8700}

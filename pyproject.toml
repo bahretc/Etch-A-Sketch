@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "safety-eval"
+version = "0.1.0"
+description = "Automate NCDOT before/after safety evaluations from a TEAAS fiche and assignment."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "PyYAML>=6.0",
+    "openpyxl>=3.1",
+]
+
+[project.optional-dependencies]
+# PDF / OCR front-end (any one of these enables the PDF input path)
+pdf = ["pdfplumber>=0.11", "pypdf>=4.0"]
+ocr = ["pytesseract>=0.3", "pdf2image>=1.17"]
+ui = ["streamlit>=1.30", "Pillow>=10"]
+# results page print, PDF binding, map block, QA checks
+deliverables = ["pikepdf>=8", "Pillow>=10", "matplotlib>=3.7", "python-docx>=1.1"]
+# assistant chat (docs/07 phase 5), official Anthropic SDK
+llm = ["anthropic>=1.0"]
+dev = ["pytest>=7"]
+
+[project.scripts]
+safety-eval = "safety_eval.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["safety_eval*"]
+
+[tool.setuptools.package-data]
+safety_eval = ["config/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

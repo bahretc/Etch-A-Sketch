@@ -1,0 +1,133 @@
+# =============================================================================
+# NCDOT Safety-Evaluation domain configuration
+# =============================================================================
+# Every domain rule the automation "knows" lives here so it can be corrected
+# WITHOUT touching code. Values now sourced from the HSIP context pack
+# (docs/03, docs/04, docs/08, docs/09). Do not substitute FHWA/AASHTO values.
+#
+# Confidence legend:
+#   [CONFIRMED] stated in docs/ (context pack) or an example file
+#   [VERIFY]    not defined in the context pack; confirm against TEAAS
+# =============================================================================
+
+# --- Which fiche column plays which semantic role -----------------------------
+# TEAAS fiche coded columns print as: T C F L S. The fiche report legend
+# (observed on 41000079307_Fiche.csv, 2026-08) defines them authoritatively:
+# T - Accident Type, C - Road Condition, F - Roadway Feature,
+# L - Light Condition, S - Accident Severity.
+column_roles:
+  crash_type: T      # [CONFIRMED docs/09] NCDOT crash-type code
+  road_surface: C    # [CONFIRMED] fiche legend: 'C - Road Condition' (wet = 2-6)
+  roadway_feature: F # [CONFIRMED] fiche legend: 'F - Roadway Feature'
+  light: L           # [VERIFY] not defined in context pack (night = light codes 4-6)
+  severity: S        # [CONFIRMED docs/09] KABCO severity letter
+
+# --- Severity (KABCO) ---------------------------------------------------------
+# [CONFIRMED docs/01, docs/09] K fatal, A/B/C injury, O property damage only.
+severity:
+  order: [K, A, B, C, O]
+  labels:
+    K: Fatal
+    A: Suspected Serious Injury
+    B: Suspected Minor Injury
+    C: Possible Injury
+    O: Property Damage Only
+  # [CONFIRMED docs/04] Active NCDOT EPDO weights: K/A = 76.8, B/C = 8.4, PDO = 1.0
+  epdo_weights: {K: 76.8, A: 76.8, B: 8.4, C: 8.4, O: 1.0}
+  injury_letters: [K, A, B, C]   # anything not O and not blank counts as injury
+  # [CONFIRMED examples/SS-6002AD, examples/04-15-39049] TEAAS 5-column Crash
+  # ID List SVRTY codes, cross-checked against the Intersection Analysis Report
+  # injury columns and the completed 04-15-39049 workbook. 6 = unknown/blank
+  # (crash 104781542 has SVRTY 6 and a blank S cell in the completed workbook;
+  # per docs/09 blanks must be resolved from the DMV-349 report).
+  numeric_codes: {1: K, 2: A, 3: B, 4: C, 5: O, 6: ""}
+
+# --- Road-surface condition ---------------------------------------------------
+# [VERIFY] "Wet Crashes (Road Codes 2-6)" per Section Eval Workbook guidance.
+road_surface:
+  dry: [1]
+  wet: [2, 3, 4, 5, 6]
+
+# --- Light condition ----------------------------------------------------------
+# [VERIFY] "Night Crashes (Light Codes 4-6)" per Section Eval Workbook guidance.
+light:
+  day: [1, 2, 3]
+  night: [4, 5, 6]
+
+# --- Crash-type (T) code groupings -------------------------------------------
+# [CONFIRMED docs/09] Observed TEAAS T-code lookup:
+#   0 unknown, 1 ROR-R, 2 ROR-L, 3 ROR-T, 4 jackknife, 5 overturn, 13 other,
+#   14 pedestrian, 15 cyclist, 16 railroad, 17 animal, 18 movable object,
+#   19 fixed object, 20 parked vehicle, 21 rear end, 22 rear end turning,
+#   23 LTSR, 24 LTDR, 25 RTSR, 26 RTDR, 27 head-on, 28 SSSD, 29 SSOD,
+#   30 angle, 31 backing, 32 other.
+crash_type_groups:
+  ran_off_road: [1, 2, 3]
+  jackknife: [4]
+  overturn: [5]
+  pedestrian: [14]
+  bicycle: [15]
+  animal: [17]
+  fixed_object: [19]
+  rear_end: [21, 22]
+  left_turn_same_roadway: [23]
+  left_turn_different_roadway: [24]
+  right_turn_same_roadway: [25]
+  right_turn_different_roadway: [26]
+  head_on: [27]
+  sideswipe_same_direction: [28]
+  sideswipe_opposite_direction: [29]
+  angle: [30]
+  backing: [31]
+  # [CONFIRMED docs/08, docs/09] Frontal impact set: LTSR, LTDR, RTSR, RTDR,
+  # head-on, angle.
+  frontal_impact: [23, 24, 25, 26, 27, 30]
+  # [CONFIRMED docs/03] Lane departure per the Typical Target Crash Types sheet:
+  #   Type 1 (two-lane): ROR L/R/straight, overturn, fixed object, head-on,
+  #                      sideswipe opposite.
+  #   Type 2 (multilane): Type 1 + sideswipe same direction.
+  lane_departure_type1: [1, 2, 3, 5, 19, 27, 29]
+  lane_departure_type2: [1, 2, 3, 5, 19, 27, 28, 29]
+
+# --- Target crash type definitions -------------------------------------------
+# Named targets a countermeasure can select (docs/08). Each combines a crash-type
+# group with optional road/light constraints. The assignment's
+# `target_crash_types:` list selects which apply. VEWF and at-fault splits need
+# report/approach review (docs/03) and are engineer-in-the-loop, not automated.
+target_crash_types:
+  Frontal Impact: {type_group: frontal_impact}
+  Rear End: {type_group: rear_end}
+  Left Turn Same Roadway: {type_group: left_turn_same_roadway}
+  Left Turn Different Roadway: {type_group: left_turn_different_roadway}
+  Angle: {type_group: angle}
+  Head-On: {type_group: head_on}
+  Pedestrian: {type_group: pedestrian}
+  Bicycle: {type_group: bicycle}
+  Lane Departure (Type 1): {type_group: lane_departure_type1}
+  Lane Departure (Type 2): {type_group: lane_departure_type2}
+  Wet Lane Departure (Type 2): {type_group: lane_departure_type2, road_surface: wet}
+  Night Lane Departure (Type 2): {type_group: lane_departure_type2, light: night}
+  Wet: {road_surface: wet}
+  Night: {light: night}
+
+# --- Study / methodology constants -------------------------------------------
+methodology:
+  # [CONFIRMED docs/02] Date Range Calculator: whole months only, 3-month default.
+  default_construction_months: 3
+  # [CONFIRMED docs/02, docs/04] Never pick 2020 as a representative AADT year.
+  excluded_representative_years: [2020]
+  # [CONFIRMED docs/09] MP sentinel = crash not mileposted (address/PVA in On Road).
+  mp_sentinel: 999.999
+  # [CONFIRMED docs/09] Intersection-study influence buffer (Y-line), feet.
+  intersection_buffer_ft: 150
+  # [CONFIRMED docs/04] period_years = (end - start) / 365.25
+  days_per_year: 365.25
+  # [CONFIRMED docs/04] Side/minor road AADT estimates round to nearest hundred.
+  side_road_aadt_rounding: 100
+  # Naive before/after expected-crash adjustment (annualized comparison):
+  #   expected_after = before * (after_years/before_years) * (aadt_after/aadt_before)
+  #   reduction_pct  = (expected_after - observed_after) / expected_after * 100
+  # NOTE: the deliverable workbooks use live formulas (docs/06); this naive model
+  # is for the standalone report/preview only.
+  adjust_for_traffic: true
+  adjust_for_time: true

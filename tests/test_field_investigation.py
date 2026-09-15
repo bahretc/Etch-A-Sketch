@@ -151,3 +151,158 @@ def test_a_generated_workbook_never_carries_an_em_dash(tmp_path, slip):
     cl.remarks = ["Signal cabinet found open — exposed wiring"]
     with pytest.raises(ValueError, match="dash"):
         fi.build_field_investigation(str(tmp_path / "x.xlsx"), cl)
+
+
+# --------------------------------------------------------------------------- #
+# a section site: the tally narrows by milepost, and the TEAAS report's
+# Summary Statistics join the Crash History block
+# --------------------------------------------------------------------------- #
+def _fiche_workbook(path, rows):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "260399999EA_Fiche"
+    ws.append(["Muni.\nCode", "On Road", "Miles", "Dir\nFrom", "From Road",
+               "Toward Road", "Milepost Road", "MP", "IS?", "New MP", "MA",
+               "Crash ID", "Date", "T", "C", "F", "L", "S", "Type"])
+    for r in rows:
+        ws.append(r)
+    wb.save(path)
+    return str(path)
+
+
+def test_a_section_site_tallies_by_milepost_on_the_route(tmp_path):
+    from datetime import date
+    rows = [
+        [0, "US 311", 0.5, "S", "SR 1979", "SR 4543", "US 311", 10.504, "IS",
+         None, None, 107699011, date(2024, 4, 20), 19, 1, 0, 5, "O", "FO"],
+        [0, "US 311", 1.4, "N", "SR 1980", "SR 1979", "US 311", 11.110, "IS",
+         None, None, 108571088, date(2026, 3, 7), 27, 1, 0, 3, "K", "head-on"],
+        # mileposted beyond the study limits: not this site
+        [0, "US 311", 0.3, "N", "SR 1948", "SR 1953", "US 311", 11.548, "NIS",
+         None, None, 107209043, date(2023, 1, 9), 23, 1, 0, 1, "B", "LTSR"],
+        # inside the range but on another route: not this site
+        [0, "SR 1940", 0.1, "W", "US 311", "SR 1947", "SR 1940", 10.9, "NIS",
+         None, None, 108397584, date(2026, 2, 6), 19, 1, 0, 1, "C", "FO"],
+    ]
+    wb = _fiche_workbook(tmp_path / "f.xlsx", rows)
+    lines = fi.crash_history_lines(wb, roads=[], route="US 311",
+                                   mp_range=(10.438, 11.2))
+    assert lines[0].startswith("2 crashes in the TEAAS pull")
+    assert "1 fatal" in lines[0] and "1 PDO" in lines[0]
+    assert "4/20/2024 to 3/7/2026" in lines[0]
+    # the road-name narrowing still works on its own
+    by_road = fi.crash_history_lines(wb, roads=["US 311", "SR 1980"])
+    assert by_road[0].startswith("1 crashes in the TEAAS pull")
+
+
+SUMMARY_CSV = '''"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Strip Analysis Report"
+"Study Criteria Summary"
+"County:","FORSYTH","City:","All and Rural"
+"Date:","8/1/2021","to","7/31/2026","Study:","260399999EA"
+"Location:","US 311 from A [MP 10.483] to B [MP 11.104]"
+"Summary Statistics"
+"High Level Crash Summary"
+"Crash Type","Number of
+Crashes","Percent
+of Total"
+"Total Crashes","19","100.00"
+"Fatal Crashes","1","5.26"
+"Non-Fatal Injury Crashes","7","36.84"
+"Total Injury Crashes","8","42.11"
+"Property Damage Only Crashes","11","57.89"
+"Night Crashes","9","47.37"
+"Wet Crashes","8","42.11"
+"Alcohol/Drugs Involvement Crashes","1","5.26"
+"Vehicle Exposure Statistics"
+"Annual ADT =","4400",""
+"Total Length =","1.166 (Miles)","1.876 (Kilometers)"
+"Total Vehicle Exposure =","9.37 (MVMT)","15.08 (MVKMT)"
+"Total Crash Rate","202.82","126.02"
+"Fatal Crash Rate","10.67","6.63"
+"Night Crash Rate","96.07","59.70"
+"Wet Crash Rate","85.40","53.06"
+"Miscellaneous Statistics"
+"Severity Index =","7.72"
+"EPDO Crash Index =","146.60"
+"Estimated Property Damage Total = $","152100.00"
+"Accident Type Summary"
+"Accident Type","Number of
+Crashes","Percent
+of Total"
+"ANIMAL","3","15.79"
+"FIXED OBJECT","8","42.11"
+"HEAD ON","1","5.26"
+"REAR END, SLOW OR STOP","2","10.53"
+"Injury Summary"
+"Injury Type","Number of
+Injuries","Percent
+of Total"
+"Fatal Injuries","1","7.14"
+'''
+
+
+def test_the_teaas_summary_is_read_by_label(tmp_path):
+    p = tmp_path / "InitialStudy.csv"
+    p.write_text(SUMMARY_CSV)
+    s = fi.strip_summary(str(p))
+    assert s["total"] == "19" and s["fatal"] == "1" and s["adt"] == "4400"
+    assert s["rate"] == "202.82" and s["severity_index"] == "7.72"
+    assert s["study"] == "260399999EA"
+    assert s["period"] == "8/1/2021 to 7/31/2026"
+    lines = fi.strip_summary_lines(str(p))
+    assert lines[0] == ("TEAAS analysis 260399999EA, 8/1/2021 to 7/31/2026: "
+                        "19 crashes, 1 fatal, 7 non-fatal injury, 11 PDO; "
+                        "9 at night, 8 wet, 1 with alcohol or drugs")
+    assert lines[1] == ("ADT 4,400; 1.166 miles; 9.37 (MVMT); crash rate "
+                        "202.82 (fatal 10.67, night 96.07, wet 85.40); "
+                        "severity index 7.72; EPDO index 146.60")
+    assert s["types"] == {"ANIMAL": 3, "FIXED OBJECT": 8, "HEAD ON": 1,
+                          "REAR END, SLOW OR STOP": 2}
+    assert lines[2] == ("Leading types: fixed object 8 (57%), animal 3 "
+                        "(21%), rear end, slow or stop 2 (14%), head on 1 "
+                        "(7%)")
+
+
+# --------------------------------------------------------------------------- #
+# a rural section slip: the offset carries a direction letter and the
+# location line says how far from town the site is (260307016EA layout;
+# the facts here are synthetic)
+# --------------------------------------------------------------------------- #
+SECTION_SLIP_TEXT = """\
+                             NCDOT Fatal Crash Notification
+
+     Internal ID/Fatal Slip Number: 269999999EA                  Crash Date: 3/1/2026
+                            Crash ID: 108000002                  Crash Time: 6:03:00 AM
+Crashweb Link for Report Image:
+       https://crashweb.ncdot.gov/crashweb/submitCrashIDFromTRCS.do?crashID=108000002
+
+Location
+Division 9 | Triad Region
+Forsyth County, 2 miles N of Walkertown
+On US 311, 1.4 miles N from SR 1980 toward SR 1979
+https://www.google.com/maps/place/36.22298+-80.16971
+
+Description
+VEHICLE 1 WAS TRAVELING NORTH ON US-311. VEHICLE 2 WAS TRAVELING SOUTH.
+
+Persons Killed
+Person 1: adult from NC, position front left in unit 2, no alcohol
+           or drugs suspected
+
+                                                                     This report generated on 3/3/2026
+"""
+
+
+def test_a_rural_section_slip_keeps_the_offset_direction(tmp_path):
+    p = tmp_path / "section_slip.txt"
+    p.write_text(SECTION_SLIP_TEXT)
+    slip = fi.parse_fatal_slip(str(p))
+    assert slip.county == "Forsyth" and slip.municipality == ""
+    assert slip.near == "2 miles N of Walkertown"
+    assert slip.on_road == "US 311" and slip.from_road == "SR 1980"
+    assert slip.toward_road == "SR 1979"
+    assert slip.miles_from == 1.4 and slip.dir_from == "N"
+    assert slip.location_text() == "US 311, 1.4 miles N from SR 1980 toward SR 1979"
+    assert slip.lat == 36.22298 and slip.lon == -80.16971

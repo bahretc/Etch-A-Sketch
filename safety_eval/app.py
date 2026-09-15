@@ -529,12 +529,37 @@ def _fatal_tab(st) -> None:
         fiche_default = ws.path("workbook") or ""
     fiche_path = c2.text_input(
         "Study fiche workbook (.xlsx path, optional)", value=fiche_default,
-        help="Tallies the Crash History block, narrowed to the slip's "
-             "roads by name stem; verify the tally against the pull.")
+        help="Tallies the Crash History block: by the slip's road names "
+             "at a junction, by milepost on the route for a section site "
+             "(rule 5); verify the tally against the pull.")
+    s1, s2, s3 = st.columns(3)
+    route = s1.text_input("Route (section site)",
+                          value=(ws.param("route", "") if ws else ""),
+                          help="With the milepost limits, the tally is "
+                               "narrowed by milepost instead of road name.")
+    lo = s2.number_input("MP begin", format="%.3f", step=0.001,
+                         value=float(ws.param("mp_lo", 0.0)) if ws else 0.0)
+    hi = s3.number_input("MP end", format="%.3f", step=0.001,
+                         value=float(ws.param("mp_hi", 0.0)) if ws else 0.0)
+    initial_default = (ws.path("initial_study_csv") or "") if ws else ""
+    initial_path = st.text_input(
+        "TEAAS analysis report (.csv path, optional)", value=initial_default,
+        help="The Strip/Intersection Analysis Report; its Summary "
+             "Statistics (counts, ADT, rates, severity index) join the "
+             "Crash History block.")
+    own_lines = st.text_area(
+        "Crash History lines of your own (one per line, optional)",
+        placeholder="The fatal narrative, stated from the report.",
+        help="Written after the tally, exactly as typed; the docs/05 style "
+             "gate runs on each line.")
     map_up = st.file_uploader(
         "Provided location map (optional)", type=["png", "jpg", "jpeg"],
         help="Embedded untouched on the Sketch sheet; nothing is drawn "
              "over it (docs/02).")
+    map_default = ws.path("location_map") if ws else None
+    if map_up is None and map_default:
+        st.caption(f"Using the study's location map: "
+                   f"{os.path.basename(map_default)}")
 
     have_slip = slip_up is not None or bool(slip_default)
     if st.button("Build Field Investigation File", type="primary",
@@ -563,10 +588,14 @@ def _fatal_tab(st) -> None:
                 if not os.path.exists(fiche_path):
                     st.error(f"Fiche workbook not found: {fiche_path}")
                     st.stop()
+                section = bool(route.strip()) and hi > lo > 0
                 try:
                     history = crash_history_lines(
                         fiche_path,
-                        roads=[slip.on_road, slip.from_road])
+                        roads=[] if section else [slip.on_road,
+                                                  slip.from_road],
+                        route=route.strip() or None,
+                        mp_range=(lo, hi) if section else None)
                 except (KeyError, ValueError) as exc:
                     st.error(str(exc))
                     st.stop()
@@ -574,9 +603,27 @@ def _fatal_tab(st) -> None:
                     for ln in history:
                         st.caption("· " + ln)
                 else:
-                    st.warning("No fiche rows matched the site roads; "
-                               "the Crash History block carries only the "
-                               "fatal itself. Check the pull.")
+                    st.warning("No fiche rows matched the site; the Crash "
+                               "History block carries only the fatal "
+                               "itself. Check the pull, the route and the "
+                               "milepost limits.")
+            if initial_path.strip():
+                if not os.path.exists(initial_path):
+                    st.error(f"Analysis report not found: {initial_path}")
+                    st.stop()
+                from safety_eval.field_investigation import (
+                    strip_summary_lines)
+                try:
+                    summary = strip_summary_lines(initial_path)
+                except ValueError as exc:
+                    st.error(str(exc))
+                    st.stop()
+                for ln in summary:
+                    st.caption("· " + ln)
+                history = (history or []) + summary
+            own = [ln.strip() for ln in own_lines.splitlines() if ln.strip()]
+            if own:
+                history = (history or []) + own
             try:
                 cl = checklist_from_slip(
                     slip, investigated_by=investigated_by.strip(),
@@ -584,7 +631,7 @@ def _fatal_tab(st) -> None:
             except ValueError as exc:
                 st.error(str(exc))
                 st.stop()
-            mpath = _save_upload(map_up, tmp) if map_up else None
+            mpath = (_save_upload(map_up, tmp) if map_up else map_default)
             stem = slip.slip_number or "fatal"
             out = os.path.join(tmp, f"{stem}_FieldInvestigation.xlsx")
             build_field_investigation(out, cl, location_map=mpath)
@@ -593,6 +640,8 @@ def _fatal_tab(st) -> None:
                     wsm.copy_into(ws, "fatal_slip", slip_up)
                 if map_up is not None:
                     wsm.copy_into(ws, "location_map", map_up)
+                ws.set_params(route=route.strip() or None,
+                              mp_lo=lo or None, mp_hi=hi or None)
                 saved = ws.adopt_output("field_investigation", out)
                 st.caption(f"Saved into study {ws.study}: "
                            f"{os.path.relpath(saved)}")

@@ -47,10 +47,12 @@ class FatalSlip:
     region: str = ""
     county: str = ""
     municipality: str = ""            # blank when outside any municipality
+    near: str = ""                    # "2 miles N of Walkertown" when rural
     on_road: str = ""
     from_road: str = ""
     toward_road: str = ""
     miles_from: float = 0.0
+    dir_from: str = ""                # N/S/E/W of the offset, when stated
     lat: float | None = None
     lon: float | None = None
     description: str = ""
@@ -71,7 +73,10 @@ class FatalSlip:
         if frm and not self.miles_from:
             return f"{on} at {frm}"
         if frm:
-            text = f"{on}, {self.miles_from:g} miles from {frm}"
+            text = f"{on}, {self.miles_from:g} miles "
+            if self.dir_from:
+                text += f"{self.dir_from} "
+            text += f"from {frm}"
             toward = clean_road(self.toward_road)
             if toward:
                 text += f" toward {toward}"
@@ -140,13 +145,16 @@ def parse_fatal_slip(path: str) -> FatalSlip:
     s.region = grab(r"Division\s+\d+\s*\|\s*([^\n]+?)\s*Region")
     s.county = grab(r"([A-Za-z ]+?)\s+County")
     s.municipality = grab(r"County,\s*in\s+([^\n]+)")
-    m = re.search(r"On\s+(.+?),\s*([\d.]+)\s*miles?\s+from\s+(.+?)"
-                  r"(?:\s+toward\s+(.+?))?\s*$", text, re.M)
+    # rural slips say where the site is instead: "County, 2 miles N of X"
+    s.near = grab(r"County,\s*([\d.]+\s*miles?\s+[NSEW]{1,2}\s+of\s+[^\n]+)")
+    m = re.search(r"On\s+(.+?),\s*([\d.]+)\s*miles?\s+(?:([NSEW]{1,2})\s+)?"
+                  r"from\s+(.+?)(?:\s+toward\s+(.+?))?\s*$", text, re.M)
     if m:
         s.on_road = m.group(1).strip()
         s.miles_from = float(m.group(2))
-        s.from_road = m.group(3).strip()
-        s.toward_road = (m.group(4) or "").strip()
+        s.dir_from = (m.group(3) or "").strip()
+        s.from_road = m.group(4).strip()
+        s.toward_road = (m.group(5) or "").strip()
     m = re.search(r"maps/place/(-?[\d.]+)\s*\+\s*(-?[\d.]+)", text)
     if m:
         s.lat, s.lon = float(m.group(1)), float(m.group(2))
@@ -202,8 +210,18 @@ def _row_has_road(row, stem: str) -> bool:
     return False
 
 
+def _on_route(row, route: str | None) -> bool:
+    if not route:
+        return True
+    want = " ".join(route.upper().split())
+    have = " ".join(str(row.fields.get("milepost_road") or "").upper().split())
+    return have == want
+
+
 def crash_history_lines(workbook_path: str, sheet: str | None = None,
-                        top: int = 3, roads: list | None = None) -> list[str]:
+                        top: int = 3, roads: list | None = None,
+                        route: str | None = None,
+                        mp_range: tuple | None = None) -> list[str]:
     """The Crash History block, tallied from the study fiche workbook the
     way the completed checklist states it: total and severity split over
     the pull dates, then the leading crash types. Counts only; the fatal
@@ -218,6 +236,11 @@ def crash_history_lines(workbook_path: str, sheet: str | None = None,
     against the pull. Pass the slip's two roads for a junction, one for
     a mid-block site, or nothing when the workbook is already the
     study's own pull.
+
+    A section site narrows by MILEPOST instead (rule 5: strip studies are
+    milepost-dependent): ``mp_range=(lo, hi)`` keeps the rows mileposted
+    on ``route`` between the study limits, the way the TEAAS strip
+    analysis itself was pulled. Both narrowings can run together.
     """
     from .hsip import fiche_sheet_name
     from .review_queue import load_review_sheet
@@ -232,6 +255,11 @@ def crash_history_lines(workbook_path: str, sheet: str | None = None,
         stems = [s for r in roads if (s := _road_stem(r))]
         rows = [r for r in rows
                 if all(_row_has_road(r, s) for s in stems)]
+    if mp_range:
+        lo, hi = sorted(float(v) for v in mp_range)
+        rows = [r for r in rows
+                if _on_route(r, route) and r.mp is not None
+                and lo <= r.mp <= hi]
     if not rows:
         return []
     sev = {k: 0 for k, _ in _SEV_LABEL}
@@ -259,6 +287,135 @@ def crash_history_lines(workbook_path: str, sheet: str | None = None,
     if ranked:
         lines.append("; ".join(
             f"{_type_label(t)} {n} ({n / total:.0%})" for t, n in ranked))
+    return lines
+
+
+#: Summary Statistics labels on the TEAAS Strip / Intersection Analysis
+#: Report, normalised (lower case, trailing "=" and ":" dropped).
+_SUMMARY_LABELS = {
+    "total crashes": "total", "fatal crashes": "fatal",
+    "non-fatal injury crashes": "injury",
+    "property damage only crashes": "pdo", "night crashes": "night",
+    "wet crashes": "wet", "alcohol/drugs involvement crashes": "alcohol",
+    "annual adt": "adt", "total length": "length",
+    "total vehicle exposure": "exposure", "total entering vehicles": "exposure",
+    "total crash rate": "rate", "fatal crash rate": "fatal_rate",
+    "night crash rate": "night_rate", "wet crash rate": "wet_rate",
+    "severity index": "severity_index", "epdo crash index": "epdo",
+}
+
+
+def _norm_label(cell) -> str:
+    return " ".join(str(cell or "").split()).rstrip(" =:").lower()
+
+
+def strip_summary(initial_study_csv: str) -> dict:
+    """The Summary Statistics of a TEAAS Strip (or Intersection) Analysis
+    Report, read by label off the CSV export, never by position: the
+    counts, exposure and rates the checklist's Crash History block quotes
+    (docs/02: counts, ADT, rate). Values are the report's own text."""
+    import csv
+
+    out: dict = {}
+    block = None
+    with open(initial_study_csv, newline="", encoding="utf-8",
+              errors="replace") as fh:
+        for row in csv.reader(fh):
+            for i, cell in enumerate(row):
+                key = _SUMMARY_LABELS.get(_norm_label(cell))
+                if key and key not in out and i + 1 < len(row):
+                    value = str(row[i + 1]).strip()
+                    if value == "$" and i + 2 < len(row):
+                        value = str(row[i + 2]).strip()
+                    out[key] = value
+            if row and _norm_label(row[0]) == "date" and "period" not in out \
+                    and len(row) >= 4:
+                out["period"] = f"{row[1].strip()} to {row[3].strip()}"
+            if row and _norm_label(row[0]) == "study" and "study" not in out \
+                    and len(row) >= 2:
+                out["study"] = row[1].strip()
+            if row and len(row) >= 6 and _norm_label(row[4]) == "study" \
+                    and "study" not in out:
+                out["study"] = row[5].strip()
+            if row and _norm_label(row[0]) == "location" and len(row) >= 2 \
+                    and "location" not in out:
+                out["location"] = " ".join(row[1].split())
+            label = _norm_label(row[0]) if row else ""
+            if label == "accident type summary":
+                out["types"] = {}
+                block = "types"
+            elif label in ("injury summary", "monthly summary"):
+                block = None
+            elif block == "types" and len(row) >= 3 and row[0].strip() \
+                    and row[1].strip().isdigit() \
+                    and not label.startswith("accident type"):
+                out["types"][row[0].strip()] = int(row[1])
+    return out
+
+
+def _num(text: str) -> str:
+    """'4400' -> '4,400'; '202.82' stays; anything else verbatim."""
+    t = str(text).replace(",", "").strip()
+    try:
+        v = float(t)
+    except ValueError:
+        return str(text).strip()
+    return f"{int(v):,}" if v.is_integer() and "." not in t else t
+
+
+def strip_summary_lines(initial_study_csv: str, top: int = 4) -> list[str]:
+    """The Crash History lines a TEAAS analysis report supports: the pull
+    and its counts, then ADT, length or entering vehicles, and the rates
+    with the severity index. Only what the report states is written."""
+    s = strip_summary(initial_study_csv)
+    lines: list[str] = []
+    if "total" in s:
+        head = "TEAAS analysis"
+        if s.get("study"):
+            head += f" {s['study']}"
+        if s.get("period"):
+            head += f", {s['period']}"
+        parts = [f"{_num(s['total'])} crashes"]
+        for key, label in (("fatal", "fatal"), ("injury", "non-fatal injury"),
+                           ("pdo", "PDO")):
+            if key in s:
+                parts.append(f"{_num(s[key])} {label}")
+        extra = [f"{_num(s[k])} {lab}" for k, lab in
+                 (("night", "at night"), ("wet", "wet"),
+                  ("alcohol", "with alcohol or drugs")) if k in s]
+        line = head + ": " + ", ".join(parts)
+        if extra:
+            line += "; " + ", ".join(extra)
+        lines.append(line)
+    exposure = []
+    if "adt" in s:
+        exposure.append(f"ADT {_num(s['adt'])}")
+    if "length" in s:
+        exposure.append(s["length"].replace("(Miles)", "miles").strip())
+    if "exposure" in s:
+        exposure.append(s["exposure"].strip())
+    rates = []
+    if "rate" in s:
+        rates.append(f"crash rate {s['rate']}")
+        sub = [f"{lab} {s[k]}" for k, lab in
+               (("fatal_rate", "fatal"), ("night_rate", "night"),
+                ("wet_rate", "wet")) if k in s]
+        if sub:
+            rates[-1] += " (" + ", ".join(sub) + ")"
+    if "severity_index" in s:
+        rates.append(f"severity index {s['severity_index']}")
+    if "epdo" in s:
+        rates.append(f"EPDO index {s['epdo']}")
+    if exposure or rates:
+        lines.append("; ".join(exposure + rates))
+    types = s.get("types") or {}
+    total = sum(types.values())
+    if types and total:
+        ranked = sorted(types.items(), key=lambda kv: (-kv[1], kv[0]))[:top]
+        lines.append("Leading types: " + ", ".join(
+            f"{name.lower()} {n} ({n / total:.0%})" for name, n in ranked))
+    for i, ln in enumerate(lines):
+        check_style(ln, f"strip_summary[{i}]")
     return lines
 
 

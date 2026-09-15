@@ -130,6 +130,7 @@ def test_the_review_page_carries_the_branch_and_sheet_inputs():
 def test_the_review_page_says_when_the_assist_is_not_ready(monkeypatch):
     """A missing key must read as a sentence in the settings, never a
     traceback (the assist is optional; the queue works without it)."""
+    pytest.importorskip("anthropic")    # without the SDK the sentence names the package instead
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     at = _app("hsip", page="review")
     captions = " ".join(getattr(el, "value", "") or "" for el in at.caption)
@@ -154,6 +155,7 @@ def test_creating_a_study_in_the_sidebar_opens_it(tmp_path, monkeypatch):
     monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
     at = _app()
     at.sidebar.text_input(key="new_study").set_value("41000079305")
+    at.run(timeout=30)          # typing reruns the app, enabling the button
     next(b for b in at.sidebar.button
          if b.label == "Create study").click()
     at.run(timeout=30)

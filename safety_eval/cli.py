@@ -1474,8 +1474,26 @@ def build_parser() -> argparse.ArgumentParser:
     fi.add_argument("--sheet", help="Working sheet (default: found).")
     fi.add_argument("--roads", nargs="*",
                     help="Road name(s) that scope the tally (default: the "
-                         "slip's on/from roads).")
+                         "slip's on/from roads; pass none with --lo/--hi "
+                         "for a section site).")
+    fi.add_argument("--route", help="Study route for a section site, e.g. "
+                    "\"US 311\"; with --lo/--hi the tally is narrowed by "
+                    "milepost instead of road name (rule 5).")
+    fi.add_argument("--lo", type=float, help="Study MP begin (section).")
+    fi.add_argument("--hi", type=float, help="Study MP end (section).")
+    fi.add_argument("--initial-study", dest="initial_study",
+                    help="TEAAS Strip/Intersection Analysis Report CSV; its "
+                         "Summary Statistics (counts, ADT, rates, severity "
+                         "index) join the Crash History block.")
+    fi.add_argument("--history-line", dest="history_lines", action="append",
+                    default=[],
+                    help="A Crash History line of the engineer's own (the "
+                         "fatal narrative from the report); repeatable.")
     fi.add_argument("--investigated-by", dest="investigated_by", default="")
+    fi.add_argument("--speed-limit", dest="speed_limit", default="",
+                    help="Existing speed limit as the report states it, "
+                         "e.g. \"55 mph\"; posted or statutory is the "
+                         "visit's call.")
     fi.add_argument("--location-map", dest="location_map",
                     help="Provided location map image, embedded untouched "
                          "on the Sketch sheet (docs/02).")
@@ -1581,17 +1599,34 @@ def _cmd_fatal_checklist(args) -> int:
           + (f", in {slip.municipality}" if slip.municipality else ""))
     print(f"  location: {slip.location_text()}")
     history = None
+    section = args.lo is not None and args.hi is not None
     if args.fiche:
-        roads = args.roads if args.roads else [slip.on_road, slip.from_road]
-        history = crash_history_lines(args.fiche, sheet=args.sheet,
-                                      roads=roads)
+        if args.roads is not None:
+            roads = args.roads
+        elif section:
+            roads = []
+        else:
+            roads = [slip.on_road, slip.from_road]
+        history = crash_history_lines(
+            args.fiche, sheet=args.sheet, roads=roads, route=args.route,
+            mp_range=(args.lo, args.hi) if section else None)
         for ln in history:
             print(f"  history: {ln}")
         if not history:
-            print("  history: no rows matched the site roads; check the "
-                  "pull or pass --roads")
+            print("  history: no rows matched the site; check the pull, "
+                  "--roads, or --route/--lo/--hi")
+    if args.initial_study:
+        from .field_investigation import strip_summary_lines
+        summary = strip_summary_lines(args.initial_study)
+        for ln in summary:
+            print(f"  summary: {ln}")
+        history = (history or []) + summary
+    if args.history_lines:
+        history = (history or []) + list(args.history_lines)
     cl = checklist_from_slip(slip, investigated_by=args.investigated_by,
                              crash_history=history)
+    if args.speed_limit:
+        cl.speed_limit = args.speed_limit
     out = args.out or f"{slip.slip_number or 'fatal'}_FieldInvestigation.xlsx"
     build_field_investigation(out, cl, location_map=args.location_map)
     print(f"Wrote {out} (Checklist, Photos, Sketch); the field "

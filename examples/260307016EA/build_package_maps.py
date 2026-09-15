@@ -33,15 +33,14 @@ OUT = f"{SP}/out"
 EX = "/home/user/Etch-A-Sketch/examples/41000079307/mapdata"
 WO = "260307016EA"
 DIVISION = "9"
-COORDS = "36.223219, -80.168827"   # engineer's point: first centerline crossing, on US 311 at MP 11.109
-CRASH_LL = [36.223219, -80.168827]
+COORDS = "36.22315, -80.16879"   # point of first harmful event: the SR 1979 junction, US 311 MP 11.104
+CRASH_LL = [36.22315, -80.16879]
 DESC = ["US 311 (Walnut Cove Road) from Waggoner Neal Road [MP 10.438]",
         "to 0.5 miles north of SR 1979 (Grubb Road) [MP 11.604]",
         "in Forsyth County"]
 MP_LO, MP_HI = 10.438, 11.604
 CRASH_MP = 11.11
-CRASH_TXT = ("Fatal Crash 108571088<br>US 311 just north of<br>"
-             "SR 1979 (Grubb Road), MP 11.11")
+CRASH_TXT = ("Fatal Crash 108571088<br>US 311 at SR 1979<br>(Grubb Road), MP 11.11")
 
 
 def _arc_query(url, bbox, fields, geom=True):

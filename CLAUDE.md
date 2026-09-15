@@ -36,6 +36,7 @@ Target stack: Python 3.11+, working directly with the real NCDOT Excel templates
 6. **Writing style for any generated report text:** plain and understated, no em dashes anywhere, no flourishes. See docs/05-report-writing.md.
 7. **AADT estimates for minor/side roads are rounded to the nearest hundred.**
 8. When a real template workbook is present in templates/, it is ground truth for cell addresses and structure. The docs describe known layouts, but template versions can drift; verify addresses against the actual file before writing code that depends on them.
+9. **Never deliver stand-in or placeholder deliverables.** TEAAS exports (CrashID.txt, the strip or intersection analysis CSV and PDF, ID exports) come only from TEAAS. Do not fabricate, reconstruct or re-render them from other inputs and send them as if they were the deliverable. If a file can only come from TEAAS or another system the engineer runs, give the inputs to enter there (study criteria, import list, deletions) and stop.
 
 ## Repo layout
 

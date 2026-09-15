@@ -38,6 +38,9 @@ DESC = ["US 311 (Walnut Cove Road) from Waggoner Neal Road [MP 10.438]",
         "to 0.5 miles north of SR 1979 (Grubb Road) [MP 11.604]",
         "in Forsyth County"]
 MP_LO, MP_HI = 10.438, 11.604
+CRASH_MP = 11.11
+CRASH_TXT = ("Fatal Crash 108571088<br>US 311 just north of<br>"
+             "SR 1979 (Grubb Road), MP 11.11")
 
 
 def _arc_query(url, bbox, fields, geom=True):
@@ -480,6 +483,14 @@ for(const m of (P.limits||[])){
   lbl(cll(bc),m.txt,"bx",0,0,0,800);
   lbl(m.ll,XMARK,"",0,0,0,900);
 }
+if(P.crash){
+  const c=P.crash, ap=cpt(c.ll), bc=[ap.x+c.off[0],ap.y+c.off[1]];
+  L.circleMarker(c.ll,{radius:15,color:"#E8100C",weight:3.5,fill:false,
+    interactive:false}).addTo(map);
+  L.polyline([c.ll,cll(bc)],{color:"#000",weight:1.4,
+    interactive:false}).addTo(map);
+  lbl(cll(bc),c.txt,"bx",0,0,0,820);
+}
 for(const s of (P.stations||[]))
   L.circleMarker(s.ll,{radius:5,color:"#fff",weight:1.4,
     fillColor:s.c,fillOpacity:1,interactive:false}).addTo(map);
@@ -599,6 +610,7 @@ loc_payload = {
     "limits": [
         {"ll": STUDY[0], "off": [-110, 46], "txt": "Begin Study"},
         {"ll": STUDY[-1], "off": [110, -46], "txt": "End Study"}],
+    "crash": {"ll": mp_to_ll(CRASH_MP), "off": [170, 30], "txt": CRASH_TXT},
     "labels": loc_labels,
 }
 print("Location Map tiles...")
@@ -747,7 +759,7 @@ for n, st in enumerate(MAINS, start=1):
     for yy in range(2002, 2026):
         v = st["props"].get(f"AADT_{yy}")
         val = "" if v is None else str(v)
-        hot = ' hot' if yy == 2024 else ''
+        hot = ' hot' if yy == 2023 else ''
         rows += (f'<div class="row{hot}"><b>AADT_{yy}</b>'
                  f'<span>{val}</span></div>')
     pid = f"panel{n}"
@@ -783,6 +795,10 @@ adt_payload = {
     "panelLeaders": panel_leaders,
     "redEllipse": {"pad": 14, "b": 30},
     "study": STUDY,
+    "limits": [
+        {"ll": STUDY[0], "off": [-120, 40], "txt": "Begin Study"},
+        {"ll": STUDY[-1], "off": [120, -40], "txt": "End Study"}],
+    "crash": {"ll": mp_to_ll(CRASH_MP), "off": [215, 95], "txt": CRASH_TXT},
     "labels": adt_labels,
 }
 build(f"{OUT}/{WO}_AADTMap.html", "AADT Map", adt_payload,

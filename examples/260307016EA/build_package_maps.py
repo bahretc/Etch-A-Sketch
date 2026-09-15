@@ -363,11 +363,13 @@ def locator_svg():
 CSS = """html,body{margin:0;width:1056px;height:816px;background:#fff;
 font-family:'Segoe UI',Arial,Helvetica,sans-serif;overflow:hidden;
 color:#000}
-#map{position:absolute;top:0;left:0;right:0;height:706px;
+#frame{position:absolute;left:16px;top:16px;width:1022px;height:782px;
+border:1.5px solid #000;overflow:hidden;background:#fff}
+#map{position:absolute;top:0;left:0;right:0;height:680px;
 background:#fff}
 .leaflet-container{background:#fff}
-#footer{position:absolute;left:0;right:0;top:706px;bottom:0;
-background:#fff}
+#footer{position:absolute;left:0;right:0;top:680px;bottom:0;
+border-top:1.5px solid #000;background:#fff}
 #fl{position:absolute;left:16px;top:9px;font-size:12.5px;
 line-height:1.62}
 #fc{position:absolute;left:22%;right:22%;top:8px;text-align:center;
@@ -550,6 +552,7 @@ def build(out, title, payload, tiles=None, panels="", legend=False,
     html = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>{title} - {WO}</title>
 <style>{vendor('leaflet.min.css')}</style><style>{CSS}</style></head><body>
+<div id="frame">
 <div id="map"></div>
 <svg id="leader"></svg>
 <div id="locator">{locator_svg()}</div>
@@ -562,6 +565,7 @@ def build(out, title, payload, tiles=None, panels="", legend=False,
 <div id="fr"><span class="fh">Coordinates</span><br>{COORDS}</div>
 <img id="vhb" src="data:image/png;base64,{LOGO_B64}" alt="vhb">
 <div id="ds">Data Source: {datasource}</div>
+</div>
 </div>
 <script>{vendor('leaflet.min.js')}</script>
 <script>{tile_js}window.P={json.dumps(payload)};</script>
@@ -580,10 +584,10 @@ def junction_labels(items, cls):
 
 
 # ============================================================ 1 LOCATION
-# 1056 x 706 px at zoom 15 (about 0.0453 deg lon by 0.0244 deg lat)
+# 1022 x 680 px map inside the border at zoom 15 (about 0.0438 deg lon by 0.0235 deg lat)
 clat = (STUDY[0][0] + STUDY[-1][0]) / 2
 clon = (STUDY[0][1] + STUDY[-1][1]) / 2 - 0.004
-LB = (clat - 0.0122, clon - 0.02265, clat + 0.0122, clon + 0.02265)
+LB = (clat - 0.0117, clon - 0.0219, clat + 0.0117, clon + 0.0219)
 loc_labels = road_name_labels(LB, 12, "rn a", minsep=80,
                               skip=("Walnut Cove Rd",),
                               avoid=[tuple(STUDY[0]), tuple(STUDY[-1]),
@@ -748,7 +752,7 @@ MAINS.sort(key=lambda s: GOV.index(s["id"]))
 panels_html = ""
 panel_leaders = []
 numbered = []
-PANEL_POS = {"0340000299": (12, 96), "0340000301": (872, 12)}
+PANEL_POS = {"0340000299": (12, 112), "0340000301": (836, 12)}
 for n, st in enumerate(MAINS, start=1):
     x, y = PANEL_POS[st["id"]]
     rows = ""

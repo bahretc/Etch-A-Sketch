@@ -52,6 +52,10 @@ Measured cost of not having this rule: on the 47-report SR 1003 sample the assis
 
 - Brief; do not restate information already in the workbook (do not repeat a distance the row already shows unless it is wrong).
 - Acceptable patterns: `no intersection in diagram`, `>150'`, `at [road]` for a different cross street, `at southern Deppe Loop/US 17 per coords` style when coordinates resolved it.
+- State evidence and the resulting milepost, never a verdict on the source (docs/05).
+- **An initial-study crash that is not on the fiche** (TEAAS pulled it from a road outside the fiche roads, so the ID sheet reads Fiche? NO) is added to the fiche working sheet as its own row, built from the Initial Study and the report, and reviewed like any other row. Its comment opens `in initial study, not fiche;` and then gives the evidence. Never leave it off the sheet with only a note to delete it in TEAAS (engineer, 2026-09, crash 108397584 on 260307016EA).
+- A crash with no report in hand is never IS. It stays a `?` until the DMV-349 is reviewed (engineer, 2026-09).
+- Check property addresses on the report (mailboxes, yard damage, driveways, bus stops) with a geocoder and snap them to the study route; they settle a milepost as well as coordinates do. Report coordinates outrank the coded distance; detailed fiche coordinates that are not on the report are used only when the engineer says so.
 
 ## Target crashes
 

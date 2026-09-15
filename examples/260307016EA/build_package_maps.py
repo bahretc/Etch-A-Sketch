@@ -793,7 +793,6 @@ adt_payload = {
     "stations": stations,
     "numbered": numbered,
     "panelLeaders": panel_leaders,
-    "redEllipse": {"pad": 14, "b": 30},
     "study": STUDY,
     "limits": [
         {"ll": STUDY[0], "off": [-120, 40], "txt": "Begin Study"},

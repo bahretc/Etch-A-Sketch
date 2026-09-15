@@ -7,6 +7,7 @@
 - Brief; never restate values already visible in the adjacent table.
 - Deliverable text is formal; internal QC notes to a reviewer drop tentative language ("I guess" comes out).
 - Sentiment in client emails stays understated and plain.
+- Fiche review comments state the evidence and the resulting milepost, never a verdict on the source. Write "report coordinates place it 0.1 mi S of SR 1979 (MP 11.00); TEAAS MP 11.204", not "TEAAS 11.204 is wrong" or "the coded distance is wrong" (engineer, 2026-09).
 
 ## Countermeasures cell (results sheet, D16)
 

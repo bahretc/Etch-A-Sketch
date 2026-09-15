@@ -120,6 +120,23 @@ style gate runs on every prefilled line. Same flow on the Field
 Investigation page (Fatal study type). Validated against the completed
 TSUINT596369 checklist and the M260408001 slip + fiche.
 
+A section site (260307016EA, US 311, a mid-block fatal on a strip
+section) narrows the tally by milepost instead of road name, because a
+strip study is milepost-dependent (rule 5): `--route "US 311" --lo
+10.438 --hi 11.604` keeps the rows mileposted on the route between the
+study limits. `--initial-study <study>_InitialStudy.csv` adds the TEAAS
+analysis report's Summary Statistics to the Crash History block, read by
+label (counts, ADT, length, exposure, rates, severity index, EPDO index,
+leading types); `--history-line` (repeatable) appends the engineer's own
+lines, such as the fatal narrative stated from the DMV-349; and
+`--speed-limit` writes the report's authorized speed limit, posted or
+statutory being the visit's call. Rural slips carry a direction on the
+offset ("1.4 miles N from SR 1980") and a "2 miles N of Walkertown"
+line; both are parsed. The Field Investigation page reads the route,
+milepost limits, analysis report and location map off the open study
+and takes the engineer's lines in a text area. Workspace roles:
+`crash_report` (the DMV-349 PDFs), `crash_map`, `analysis_memo`.
+
 Report text drafting (Phase 5, drafts only): `safety-eval draft-results
 --workbook Eval.xlsx --train train.jsonl` drafts the Items for Discussion
 cell and the Additional Information rows of a NEW evaluation workbook, the

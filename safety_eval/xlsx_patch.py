@@ -86,9 +86,14 @@ def sheet_files(template: str) -> dict[str, str]:
         if rid and target:
             rid_to_target[rid.group(1)] = target.group(1)
     out: dict[str, str] = {}
-    # attributes can precede name= (openpyxl writes xmlns:r first)
-    for name, rid in re.findall(
-            r'<sheet\b[^>]*?name="([^"]+)"[^>]*?r:id="(rId\d+)"', wb):
+    # attributes can precede name= (openpyxl writes xmlns:r first) and
+    # name= and r:id= can come in either order, so pick each one out
+    for sheet_tag in re.findall(r"<sheet\b[^>]*>", wb):
+        nm = re.search(r'\bname="([^"]+)"', sheet_tag)
+        rm = re.search(r'\br:id="(rId\d+)"', sheet_tag)
+        if not (nm and rm):
+            continue
+        name, rid = nm.group(1), rm.group(1)
         target = rid_to_target[rid]
         if target.startswith("/"):
             # absolute package path (openpyxl writes /xl/worksheets/sheetN.xml)

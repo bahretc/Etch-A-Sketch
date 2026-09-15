@@ -9,10 +9,20 @@ review workflow key on them).
 
 Pipeline:
     PDF -> page images (poppler ``pdftoppm``)  [or TIFF/PNG/JPG input]
-        -> OCR word boxes (``tesseract`` TSV)
-        -> redaction plan (label-driven + pattern-driven, ZIP-preserving)
+        -> OCR word boxes (``tesseract`` TSV, two passes: page and sparse)
+        -> redaction plan (label bands + section-32 region + token patterns
+           + legacy line rules, ZIP-preserving)
         -> black boxes burned into the page image (PIL)
         -> image-only PDF output (NO text layer, so nothing can leak)
+
+Why geometry bands and not OCR line structure: on the DMV-349 the field
+captions ("Driver", "Address", "DOB") are tiny machine print while the values
+are typed or handwritten in the box beside/below them. Sparse-mode OCR puts
+caption and value in different text blocks, so "redact the rest of the line"
+finds nothing - that failure leaked names on a real binder. Captions are
+printed, so they OCR reliably even when the value is handwriting OCR cannot
+read; a band anchored on the caption covers the value AREA regardless of
+whether the value itself was recognized.
 
 The output is rasterized on purpose: redacting a text-layer PDF by drawing
 rectangles leaves the underlying text extractable; burning boxes into images
@@ -49,6 +59,7 @@ class Word:
     height: int
     page: int = 0
     line_id: tuple = (0, 0, 0)      # (block, par, line) from tesseract
+    conf: float = 100.0             # tesseract confidence, 0-100
 
     @property
     def right(self) -> int:
@@ -169,16 +180,47 @@ _ZIP_RE = re.compile(r"^\d{5}(?:-\d{4})?$")
 # full numbers, and the 7-digit local form scans often show when the area
 # code sits in its own box ("252 ... 214-8149")
 _PHONE_RE = re.compile(r"^(?:\(?\d{3}\)?[-. ]?\d{3}[-. ]?\d{4}|\d{3}[-.]\d{4})$")
+_ZIP5_RE = re.compile(r"^\d{5}$")
+_PHONE_TAIL_RE = re.compile(r"^\d{3}[-.]\d{4}$")
 _DATE_RE = re.compile(r"^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$")
 _STREET_SUFFIXES = (
     "ST", "STREET", "RD", "ROAD", "AVE", "AVENUE", "DR", "DRIVE", "LN",
     "LANE", "CT", "COURT", "HWY", "HIGHWAY", "BLVD", "CIR", "CIRCLE", "PL",
     "PLACE", "WAY", "TRL", "TRAIL", "PKWY", "LOOP",
 )
-_CRASH_ID_RE = re.compile(r"^\d{9}$")
+# TEAAS crash IDs start 10x; DMV document numbers start 60x. A bare ^\d{9}$
+# also matches 9-digit ZIP+4 strings (e.g. 283526345), which must NOT be
+# protected - that mistake kept ZIP+4 values visible on a real binder.
+_CRASH_ID_RE = re.compile(r"^(?:1\d{8}|60\d{7})$")
 # 17-char VIN (no I/O/Q); matched anywhere because the left-column caption is
 # often lost by OCR, leaving the bare VIN on the row
 _VIN_RE = re.compile(r"^[A-HJ-NPR-Z0-9]{17}$")
+# DL and policy/account numbers: 7-8 or 10-14 digit runs (9-digit runs get
+# their own crash-id / ZIP+4 handling below)
+_DIGITS7_8_RE = re.compile(r"^\d{7,8}$|^\d{10,14}$")
+_DIGITS9_RE = re.compile(r"^\d{9}$")
+_ZIP4_DASH_RE = re.compile(r"^\d{5}-\d{4}$")
+
+# Geometry bands anchored on printed field captions. Per kind:
+# (width as fraction of page width, height as multiple of row height).
+# Bands start at the caption and extend right/down over the value box.
+_BAND_ANCHORS = {
+    "driver": ("name", 0.42, 1.9),
+    "owner": ("name", 0.42, 1.9),
+    "insured": ("name", 0.42, 1.9),
+    "witness": ("name", 0.42, 2.8),
+    "witnesses": ("name", 0.42, 2.8),
+    "passenger": ("name", 0.42, 2.8),
+    "address": ("address", 0.42, 1.6),
+    "dob": ("dob", 0.17, 1.6),
+    "birth": ("dob", 0.17, 1.6),
+    "dl#": ("license", 0.17, 1.6),
+    "dl": ("license", 0.17, 1.6),
+    "cdl": ("license", 0.17, 1.6),
+    "phone": ("phone", 0.32, 2.6),
+    "telephone": ("phone", 0.32, 2.6),
+    "policy": ("policy", 0.22, 1.6),
+}
 
 
 def _norm(token: str) -> str:
@@ -349,8 +391,229 @@ def local_address_words(words: list[Word], roads,
     return keep
 
 
+def _median_height(words: list[Word]) -> int:
+    hs = sorted(w.height for w in words)
+    return hs[len(hs) // 2] if hs else 20
+
+
+def _edit_distance_at_most(a: str, b: str, k: int) -> bool:
+    """True when levenshtein(a, b) <= k (small k; early exit)."""
+    if abs(len(a) - len(b)) > k:
+        return False
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[-1] + 1,
+                           prev[j - 1] + (ca != cb)))
+        if min(cur) > k:
+            return False
+        prev = cur
+    return prev[-1] <= k
+
+
+def _match_anchor(tok: str):
+    """Match an OCR token against the caption anchors: exact, glued prefix
+    ("OwnerJALEAH"), or fuzzy (degraded scans misread small print)."""
+    spec = _BAND_ANCHORS.get(tok)
+    if spec:
+        return spec
+    for key, s in _BAND_ANCHORS.items():
+        if len(key) >= 5 and tok.startswith(key):
+            return s
+    for key, s in _BAND_ANCHORS.items():
+        if len(key) >= 5 and len(tok) >= 4 and \
+                _edit_distance_at_most(tok, key, 1 if len(key) < 6 else 2):
+            return s
+    return None
+
+
+def _band_boxes(words: list[Word], page_w: int, page_h: int,
+                pad: int = 4) -> list[Redaction]:
+    """Caption-anchored field bands (see module docstring)."""
+    med_h = _median_height(words)
+    zips = [w for w in words if _norm(w.text) == "zip"]
+    out: list[Redaction] = []
+    for a in words:
+        spec = _match_anchor(_norm(a.text))
+        if not spec:
+            continue
+        kind, w_frac, h_mult = spec
+        h_eff = max(a.height, med_h)
+        # typed values are taller than the tiny caption, so the band must
+        # reach above the caption's own top or ascenders stay readable
+        top = max(0, a.top - max(pad, int(0.8 * h_eff)))
+        if kind == "phone":
+            # "Driver's Phone Numbers" is a stacked caption; the H (home)
+            # number row sits one row ABOVE the "Phone" word.
+            top = max(0, a.top - int(1.4 * h_eff))
+        bottom = min(page_h, a.top + int(h_mult * h_eff))
+        right = min(page_w, a.left + int(w_frac * page_w))
+        # keep the form's dedicated Zip box visible: clip at a "Zip" caption
+        # sitting to the right of the anchor inside the band. Only a
+        # confident "Zip" may shrink a band - preserving visibility demands
+        # confidence, adding coverage does not.
+        for z in zips:
+            if z.conf < 40:
+                continue
+            if a.left < z.left < right and top <= z.top <= bottom:
+                right = min(right, z.left - 2)
+        if right > a.left:
+            out.append(Redaction(a.page, max(0, a.left - pad), top,
+                                 right, bottom, f"band:{kind}"))
+    return out
+
+
+def _sub_caption_boxes(words: list[Word], page_w: int, page_h: int,
+                       pad: int = 4) -> list[Redaction]:
+    """Structural anchor: on the DMV-349 the typed name row sits directly
+    ABOVE a "First   Middle   Last   Suffix" sub-caption row. When the
+    Driver/Owner caption itself is misread beyond fuzzy reach ("Dnver"),
+    this row still locates the name."""
+    med_h = _median_height(words)
+    firsts = [w for w in words
+              if _edit_distance_at_most(_norm(w.text), "first", 1)]
+    mids = [w for w in words
+            if _edit_distance_at_most(_norm(w.text), "middle", 1)]
+    out: list[Redaction] = []
+    for f in firsts:
+        for m in mids:
+            if m.left > f.left and abs(m.top - f.top) <= 1.5 * med_h \
+                    and m.left - f.left < 0.35 * page_w:
+                h_eff = max(f.height, med_h)
+                out.append(Redaction(
+                    f.page,
+                    max(0, f.left - int(0.10 * page_w)),
+                    max(0, f.top - int(3.0 * h_eff)),
+                    min(page_w, m.left + int(0.30 * page_w)),
+                    max(0, f.top - 2),
+                    "name-above-subcaption"))
+                break
+    return out
+
+
+def _section32_boxes(words: list[Word], page_w: int,
+                     page_h: int) -> list[Redaction]:
+    """DMV-349 section 32, 'Names and Addresses for All Persons': a table
+    whose rows carry name, DOB, and home address for every occupant and
+    witness. The coded columns (seat position, injury, etc.) are crash data
+    and stay visible; the DOB column and the name/address column are covered
+    wholesale (handwriting-safe)."""
+    med_h = _median_height(words)
+    # header anchor: a token fuzzy-matching the distinctive words of
+    # "Names and Addresses for All Persons" (degraded scans misread them),
+    # in the lower half of the page where section 32 lives. Distance 1 only:
+    # distance 2 would swallow every plain "Address" caption.
+    cands = [w for w in words
+             if w.top > 0.5 * page_h
+             and (_edit_distance_at_most(_norm(w.text), "addresses", 1)
+                  or _edit_distance_at_most(_norm(w.text), "persons", 1))]
+    if not cands:
+        return []
+    header = min(cands, key=lambda w: w.top)
+    ems = [w.top for w in words
+           if w.page == header.page and _norm(w.text) == "ems"
+           and w.top > header.top + 2 * med_h]
+    bottom = min(min(ems) - 2 if ems else page_h,
+                 header.top + int(0.26 * page_h), page_h)
+    top = header.bottom + 2
+    if bottom <= top:
+        return []
+    return [
+        Redaction(header.page, int(0.125 * page_w), top,
+                  int(0.25 * page_w), bottom, "section32:dob"),
+        Redaction(header.page, int(0.40 * page_w), top,
+                  int(0.95 * page_w), bottom, "section32:names"),
+    ]
+
+
+def _token_boxes(words: list[Word], keep_zip: bool,
+                 pad: int = 3) -> list[Redaction]:
+    """Pattern layer over individual tokens: phone numbers, 7-8 digit
+    DL/policy numbers, ZIP+4 (the +4 narrows to a block face, so only the
+    5-digit prefix stays visible), and DOB-aged dates.
+
+    Date-of-birth net: the legitimate dates on a DMV-349 (crash date, DMV
+    received date) all sit within a year of each other, while any DOB is
+    years older. Per page, take the newest 4-digit year among date tokens
+    as the report era and redact every date 2+ years older - this catches
+    DOBs even when the tiny "DOB" caption fails to OCR on a poor scan."""
+    out: list[Redaction] = []
+
+    date_re = re.compile(r"^\d{1,2}[/-]\d{1,2}[/-](\d{4})$")
+    years = []
+    for w in words:
+        m = date_re.match(w.text.strip().strip(",.;:"))
+        if m:
+            years.append(int(m.group(1)))
+    era = max(years) if years else None
+
+    def box(w: Word, reason: str, left: int | None = None) -> None:
+        out.append(Redaction(w.page, max(0, (w.left if left is None else left) - pad),
+                             max(0, w.top - pad), w.right + pad,
+                             w.bottom + pad, reason))
+
+    for w in words:
+        t = w.text.strip().strip(",.;:")
+        if not t or _CRASH_ID_RE.match(t):
+            continue
+        if _PHONE_RE.match(t) or _PHONE_TAIL_RE.match(t):
+            box(w, "phone")
+        elif _DIGITS7_8_RE.match(t):
+            box(w, "digits7-8")
+        elif _ZIP4_DASH_RE.match(t):
+            if keep_zip and w.conf >= 40:
+                box(w, "zip+4", left=w.left + int(0.50 * w.width))
+            else:
+                box(w, "zip+4")
+        elif _DIGITS9_RE.match(t):
+            # partial keep (5-digit prefix) only for a confident read
+            if keep_zip and t.startswith("2") and w.conf >= 40:
+                box(w, "zip+4", left=w.left + int(0.52 * w.width))
+            else:
+                box(w, "digits9")
+        elif era is not None:
+            m = date_re.match(t)
+            if m and int(m.group(1)) <= era - 2:
+                box(w, "dob-aged-date")
+    return out
+
+
+# form caption noise that lands inside name bands; never treat as a name
+_NAME_HARVEST_STOP = {
+    "FIRST", "MIDDLE", "LAST", "SUFFIX", "NAME", "NAMES", "SAME", "DRIVER",
+    "DRIVERS", "OWNER", "WITNESS", "WITNESSES", "PASSENGER", "INSURED",
+    "ADDRESS", "ADDRESSES", "STREET", "CITY", "STATE", "PHONE", "NUMBERS",
+    "LICENSE", "CLASS", "VEHICLE", "PEDESTRIAN", "COMMERCIAL", "TOWED",
+    "DESTINATON", "DESTINATION", "ABOVE", "UNIT", "YES", "NULL",
+}
+
+
+def harvest_name_tokens(words: list[Word], page_w: int,
+                        page_h: int) -> set[str]:
+    """Collect the name tokens sitting inside Driver/Owner/Witness bands so
+    they can be scrubbed EVERYWHERE in the document - narratives repeat the
+    driver's surname in plain prose with no caption nearby."""
+    rects = [b for b in _band_boxes(words, page_w, page_h)
+             if b.reason == "band:name"]
+    rects += _sub_caption_boxes(words, page_w, page_h)
+    out: set[str] = set()
+    for w in words:
+        t = re.sub(r"[^A-Za-z]", "", w.text).upper()
+        if len(t) < 4 or t in _NAME_HARVEST_STOP:
+            continue
+        cx, cy = w.left + w.width // 2, w.top + w.height // 2
+        if any(r.left <= cx <= r.right and r.top <= cy <= r.bottom
+               for r in rects):
+            out.add(t)
+    return out
+
+
 def plan_redactions(words: list[Word], keep_zip: bool = True, pad: int = 3,
-                    identity_rects=None, local_keep=()) -> list[Redaction]:
+                    identity_rects=None, local_keep=(),
+                    page_width: int | None = None,
+                    page_height: int | None = None,
+                    known_names: set[str] | None = None) -> list[Redaction]:
     """Decide what to black out.
 
     What this is FOR: the identifying information of the people involved in
@@ -366,17 +629,36 @@ def plan_redactions(words: list[Word], keep_zip: bool = True, pad: int = 3,
       (DMV-349 boxes put the caption above the handwritten/typed value).
     * The persons-table band under its caption, which is all names and
       addresses by construction.
+    * A charge line: the offense text stays (it is evidence), the charged
+      person's name is covered.
     * Street-address, phone and VIN PATTERNS only where the people's data
       lives: inside ``identity_rects`` (from ``form_geometry.zone_rects``).
       These fired page-wide once, which blacked out addresses in the narrative
       and location block -- exactly the artifact an engineer uses to
       re-milepost a crash ("placed at address"). An uncaptioned street name
       outside the identity block is a road, not a person.
+    * Caption-anchored geometry bands over every Driver/Owner/Witness/
+      Address/DOB/DL/Phone/Policy caption (they cover handwriting OCR cannot
+      read), the name row above a First/Middle sub-caption, and the
+      section-32 names-and-addresses table (DOB and name/address columns).
+      These are sized from ``page_width`` and ``page_height``, estimated
+      from the words when the caller does not know the page.
+    * Token patterns: phone numbers, 7-8 and 10-14 digit DL/policy numbers,
+      ZIP+4 (only the +4 part; the 5-digit ZIP stays) and dates two or more
+      years older than the report era (a DOB whose caption OCR lost).
+    * ``known_names`` (harvested from the identity bands, see
+      :func:`harvest_name_tokens`) are covered wherever they appear,
+      narrative included.
     * ZIP-looking tokens are carved OUT of any planned box when ``keep_zip``.
-    * 9-digit crash IDs are never redacted.
+    * Crash IDs (10x/60x 9-digit) are never redacted.
     * ``local_keep`` words (study-road addresses from
-      :func:`local_address_words`) are carved out the same way ZIPs are.
+      :func:`local_address_words`) are carved out the same way ZIPs are,
+      geometry bands included.
     """
+    if page_width is None:
+        page_width = max((w.right for w in words), default=0) + 10
+    if page_height is None:
+        page_height = max((w.bottom for w in words), default=0) + 10
     zones = list(identity_rects or ())
     kept_ids = {id(w) for w in local_keep}
     lines = _visual_rows(words)
@@ -507,6 +789,49 @@ def plan_redactions(words: list[Word], keep_zip: bool = True, pad: int = 3,
                 bottom=max(w.bottom for w in seg) + pad,
                 reason=reason,
             ))
+
+    # geometry layers (caption bands, the row above a First/Middle
+    # sub-caption, section 32) and the token patterns. The words that stay
+    # visible by design, a confident ZIP and the study-road address the
+    # engineer asked for, are carved out of the bands the same way the zone
+    # rectangles are split in redact_file.
+    geo = (_band_boxes(words, page_width, page_height)
+           + _sub_caption_boxes(words, page_width, page_height)
+           + _section32_boxes(words, page_width, page_height))
+    holes = [(w.left, w.top, w.right, w.bottom) for w in local_keep]
+    if keep_zip:
+        holes += [(w.left, w.top, w.right, w.bottom) for w in words
+                  if _ZIP5_RE.match(w.text.strip().strip(".,;:"))
+                  and w.conf >= 40]
+    out.extend(_carve(geo, holes))
+    out.extend(_token_boxes(words, keep_zip))
+    if known_names:
+        for w in words:
+            t = re.sub(r"[^A-Za-z]", "", w.text).upper()
+            if len(t) >= 4 and t in known_names:
+                out.append(Redaction(w.page, max(0, w.left - pad),
+                                     max(0, w.top - pad), w.right + pad,
+                                     w.bottom + pad, "known-name"))
+    return out
+
+
+def _carve(boxes: list[Redaction], holes) -> list[Redaction]:
+    """Split geometry boxes around the words that stay visible."""
+    if not holes:
+        return list(boxes)
+    from .form_geometry import rect_minus
+
+    out: list[Redaction] = []
+    for b in boxes:
+        page_holes = [h for h in holes
+                      if h[0] < b.right and h[2] > b.left
+                      and h[1] < b.bottom and h[3] > b.top]
+        if not page_holes:
+            out.append(b)
+            continue
+        for x0, y0, x1, y1 in rect_minus((b.left, b.top, b.right, b.bottom),
+                                         page_holes):
+            out.append(Redaction(b.page, x0, y0, x1, y1, b.reason))
     return out
 
 
@@ -521,7 +846,9 @@ def _split_keeping_zip(group: list[Word], keep_zip: bool,
     segments: list[list[Word]] = []
     current: list[Word] = []
     for w in group:
-        if (keep_zip and _ZIP_RE.match(w.text.strip())) or id(w) in kept_ids:
+        # carving a hole to keep a ZIP visible demands a confident read
+        if ((keep_zip and _ZIP_RE.match(w.text.strip()) and w.conf >= 40)
+                or id(w) in kept_ids):
             if current:
                 segments.append(current)
                 current = []
@@ -549,20 +876,30 @@ def _require(binary: str) -> str:
 
 
 def ocr_words(image_path: str, page: int = 0, timeout: int | None = None,
-              min_conf: float = 30.0) -> list[Word]:
+              min_conf: float = 30.0, psm: int = 11) -> list[Word]:
     """OCR one page image into word boxes via tesseract TSV.
 
     ``timeout`` defaults to SAFETY_EVAL_OCR_TIMEOUT (seconds, default 120),
-    read at call time so a long process or a test can adjust it.
+    read at call time so a long process or a test can adjust it. ``psm`` is
+    the tesseract page segmentation mode: 11 (sparse, the default) finds
+    isolated form values, 3 (page) reads flowing text and the tiny captions
+    sparse mode drops.
     """
     tesseract = _require("tesseract")
+    # one OpenMP thread per tesseract process: the callers parallelise across
+    # pages, and oversubscribed OMP threads make every page many times slower
+    env = {**os.environ, "OMP_THREAD_LIMIT": "1"}
     proc = subprocess.run(
-        [tesseract, image_path, "stdout", "--psm", "11", "tsv"],
+        [tesseract, image_path, "stdout", "--psm", str(psm), "tsv"],
         capture_output=True, text=True,
         timeout=timeout if timeout is not None else _ocr_timeout(),
-        check=True)
+        check=True, env=env)
     words: list[Word] = []
-    reader = csv.DictReader(io.StringIO(proc.stdout), delimiter="\t")
+    # QUOTE_NONE is load-bearing: tesseract TSV never quotes, and default
+    # csv quoting makes a stray OCR'd " glyph swallow every following row
+    # into one mega-token that hides names from the planner
+    reader = csv.DictReader(io.StringIO(proc.stdout), delimiter="\t",
+                            quoting=csv.QUOTE_NONE)
     for row in reader:
         text = (row.get("text") or "").strip()
         try:
@@ -578,6 +915,7 @@ def ocr_words(image_path: str, page: int = 0, timeout: int | None = None,
             page=page,
             line_id=(int(row["block_num"]), int(row["par_num"]),
                      int(row["line_num"])),
+            conf=conf,
         ))
     return words
 
@@ -593,16 +931,21 @@ def pdf_to_images(pdf_path: str, workdir: str, dpi: int = 200) -> list[str]:
         if f.startswith("page") and f.endswith(".png"))
 
 
-def _load_input_pages(path: str, workdir: str, dpi: int) -> list:
-    """Return PIL images for a PDF, multi-frame TIFF, or single image."""
+def _load_input_pages(path: str, workdir: str, dpi: int) -> tuple[list, bool]:
+    """Return (PIL images, source_was_bilevel) for a PDF, multi-frame TIFF,
+    or single image."""
     from PIL import Image, ImageSequence
 
     ext = os.path.splitext(path)[1].lower()
     if ext == ".pdf":
         return [Image.open(p).convert("RGB")
-                for p in pdf_to_images(path, workdir, dpi)]
+                for p in pdf_to_images(path, workdir, dpi)], False
     img = Image.open(path)
-    return [frame.convert("RGB") for frame in ImageSequence.Iterator(img)]
+    pages, bilevel = [], True
+    for frame in ImageSequence.Iterator(img):
+        bilevel = bilevel and frame.mode == "1"
+        pages.append(frame.convert("RGB"))
+    return pages, bilevel
 
 
 @dataclass
@@ -662,28 +1005,42 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
 
     report = RedactionReport()
     with tempfile.TemporaryDirectory(prefix="redact-") as tmp:
-        pages = _load_input_pages(input_path, tmp, dpi)
+        pages, bilevel = _load_input_pages(input_path, tmp, dpi)
         report.pages = len(pages)
 
-        # Phase 1: read every page once, register the front pages against the
+        # Phase 1: read every page, register the front pages against the
         # DMV-349 layout and harvest the person names out of the identity
         # zones BEFORE anything is covered. The names are what lets the
         # narrative stay readable with the people taken out of it.
+        #
+        # Two OCR passes per page: sparse mode (psm 11) finds isolated form
+        # values, page mode (psm 3) reads flowing text and the tiny captions
+        # sparse mode drops. Zero confidence floor: a real caption can come
+        # back at conf 1 (p39 "Owner" did) and losing it loses the whole
+        # band; noise words only ever ADD redaction, and anything that
+        # preserves visibility (ZIP and study-road keeps) demands conf >= 40
+        # on its own.
         page_words: list[list] = []
+        page_words_full: list[list] = []
         page_reg: list[tuple[float, float] | None] = []
         # A binder holds several reports. Names are scoped to the report they
         # were harvested from, so one driver's surname cannot black out
         # another crash's text; place names from any header or location block
         # are never scrubbed at all.
         page_names: list[set] = []
+        page_band_names: list[set] = []
         protected: set[str] = set()
+        loc_words: set[str] = set()
         current: set[str] | None = None
+        band_current: set[str] = set()
         for i, img in enumerate(pages):
             page_png = os.path.join(tmp, f"ocr-{i}.png")
             img.save(page_png)
-            words = ocr_words(page_png, page=i)
+            words = ocr_words(page_png, page=i, psm=11, min_conf=0.0)
+            words_page = ocr_words(page_png, page=i, psm=3, min_conf=0.0)
             page_words.append(words)
-            if not words:
+            page_words_full.append(words_page)
+            if not words and not words_page:
                 report.warnings.append(
                     f"page {i + 1}: no OCR text found; verify manually")
             protected |= fg.location_vocabulary(words, img.height)
@@ -691,15 +1048,31 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
             if words and fg.is_front_page(words):
                 reg = fg.register(words, img.height)
                 current = fg.harvest_names(words, img.width, img.height, reg)
+                band_current = set()
             page_reg.append(reg)
             page_names.append(current or set())
+            # caption-band harvest: the names sitting in the Driver/Owner/
+            # Witness bands, scrubbed wherever they recur in the report
+            band_current |= harvest_name_tokens(words, img.width, img.height)
+            band_current |= harvest_name_tokens(words_page, img.width,
+                                                img.height)
+            page_band_names.append(band_current)
+            # the DMV-349 location block (municipality, routes) sits in the
+            # top fifth of the form; anything appearing there is a place
+            # word, and scrubbing it would black the crash location on
+            # every page (e.g. SPRINGS from a RED SPRINGS home address)
+            for w in words + words_page:
+                if w.top < 0.20 * img.height:
+                    loc_words.add(re.sub(r"[^A-Za-z]", "", w.text).upper())
         # the engineer's study roads are places, never people: a driver who
         # shares a surname with the road must not black the road's name out
         # of narratives and location lines ("SIKES MILL RD", observed)
         protected |= {t for seq in _road_token_seqs(local_roads or ())
                       for t in seq}
         page_names = [n - protected for n in page_names]
-        harvested = len(set().union(*page_names)) if page_names else 0
+        page_band_names = [n - protected - loc_words for n in page_band_names]
+        harvested = len(set().union(*page_names, *page_band_names)) \
+            if page_names else 0
         if harvested:
             report.by_reason["harvested-names"] = harvested
 
@@ -708,6 +1081,7 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
         page_addr_rects: list[list] = []
         for i, img in enumerate(pages):
             words = page_words[i]
+            words_page = page_words_full[i]
             # Where the occupants' data sits on THIS page. The address, phone
             # and VIN pattern rules are scoped to it, so the narrative, the
             # location block and the coded grid are never touched by them.
@@ -719,13 +1093,25 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
             page_zone_rects.append(ident)
             page_addr_rects.append(addr_rects)
             local_keep = local_address_words(words, local_roads, addr_rects)
+            local_keep_page = local_address_words(words_page, local_roads,
+                                                  addr_rects)
             if local_keep:
                 report.by_reason["local-address-kept"] = (
                     report.by_reason.get("local-address-kept", 0)
                     + len(local_keep))
+            # plan each OCR pass separately (line grouping differs)
             boxes = plan_redactions(words, keep_zip=keep_zip,
                                     identity_rects=ident,
-                                    local_keep=local_keep)
+                                    local_keep=local_keep,
+                                    page_width=img.width,
+                                    page_height=img.height,
+                                    known_names=page_band_names[i])
+            boxes += plan_redactions(words_page, keep_zip=keep_zip,
+                                     identity_rects=ident,
+                                     local_keep=local_keep_page,
+                                     page_width=img.width,
+                                     page_height=img.height,
+                                     known_names=page_band_names[i])
             # geometry zones: cover the identity blocks by position, whatever
             # OCR made of their captions
             if page_reg[i] is not None:
@@ -734,13 +1120,16 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
                 # around the ZIP tokens that fall in it.
                 # ZIP holes are found once per page, not per zone: an
                 # address row can straddle a zone boundary, and a ZIP must
-                # survive whichever zone happens to cover it
-                zip_keep = (fg.zip_words(words)
-                            + fg.zip_field_words(words, img.width, img.height,
-                                                 page_reg[i])) if keep_zip \
-                    else []
+                # survive whichever zone happens to cover it. Only a
+                # confident read may open a hole.
+                zip_keep = ([w for w in
+                             fg.zip_words(words)
+                             + fg.zip_field_words(words, img.width,
+                                                  img.height, page_reg[i])
+                             if w.conf >= 40]
+                            if keep_zip else [])
                 zip_holes = [(w.left, w.top, w.right, w.bottom)
-                             for w in zip_keep + local_keep]
+                             for w in zip_keep + local_keep + local_keep_page]
                 for z, rect in fg.zone_rects(img.width, img.height,
                                              page_reg[i]):
                     holes = zip_holes
@@ -750,7 +1139,8 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
                             right=piece[2], bottom=piece[3],
                             reason=f"zone:{z.name}"))
             # scrub harvested names anywhere they appear, narrative included
-            for w in fg.scrub_targets(words, page_names[i]):
+            for w in (fg.scrub_targets(words, page_names[i])
+                      + fg.scrub_targets(words_page, page_names[i])):
                 boxes.append(Redaction(
                     page=i, left=max(0, w.left - 2), top=max(0, w.top - 2),
                     right=w.right + 2, bottom=w.bottom + 2,
@@ -802,7 +1192,11 @@ def redact_file(input_path: str, output_path: str, keep_zip: bool = True,
             out_pages.append(img)
 
         def _write() -> None:
-            first, rest = out_pages[0], out_pages[1:]
+            # bilevel scans stay bilevel: burned boxes are pure black, and
+            # an RGB save inflates a 50-page binder past 20 MB
+            saved = ([p.convert("1") for p in out_pages] if bilevel
+                     else out_pages)
+            first, rest = saved[0], saved[1:]
             first.save(output_path, format="PDF", save_all=True,
                        append_images=rest, resolution=dpi)
 

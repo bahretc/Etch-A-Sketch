@@ -349,3 +349,156 @@ def test_study_road_tokens_never_scrub_as_names():
     vocab = {t for seq in _road_token_seqs(["SIKES MILL", "TOM BOYD"])
              for t in seq}
     assert vocab == {"SIKES", "MILL", "TOM", "BOYD"}
+
+
+# --- v2 planner: geometry bands, section 32, token patterns ----------------
+def test_band_covers_value_even_when_ocr_missed_it():
+    # handwriting case: only the printed caption OCRs; the value area right
+    # of/below it must still be covered by the band
+    words = [W("Driver", 100, 200, w=50, h=14),
+             W("filler", 900, 900)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200)
+    bands = [b for b in boxes if b.reason == "band:name"]
+    assert bands, "caption alone must produce a band"
+    b = bands[0]
+    assert b.right >= 100 + int(0.40 * 1700)
+    assert b.bottom > 214, "band must cover the value row"
+    assert b.top < 200, "band must reach above the caption for tall values"
+
+
+def test_band_fires_on_caption_glued_to_value():
+    # tesseract often merges caption and value: "OwnerJALEAH"
+    words = [W("OwnerJALEAH", 100, 200, w=200, h=20)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200)
+    assert any(b.reason == "band:name" for b in boxes)
+
+
+def test_band_clips_at_zip_caption():
+    words = [W("Address", 100, 200, w=60, h=14),
+             W("Zip", 500, 200, w=30, h=14)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200)
+    addr = [b for b in boxes if b.reason == "band:address"]
+    assert addr and addr[0].right <= 498, "band must stop before the Zip box"
+
+
+def test_zip4_run_on_is_partially_redacted():
+    # 9-digit ZIP+4 (e.g. 283526345) is NOT a crash id and its +4 must go
+    words = [W("283526345", 100, 100, w=90, h=20)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200)
+    z = [b for b in boxes if b.reason == "zip+4"]
+    assert z, "ZIP+4 run-on must be redacted"
+    assert z[0].left > 130, "the 5-digit prefix stays visible"
+
+
+def test_crash_and_document_ids_still_protected():
+    words = [W("107822778", 100, 100, w=90, h=20),
+             W("600504078", 100, 140, w=90, h=20)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200)
+    assert boxes == []
+
+
+def test_long_digit_runs_redacted():
+    # DL numbers (7-8 digits) and policy numbers (10+ digits)
+    words = [W("21758723", 100, 100, w=80, h=20),
+             W("11408502130", 100, 140, w=110, h=20)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200)
+    assert len(boxes) == 2
+
+
+def test_section32_table_columns_covered():
+    words = [W("Names", 700, 1600, w=60, h=16),
+             W("Addresses", 780, 1600, w=90, h=16),
+             W("EMS", 200, 2100, w=40, h=16)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200)
+    reasons = {b.reason for b in boxes}
+    assert "section32:dob" in reasons and "section32:names" in reasons
+    names = next(b for b in boxes if b.reason == "section32:names")
+    assert names.top >= 1616 and names.bottom <= 2100
+    assert names.left >= int(0.35 * 1700)
+
+
+# --- v3 hardening: fuzzy captions, era dates, name scrub -------------------
+def test_fuzzy_caption_matches_degraded_scan():
+    from safety_eval.redact import _match_anchor
+    assert _match_anchor("drlver") is not None    # misread i -> l
+    assert _match_anchor("owher") is not None
+    assert _match_anchor("random") is None
+
+
+def test_dob_aged_dates_redacted_but_crash_dates_kept():
+    # era = 2025 (crash + received date); DOBs are years older
+    words = [W("04/05/2025", 100, 100, w=120, h=20),
+             W("04/11/2025", 100, 140, w=120, h=20),
+             W("09/12/2007", 100, 400, w=120, h=20),
+             W("10/20/1976", 100, 440, w=120, h=20)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200)
+    aged = [b for b in boxes if b.reason == "dob-aged-date"]
+    assert len(aged) == 2
+    assert all(b.top >= 390 for b in aged), "crash-era dates must stay"
+
+
+def test_known_names_scrubbed_everywhere():
+    words = [W("VEHICLE", 100, 900, w=80, h=20),
+             W("SWETT", 200, 900, w=60, h=20),
+             W("OVERTURNED", 280, 900, w=110, h=20)]
+    boxes = plan_redactions(words, page_width=1700, page_height=2200,
+                            known_names={"SWETT"})
+    named = [b for b in boxes if b.reason == "known-name"]
+    assert len(named) == 1 and named[0].left <= 200 <= named[0].right
+
+
+def test_harvest_collects_names_from_bands_only():
+    from safety_eval.redact import harvest_name_tokens
+    words = [W("Driver", 100, 200, w=50, h=14),
+             W("JEREMY", 180, 200, w=70, h=20),
+             W("SWETT", 270, 200, w=60, h=20),
+             W("First", 180, 224, w=40, h=10),
+             W("ROBESON", 900, 100, w=90, h=20)]   # outside any band
+    names = harvest_name_tokens(words, 1700, 2200)
+    assert "JEREMY" in names and "SWETT" in names
+    assert "ROBESON" not in names
+    assert "FIRST" not in names                     # caption stoplist
+
+
+def test_subcaption_row_covers_name_above_it():
+    # "Dnver" (misread caption) + typed name, with First/Middle below
+    words = [W("Dnver", 187, 75, w=60, h=14),
+             W("JEREMY", 259, 65, w=90, h=22),
+             W("SWETT", 638, 61, w=80, h=22),
+             W("First", 324, 87, w=40, h=10),
+             W("Middle", 474, 87, w=50, h=10)]
+    boxes = plan_redactions(words, page_width=1024, page_height=1350)
+    subs = [b for b in boxes if b.reason == "name-above-subcaption"]
+    assert subs, "First/Middle row must anchor a band over the name row"
+    b = subs[0]
+    assert b.left <= 259 and b.right >= 638 + 80
+    assert b.top <= 61 and b.bottom >= 85
+    # and the dist-2 fuzzy anchor now also catches "Dnver" itself
+    assert any(x.reason == "band:name" for x in boxes)
+
+
+def test_harvest_includes_structurally_found_names():
+    from safety_eval.redact import harvest_name_tokens
+    words = [W("Dnver", 187, 75, w=60, h=14),
+             W("JEREMY", 259, 65, w=90, h=22),
+             W("First", 324, 87, w=40, h=10),
+             W("Middle", 474, 87, w=50, h=10)]
+    assert "JEREMY" in harvest_name_tokens(words, 1024, 1350)
+
+
+@needs_ocr
+def test_ocr_words_survive_stray_quote_glyph(tmp_path):
+    # a lone " glyph must not make csv swallow the rest of the TSV
+    from PIL import Image, ImageDraw
+    from safety_eval.redact import ocr_words
+    img = Image.new("RGB", (900, 300), "white")
+    d = ImageDraw.Draw(img)
+    f = _font(30)
+    d.text((40, 40), '"FAULT " 11409384563', font=f, fill="black")
+    d.text((40, 140), "Names and Addresses for All Persons", font=f, fill="black")
+    p = str(tmp_path / "q.png")
+    img.save(p)
+    words = ocr_words(p, psm=3)
+    texts = {w.text for w in words}
+    assert any("Addresses" in t for t in texts), texts
+    assert all("\t" not in w.text for w in words)

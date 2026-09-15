@@ -56,6 +56,7 @@ Measured cost of not having this rule: on the 47-report SR 1003 sample the assis
 - **An initial-study crash that is not on the fiche** (TEAAS pulled it from a road outside the fiche roads, so the ID sheet reads Fiche? NO) is added to the fiche working sheet as its own row, built from the Initial Study and the report, and reviewed like any other row. Its comment opens `in initial study, not fiche;` and then gives the evidence. Never leave it off the sheet with only a note to delete it in TEAAS (engineer, 2026-09, crash 108397584 on 260307016EA).
 - A crash with no report in hand is never IS. It stays a `?` until the DMV-349 is reviewed (engineer, 2026-09).
 - Check property addresses on the report (mailboxes, yard damage, driveways, bus stops) with a geocoder and snap them to the study route; they settle a milepost as well as coordinates do. Report coordinates outrank the coded distance; detailed fiche coordinates that are not on the report are used only when the engineer says so.
+- Every evidence-backed RE and ADD goes on the import list, however long it gets. Long lists are normal; never trim one for length or hold a small move back (engineer, 2026-09). A fatal crash is remileposted to the feature it sits at even when the change is a few feet, so the fiche, the import and the maps agree.
 
 ## Target crashes
 

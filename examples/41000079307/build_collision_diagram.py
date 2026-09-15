@@ -142,7 +142,7 @@ layout = {
         {"x": 1200, "y": 782,
          "text": ["Crash #12: ran the stop sign on SR 1387 and",
                   "left the road to the right while turning",
-                  "onto SR 1320. Carried at the end, MP 1.800."]},
+                  "onto SR 1320."]},
     ],
     "nudges": {},
     "route_forward": "E",
@@ -187,6 +187,14 @@ layout = {
     # on, and which quadrant it ended up in. Everything else is placed by
     # the rule, so a sheet does not need hand tuning to read.
     "at": {
+        "107829164": [474, 700],    # stacked directly above 108244836 so
+                                    # the SR 1321 corner group reads as one
+                                    # tidy column (engineer markup, 8/20)
+        "108067609": [326, 566],    # at its own station on the north leg,
+                                    # tight to the line; its true rest side
+                                    # (left of WB) is the inside of the
+                                    # bend, which the junction column owns,
+                                    # and the kinked leg shows the side
         "107421047": [1319, 597],   # the angle at the crossing: the pin
                                     # keeps the crossing arm at the track,
                                     # which the mainline clearance search

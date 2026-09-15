@@ -312,3 +312,119 @@ def populate_binned_sheet(
                                      statuses=status_text or None)
     replace_sheet_rows(template, output, SHEET, rows_xml, from_row=HEADER_ROW)
     return {k: len(v) for k, v in bins.items()}
+
+
+#: Banner fills, straight out of SS-6002AD: (theme, tint-string). The
+#: study/period banners band light green, reviewed NIS the light theme-2
+#: gray, unreviewed NIS the darker gray. Column-header row 1 stays
+#: unfilled in every completed workbook.
+BANNER_FILLS = (
+    (r"^(IN STUDY|ADDED TO STUDY|Before Period|Construction Period"
+     r"|After Period)", (9, "0.79998168889431442")),
+    (r"^NOT IN STUDY - REPORT REVIEWED", (2, "-9.9978637043366805E-2")),
+    (r"^NOT IN STUDY - REPORT NOT REVIEWED", (0, "-0.34998626667073579")),
+)
+_BANNER_SPAN = "T"
+
+
+def apply_banner_fills(path_in: str, path_out: str,
+                       sheets=("Filtered Fiche", "Binned Crashes")):
+    """Band the section banner rows the way the completed workbooks do.
+
+    Finds each banner row by its A-cell text, restyles the label cell
+    bold-on-fill, and carries the fill across A..T so the band prints
+    solid. Direct zip surgery; every other member is copied through
+    byte-identical. Returns {sheet: rows-banded}.
+    """
+    import re
+    import zipfile
+
+    from .xlsx_patch import clone_style
+
+    with zipfile.ZipFile(path_in) as z:
+        members = {n: z.read(n) for n in z.namelist()}
+        order = z.namelist()
+
+    wb = members["xl/workbook.xml"].decode("utf-8")
+    rels = members["xl/_rels/workbook.xml.rels"].decode("utf-8")
+    styles = members["xl/styles.xml"].decode("utf-8")
+    sst = members.get("xl/sharedStrings.xml", b"").decode("utf-8")
+    strings = ["".join(re.findall(r"<t[^>]*>(.*?)</t>", si, re.S))
+               for si in re.findall(r"<si>(.*?)</si>", sst, re.S)]
+
+    span_cols = [chr(c) for c in range(ord("A"), ord(_BANNER_SPAN) + 1)]
+    style_cache: dict[tuple, int] = {}
+    out = {}
+    changed_sheets = {}
+    for name in sheets:
+        sm = re.search(rf'<sheet name="{re.escape(name)}"[^>]*r:id="(rId\d+)"',
+                       wb)
+        if not sm:
+            continue
+        tm = (re.search(rf'<Relationship Id="{sm.group(1)}"[^>]*'
+                        rf'Target="([^"]+)"', rels)
+              or re.search(rf'Target="([^"]+)"[^>]*Id="{sm.group(1)}"', rels))
+        sheet_file = "xl/" + tm.group(1).lstrip("/")
+        xml = members[sheet_file].decode("utf-8")
+        banded = 0
+        for rm in list(re.finditer(r'<row r="(\d+)"[^>]*>(.*?)</row>',
+                                   xml, re.S)):
+            am = re.search(r'<c r="A\d+"(?: s="(\d+)")?[^>]*t="(s|inlineStr|str)"'
+                           r"[^>]*>(.*?)</c>", rm.group(2), re.S)
+            if not am:
+                continue
+            if am.group(2) == "s":
+                vm = re.search(r"<v>(\d+)</v>", am.group(3))
+                text = strings[int(vm.group(1))] if vm and int(
+                    vm.group(1)) < len(strings) else ""
+            else:
+                text = "".join(re.findall(r"<t[^>]*>(.*?)</t>",
+                                          am.group(3), re.S)) or am.group(3)
+            fill = next((f for pat, f in BANNER_FILLS
+                         if re.match(pat, text)), None)
+            if fill is None:
+                continue
+            base = int(am.group(1) or 0)
+            key_a, key_p = ("A", base, fill), ("P", fill)
+            if key_a not in style_cache:
+                styles, idx = clone_style(styles, base, bold=True,
+                                          fill_theme=fill)
+                style_cache[key_a] = idx
+            if key_p not in style_cache:
+                styles, idx = clone_style(styles, 0, fill_theme=fill)
+                style_cache[key_p] = idx
+            sa, sp = style_cache[key_a], style_cache[key_p]
+            r = rm.group(1)
+            body = rm.group(2)
+            # restyle the label, then make sure every cell of the band
+            # exists and carries the fill
+            body = re.sub(rf'(<c r="A{r}")(?: s="\d+")?', rf'\1 s="{sa}"',
+                          body, 1)
+            present = dict((m.group(1), m.group(0)) for m in
+                           re.finditer(rf'<c r="([A-Z]+){r}"[^>]*(?:/>|>.*?</c>)',
+                                       body, re.S))
+            rebuilt = []
+            for col in span_cols:
+                cell = present.pop(col, None)
+                if col == "A":
+                    rebuilt.append(cell)
+                elif cell is None:
+                    rebuilt.append(f'<c r="{col}{r}" s="{sp}"/>')
+                else:
+                    cell = re.sub(r'(<c r="[A-Z]+\d+")(?: s="\d+")?',
+                                  rf'\1 s="{sp}"', cell, 1)
+                    rebuilt.append(cell)
+            rebuilt.extend(present.values())     # anything beyond the band
+            new_row = (rm.group(0)[: rm.start(2) - rm.start(0)]
+                       + "".join(rebuilt) + "</row>")
+            xml = xml.replace(rm.group(0), new_row, 1)
+            banded += 1
+        if banded:
+            changed_sheets[sheet_file] = xml.encode("utf-8")
+        out[name] = banded
+
+    changed_sheets["xl/styles.xml"] = styles.encode("utf-8")
+    with zipfile.ZipFile(path_out, "w", zipfile.ZIP_DEFLATED) as z:
+        for n in order:
+            z.writestr(n, changed_sheets.get(n, members[n]))
+    return out

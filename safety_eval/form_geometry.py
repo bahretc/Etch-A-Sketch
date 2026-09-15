@@ -212,26 +212,42 @@ def zip_field_words(words, width: int, height: int,
 def rect_minus(rect, holes, pad: int = 2) -> list[tuple[int, int, int, int]]:
     """``rect`` split into sub-rectangles that avoid every hole.
 
-    Used so a covered zone still shows its ZIP: the band containing the ZIP is
-    emitted as a piece to its left and a piece to its right.
+    Used so a covered zone still shows its ZIP or a kept study-road address:
+    the band containing the hole is emitted as pieces around it. Holes that
+    share a band are handled together; emitting full-width side pieces per
+    hole would lay each hole's piece across its neighbours (two ZIPs on one
+    row, or the words of one kept address), re-covering what was kept.
     """
     x0, y0, x1, y1 = rect
-    holes = sorted((h for h in holes if h[1] < y1 and h[3] > y0),
+    holes = sorted((h for h in holes
+                    if h[1] < y1 and h[3] > y0 and h[0] < x1 and h[2] > x0),
                    key=lambda h: h[1])
     if not holes:
         return [rect] if x1 > x0 and y1 > y0 else []
+
+    # cluster holes into bands of vertically overlapping rows
+    bands: list[tuple[int, int, list]] = []
+    for h in holes:
+        top, bottom = max(y0, h[1] - pad), min(y1, h[3] + pad)
+        if bands and top <= bands[-1][1]:
+            btop, bbot, hs = bands[-1]
+            bands[-1] = (btop, max(bbot, bottom), hs + [h])
+        else:
+            bands.append((top, bottom, [h]))
+
     out: list[tuple[int, int, int, int]] = []
     cursor = y0
-    for hx0, hy0, hx1, hy1 in holes:
-        top, bottom = max(y0, hy0 - pad), min(y1, hy1 + pad)
+    for top, bottom, hs in bands:
         if top > cursor:
             out.append((x0, cursor, x1, top))
-        left = max(x0, hx0 - pad)
-        if left > x0:
-            out.append((x0, top, left, bottom))
-        right = min(x1, hx1 + pad)
-        if right < x1:
-            out.append((right, top, x1, bottom))
+        xcur = x0
+        for hx0, hy0, hx1, hy1 in sorted(hs, key=lambda h: h[0]):
+            left = max(x0, hx0 - pad)
+            if left > xcur:
+                out.append((xcur, top, left, bottom))
+            xcur = max(xcur, min(x1, hx1 + pad))
+        if xcur < x1:
+            out.append((xcur, top, x1, bottom))
         cursor = max(cursor, bottom)
     if cursor < y1:
         out.append((x0, cursor, x1, y1))
@@ -278,41 +294,6 @@ def location_vocabulary(words, height: int) -> set[str]:
             if _WORD_RE.match(t):
                 out.add(t.upper())
     return out
-
-
-def local_address_words(words, width: int, height: int,
-                        reg: tuple[float, float], roads: set[str]) -> list:
-    """Address tokens inside a covered zone that name the study roadway.
-
-    An address is PII when it says where someone lives. An address that
-    says the crash happened in front of a house on the study road is
-    location, and covering it throws away the thing a reviewer needs to
-    place the crash. So a row inside an identity zone survives when it
-    carries a road the report's own header calls out: the same vocabulary
-    that already stops one report's street blacking out another report's
-    municipality.
-    """
-    if not roads:
-        return []
-    zones = [rect for z, rect in zone_rects(width, height, reg)
-             if z.harvest]
-    inside = [w for w in words if any(_in_rect(w, r) for r in zones)]
-    rows: list[list] = []
-    for w in sorted(inside, key=lambda w: (w.top, w.left)):
-        tol = max(6, w.height)
-        for row in rows:
-            if abs((row[0].top + row[0].height / 2)
-                   - (w.top + w.height / 2)) <= tol:
-                row.append(w)
-                break
-        else:
-            rows.append([w])
-    keep = []
-    for row in rows:
-        text = {w.text.strip().strip(".,;:").upper() for w in row}
-        if text & roads:
-            keep.extend(row)
-    return keep
 
 
 def scrub_targets(words, names: set[str]) -> list:

@@ -1,27 +1,28 @@
-{"crash_id": "104716467", "status": "IS", "new_mp": null, "comment": "at the junction, SR 1617 MP 0.540"}
-{"crash_id": "104890928", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "104901954", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "104942804", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "104987740", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "105210461", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "105326435", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "105520583", "status": "IS", "new_mp": null, "comment": "SR 1001 MP 3.442, 100 ft south"}
-{"crash_id": "105535858", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "105553349", "status": "IS", "new_mp": null, "comment": "SR 1001 MP 3.447, 74 ft south"}
-{"crash_id": "105885258", "status": "IS", "new_mp": null, "comment": "SR 1617 MP 0.512, 148 ft west, right at the y-line"}
-{"crash_id": "106126767", "status": "IS", "new_mp": null, "comment": "SR 1001 MP 3.466, 26 ft north"}
-{"crash_id": "106133705", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "106286453", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "106743409", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "106772984", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "107601791", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "107870118", "status": "IS", "new_mp": null, "comment": "coded at the junction, 0.000 from the study pair"}
-{"crash_id": "107902086", "status": "IS", "new_mp": null, "comment": "at the junction; DMV349 coords 10 ft"}
-{"crash_id": "107945637", "status": "IS", "new_mp": null, "comment": "SR 1001 MP 3.466, 26 ft north"}
-{"crash_id": "108250468", "status": "IS", "new_mp": null, "comment": "at the junction; DMV349 coords 0 ft"}
-{"crash_id": "108279485", "status": "IS", "new_mp": null, "comment": "at the junction; DMV349 coords 12 ft"}
-{"crash_id": "105363964", "status": "ADD", "new_mp": null, "comment": "confirmed at the study intersection: stopped on SR 1619, failed to yield, collided with the SR 1001 vehicle in the intersection (report 0 ft, at SR 1619); angle, target type, before period"}
-{"crash_id": "105208918", "status": "NIS", "new_mp": null, "comment": "confirmed elsewhere: ran off right on the curve, overcorrected across the centerline, head on in the southbound lane 156 ft south; lane departure, no intersection involvement"}
-{"crash_id": "105964079", "status": "NIS", "new_mp": null, "comment": "confirmed elsewhere: too fast on a wet curve, slid off right, struck the ditch and overturned; no intersection involvement"}
-{"crash_id": "108184887", "status": "NIS", "new_mp": null, "comment": "confirmed elsewhere: ran off left mid block and struck a tree; the report's coded reference and its own coordinates disagree but both fall outside the y-line"}
-{"crash_id": "104698395", "status": "NIS", "new_mp": null, "comment": "confirmed off roadway: backed into a parked vehicle on the private drive at 1518 Tom Boyd Rd, 75 ft off the road"}
+{"crash_id": "104716467", "status": "IS", "new_mp": null, "comment": "failed to yield", "type": "angle", "dir": "EBT/SBT"}
+{"crash_id": "104890928", "status": "IS", "new_mp": null, "comment": "failed to yield", "type": "angle", "dir": "WBT/SBT"}
+{"crash_id": "104901954", "status": "IS", "new_mp": null, "comment": "failed to yield", "type": "angle", "dir": "WBT/SBT"}
+{"crash_id": "104942804", "status": "IS", "new_mp": null, "comment": "failed to yield", "type": "angle", "dir": "WBT/SBT"}
+{"crash_id": "104987740", "status": "IS", "new_mp": null, "comment": "ran stop sign", "type": "angle", "dir": "WBT/SBT"}
+{"crash_id": "105210461", "status": "IS", "new_mp": null, "comment": "failed to yield", "type": "angle", "dir": "EBT/NBT"}
+{"crash_id": "105326435", "status": "IS", "new_mp": null, "comment": "ran stop sign", "type": "angle", "dir": "EBT/SBT"}
+{"crash_id": "105520583", "status": "IS", "new_mp": null, "comment": "ran off road right", "type": "fixed object", "dir": "NB"}
+{"crash_id": "105535858", "status": "IS", "new_mp": null, "comment": "ran stop sign", "type": "angle", "dir": "EBT/SBT"}
+{"crash_id": "105553349", "status": "IS", "new_mp": null, "comment": "ran off road left", "type": "movable object", "dir": "NB"}
+{"crash_id": "105885258", "status": "IS", "new_mp": null, "comment": "mirror strike, hit and run", "type": "SSOD", "dir": "WBT/EBT"}
+{"crash_id": "106126767", "status": "IS", "new_mp": null, "comment": "rear end in queue", "type": "rear end", "dir": "SBT/SBT"}
+{"crash_id": "106133705", "status": "IS", "new_mp": null, "comment": "failed to yield", "type": "angle", "dir": "EBT/NBT"}
+{"crash_id": "106286453", "status": "IS", "new_mp": null, "comment": "failed to yield", "type": "angle", "dir": "EBT/NBT"}
+{"crash_id": "106743409", "status": "IS", "new_mp": null, "comment": "failed to yield", "type": "angle", "dir": "NBT/EBT"}
+{"crash_id": "106772984", "status": "IS", "new_mp": null, "comment": "fault not determined", "type": "angle", "dir": "WBT/SBT"}
+{"crash_id": "107601791", "status": "IS", "new_mp": null, "comment": "failed to yield", "type": "angle", "dir": "EBT/SBT"}
+{"crash_id": "107870118", "status": "IS", "new_mp": null, "comment": "ran stop sign", "type": "angle", "dir": "NBT/EBT"}
+{"crash_id": "107902086", "status": "IS", "new_mp": null, "comment": "failed to yield", "type": "angle", "dir": "NBT/EBT"}
+{"crash_id": "107945637", "status": "IS", "new_mp": null, "comment": "rear end in queue", "type": "rear end", "dir": "SBT/SBT"}
+{"crash_id": "108250468", "status": "IS", "new_mp": null, "comment": "fault not determined", "type": "angle", "dir": "EBT/SBT"}
+{"crash_id": "108279485", "status": "IS", "new_mp": null, "comment": "ran stop sign", "type": "angle", "dir": "WBT/NBT"}
+{"crash_id": "105363964", "status": "ADD", "new_mp": null, "comment": "failed to yield", "type": "angle", "dir": "EBT/SBT"}
+{"crash_id": "105208918", "status": "NIS", "new_mp": null, "comment": ">150'", "type": "head on", "dir": "NBT/SBT"}
+{"crash_id": "105964079", "status": "NIS", "new_mp": null, "comment": ">150'", "type": "overturn", "dir": "NB"}
+{"crash_id": "108184887", "status": "NIS", "new_mp": null, "comment": ">150', coords agree", "type": "fixed object", "dir": "NB"}
+{"crash_id": "104698395", "status": "NIS", "new_mp": null, "comment": "off roadway, private drive", "type": "backing", "dir": ""}
+{"crash_id": "104898405", "status": "ADD", "comment": "failed to yield", "type": "angle", "dir": "EBT/NBT"}

@@ -120,3 +120,20 @@ def test_zip_field_does_not_keep_a_licence_or_crash_id():
     footer_crash_id = [_w("106361943", .90, .986)]
     for words in (licence, header_crash_id, footer_crash_id):
         assert zip_field_words(words, W, H, (1.0, 0.0)) == []
+
+
+def test_rect_minus_two_holes_on_one_row_keep_both():
+    """Two ZIPs share a visual row (unit 1 and unit 2 columns). Emitting
+    full-width side pieces per hole lays one hole's piece across the other,
+    re-covering a ZIP that was supposed to stay visible."""
+    from safety_eval.form_geometry import rect_minus
+    zone = (0, 0, 1000, 100)
+    holes = [(100, 40, 160, 60), (700, 40, 760, 60)]
+    pieces = rect_minus(zone, holes)
+
+    def covered(x, y):
+        return any(x0 <= x <= x1 and y0 <= y <= y1
+                   for x0, y0, x1, y1 in pieces)
+    assert not covered(130, 50) and not covered(730, 50)   # both ZIPs show
+    assert covered(430, 50)                                # between them
+    assert covered(130, 10) and covered(730, 90)           # above and below

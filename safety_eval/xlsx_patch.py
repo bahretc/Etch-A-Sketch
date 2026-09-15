@@ -29,6 +29,10 @@ from xml.sax.saxutils import escape
 
 _EXCEL_EPOCH = date(1899, 12, 30)
 
+#: Sentinel value for a style-only CellEdit: the cell's existing content
+#: (value or formula) is kept and only the style index changes.
+KEEP_VALUE = object()
+
 
 def excel_serial(d: date | datetime) -> int:
     """Excel 1900 date-system serial for a date."""
@@ -39,10 +43,19 @@ def excel_serial(d: date | datetime) -> int:
 
 @dataclass
 class CellEdit:
-    """One cell write: numeric, text (inline string), or blank (clear value)."""
+    """One cell write: numeric, text (inline string), or blank (clear value).
+
+    ``formula`` writes a live formula (rule 4: reviewers trace numbers to
+    formulas); the cached value is left empty and fullCalcOnLoad plus the
+    :func:`recalc` pass fill it in. ``style`` overrides the preserved style
+    index, for cells whose template formatting is wrong for the content
+    (e.g. the engineer left-aligns bulleted blocks the template centers).
+    """
     ref: str                       # e.g. "A4"
     value: object = None           # int/float -> number; str -> inline string;
                                    # date -> serial number; None -> clear
+    formula: str | None = None     # live formula text (no leading '=')
+    style: str | None = None       # style index override (s= attribute)
 
 
 def _col_of(ref: str) -> str:
@@ -86,8 +99,11 @@ def sheet_files(template: str) -> dict[str, str]:
     return out
 
 
-def _cell_xml(ref: str, value, style: str | None) -> str:
+def _cell_xml(ref: str, value, style: str | None,
+              formula: str | None = None) -> str:
     s_attr = f' s="{style}"' if style else ""
+    if formula is not None:
+        return f'<c r="{ref}"{s_attr}><f>{escape(formula)}</f></c>'
     if value is None:
         return f'<c r="{ref}"{s_attr}/>'
     if isinstance(value, (date, datetime)):
@@ -148,7 +164,21 @@ class SheetPatcher:
 
     def _apply_row(self, row: int, edits: list[CellEdit]) -> None:
         for e in edits:
-            new = _cell_xml(e.ref, e.value, self._style_of(e.ref))
+            if e.value is KEEP_VALUE:
+                style = e.style or self._style_of(e.ref)
+                m = self._existing_cell(e.ref)
+                if m:
+                    cell = m.group(0)
+                    if re.search(r'\bs="\d+"', cell):
+                        cell = re.sub(r'\bs="\d+"', f's="{style}"', cell, 1)
+                    else:
+                        cell = cell.replace(f'<c r="{e.ref}"',
+                                            f'<c r="{e.ref}" s="{style}"', 1)
+                    self.xml = self.xml[: m.start()] + cell + self.xml[m.end():]
+                    continue
+                e = CellEdit(e.ref, None, style=e.style)   # absent: bare cell
+            new = _cell_xml(e.ref, e.value, e.style or self._style_of(e.ref),
+                            e.formula)
             m = self._existing_cell(e.ref)
             if m:
                 self.xml = self.xml[: m.start()] + new + self.xml[m.end():]
@@ -186,38 +216,320 @@ class SheetPatcher:
             self.xml = self.xml[:insert_at] + new + self.xml[insert_at:]
 
 
+def set_row_height(xml: str, row: int, height: float) -> str:
+    """Set one row's height (customHeight) in worksheet XML."""
+    m = re.search(rf'<row r="{row}"([^>]*?)(/?)>', xml)
+    if m is None:
+        raise KeyError(f"row {row} not present in sheet XML")
+    attrs = m.group(1)
+    # \b keeps customHeight="1" intact (its tail would match ht="1")
+    attrs = re.sub(r'\s*\bht="[\d.]+"', "", attrs)
+    attrs = re.sub(r'\s*\bcustomHeight="1"', "", attrs)
+    ht = f"{height:g}"
+    new = f'<row r="{row}"{attrs} ht="{ht}" customHeight="1"{m.group(2)}>'
+    return xml[: m.start()] + new + xml[m.end():]
+
+
+def add_merge(xml: str, ref: str) -> str:
+    """Add one merged range to worksheet XML (idempotent)."""
+    if f'<mergeCell ref="{ref}"/>' in xml:
+        return xml
+    m = re.search(r'<mergeCells count="(\d+)">', xml)
+    if m is None:
+        raise KeyError("sheet has no mergeCells block")
+    xml = (xml[: m.start()] + f'<mergeCells count="{int(m.group(1)) + 1}">'
+           + xml[m.end():])
+    return xml.replace("</mergeCells>",
+                       f'<mergeCell ref="{ref}"/></mergeCells>', 1)
+
+
+def insert_rows(xml: str, at: int, count: int) -> str:
+    """Insert ``count`` blank rows before row ``at``, shifting what follows.
+
+    Used only where the engineer himself grows a block: he inserts whole
+    rows rather than changing row heights, so the printed grid keeps its
+    15pt pitch and the blank row above the footer survives. Rows at or
+    below ``at`` move down together with their merges, their conditional
+    formatting ranges and the sheet dimension.
+
+    Refuses when the shifted region holds a formula, whose row
+    references would have to be rewritten as well.
+    """
+    if count <= 0:
+        return xml
+
+    row_re = re.compile(r'<row r="(\d+)"([^>]*?)(/>|>.*?</row>)', re.S)
+    ref_re = re.compile(r'(\$?[A-Z]{1,3}\$?)(\d+)')
+
+    def bump(match: re.Match) -> str:
+        row = int(match.group(2))
+        return (f"{match.group(1)}{row + count}" if row >= at
+                else match.group(0))
+
+    def shift_row(m: re.Match) -> str:
+        row, attrs, body = int(m.group(1)), m.group(2), m.group(3)
+        if row < at:
+            return m.group(0)
+        if re.search(r"<f[ />]", body):
+            raise ValueError(
+                f"cannot insert rows at {at}: row {row} holds a formula "
+                "whose references would have to be rewritten")
+        body = re.sub(r'(<c r="[A-Z]{1,3})(\d+)"',
+                      lambda c: f'{c.group(1)}{int(c.group(2)) + count}"',
+                      body)
+        return f'<row r="{row + count}"{attrs}{body}'
+
+    xml = row_re.sub(shift_row, xml)
+
+    def shift_refs(text: str) -> str:
+        return " ".join(ref_re.sub(bump, part) for part in text.split())
+
+    xml = re.sub(r'<mergeCell ref="([^"]+)"/>',
+                 lambda m: f'<mergeCell ref="{shift_refs(m.group(1))}"/>', xml)
+    xml = re.sub(r'<conditionalFormatting sqref="([^"]+)"',
+                 lambda m: f'<conditionalFormatting sqref="'
+                           f'{shift_refs(m.group(1))}"', xml)
+    xml = re.sub(r'<dimension ref="([^"]+)"/>',
+                 lambda m: f'<dimension ref="{shift_refs(m.group(1))}"/>',
+                 xml, count=1)
+    return xml
+
+
+def replace_merge(xml: str, old_ref: str, new_ref: str) -> str:
+    """Change one merged range (e.g. extend the Items cell downward)."""
+    tag = f'<mergeCell ref="{old_ref}"/>'
+    if tag not in xml:
+        raise KeyError(f"merge {old_ref} not present")
+    return xml.replace(tag, f'<mergeCell ref="{new_ref}"/>', 1)
+
+
+def set_page_margins(xml: str, inches: float, header: float = 0.05) -> str:
+    """Set all four page margins (inches) on a sheet."""
+    m = re.search(r"<pageMargins[^>]*/>", xml)
+    if m is None:
+        raise KeyError("sheet has no pageMargins")
+    tag = (f'<pageMargins left="{inches}" right="{inches}" top="{inches}" '
+           f'bottom="{inches}" header="{header}" footer="{header}"/>')
+    return xml[: m.start()] + tag + xml[m.end():]
+
+
+def set_print_area(workbook_xml: str, sheet: str, ref: str) -> str:
+    """Point the sheet's saved Print_Area defined name at ``ref``."""
+    pattern = re.compile(
+        r"(<definedName name=\"_xlnm.Print_Area\"[^>]*>')"
+        + re.escape(sheet) + r"('!)([^<]+)(</definedName>)")
+    if not pattern.search(workbook_xml):
+        raise KeyError(f"no Print_Area defined name for {sheet!r}")
+    return pattern.sub(lambda m: m.group(1) + sheet + m.group(2) + ref
+                       + m.group(4), workbook_xml, count=1)
+
+
+def set_page_scale(xml: str, scale: int) -> str:
+    """Set the saved print scale (pageSetup scale=...)."""
+    m = re.search(r"<pageSetup [^>]*/>", xml)
+    if m is None:
+        raise KeyError("sheet has no pageSetup")
+    tag = m.group(0)
+    if 'scale="' in tag:
+        tag = re.sub(r'scale="\d+"', f'scale="{scale}"', tag)
+    else:
+        tag = tag.replace("<pageSetup ", f'<pageSetup scale="{scale}" ', 1)
+    return xml[: m.start()] + tag + xml[m.end():]
+
+
+def clone_style(styles_xml: str, base_xf: int, *, font_size: float | None = None,
+                halign: str | None = None, valign: str | None = None,
+                wrap: bool | None = None,
+                shrink: bool | None = None,
+                bold: bool | None = None,
+                fill_theme: tuple[int, str] | None = None) -> tuple[str, int]:
+    """Append a variant of cellXfs[base_xf] and return (new xml, new index).
+
+    The variant keeps the base's border, fill and number format; only the
+    font (size or weight; a same-family font is appended when none
+    matches), the alignment, and -- when ``fill_theme`` gives a
+    (theme, tint-string) pair -- the fill change. This is how the
+    engineer's one-off cell formats (left-aligned bullet blocks, banner
+    bands, shrunken text) are reproduced without touching any existing
+    style index.
+    """
+    xfs_m = re.search(r"<cellXfs count=\"(\d+)\">(.*)</cellXfs>",
+                     styles_xml, re.S)
+    # self-closing branch first: '>.*?</xf>' on a self-closing xf would
+    # otherwise swallow every following xf up to the next paired closer
+    xf_list = re.findall(r"<xf\b[^>]*?/>|<xf\b[^>]*?>.*?</xf>",
+                         xfs_m.group(2), re.S)
+    xf = xf_list[base_xf]
+
+    if font_size is not None or bold:
+        base_font = int(re.search(r'fontId="(\d+)"', xf).group(1))
+        fonts_m = re.search(r"<fonts count=\"(\d+)\"[^>]*>(.*?)</fonts>",
+                           styles_xml, re.S)
+        font_list = re.findall(r"<font>.*?</font>|<font/>", fonts_m.group(2),
+                               re.S)
+        fxml = font_list[base_font]
+        new_font = fxml
+        if font_size is not None:
+            new_font = re.sub(r'<sz val="[\d.]+"/>',
+                              f'<sz val="{font_size:g}"/>', new_font)
+        if bold and "<b/>" not in new_font:
+            new_font = (new_font.replace("<font>", "<font><b/>", 1)
+                        if "<font>" in new_font else "<font><b/></font>")
+        try:
+            fid = font_list.index(new_font)
+        except ValueError:
+            fid = len(font_list)
+            styles_xml = styles_xml.replace(
+                fonts_m.group(0),
+                fonts_m.group(0).replace(
+                    "</fonts>", new_font + "</fonts>").replace(
+                    f'<fonts count="{fonts_m.group(1)}"',
+                    f'<fonts count="{int(fonts_m.group(1)) + 1}"', 1), 1)
+        xf = re.sub(r'fontId="\d+"', f'fontId="{fid}"', xf)
+        if 'applyFont=' not in xf:
+            xf = xf.replace("<xf ", '<xf applyFont="1" ', 1)
+
+    if (halign is not None or valign is not None or wrap is not None
+            or shrink is not None):
+        a = {}
+        am = re.search(r"<alignment([^/]*)/>", xf)
+        if am:
+            a = dict(re.findall(r'(\w+)="([^"]*)"', am.group(1)))
+        if halign is not None:
+            a["horizontal"] = halign
+        if valign is not None:
+            a["vertical"] = valign
+        if wrap is not None:
+            a["wrapText"] = "1" if wrap else "0"
+        if shrink is not None:
+            a["shrinkToFit"] = "1" if shrink else "0"
+        tag = "<alignment " + " ".join(
+            f'{k}="{v}"' for k, v in a.items()) + "/>"
+        if am:
+            xf = xf[: am.start()] + tag + xf[am.end():]
+        elif xf.endswith("/>"):
+            xf = xf[:-2] + ">" + tag + "</xf>"
+        else:
+            xf = xf.replace("</xf>", tag + "</xf>", 1)
+        if 'applyAlignment=' not in xf:
+            xf = xf.replace("<xf ", '<xf applyAlignment="1" ', 1)
+
+    if fill_theme is not None:
+        theme, tint = fill_theme
+        new_fill = ('<fill><patternFill patternType="solid">'
+                    f'<fgColor theme="{theme}" tint="{tint}"/>'
+                    '<bgColor indexed="64"/></patternFill></fill>')
+        fills_m = re.search(r'<fills count="(\d+)">(.*?)</fills>',
+                            styles_xml, re.S)
+        fill_list = re.findall(r"<fill>.*?</fill>|<fill/>",
+                               fills_m.group(2), re.S)
+        try:
+            flid = fill_list.index(new_fill)
+        except ValueError:
+            flid = len(fill_list)
+            styles_xml = styles_xml.replace(
+                fills_m.group(0),
+                fills_m.group(0).replace(
+                    "</fills>", new_fill + "</fills>").replace(
+                    f'<fills count="{fills_m.group(1)}"',
+                    f'<fills count="{int(fills_m.group(1)) + 1}"', 1), 1)
+        xf = re.sub(r'fillId="\d+"', f'fillId="{flid}"', xf)
+        if 'fillId=' not in xf:
+            xf = xf.replace("<xf ", f'<xf fillId="{flid}" ', 1)
+        if 'applyFill=' not in xf:
+            xf = xf.replace("<xf ", '<xf applyFill="1" ', 1)
+
+    # re-find cellXfs (the fonts block above may have shifted offsets)
+    xfs_m = re.search(r"<cellXfs count=\"(\d+)\">(.*)</cellXfs>",
+                     styles_xml, re.S)
+    new_index = len(xf_list)
+    styles_xml = (styles_xml[: xfs_m.start()]
+                  + f'<cellXfs count="{int(xfs_m.group(1)) + 1}">'
+                  + xfs_m.group(2) + xf + "</cellXfs>"
+                  + styles_xml[xfs_m.end():])
+    return styles_xml, new_index
+
+
 def xlsx_patch(path_in: str, path_out: str,
                edits: dict[str, list[CellEdit]],
                style_rows: dict[str, int] | None = None,
-               full_calc_on_load: bool = True) -> None:
+               full_calc_on_load: bool = True,
+               row_heights: dict[str, dict[int, float]] | None = None,
+               add_merges: dict[str, list[str]] | None = None,
+               swap_merges: dict[str, dict[str, str]] | None = None,
+               page_scale: dict[str, int] | None = None,
+               grow_rows: dict[str, tuple[int, int]] | None = None,
+               page_margins: dict[str, float] | None = None,
+               print_area: dict[str, str] | None = None,
+               replace_members: dict[str, bytes] | None = None) -> None:
     """Apply per-sheet cell edits to a copy of ``path_in`` written at ``path_out``.
 
     ``edits`` maps sheet NAME -> list of CellEdit.  Every zip member that is not
     an edited worksheet (or workbook.xml when ``full_calc_on_load``) is copied
     byte-for-byte, preserving drawings, media, charts, styles, and rels.
+    ``row_heights``, ``add_merges`` and ``page_scale`` apply the matching
+    sheet-level adjustments per sheet name; ``replace_members`` swaps whole
+    zip members (e.g. a styles.xml extended by :func:`clone_style`).
     """
     style_rows = style_rows or {}
+    row_heights = row_heights or {}
+    add_merges = add_merges or {}
+    swap_merges = swap_merges or {}
+    page_scale = page_scale or {}
+    grow_rows = grow_rows or {}
+    page_margins = page_margins or {}
+    print_area = print_area or {}
+    replace_members = replace_members or {}
     name_to_file = sheet_files(path_in)
-    unknown = set(edits) - set(name_to_file)
+    touched = (set(edits) | set(row_heights) | set(add_merges)
+               | set(swap_merges) | set(page_scale) | set(grow_rows)
+               | set(page_margins))
+    unknown = touched - set(name_to_file)
     if unknown:
         raise KeyError(f"Sheets not in template: {sorted(unknown)}")
-    file_edits = {name_to_file[n]: (n, e) for n, e in edits.items()}
+    file_ops = {name_to_file[n]: n for n in touched}
 
     with zipfile.ZipFile(path_in) as zin:
         members = zin.infolist()
         with zipfile.ZipFile(path_out, "w", zipfile.ZIP_DEFLATED) as zout:
             for info in members:
                 data = zin.read(info.filename)
-                if info.filename in file_edits:
-                    sheet_name, sheet_edits = file_edits[info.filename]
-                    patcher = SheetPatcher(
-                        data.decode("utf-8"),
-                        style_row=style_rows.get(sheet_name))
-                    patcher.apply(sheet_edits)
-                    data = patcher.xml.encode("utf-8")
-                elif info.filename == "xl/workbook.xml" and full_calc_on_load:
+                if info.filename in replace_members:
+                    data = replace_members[info.filename]
+                if info.filename in file_ops:
+                    sheet_name = file_ops[info.filename]
+                    xml = data.decode("utf-8")
+                    if sheet_name in grow_rows:
+                        # rows first: everything below is renumbered, so
+                        # edits and merges are given in final coordinates
+                        at, n = grow_rows[sheet_name]
+                        xml = insert_rows(xml, at, n)
+                    sheet_edits = edits.get(sheet_name)
+                    if sheet_edits:
+                        patcher = SheetPatcher(
+                            xml, style_row=style_rows.get(sheet_name))
+                        patcher.apply(sheet_edits)
+                        xml = patcher.xml
+                    for row, ht in (row_heights.get(sheet_name) or {}).items():
+                        xml = set_row_height(xml, row, ht)
+                    for ref in add_merges.get(sheet_name) or []:
+                        xml = add_merge(xml, ref)
+                    for old, new in (swap_merges.get(sheet_name)
+                                     or {}).items():
+                        xml = replace_merge(xml, old, new)
+                    if sheet_name in page_margins:
+                        xml = set_page_margins(xml, page_margins[sheet_name])
+                    if sheet_name in page_scale:
+                        xml = set_page_scale(xml, page_scale[sheet_name])
+                    data = xml.encode("utf-8")
+                elif info.filename == "xl/workbook.xml" and (
+                        full_calc_on_load or print_area):
                     text = data.decode("utf-8")
-                    if "fullCalcOnLoad" in text:
+                    for sname, ref in print_area.items():
+                        text = set_print_area(text, sname, ref)
+                    if not full_calc_on_load:
+                        pass
+                    elif "fullCalcOnLoad" in text:
                         pass                      # already set (idempotent)
                     elif "<calcPr" in text:
                         text = re.sub(r"<calcPr ",
@@ -433,8 +745,16 @@ class IntegrityReport:
     checked_members: int = 0
 
 
-def verify_integrity(original: str, output: str) -> IntegrityReport:
-    """Acceptance gate per docs/06: drawings/media byte-identical, inventory equal."""
+def verify_integrity(original: str, output: str,
+                     allow_added: set[str] | frozenset[str] = frozenset(),
+                     allow_modified: set[str] | frozenset[str] = frozenset(),
+                     ) -> IntegrityReport:
+    """Acceptance gate per docs/06: drawings/media byte-identical, inventory equal.
+
+    ``allow_added``/``allow_modified`` name the exact members a deliberate
+    picture embed touched (from add_sheet_picture); everything else is
+    still held byte-identical, and nothing may ever be removed.
+    """
     rep = IntegrityReport(ok=True)
 
     def _load(path):
@@ -453,12 +773,13 @@ def verify_integrity(original: str, output: str) -> IntegrityReport:
     names_b, hash_b, sheets_b, defined_b = _load(output)
     rep.checked_members = len(hash_a)
 
-    if set(hash_a) != set(hash_b):
+    unexplained = (set(hash_a) ^ set(hash_b)) - set(allow_added)
+    if unexplained:
         rep.ok = False
         rep.problems.append(
-            f"drawings/media inventory differs: {sorted(set(hash_a) ^ set(hash_b))}")
+            f"drawings/media inventory differs: {sorted(unexplained)}")
     for n in sorted(set(hash_a) & set(hash_b)):
-        if hash_a[n] != hash_b[n]:
+        if hash_a[n] != hash_b[n] and n not in allow_modified:
             rep.ok = False
             rep.problems.append(f"byte mismatch: {n}")
     if sheets_a != sheets_b:
@@ -471,3 +792,134 @@ def verify_integrity(original: str, output: str) -> IntegrityReport:
         rep.ok = False
         rep.problems.append(f"members missing from output: {sorted(names_a - names_b)}")
     return rep
+
+
+def add_sheet_picture(path_in: str, path_out: str, sheet: str,
+                      image: str, rows: tuple[int, int],
+                      cols: tuple[str, str],
+                      name: str = "Map Aerial") -> tuple[list, list]:
+    """Embed a picture on ``sheet``, filling the given cell region.
+
+    The completed workbooks carry the aerial INSIDE the workbook (the
+    SS-6010AG convention: a picture anchored over H..L in the
+    Map/Satellite region with a hairline border), so anyone printing
+    the workbook from Excel gets the full one-pager. The image is
+    contain-fitted and centered in the region, anchored with a
+    twoCellAnchor, added by direct zip surgery -- never a resave.
+
+    Returns (added_members, modified_members) for the integrity gate.
+    """
+    from PIL import Image as _Image
+
+    from .text_fit import sheet_geometry
+
+    EMU_PT = 12700
+
+    with zipfile.ZipFile(path_in) as z:
+        members = {n: z.read(n) for n in z.namelist()}
+        order = z.namelist()
+
+    # sheet file, its drawing part, geometry
+    wb = members["xl/workbook.xml"].decode("utf-8")
+    rels = members["xl/_rels/workbook.xml.rels"].decode("utf-8")
+    rid = re.search(rf'<sheet name="{re.escape(sheet)}"[^>]*r:id="(rId\d+)"',
+                    wb).group(1)
+    target = re.search(rf'Id="{rid}"[^>]*Target="([^"]+)"', rels)
+    target = target or re.search(rf'Target="([^"]+)"[^>]*Id="{rid}"', rels)
+    sheet_file = "xl/" + target.group(1).lstrip("/")
+    sheet_xml = members[sheet_file].decode("utf-8")
+    srel_file = (sheet_file.rsplit("/", 1)[0] + "/_rels/"
+                 + sheet_file.rsplit("/", 1)[1] + ".rels")
+    srels = members[srel_file].decode("utf-8")
+    d_rid = re.search(r'<drawing r:id="(rId\d+)"/>', sheet_xml).group(1)
+    d_target = re.search(rf'Id="{d_rid}"[^>]*Target="([^"]+)"', srels).group(1)
+    drawing_file = "xl/drawings/" + d_target.rsplit("/", 1)[-1]
+    drels_file = ("xl/drawings/_rels/"
+                  + drawing_file.rsplit("/", 1)[-1] + ".rels")
+
+    # region geometry in points
+    widths_l, heights = sheet_geometry(sheet_xml)
+    widths = {_col_index(k): v for k, v in widths_l.items()}
+    c1, c2 = (_col_index(c) for c in cols)
+    r1, r2 = rows
+    box_w = sum(widths.get(i, 48.75) for i in range(c1, c2 + 1))
+    box_h = sum(heights.get(r, 15.0) for r in range(r1, r2 + 1))
+    with _Image.open(image) as im:
+        iw, ih = im.size
+    scale = min(box_w / iw, box_h / ih)
+    pic_w, pic_h = iw * scale, ih * scale
+    off_x, off_y = (box_w - pic_w) / 2, (box_h - pic_h) / 2
+
+    def walk(start_idx, sizes, offset_pt):
+        idx, left = start_idx, offset_pt
+        while left >= sizes(idx) and left > 0:
+            left -= sizes(idx)
+            idx += 1
+        return idx, int(round(left * EMU_PT))
+
+    colsz = lambda i: widths.get(i, 48.75)          # noqa: E731
+    rowsz = lambda r: heights.get(r, 15.0)          # noqa: E731
+    fc, fco = walk(c1, colsz, off_x)
+    fr, fro = walk(r1, rowsz, off_y)
+    tc, tco = walk(c1, colsz, off_x + pic_w)
+    tr, tro = walk(r1, rowsz, off_y + pic_h)
+
+    # media member
+    ext = image.rsplit(".", 1)[-1].lower()
+    nums = [int(m.group(1)) for n in members
+            for m in [re.match(r"xl/media/image(\d+)\.", n)] if m]
+    media = f"xl/media/image{max(nums, default=0) + 1}.{ext}"
+
+    # content type default
+    ct = members["[Content_Types].xml"].decode("utf-8")
+    if f'Extension="{ext}"' not in ct:
+        ct = ct.replace("</Types>",
+                        f'<Default Extension="{ext}" ContentType="image/'
+                        f'{"jpeg" if ext in ("jpg", "jpeg") else ext}"/>'
+                        "</Types>")
+
+    # drawing rels: next rId
+    drels = members[drels_file].decode("utf-8")
+    rmax = max(int(m) for m in re.findall(r'Id="rId(\d+)"', drels))
+    new_rid = f"rId{rmax + 1}"
+    drels = drels.replace(
+        "</Relationships>",
+        f'<Relationship Id="{new_rid}" Type="http://schemas.openxmlformats.'
+        f'org/officeDocument/2006/relationships/image" '
+        f'Target="../media/{media.rsplit("/", 1)[-1]}"/></Relationships>')
+
+    # drawing anchor
+    dx = members[drawing_file].decode("utf-8")
+    ids = [int(i) for i in re.findall(r'<xdr:cNvPr id="(\d+)"', dx)]
+    pid = max(ids, default=1) + 1
+    anchor = (
+        '<xdr:twoCellAnchor editAs="oneCell">'
+        f"<xdr:from><xdr:col>{fc - 1}</xdr:col><xdr:colOff>{fco}</xdr:colOff>"
+        f"<xdr:row>{fr - 1}</xdr:row><xdr:rowOff>{fro}</xdr:rowOff></xdr:from>"
+        f"<xdr:to><xdr:col>{tc - 1}</xdr:col><xdr:colOff>{tco}</xdr:colOff>"
+        f"<xdr:row>{tr - 1}</xdr:row><xdr:rowOff>{tro}</xdr:rowOff></xdr:to>"
+        f'<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="{pid}" name="{name}"/>'
+        '<xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr>'
+        "</xdr:nvPicPr><xdr:blipFill>"
+        '<a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/'
+        f'2006/relationships" r:embed="{new_rid}"/>'
+        "<a:stretch><a:fillRect/></a:stretch></xdr:blipFill>"
+        "<xdr:spPr><a:xfrm>"
+        f'<a:ext cx="{int(round(pic_w * EMU_PT))}" '
+        f'cy="{int(round(pic_h * EMU_PT))}"/></a:xfrm>'
+        '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
+        '<a:ln w="9525" cap="sq"><a:solidFill><a:srgbClr val="000000"/>'
+        '</a:solidFill></a:ln>'
+        "</xdr:spPr></xdr:pic><xdr:clientData/></xdr:twoCellAnchor>")
+    dx = dx.replace("</xdr:wsDr>", anchor + "</xdr:wsDr>")
+
+    with open(image, "rb") as fh:
+        img_bytes = fh.read()
+    changed = {drawing_file: dx.encode("utf-8"),
+               drels_file: drels.encode("utf-8"),
+               "[Content_Types].xml": ct.encode("utf-8")}
+    with zipfile.ZipFile(path_out, "w", zipfile.ZIP_DEFLATED) as z:
+        for n in order:
+            z.writestr(n, changed.get(n, members[n]))
+        z.writestr(media, img_bytes)
+    return [media], sorted(changed)

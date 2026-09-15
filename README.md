@@ -103,6 +103,72 @@ The **assignment** is a small YAML you transcribe once from the assignment /
 assumptions email — it is the auditable record of study scope. See
 [`examples/example_assignment.yaml`](examples/example_assignment.yaml).
 
+## Finishing a deliverable (AADT, map block, print, bind, QA, assistant)
+
+The steps that used to be done by hand on a completed package are commands
+and app pages now. Each one keeps the docs/06 rules: XML level edits on a
+copy, every other zip member byte for byte, drawings verified.
+
+```bash
+# Leg AADT table with the black/red convention. Legs take a station id
+# (NCDOT 2025 AADT Stations layer), a manual year:aadt list, or =legN to
+# assume a leg equal to another. Minor legs round to the nearest hundred,
+# 2020 is never representative, the representative year is the last year in
+# each period with a published value on any leg.
+safety-eval aadt-table --leg1 0900000008 --leg2 0900000575 --leg4 0900000621 --leg3 =leg4 \
+  --before-end 2020 --workbook Evaluation.xlsx
+
+# Map/Satellite Views block in the team format (aerial, inset in the corner
+# no leg crosses, a box per leg, north arrow, credit), embedded at H41:K56.
+safety-eval map-block --aerial nearmap.png --inset location_map.png --spec legs.json \
+  --output block.png --workbook Evaluation.xlsx
+
+# Results page printed with LibreOffice at the Excel print's geometry
+# (needs Carlito + Liberation Serif), then bound into the two deliverables.
+safety-eval print-results --workbook Evaluation.xlsx --output page1.pdf \
+  --disclaimer disclaimer.pdf --appendix BEFORE.pdf --appendix AFTER.pdf \
+  --complete "Complete Evaluation.pdf" --web Web.pdf
+
+# Deterministic QA: workbook structure and drawings gate, results text style
+# (no em or en dashes), fiche Type vs T code, AADT colours, PDF assembly.
+safety-eval qa --workbook Evaluation.xlsx --reference original.xlsx \
+  --complete "Complete Evaluation.pdf" --web Web.pdf --diff
+
+# Assistant (drafts and checks only; needs ANTHROPIC_API_KEY)
+safety-eval chat "Run the QA checks on Evaluation.xlsx and summarize"
+
+# Multi-agent QA sweep: six reviewers (workbook, fiche chain, calculations,
+# report text, TEAAS cross-check, PDF assembly) and three refuters over the
+# whole package folder, findings CONFIRMED / PARTIAL / REFUTED by verifier
+# agreement. Claude Opus 5, structured output, cached package context.
+safety-eval qa-sweep --package "WO-41000076160 10-18-223 (TIP #W-5710AM)" --output "Notes/QA sweep.md"
+
+# Crash report redaction with independent verification: the output is OCRed
+# and searched for the original's names, DOB, phone, licence numbers and
+# street addresses (masked in the report; exit 2 on any hit).
+safety-eval redact --input 600504376.tif --output 600504376_REDACTED.pdf --verify
+
+# Strip collision diagram (fan-out callouts, leaders to the true milepost)
+safety-eval collision-diagram --crashes crashes.csv --title "Collision Diagram - 41000079307" \
+  --mp-start 1.31 --mp-end 1.80 --feature "1.45:SR 1321" --output diagram
+
+# One pass to ship: redact + verify crash reports, embed the map block, print,
+# bind, QA checks, QA log in Notes, zip with 'TIP #' dropped from names.
+safety-eval finish --package "WO-41000076160 10-18-223 (TIP #W-5710AM)" --map-block block.png
+```
+
+The Streamlit app (`streamlit run streamlit_app.py`) groups its pages in
+the sidebar in workflow order. For an Evaluation, the Deliverables group has
+a page for each step above (AADT and Set-up, Map Block with an Esri World
+Imagery fallback, Strip Collision Diagram, Print and Assemble, QA Checks with
+the multi-agent sweep, Finish Package, which loads the WO zip) and a chat
+assistant with tools over the loaded package; Redact Crash Reports and the
+Review Queue serve every study type. `safety-eval doctor`
+reports whether LibreOffice, the fonts, pikepdf, Streamlit and the Anthropic
+SDK are present. Install extras with `pip install -e '.[deliverables,ui,llm]'`
+and, on Debian/Ubuntu, `apt install fonts-crosextra-carlito fonts-liberation
+libreoffice-calc poppler-utils`.
+
 ## Inputs
 
 | Input | Formats | Notes |

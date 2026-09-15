@@ -69,7 +69,9 @@ def test_a_fatal_analysis_gets_the_core_and_its_field_investigation():
 def test_every_study_type_renders_every_offered_page():
     pages_for = {"hsip": ["home", "fiche", "redact", "review", "warrants"],
                  "evaluation": ["home", "fiche", "redact", "review",
-                                "evaluation", "report", "assumptions"],
+                                "evaluation", "report", "assumptions",
+                                "aadt", "map_block", "strip_diagram",
+                                "print", "qa", "finish", "assistant"],
                  "fatal": ["home", "fiche", "redact", "review", "fatal"]}
     for key, pages in pages_for.items():
         for page in pages:
@@ -227,3 +229,46 @@ def test_the_field_investigation_page_asks_for_the_slip():
     assert "untouched" in captions          # the provided-map rule, stated
     labels = {t.label for t in at.text_input}
     assert "Investigated by" in labels
+
+
+# --- finishing pages (from the automation branch) ---------------------------
+def test_an_evaluation_offers_the_finishing_pages_under_deliverables():
+    """The package-finishing steps belong to an Evaluation; the other
+    study types do not produce that package and do not see them."""
+    titles = _nav_titles(_app("evaluation"))
+    for title in ("AADT and Set-up", "Map Block", "Strip Collision Diagram",
+                  "Print and Assemble", "QA Checks", "Finish Package",
+                  "Assistant"):
+        assert title in titles
+    assert titles.index("Assumptions Email") < titles.index("AADT and Set-up")
+    assert "Finish Package" not in _nav_titles(_app("hsip"))
+    assert "Finish Package" not in _nav_titles(_app("fatal"))
+
+
+def test_the_assistant_page_explains_a_missing_key(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
+    at = _app("evaluation", page="assistant")
+    infos = [i.value for i in at.info]
+    assert any("ANTHROPIC_API_KEY" in v for v in infos)
+
+
+def test_the_aadt_page_builds_the_table_from_manual_values():
+    at = _app("evaluation", page="aadt")
+    at.text_input(key="man_leg1").set_value("2017:4100,2019:4500,2021:3500")
+    at.text_input(key="man_leg2").set_value(
+        "2016:2200,2018:3100,2022:2100,2024:3200,2025:3200")
+    at.text_input(key="man_leg4").set_value(
+        "2016:1600,2022:1200,2024:1900,2025:1900")
+    at.selectbox(key="as_leg3").set_value("leg4")
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    codes = [c.value for c in at.code]
+    assert any("4100 black" in c for c in codes)
+    writes = [m.value for m in at.markdown] + [t.value for t in at.text]
+    assert any("5,300" in v for v in writes)
+
+
+def test_the_print_page_reports_the_toolchain():
+    at = _app("evaluation", page="print")
+    assert at.selectbox(key="pr_sheet").value == "1 page results - 1 Target"

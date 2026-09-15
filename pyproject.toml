@@ -24,6 +24,10 @@ ocr = ["pytesseract>=0.3", "pdf2image>=1.17"]
 ui = ["streamlit>=1.30", "Pillow>=10"]
 # assumptions email deliverable
 docx = ["python-docx>=1.1"]
+# results page print, PDF binding, map block, QA checks
+deliverables = ["pikepdf>=8", "Pillow>=10", "matplotlib>=3.7", "python-docx>=1.1"]
+# assistant chat (docs/07 phase 5), official Anthropic SDK
+llm = ["anthropic>=1.0"]
 # The recalc tests also need LibreOffice with Calc: the core package
 # alone has no xlsx filter, so soffice reports "source file could
 # not be loaded" and every recalc returns False.

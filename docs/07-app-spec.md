@@ -54,6 +54,32 @@ This merges the April 2026 TEAAS application spec with everything learned from t
 **Phase 6 - Stretch**
 22. DMV-349 structured parsing (fields beyond the ID box), batch multi-study processing, GIS/mapping, SVG collision diagrams.
 
+## Implemented finishing layer (September 2026)
+
+Built from the live 10-18-223 and 77S00141 sessions, each step a module, a
+CLI command and an app tab, all tested:
+
+- `aadt_table` + `aadt_arcgis` (NCDOT 2025 AADT Stations layer): leg table with the black/red convention, representative years, colours written by `workbook_cells`.
+- `map_block`: team-format Map/Satellite Views composition and oneCellAnchor embedding; Esri World Imagery fallback.
+- `print_results`: LibreOffice print matched to the Excel print (Carlito, column padding), pikepdf binding with metadata.
+- `qa_checks`: deterministic QA (structure, docs/06 drawings gate, cached diff, AADT colours, text style, Type vs T code, PDF assembly).
+- `qa_sweep`: six LLM reviewers plus three refuters over the package folder (Claude Opus 5, structured output, cached context); CONFIRMED / PARTIAL / REFUTED by verifier agreement.
+- `redact` + `redact_verify`: PII redaction before review, then an OCR oracle check of the output (names, DOB, phone, licence, addresses), masked reporting.
+- `strip_diagram`: strip diagram with fan-out callouts (CLI `collision-diagram`). `collision_diagram` is the TSU-sheet diagram of the HSIP Warrants page and the `tsu-diagram` subcommand.
+- `package`: discover a WO folder, finish it in one pass (redact, map, print, bind, QA log, zip with clean names).
+- `chat`: assistant with strict tools over the loaded package (drafts and checks only).
+
+## Consolidation notes (September 2026)
+
+The finishing layer above was built on a branch that had diverged from the crash analyses app (st.Page navigation, per-study workspace, TSU collision diagrams, fatal Field Investigation File, report drafting, archive verification). The two were merged as follows.
+
+- The finishing modules (`aadt_table`, `certificate`, `chat`, `map_block`, `package`, `print_results`, `qa_checks`, `qa_sweep`, `redact_verify`, `workbook_cells`) and their CLI subcommands (`aadt-table`, `map-block`, `print-results`, `qa`, `chat`, `collision-diagram`, `qa-sweep`, `finish`) came across as they were, alongside the crash analyses subcommands.
+- The fan-out strip diagram module is `strip_diagram` (its subcommand is still `collision-diagram`); `collision_diagram` is the TSU-sheet diagram.
+- `redact` keeps the form-geometry pipeline (front-page registration, identity zones, per-report name harvest, the study-road address keep, the convergence and output-probe passes, `residual_pii`) and adds the finishing branch's layers on top: caption-anchored bands, the name row above a First/Middle sub-caption, the section-32 table, token patterns (phones, DL and policy digit runs, ZIP+4, dates older than the report era), band-harvested names scrubbed across the report, the 10x/60x crash-id rule, a second page-mode OCR pass at a zero confidence floor, and bilevel output for bilevel scans. The ZIP and study-road keeps are carved out of the bands as well, and only a confident read (conf >= 40) may open a keep hole. `safety-eval redact --verify` runs the `redact_verify` OCR oracle after the redactor's own probe passes.
+- In the app the finishing steps are pages under Deliverables for the Evaluation study type: AADT and Set-up, Map Block, Strip Collision Diagram, Print and Assemble, QA Checks (with the multi-agent sweep), Finish Package (loads the WO zip, runs `package.finish_package`, offers the QA log and certificate) and Assistant. Each is a thin view over its module; they share a per-session scratch folder, and workbook inputs default to the open study's Evaluation Workbook. The old Build Evaluation and Review Filtered Fiche tabs were not ported: the Evaluation Workbook and Review Queue pages cover them.
+- The Redact Crash Reports page gained the finishing branch's verify option (the `redact_verify` OCR oracle after the redactor's own probe passes), the same as `safety-eval redact --verify`.
+- Left to the CLI: the package headline metrics of the old Home tab (`package.workbook_summary`). The finishing pages are not offered for HSIP and fatal studies, which do not produce an Evaluation package; every finishing step is a subcommand for those.
+
 ## Non-negotiables carried from live work
 
 - Combination-dependent (intersection) vs milepost-dependent (strip) crash identification implemented as separate, tested code paths.

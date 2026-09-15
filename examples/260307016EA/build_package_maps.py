@@ -33,7 +33,8 @@ OUT = f"{SP}/out"
 EX = "/home/user/Etch-A-Sketch/examples/41000079307/mapdata"
 WO = "260307016EA"
 DIVISION = "9"
-COORDS = "36.22298, -80.16971"
+COORDS = "36.223219, -80.168827"   # engineer's point: first centerline crossing, on US 311 at MP 11.109
+CRASH_LL = [36.223219, -80.168827]
 DESC = ["US 311 (Walnut Cove Road) from Waggoner Neal Road [MP 10.438]",
         "to 0.5 miles north of SR 1979 (Grubb Road) [MP 11.604]",
         "in Forsyth County"]
@@ -614,7 +615,7 @@ loc_payload = {
     "limits": [
         {"ll": STUDY[0], "off": [-110, 46], "txt": "Begin Study"},
         {"ll": STUDY[-1], "off": [110, -46], "txt": "End Study"}],
-    "crash": {"ll": mp_to_ll(CRASH_MP), "off": [170, 30], "txt": CRASH_TXT},
+    "crash": {"ll": CRASH_LL, "off": [170, 30], "txt": CRASH_TXT},
     "labels": loc_labels,
 }
 print("Location Map tiles...")
@@ -801,7 +802,7 @@ adt_payload = {
     "limits": [
         {"ll": STUDY[0], "off": [-120, 40], "txt": "Begin Study"},
         {"ll": STUDY[-1], "off": [120, -40], "txt": "End Study"}],
-    "crash": {"ll": mp_to_ll(CRASH_MP), "off": [215, 95], "txt": CRASH_TXT},
+    "crash": {"ll": CRASH_LL, "off": [215, 95], "txt": CRASH_TXT},
     "labels": adt_labels,
 }
 build(f"{OUT}/{WO}_AADTMap.html", "AADT Map", adt_payload,

@@ -739,22 +739,28 @@ def _fatal_tab(st) -> None:
     _fatal_package_section(st, ws)
 
 
-def _fatal_package_section(st, ws) -> None:
-    """The package figures and checks of a strip site: the three maps, the
-    route features (curves, crests) for the TEAAS feature import, the
-    location check of coded mileposts against report coordinates and
-    addresses, and the CalculatedAADT workbook. Each is a CLI subcommand
-    too (package-maps, route-features, locate-check, calc-aadt)."""
+def _fatal_package_section(st, ws, site_default: str = "strip") -> None:
+    """The package figures and checks of a site: the three maps (strip or
+    intersection, fatal or HSIP), the route features (curves, crests) for
+    the TEAAS feature import, the location check of coded mileposts against
+    report coordinates and addresses, and the CalculatedAADT workbook. Each
+    is a CLI subcommand too (package-maps, route-features, locate-check,
+    calc-aadt)."""
     st.divider()
-    st.subheader("Package figures and checks (strip site)")
+    st.subheader("Package figures and checks")
     st.caption("Public NCDOT, Census TIGER, USGS and Esri sources; every "
                "number is an estimate for the engineer to check. Results "
                "are saved into the open study's outputs.")
-    c1, c2, c3 = st.columns(3)
+    site = st.radio("Site", ["strip", "intersection"], horizontal=True,
+                    index=0 if (ws.param("site", site_default) if ws
+                                else site_default) == "strip" else 1,
+                    key="pkg_site")
+    c1, c2, c3, c4 = st.columns(4)
     wo = c1.text_input("WO number", value=(ws.study if ws else ""))
-    division = c2.text_input("NCDOT Division",
+    ph = c2.text_input("PH number (HSIP)", value=(ws.param("ph", "") if ws else ""))
+    division = c3.text_input("NCDOT Division",
                              value=str(ws.param("division", "") if ws else ""))
-    county = c3.text_input("County", value=(ws.param("county", "") if ws else ""))
+    county = c4.text_input("County", value=(ws.param("county", "") if ws else ""))
     r1, r2, r3 = st.columns(3)
     route = r1.text_input("Route", value=(ws.param("route", "") if ws else ""),
                           key="pkg_route", help='e.g. "US 311"')
@@ -764,16 +770,36 @@ def _fatal_package_section(st, ws) -> None:
     road_label = r3.text_input("Road name", value=(ws.param("road_label", "")
                                                    if ws else ""),
                                help='e.g. "Walnut Cove Road"')
-    m1, m2, m3 = st.columns(3)
-    lo = m1.number_input("MP begin", format="%.3f", step=0.001,
-                         value=float(ws.param("mp_lo", 0.0)) if ws else 0.0,
-                         key="pkg_lo")
-    hi = m2.number_input("MP end", format="%.3f", step=0.001,
-                         value=float(ws.param("mp_hi", 0.0)) if ws else 0.0,
-                         key="pkg_hi")
-    median_year = m3.number_input("Median year (boxed on the AADT map)",
-                                  value=int(ws.param("median_year", 2024))
-                                  if ws else 2024, step=1)
+    lo = hi = 0.0
+    cross_route = cross_label = cross_id = ""
+    center_lat = center_lon = ""
+    if site == "strip":
+        m1, m2, m3 = st.columns(3)
+        lo = m1.number_input("MP begin", format="%.3f", step=0.001,
+                             value=float(ws.param("mp_lo", 0.0)) if ws else 0.0,
+                             key="pkg_lo")
+        hi = m2.number_input("MP end", format="%.3f", step=0.001,
+                             value=float(ws.param("mp_hi", 0.0)) if ws else 0.0,
+                             key="pkg_hi")
+        median_year = m3.number_input("Median year (boxed on the AADT map)",
+                                      value=int(ws.param("median_year", 2024))
+                                      if ws else 2024, step=1)
+    else:
+        x1, x2, x3 = st.columns(3)
+        cross_route = x1.text_input("Cross route", value=(
+            ws.param("cross_route", "") if ws else ""), help='e.g. "SR 1979"')
+        cross_label = x2.text_input("Cross road name", value=(
+            ws.param("cross_road_label", "") if ws else ""))
+        cross_id = x3.text_input("Cross route AADT RouteID", value=(
+            ws.param("cross_route_id", "") if ws else ""))
+        y1, y2, y3 = st.columns(3)
+        center_lat = y1.text_input("Intersection latitude", value=str(
+            ws.param("center_lat", "") if ws else ""))
+        center_lon = y2.text_input("Intersection longitude", value=str(
+            ws.param("center_lon", "") if ws else ""))
+        median_year = y3.number_input("Median year (boxed on the AADT map)",
+                                      value=int(ws.param("median_year", 2024))
+                                      if ws else 2024, step=1)
     desc = st.text_area("Study Area (footer, up to three lines)",
                         value=(ws.param("description", "") if ws else ""),
                         height=90)
@@ -788,24 +814,35 @@ def _fatal_package_section(st, ws) -> None:
     stations = st.text_input("Governing AADT station ids (comma separated, "
                              "optional)", value=(ws.param("stations", "")
                                                  if ws else ""))
-    ready = bool(wo and division and county and route and route_id
-                 and hi > lo > 0)
+    if site == "strip":
+        ready = bool(wo and division and county and route and route_id
+                     and hi > lo > 0)
+    else:
+        ready = bool(wo and division and county and route and center_lat.strip()
+                     and center_lon.strip())
     if ws:
-        ws.set_params(division=division or None, county=county or None,
-                      route_id=route_id or None, road_label=road_label or None,
-                      description=desc or None, crash_lat=crash_lat or None,
-                      crash_lon=crash_lon or None, crash_text=crash_text or None,
-                      stations=stations or None, median_year=int(median_year))
+        ws.set_params(site=site, ph=ph or None, division=division or None,
+                      county=county or None, route_id=route_id or None,
+                      road_label=road_label or None, description=desc or None,
+                      crash_lat=crash_lat or None, crash_lon=crash_lon or None,
+                      crash_text=crash_text or None, stations=stations or None,
+                      median_year=int(median_year), cross_route=cross_route or None,
+                      cross_road_label=cross_label or None,
+                      cross_route_id=cross_id or None,
+                      center_lat=center_lat or None, center_lon=center_lon or None)
     b1, b2, b3 = st.columns(3)
     out_dir = (os.path.join(ws.outputs_dir, "package") if ws
                else tempfile.mkdtemp(prefix="package_"))
     if b1.button("Build package maps", disabled=not ready):
         from safety_eval import package_maps as pm
         spec = pm.MapSpec(
-            wo=wo, division=division, county=county, route=route,
-            route_id=route_id, mp_lo=lo, mp_hi=hi,
+            wo=wo, ph=ph, division=division, county=county, route=route,
+            route_id=route_id, mp_lo=lo, mp_hi=hi, site=site,
             description=[ln.strip() for ln in desc.splitlines() if ln.strip()],
-            road_label=road_label,
+            road_label=road_label, cross_route=cross_route,
+            cross_road_label=cross_label, cross_route_id=cross_id,
+            center_lat=float(center_lat) if center_lat.strip() else None,
+            center_lon=float(center_lon) if center_lon.strip() else None,
             crash_lat=float(crash_lat) if crash_lat.strip() else None,
             crash_lon=float(crash_lon) if crash_lon.strip() else None,
             crash_text=crash_text, median_year=int(median_year),
@@ -827,7 +864,9 @@ def _fatal_package_section(st, ws) -> None:
                                    fh.read(), file_name=os.path.basename(pdf),
                                    key="dl_" + os.path.basename(pdf))
         st.success(f"Three maps written to {out_dir}")
-    if b2.button("Route features (curves, crests)", disabled=not ready):
+    strip_ready = ready and site == "strip"
+    if b2.button("Route features (curves, crests)", disabled=not strip_ready,
+                 help="Strip sites only: curves and crests along the route."):
         from safety_eval import route_geometry as rg
         from safety_eval.teaas import write_feature_list
         try:
@@ -853,11 +892,10 @@ def _fatal_package_section(st, ws) -> None:
         with open(fl, "rb") as fh:
             st.download_button(f"Download {os.path.basename(fl)} ({n} lines)",
                                fh.read(), file_name=os.path.basename(fl))
-        st.caption("Verify the feature import format against a live TEAAS "
-                   "import (docs/09).")
     detailed = ws.path("detailed_fiche_csv") if ws else None
     ids_txt = ws.path("initial_ids_txt") if ws else None
-    if b3.button("Location check", disabled=not (ready and detailed)):
+    if b3.button("Location check", disabled=not (strip_ready and detailed),
+                 help="Strip sites only: coded milepost vs report coordinates."):
         from safety_eval import location_check as lc
         from safety_eval import route_geometry as rg
         from safety_eval.fiche_workbook import parse_initial_ids
@@ -1256,7 +1294,7 @@ def _hsip_tab(st) -> None:
         "Feature inclusions, one '<text>|<milepost>' per line (optional)",
         placeholder="MILE MARKER 166|13.715",
         help="Written as a TEAAS feature-inclusion import (20-character "
-             "cap; format unverified against a live import, docs/09).")
+             "cap; docs/09).")
 
     if st.button("Run warrants", type="primary",
                  disabled=not have_wb or not ready):
@@ -1545,6 +1583,7 @@ def _hsip_tab(st) -> None:
                     if s["misses"]:
                         st.warning(f"{s['misses']} basemap tile(s) failed "
                                    "to download and will render blank.")
+    _fatal_package_section(st, _active_ws(), site_default="strip")
 
 
 def _section_results(st, run) -> None:

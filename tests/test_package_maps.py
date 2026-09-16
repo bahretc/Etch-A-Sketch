@@ -169,3 +169,77 @@ def test_build_maps_writes_three_pages_offline(tmp_path, spec, cl, monkeypatch):
     assert sorted(out) == ["aadt", "area", "location"]
     for p in out.values():
         assert p.endswith(".html") and (tmp_path / p).exists()
+
+
+def _int_spec():
+    return pm.MapSpec(wo="26DEMO-INT", ph="77S00141", division="9",
+                      county="Forsyth", site="intersection", route="US 311",
+                      route_id="20000311034", road_label="Walnut Cove Road",
+                      cross_route="SR 1979", cross_road_label="Grubb Road",
+                      cross_route_id="40001979034", center_lat=LAT0 + 0.009,
+                      center_lon=LON0, median_year=2023,
+                      description=["US 311 at SR 1979", "in Forsyth County"])
+
+
+def _int_ways():
+    return _ways() + [
+        {"tags": {"highway": "residential", "name": "", "ref": "SR 1979"},
+         "geometry": [{"lat": LAT0 + 0.009, "lon": LON0 + d / K}
+                      for d in range(-3000, 3001, 500)]}]
+
+
+def test_spec_validation_by_site():
+    with pytest.raises(ValueError):
+        pm.MapSpec(wo="x", division="9", county="A", route="US 1",
+                   site="intersection").validate()
+    with pytest.raises(ValueError):
+        pm.MapSpec(wo="x", division="9", county="A", route="US 1",
+                   route_id="1", mp_lo=2, mp_hi=1).validate()
+    sp = _int_spec()
+    sp.validate()
+    assert sp.zoom == 16 and sp.coords == f"{sp.center_lat:.5f}, {sp.center_lon:.5f}"
+
+
+def test_tiger_sr_names_become_refs_and_names_match_loosely():
+    assert pm.ref_of("State Rd 1979") == "SR 1979"
+    assert pm._same_name("Grubbs Rd", "Grubb Road")
+    assert not pm._same_name("Dennis Rd", "Grubb Road")
+
+
+def test_intersection_location_marks_the_site_and_names_both_roads():
+    spec = _int_spec()
+    payload, _ = pm.location_payload(spec, None, _int_ways())
+    assert [m["txt"] for m in payload["limits"]] == ["Study Intersection"]
+    assert payload["limits"][0]["ll"] == [spec.center_lat, spec.center_lon]
+    assert payload["crash"] is None
+    names = [l["html"] for l in payload["labels"]]
+    assert names.count("US 311 (Walnut Cove Rd)") == 2
+    assert names.count("SR 1979 (Grubb Rd)") == 2
+
+
+def test_intersection_aadt_panels_per_route_within_the_frame():
+    spec = _int_spec()
+    stations = _stations() + [{
+        "attributes": {"LocationID": "0340000738", "RTE_CLS": 4,
+                       "RouteID": "40001979034", "AADT_2023": 450},
+        "geometry": {"x": LON0 + 0.5, "y": LAT0}}]        # far off the frame
+    payload, panels = pm.aadt_payload(spec, None, _int_ways(), stations)
+    assert "0340000738" not in panels
+    assert panels.count('class="panel"') == 3
+    assert "0340000733" in panels                          # the SR 1979 station
+    assert [m["txt"] for m in payload["limits"]] == ["Study Intersection"]
+    assert "route" in payload["roads"] and len(payload["roads"]["route"]) >= 2
+    assert "PH Number</b> 77S00141" in pm.render_page(spec, "AADT Map", payload,
+                                                      panels=panels)
+
+
+def test_intersection_build_needs_no_centerline(tmp_path):
+    cache = tmp_path / "mapdata"
+    cache.mkdir()
+    (cache / "tiger_roads.json").write_text("[]")
+    (cache / "tiger_places.json").write_text("[]")
+    (cache / "tiger_hydro.json").write_text("[]")
+    (cache / "aadt_stations.json").write_text(json.dumps(_stations()))
+    out = pm.build_maps(_int_spec(), str(tmp_path), cache_dir=str(cache),
+                        tiles=False, log=lambda *a: None)
+    assert sorted(out) == ["aadt", "area", "location"]

@@ -709,8 +709,7 @@ def _cmd_feature_list(args) -> int:
             text, mp = line.rsplit(sep, 1)
             rows.append((text.strip(), float(mp)))
     n = write_feature_list(args.out, rows, truncate=args.truncate)
-    print(f"{n} feature(s) -> {args.out} (verify against a live TEAAS "
-          "import; docs/09)")
+    print(f"{n} feature(s) -> {args.out}")
     return 0
 
 
@@ -1570,8 +1569,7 @@ def build_parser() -> argparse.ArgumentParser:
         "feature-list",
         help="Write a TEAAS feature-inclusion import from '<text>|<milepost>' "
              "lines (mile markers, curve PC/PI/PT estimates). Text is capped "
-             "at 20 characters; the format is unverified against a live "
-             "import (docs/09).")
+             "at 20 characters (docs/09).")
     fl.add_argument("--pairs", required=True,
                     help="Text file, one '<text>|<milepost>' per line "
                          "(comma also accepted; # comments ignored).")
@@ -2094,8 +2092,7 @@ def _cmd_route_features(args) -> int:
     if args.out:
         rows = rg.feature_pairs(curves, verticals, args.lo, args.hi)
         n = write_feature_list(args.out, rows, truncate=True)
-        print(f"{n} feature(s) -> {args.out} (verify against a live TEAAS "
-              "import; docs/09)")
+        print(f"{n} feature(s) -> {args.out}")
     return 0
 
 

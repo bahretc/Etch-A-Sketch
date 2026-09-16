@@ -1,4 +1,8 @@
-"""The three package maps of a strip study in the VHB figure format.
+"""The three package maps of a study site in the VHB figure format.
+
+A site is a strip (milepost section on a route) or an intersection (a
+route at a cross route); a fatal slip adds the circled crash with its text
+box and an HSIP analysis carries the PH number instead.
 
 Location Map  aerial (Esri World Imagery) with Begin Study and End Study
               markers, road names, the study route named along its line,
@@ -53,16 +57,31 @@ CLASS_NAME = {"1": "Interstates", "2": "US Routes", "3": "NC Routes",
 # ------------------------------------------------------------------ spec
 @dataclass
 class MapSpec:
+    """One study's map inputs.
+
+    ``site`` is ``"strip"`` (a milepost section on ``route``; needs ``mp_lo``
+    and ``mp_hi``) or ``"intersection"`` (``route`` at ``cross_route``; needs
+    ``center_lat`` and ``center_lon``). A fatal slip adds the crash point and
+    text; an HSIP analysis leaves them out and carries the PH number.
+    """
     wo: str
     division: str
     county: str
     route: str                      # "US 311"
-    route_id: str                   # AADT RouteID, "20000311034"
-    mp_lo: float
-    mp_hi: float
+    route_id: str = ""              # AADT RouteID, "20000311034"
+    mp_lo: float = 0.0
+    mp_hi: float = 0.0
     description: list = field(default_factory=list)   # footer Study Area lines
     ph: str = ""
     road_label: str = ""            # "Walnut Cove Road"
+    site: str = "strip"             # or "intersection"
+    center_lat: float | None = None
+    center_lon: float | None = None
+    cross_route: str = ""           # "SR 1979"
+    cross_road_label: str = ""      # "Grubb Road"
+    cross_route_id: str = ""        # AADT RouteID of the cross route
+    site_label: str = "Study Intersection"
+    site_label_offset: tuple = (160, -60)
     crash_lat: float | None = None
     crash_lon: float | None = None
     crash_text: str = ""            # HTML allowed (<br>)
@@ -71,7 +90,7 @@ class MapSpec:
     stations: list = field(default_factory=list)      # governing station ids
     area_half: tuple = (0.085, 0.157)                 # deg lat, deg lon
     aadt_half: tuple = (0.0235, 0.0435)
-    location_zoom: int = 15
+    location_zoom: int = 0          # 0: 15 for a strip, 16 for an intersection
     loc_label_offset: tuple = (170, 30)
     aadt_label_offset: tuple = (215, 95)
     aadt_limit_offsets: tuple = ((-120, 40), (120, -40))
@@ -79,12 +98,34 @@ class MapSpec:
     loc_shift_lon: float = -0.004   # nudge the aerial frame off a mosaic seam
 
     @property
+    def is_intersection(self) -> bool:
+        return self.site == "intersection"
+
+    @property
+    def zoom(self) -> int:
+        return self.location_zoom or (16 if self.is_intersection else 15)
+
+    @property
     def coords(self) -> str:
         if self.coords_text:
             return self.coords_text
         if self.crash_lat is not None:
             return f"{self.crash_lat:.5f}, {self.crash_lon:.5f}"
+        if self.center_lat is not None:
+            return f"{self.center_lat:.5f}, {self.center_lon:.5f}"
         return ""
+
+    def validate(self) -> None:
+        if self.site not in ("strip", "intersection"):
+            raise ValueError(f"site must be strip or intersection, not {self.site!r}")
+        if self.is_intersection:
+            if self.center_lat is None or self.center_lon is None:
+                raise ValueError("an intersection site needs center_lat and center_lon")
+        else:
+            if not self.route_id:
+                raise ValueError("a strip site needs route_id (the AADT RouteID)")
+            if not self.mp_hi > self.mp_lo:
+                raise ValueError("a strip site needs mp_lo < mp_hi")
 
 
 def load_spec(path: str) -> MapSpec:
@@ -94,7 +135,7 @@ def load_spec(path: str) -> MapSpec:
     known = {f for f in MapSpec.__dataclass_fields__}
     kw = {k: v for k, v in d.items() if k in known}
     for key in ("area_half", "aadt_half", "loc_label_offset",
-                "aadt_label_offset", "loc_limit_offsets", "loc_limit_offsets"):
+                "aadt_label_offset", "loc_limit_offsets", "site_label_offset"):
         if key in kw and isinstance(kw[key], list):
             kw[key] = tuple(tuple(x) if isinstance(x, list) else x
                             for x in kw[key])
@@ -104,7 +145,9 @@ def load_spec(path: str) -> MapSpec:
     unknown = sorted(set(d) - known)
     if unknown:
         raise ValueError(f"unknown keys in the map spec: {', '.join(unknown)}")
-    return MapSpec(**kw)
+    spec = MapSpec(**kw)
+    spec.validate()
+    return spec
 
 
 # ------------------------------------------------------------ data pulls
@@ -196,6 +239,9 @@ def ref_of(name: str) -> str:
     m = re.match(r"^(?:I|Interstate)[- ](\d+)", n)
     if m:
         return f"I {m.group(1)}"
+    m = re.match(r"^(?:State Rd|State Road|Sr|SR)\s*(\d{3,4})$", n)
+    if m:
+        return f"SR {m.group(1)}"
     return ""
 
 
@@ -305,6 +351,8 @@ def shield_points(ways, b, per_ref: int = 2) -> list:
     out = []
     mlat, mlon = (b[2] - b[0]) * 0.05, (b[3] - b[1]) * 0.04
     for r, segs in by.items():
+        if r.startswith("SR "):
+            continue                    # secondary routes carry no shield
         segs.sort(key=len, reverse=True)
         picked = []
         for seg in segs:
@@ -594,6 +642,66 @@ def render_page(spec: MapSpec, title: str, payload: dict, tiles=None,
 
 
 # ------------------------------------------------------------- builders
+def _center(spec: MapSpec, cl: Centerline | None) -> tuple:
+    if spec.is_intersection:
+        return (spec.center_lat, spec.center_lon)
+    return cl.mp_to_ll((spec.mp_lo + spec.mp_hi) / 2)
+
+
+def _same_name(a: str, b: str) -> bool:
+    """Loose road name match: TIGER spells Grubb Road "Grubbs Rd"."""
+    import difflib
+    x = re.sub(r"[^a-z0-9]", "", abbr(a or "").lower())
+    y = re.sub(r"[^a-z0-9]", "", abbr(b or "").lower())
+    return bool(x and y) and (x == y or difflib.SequenceMatcher(
+        None, x, y).ratio() >= 0.85)
+
+
+def _on_route(w, route: str, label: str) -> bool:
+    return route in refs(w) or bool(label and _same_name(
+        w["tags"].get("name", ""), label))
+
+
+def _road_labels_near(ways, route, label, center, b, target_frac=0.32,
+                      map_h=MAP_H) -> list:
+    """Two labels for one road of an intersection, one each way from the
+    center at about ``target_frac`` of the frame height, rotated along it."""
+    k = 364000.0
+    kx = k * math.cos(math.radians(center[0]))
+    target = target_frac * (b[2] - b[0]) * k
+    cands = []
+    for w in ways:
+        if not _on_route(w, route, label):
+            continue
+        g = w["geometry"]
+        for i, p in enumerate(g):
+            if not (b[0] < p["lat"] < b[2] and b[1] < p["lon"] < b[3]):
+                continue
+            dx = (p["lon"] - center[1]) * kx
+            dy = (p["lat"] - center[0]) * k
+            d = math.hypot(dx, dy)
+            j = i + 1 if i + 1 < len(g) else i - 1
+            if j < 0:
+                continue
+            a, c = (g[i], g[j]) if j > i else (g[j], g[i])
+            cands.append((abs(d - target), math.atan2(dy, dx), p, a, c))
+    cands.sort(key=lambda t: t[0])
+    out, taken = [], []
+    for _, bearing, p, a, c in cands:
+        if any(abs((bearing - t + math.pi) % (2 * math.pi) - math.pi) < 1.5
+               for t in taken):
+            continue
+        taken.append(bearing)
+        name = f"{route} ({abbr(label)})" if label else route
+        out.append({"ll": [round(p["lat"], 5), round(p["lon"], 5)],
+                    "html": name, "cls": "rn a",
+                    "rot": _angle(a, c, p["lat"]), "ox": 0, "oy": -12,
+                    "z": 700})
+        if len(out) == 2:
+            break
+    return out
+
+
 def _route_label_points(cl: Centerline, lo, hi, fracs=(0.3, 0.7)):
     out = []
     for f in fracs:
@@ -613,33 +721,55 @@ def _crash_payload(spec: MapSpec, off):
             "txt": spec.crash_text or "Crash"}
 
 
-def location_payload(spec: MapSpec, cl: Centerline, ways: list,
+def location_payload(spec: MapSpec, cl: Centerline | None, ways: list,
                      tile_fetch=None, cache_dir: str = "") -> tuple:
-    """(payload, tiles) for the aerial location map at ``spec.location_zoom``
-    with the frame sized so the tiles are not scaled."""
-    study = cl.polyline(spec.mp_lo, spec.mp_hi)
-    clat = (study[0][0] + study[-1][0]) / 2
-    clon = (study[0][1] + study[-1][1]) / 2 + spec.loc_shift_lon
-    ppd = 256 * 2 ** spec.location_zoom / 360          # px per deg lon
+    """(payload, tiles) for the aerial location map at ``spec.zoom`` with
+    the frame sized so the tiles are not scaled.
+
+    A strip site shows Begin Study and End Study at the milepost limits and
+    the route named along its line; an intersection site marks the study
+    intersection and names both roads on each side of it.
+    """
+    zoom = spec.zoom
+    if spec.is_intersection:
+        clat, clon = spec.center_lat, spec.center_lon + spec.loc_shift_lon
+    else:
+        study = cl.polyline(spec.mp_lo, spec.mp_hi)
+        clat = (study[0][0] + study[-1][0]) / 2
+        clon = (study[0][1] + study[-1][1]) / 2 + spec.loc_shift_lon
+    ppd = 256 * 2 ** zoom / 360                          # px per deg lon
     half_lon = FRAME_W / ppd / 2
     half_lat = MAP_H / (ppd / math.cos(math.radians(clat))) / 2
     b = (clat - half_lat, clon - half_lon, clat + half_lat, clon + half_lon)
-    route_pts = _route_label_points(cl, spec.mp_lo, spec.mp_hi)
-    avoid = [tuple(study[0]), tuple(study[-1])] + [tuple(p) for p, _ in route_pts]
-    labels = road_name_labels(ways, b, 12, "rn a", minsep=80,
-                              skip=(abbr(spec.road_label),), avoid=avoid,
-                              avoidpx=60)
-    name = f"{spec.route} ({abbr(spec.road_label)})" if spec.road_label else spec.route
-    for ll, ang in route_pts:
-        labels.append({"ll": ll, "html": name, "cls": "rn a", "rot": ang,
-                       "ox": 0, "oy": -12, "z": 700})
-    lo_off, hi_off = spec.loc_limit_offsets
+    if spec.is_intersection:
+        center = (spec.center_lat, spec.center_lon)
+        named = (_road_labels_near(ways, spec.route, spec.road_label, center, b)
+                 + _road_labels_near(ways, spec.cross_route,
+                                     spec.cross_road_label, center, b))
+        avoid = [center] + [tuple(l["ll"]) for l in named]
+        skip = tuple(abbr(x) for x in (spec.road_label, spec.cross_road_label) if x)
+        labels = road_name_labels(ways, b, 12, "rn a", minsep=80, skip=skip,
+                                  avoid=avoid, avoidpx=60) + named
+        limits = [{"ll": list(center), "off": list(spec.site_label_offset),
+                   "txt": spec.site_label}]
+    else:
+        route_pts = _route_label_points(cl, spec.mp_lo, spec.mp_hi)
+        avoid = [tuple(study[0]), tuple(study[-1])] + [tuple(p) for p, _ in route_pts]
+        labels = road_name_labels(ways, b, 12, "rn a", minsep=80,
+                                  skip=(abbr(spec.road_label),), avoid=avoid,
+                                  avoidpx=60)
+        name = f"{spec.route} ({abbr(spec.road_label)})" if spec.road_label else spec.route
+        for ll, ang in route_pts:
+            labels.append({"ll": ll, "html": name, "cls": "rn a", "rot": ang,
+                           "ox": 0, "oy": -12, "z": 700})
+        lo_off, hi_off = spec.loc_limit_offsets
+        limits = [{"ll": study[0], "off": list(lo_off), "txt": "Begin Study"},
+                  {"ll": study[-1], "off": list(hi_off), "txt": "End Study"}]
     payload = {
-        "minz": spec.location_zoom - 1, "maxz": spec.location_zoom + 1,
+        "minz": zoom - 1, "maxz": zoom + 1,
         "fb": [[b[0], b[1]], [b[2], b[3]]],
         "order": [], "style": {}, "roads": {},
-        "limits": [{"ll": study[0], "off": list(lo_off), "txt": "Begin Study"},
-                   {"ll": study[-1], "off": list(hi_off), "txt": "End Study"}],
+        "limits": limits,
         "crash": _crash_payload(spec, spec.loc_label_offset),
         "labels": labels,
     }
@@ -651,18 +781,16 @@ def location_payload(spec: MapSpec, cl: Centerline, ways: list,
                 tiles = json.load(fh)
         else:
             tiles, _ = tile_fetch({"line": [[b[0], b[1]], [b[2], b[3]]]},
-                                  kinds=("a",),
-                                  zooms=(spec.location_zoom - 1,
-                                         spec.location_zoom))
+                                  kinds=("a",), zooms=(zoom - 1, zoom))
             if cache:
                 with open(cache, "w", encoding="utf-8") as fh:
                     json.dump(tiles, fh)
     return payload, tiles
 
 
-def area_payload(spec: MapSpec, cl: Centerline, ways: list, places: list,
-                 hydro: list) -> dict:
-    mid = cl.mp_to_ll((spec.mp_lo + spec.mp_hi) / 2)
+def area_payload(spec: MapSpec, cl: Centerline | None, ways: list,
+                 places: list, hydro: list) -> dict:
+    mid = _center(spec, cl)
     hl, hn = spec.area_half
     b = (mid[0] - hl, mid[1] - hn, mid[0] + hl, mid[1] + hn)
 
@@ -719,9 +847,13 @@ def area_payload(spec: MapSpec, cl: Centerline, ways: list, places: list,
     }
 
 
-def governing_stations(spec: MapSpec, cl: Centerline, stations: list) -> list:
-    """The stations whose panels go on the AADT map: the ids in the spec,
-    else the route's stations nearest the section (at most two)."""
+def governing_stations(spec: MapSpec, cl: Centerline | None,
+                       stations: list, bbox: tuple | None = None,
+                       max_ft: float = 4000.0) -> list:
+    """The stations whose panels go on the AADT map: the ids in the spec;
+    else on a strip the route's two stations nearest the section; on an
+    intersection the nearest station on each approach of each route (main
+    and cross) within ``max_ft`` of the center, up to four, nearest first."""
     rows = []
     for f in stations:
         a = f.get("attributes", {})
@@ -735,24 +867,57 @@ def governing_stations(spec: MapSpec, cl: Centerline, stations: list) -> list:
         picked = [r for r in rows if r[0] in want]
         picked.sort(key=lambda r: want.index(r[0]))
         return picked
+    if spec.is_intersection:
+        c = (spec.center_lat, spec.center_lon)
+        k = 364000.0
+        kx = k * math.cos(math.radians(c[0]))
+
+        def dist(r):
+            return math.hypot((r[2] - c[1]) * kx, (r[1] - c[0]) * k)
+        def bearing(r):
+            return math.atan2((r[1] - c[0]) * k, (r[2] - c[1]) * kx)
+        picked = []
+        for rid in (spec.route_id, spec.cross_route_id):
+            if not rid:
+                continue
+            on = sorted((r for r in rows
+                         if str(r[3].get("RouteID", "")) == rid
+                         and dist(r) <= max_ft
+                         and (bbox is None or (bbox[0] <= r[1] <= bbox[2]
+                                               and bbox[1] <= r[2] <= bbox[3]))),
+                        key=dist)
+            if not on:
+                continue
+            picked.append(on[0])
+            # the nearest station on the far side of the intersection, if any
+            for r in on[1:]:
+                d = abs((bearing(r) - bearing(on[0]) + math.pi)
+                        % (2 * math.pi) - math.pi)
+                if d > math.radians(120):
+                    picked.append(r)
+                    break
+        picked.sort(key=dist)
+        return picked[:4]
     on_route = [r for r in rows if str(r[3].get("RouteID", "")) == spec.route_id]
     mid = (spec.mp_lo + spec.mp_hi) / 2
     on_route.sort(key=lambda r: abs(cl.snap(r[1], r[2])[0] - mid))
     return on_route[:2]
 
 
-def aadt_payload(spec: MapSpec, cl: Centerline, ways: list,
+def aadt_payload(spec: MapSpec, cl: Centerline | None, ways: list,
                  stations: list) -> tuple:
-    """(payload, panels_html)."""
-    mid = cl.mp_to_ll((spec.mp_lo + spec.mp_hi) / 2)
+    """(payload, panels_html). Panels box ``spec.median_year``; an
+    intersection shows up to four panels (one per governing station) with
+    the last ten years so they fit in the corners."""
+    mid = _center(spec, cl)
     hl, hn = spec.aadt_half
     b = (mid[0] - hl, mid[1] - hn, mid[0] + hl, mid[1] + hn)
-    study = cl.polyline(spec.mp_lo, spec.mp_hi)
 
     def cls(w):
         hw = w["tags"]["highway"]
-        if spec.route in refs(w) or (spec.road_label and
-                                     w["tags"].get("name") == abbr(spec.road_label)):
+        if _on_route(w, spec.route, spec.road_label) or (
+                spec.is_intersection and spec.cross_route
+                and _on_route(w, spec.cross_route, spec.cross_road_label)):
             return "route"
         return {"primary": "hwy", "secondary": "sec",
                 "residential": "res"}.get(hw)
@@ -765,8 +930,12 @@ def aadt_payload(spec: MapSpec, cl: Centerline, ways: list,
         if c:
             dots.append({"ll": [round(g["y"], 5), round(g["x"], 5)], "c": c})
     panels, leaders, numbered = "", [], []
-    positions = [(12, 112), (836, 12)]
-    for n, (sid, lat, lon, a) in enumerate(governing_stations(spec, cl, stations)[:2], 1):
+    if spec.is_intersection:
+        positions = [(12, 112), (836, 12), (12, 318), (836, 212)]
+    else:
+        positions = [(12, 112), (836, 12)]
+    gov = governing_stations(spec, cl, stations, bbox=b)[:len(positions)]
+    for n, (sid, lat, lon, a) in enumerate(gov, 1):
         x, y = positions[n - 1]
         loc = f'{a.get("Approach", "")} {a.get("Crossroad", "")}'.strip().upper()
         rows = ""
@@ -776,6 +945,8 @@ def aadt_payload(spec: MapSpec, cl: Centerline, ways: list,
                          ("LOCATION", loc)]:
             rows += f'<div class="row"><b>{key}</b><span>{val}</span></div>'
         years = sorted(int(k[5:]) for k in a if re.match(r"^AADT_\d{4}$", k))
+        if spec.is_intersection and len(years) > 8:
+            years = years[-8:]          # four panels have to fit the corners
         for yy in years:
             v = a.get(f"AADT_{yy}")
             hot = " hot" if yy == spec.median_year else ""
@@ -786,14 +957,25 @@ def aadt_payload(spec: MapSpec, cl: Centerline, ways: list,
                    f'<div class="bd">{rows}</div></div>')
         leaders.append({"id": pid, "ll": [round(lat, 5), round(lon, 5)]})
         numbered.append({"ll": [round(lat, 5), round(lon, 5)], "n": n})
-    labels = road_name_labels(ways, b, 12, "gn", minsep=95, oy=-10,
-                              skip=(abbr(spec.road_label),))
-    for mp in (spec.mp_lo - 0.3, spec.mp_hi + 0.4):
-        ll = cl.mp_to_ll(mp)
-        if b[0] < ll[0] < b[2] and b[1] < ll[1] < b[3]:
-            labels.append({"ll": list(ll), "html": shield_svg(spec.route),
-                           "cls": "", "ox": 0, "oy": 0, "z": 850})
-    lo_off, hi_off = spec.aadt_limit_offsets
+    skip = tuple(abbr(x) for x in (spec.road_label, spec.cross_road_label) if x)
+    labels = road_name_labels(ways, b, 12, "gn", minsep=95, oy=-10, skip=skip)
+    if spec.is_intersection:
+        for ref, ll in shield_points(ways, b):
+            if ref in (spec.route, spec.cross_route):
+                labels.append({"ll": ll, "html": shield_svg(ref), "cls": "",
+                               "ox": 0, "oy": 0, "z": 850})
+        limits = [{"ll": list(mid), "off": list(spec.site_label_offset),
+                   "txt": spec.site_label}]
+    else:
+        study = cl.polyline(spec.mp_lo, spec.mp_hi)
+        for mp in (spec.mp_lo - 0.3, spec.mp_hi + 0.4):
+            ll = cl.mp_to_ll(mp)
+            if b[0] < ll[0] < b[2] and b[1] < ll[1] < b[3]:
+                labels.append({"ll": list(ll), "html": shield_svg(spec.route),
+                               "cls": "", "ox": 0, "oy": 0, "z": 850})
+        lo_off, hi_off = spec.aadt_limit_offsets
+        limits = [{"ll": study[0], "off": list(lo_off), "txt": "Begin Study"},
+                  {"ll": study[-1], "off": list(hi_off), "txt": "End Study"}]
     payload = {
         "minz": 10, "maxz": 17, "mapbg": "#FBFBFA",
         "fb": [[b[0], b[1]], [b[2], b[3]]],
@@ -809,8 +991,7 @@ def aadt_payload(spec: MapSpec, cl: Centerline, ways: list,
                       {"color": "#5BC8F0", "weight": 2.6, "opacity": 0.95}]},
         "roads": clip_ways(ways, b, cls),
         "stations": dots, "numbered": numbered, "panelLeaders": leaders,
-        "limits": [{"ll": study[0], "off": list(lo_off), "txt": "Begin Study"},
-                   {"ll": study[-1], "off": list(hi_off), "txt": "End Study"}],
+        "limits": limits,
         "crash": _crash_payload(spec, spec.aadt_label_offset),
         "labels": labels,
     }
@@ -822,11 +1003,14 @@ def build_maps(spec: MapSpec, out_dir: str, cache_dir: str | None = None,
                log=print) -> dict:
     """Write ``<WO>_LocationMap.html``, ``_AreaMap.html`` and
     ``_AADTMap.html`` under ``out_dir``; returns ``{name: path}``."""
+    spec.validate()
     cache_dir = cache_dir or os.path.join(out_dir, "mapdata")
     os.makedirs(out_dir, exist_ok=True)
-    cl = centerline or load_centerline(
-        spec.route_id, cache_path=os.path.join(cache_dir, "route_segments.json"))
-    mid = cl.mp_to_ll((spec.mp_lo + spec.mp_hi) / 2)
+    cl = centerline
+    if cl is None and not spec.is_intersection:
+        cl = load_centerline(spec.route_id, cache_path=os.path.join(
+            cache_dir, "route_segments.json"))
+    mid = _center(spec, cl)
     hl, hn = spec.area_half
     bbox = (mid[0] - hl - 0.01, mid[1] - hn - 0.01,
             mid[0] + hl + 0.01, mid[1] + hn + 0.01)

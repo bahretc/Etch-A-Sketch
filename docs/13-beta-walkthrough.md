@@ -118,8 +118,8 @@ Horizontal curves (PC, PI, PT, radius, deflection) come from the NCDOT route
 centerline; crests and sags with grades from the USGS 3DEP 1 m bare-earth
 profile; the sight distance at a milepost is a rough line-of-sight walk over
 that profile. The feature list uses the same `<text>|<milepost>` format as the
-team's 41000079305 features file. **Check the first upload in TEAAS**: the
-format has not been verified against a live import (docs/09).
+team's 41000079305 features file and was verified on a live TEAAS import
+in September 2026 (docs/09).
 
 ## 5. Package maps and the AADT workbook
 
@@ -141,6 +141,31 @@ sheet with live formulas from the sections you list.
 
 App: the **Fatal Crash** tab, "Package figures and checks".
 
+### Intersection sites and HSIP analyses
+
+The same command draws an intersection site: set `site: intersection`, give
+the cross route and the intersection's coordinates, and leave the milepost
+limits out. The location map marks the Study Intersection and names both
+roads on each side of it; the AADT map traces both routes and carries up to
+four station panels, the nearest on each route inside the frame, with the
+last eight years so they fit the corners. An HSIP package analysis of either
+kind sets `ph` for the footer and leaves the crash fields out. Example:
+`examples/260307016EA/intersection_demo_maps.yaml`.
+
+```yaml
+site: intersection
+route: US 311
+route_id: "20000311034"
+cross_route: SR 1979
+cross_road_label: Grubb Road
+cross_route_id: "40001979034"
+center_lat: 36.22315
+center_lon: -80.16879
+ph: "77S00141"
+```
+
+App: the **HSIP Warrants** page carries the same section.
+
 ## 6. Field Investigation File and memo
 
 ```bash
@@ -160,9 +185,8 @@ are the deliverables; the tool never fabricates them.
 
 ## Known limits in this beta
 
-* Package maps and route features are built for strip (section) sites;
-  intersection sites get the crash map and the collision diagram instead.
-* The feature import format is unverified against TEAAS (docs/09).
+* Route features and the location check are strip tools; intersection
+  sites get the package maps, the crash map and the collision diagram.
 * Map road names and geometry come from Census TIGER, which is coarser than
   OpenStreetMap; check names near the site against the aerial.
 * Curves and crests are estimates from public geometry (limits to about

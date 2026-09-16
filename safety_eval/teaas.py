@@ -21,7 +21,7 @@ Write side (``write_import_list``, ``write_period_imports``): the milepost
 import format, byte-verified by round-tripping ``Before_Import.txt`` and
 ``After_Import.txt`` from examples/04-15-39049 (see
 tests/test_teaas_import.py).  ``write_feature_list`` is the feature-inclusion
-format and is NOT verified against a real file; see its docstring.
+format; verified against a live TEAAS import in September 2026 (docs/09).
 
 Import files are written from reviewed determinations only.  A crash with no
 usable milepost is listed in a HELD file instead of being dropped, so an
@@ -40,7 +40,8 @@ from .models import Crash
 CRLF = "\r\n"
 
 #: TEAAS rejects feature text longer than this rather than truncating it.
-#: Carried over from the crashmp reference implementation; unverified here.
+#: Carried over from the crashmp reference implementation; verified on a
+#: live TEAAS import (feature inclusions, 260307016EA, September 2026).
 FEATURE_TEXT_LIMIT = 20
 
 
@@ -207,9 +208,9 @@ def write_feature_list(path: str, rows, places: int = 3,
     being cut, because a truncated feature name imports as a different feature;
     pass ``truncate=True`` to shorten deliberately.
 
-    Unlike :func:`write_import_list`, this format has NOT been checked against
-    a real TEAAS feature import.  It is carried over from the crashmp reference
-    implementation.  Verify against a live import before relying on it.
+    Verified against a live TEAAS feature inclusion import in September 2026
+    (study 260307016EA: curve PC/PI/PT and crest/sag lines loaded as
+    features on the strip diagram).
     """
     lines: list[str] = []
     for text, milepost in rows:

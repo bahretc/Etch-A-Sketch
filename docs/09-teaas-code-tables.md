@@ -34,10 +34,11 @@ by crash date, which the sheets and the TEAAS ID exports are not; the order has
 no effect on the import but matching it keeps generated files diffable against
 real ones. Written by `safety_eval.teaas.write_period_imports`.
 
-Feature-inclusion import is understood to be `<text>|<milepost>`, CRLF, with the
-feature text capped at 20 characters and rejected rather than truncated beyond
-it. This one is **not verified** against a real file; there is no example in the
-archive. Check it against a live import before relying on it. Written by
+Feature-inclusion import is `<text>|<milepost>`, CRLF, with the feature text
+capped at 20 characters and rejected rather than truncated beyond it.
+**Verified on a live TEAAS import** (September 2026, study 260307016EA: the
+`route-features` output of curve PC/PI/PT and crest/sag lines loaded as strip
+diagram features). Written by
 `safety_eval.teaas.write_feature_list`. Note it takes no route: the file is
 imported against a route already selected in TEAAS, unlike the crash import
 where the crash ID carries its own route.

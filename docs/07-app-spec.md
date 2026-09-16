@@ -93,9 +93,10 @@ Folded in from the 260307016EA fatal analysis, where they ran as scripts:
   addresses snapped to the centerline and compared with the coded milepost;
   a report only, never a determination. CLI `locate-check`.
 - `package_maps` - the Location, Area and AADT maps from a study YAML
-  (`MapSpec`), TIGERweb roads, places and hydro, Esri tiles, NCDOT stations,
-  Playwright printing. CLI `package-maps`. Assets `vendor/nc_counties.json`
-  and `vendor/vhb_logo.png`.
+  (`MapSpec`: strip or intersection site, fatal crash or HSIP PH number),
+  TIGERweb roads, places and hydro, Esri tiles, NCDOT stations, Playwright
+  printing. CLI `package-maps`. Assets `vendor/nc_counties.json` and
+  `vendor/vhb_logo.png`.
 - `calc_aadt` - the strip CalculatedAADT workbook with live formulas.
   CLI `calc-aadt`.
 - `fiche_screen.apply_hsip_review` adds a fiche row for an initial study

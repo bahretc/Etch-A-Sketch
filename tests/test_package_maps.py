@@ -243,3 +243,23 @@ def test_intersection_build_needs_no_centerline(tmp_path):
     out = pm.build_maps(_int_spec(), str(tmp_path), cache_dir=str(cache),
                         tiles=False, log=lambda *a: None)
     assert sorted(out) == ["aadt", "area", "location"]
+
+
+def test_a_string_description_becomes_lines(tmp_path):
+    import yaml
+    d = {"wo": "x", "division": "9", "county": "A", "route": "US 1",
+         "route_id": "1", "mp_lo": 1.0, "mp_hi": 2.0,
+         "description": "US 1 from A [MP 1.0]\nto B [MP 2.0]"}
+    p = tmp_path / "m.yaml"
+    p.write_text(yaml.safe_dump(d), encoding="utf-8")
+    assert pm.load_spec(str(p)).description == ["US 1 from A [MP 1.0]",
+                                                "to B [MP 2.0]"]
+
+
+def test_caches_are_keyed_by_extent(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(pm, "arc_query", lambda url, bbox, *a, **k: calls.append(bbox) or [])
+    pm.fetch_stations((36.0, -80.0, 36.1, -79.9), str(tmp_path))
+    pm.fetch_stations((36.0, -80.0, 36.1, -79.9), str(tmp_path))   # cached
+    pm.fetch_stations((36.2, -80.0, 36.3, -79.9), str(tmp_path))   # new extent
+    assert len(calls) == 2

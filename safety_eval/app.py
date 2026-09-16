@@ -831,8 +831,22 @@ def _fatal_package_section(st, ws, site_default: str = "strip") -> None:
                       cross_route_id=cross_id or None,
                       center_lat=center_lat or None, center_lon=center_lon or None)
     b1, b2, b3 = st.columns(3)
-    out_dir = (os.path.join(ws.outputs_dir, "package") if ws
-               else tempfile.mkdtemp(prefix="package_"))
+    if ws:
+        out_dir = os.path.join(ws.outputs_dir, "package")
+    else:
+        if "pkg_tmp_dir" not in st.session_state:
+            st.session_state["pkg_tmp_dir"] = tempfile.mkdtemp(prefix="package_")
+        out_dir = st.session_state["pkg_tmp_dir"]
+
+    def _num(label, text):
+        """A typed coordinate, or an st.error naming the field."""
+        if not text.strip():
+            return None
+        try:
+            return float(text.strip())
+        except ValueError:
+            st.error(f"{label}: enter one decimal number, not {text.strip()!r}")
+            st.stop()
     if b1.button("Build package maps", disabled=not ready):
         from safety_eval import package_maps as pm
         spec = pm.MapSpec(
@@ -841,12 +855,17 @@ def _fatal_package_section(st, ws, site_default: str = "strip") -> None:
             description=[ln.strip() for ln in desc.splitlines() if ln.strip()],
             road_label=road_label, cross_route=cross_route,
             cross_road_label=cross_label, cross_route_id=cross_id,
-            center_lat=float(center_lat) if center_lat.strip() else None,
-            center_lon=float(center_lon) if center_lon.strip() else None,
-            crash_lat=float(crash_lat) if crash_lat.strip() else None,
-            crash_lon=float(crash_lon) if crash_lon.strip() else None,
+            center_lat=_num("Intersection latitude", center_lat),
+            center_lon=_num("Intersection longitude", center_lon),
+            crash_lat=_num("Crash latitude", crash_lat),
+            crash_lon=_num("Crash longitude", crash_lon),
             crash_text=crash_text, median_year=int(median_year),
             stations=[s.strip() for s in stations.split(",") if s.strip()])
+        try:
+            spec.validate()
+        except ValueError as exc:
+            st.error(str(exc))
+            st.stop()
         log = st.empty()
         try:
             pages = pm.build_maps(spec, out_dir, log=lambda m: log.caption(m))
@@ -879,8 +898,9 @@ def _fatal_package_section(st, ws, site_default: str = "strip") -> None:
             st.error(f"Route features: {exc}")
             st.stop()
         st.markdown(rg.features_markdown(curves, verts))
-        if crash_lat.strip():
-            mp = cl.snap(float(crash_lat), float(crash_lon))[0]
+        if crash_lat.strip() and crash_lon.strip():
+            mp = cl.snap(_num("Crash latitude", crash_lat),
+                         _num("Crash longitude", crash_lon))[0]
             st.caption(f"Sight distance at the crash (MP {mp:.3f}): about "
                        f"{rg.sight_distance(prof, mp, 1):.0f} ft looking up "
                        f"the mileposts, {rg.sight_distance(prof, mp, -1):.0f} "

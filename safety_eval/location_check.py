@@ -126,7 +126,12 @@ def check_addresses(addresses: list[tuple[str, str]], centerline,
     """``[(crash_id, address), ...]`` -> milepost of each geocoded address."""
     out = []
     for cid, addr in addresses:
-        hit = geocoder(addr)
+        try:
+            hit = geocoder(addr)
+        except Exception as exc:  # noqa: BLE001 - one bad lookup, not the run
+            out.append(LocationRow(str(cid), None, None, None, address=addr,
+                                   note=f"geocoder error: {str(exc)[:80]}"))
+            continue
         if hit.lat is None:
             out.append(LocationRow(str(cid), None, None, None, address=addr,
                                    note="no geocoder match"))

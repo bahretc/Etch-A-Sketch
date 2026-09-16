@@ -33,9 +33,13 @@ import urllib.request
 from dataclasses import dataclass, field
 
 from .aadt_arcgis import SEGMENTS_URL, AadtServiceError
+from .location import haversine_mi
 
 EPQS_URL = "https://epqs.nationalmap.gov/v1/json"
 FT_PER_MI = 5280.0
+#: Feet per degree of latitude; longitude scales by cos(latitude). Used by
+#: the local flat-earth frames here and in package_maps.
+FT_PER_DEG_LAT = 364000.0
 _UA = {"User-Agent": "safety-eval route-geometry"}
 
 
@@ -49,10 +53,7 @@ def route_id(road_code: str | int, county_code: str | int) -> str:
 
 def _hav_mi(a: tuple[float, float], b: tuple[float, float]) -> float:
     """Great-circle distance in miles between (lat, lon) pairs."""
-    la1, lo1, la2, lo2 = map(math.radians, (a[0], a[1], b[0], b[1]))
-    h = (math.sin((la2 - la1) / 2) ** 2
-         + math.cos(la1) * math.cos(la2) * math.sin((lo2 - lo1) / 2) ** 2)
-    return 2 * 3958.8 * math.asin(math.sqrt(h))
+    return haversine_mi(a[0], a[1], b[0], b[1])
 
 
 @dataclass
@@ -92,7 +93,7 @@ class Centerline:
         for 260307016EA sat 274 ft off in the trees; report coordinates
         are usually within 30 ft).
         """
-        k = 364000.0
+        k = FT_PER_DEG_LAT
         kx = k * math.cos(math.radians(lat))
         best_mp, best_d = self.chain[0][0], float("inf")
         ch = self.chain
@@ -128,7 +129,7 @@ class Centerline:
         """Points every ``step_ft`` along the line between two mileposts, as
         ``[(mp, x_ft, y_ft)]`` in a local east/north frame."""
         lat0 = self.mp_to_ll((lo + hi) / 2)[0]
-        k = 364000.0
+        k = FT_PER_DEG_LAT
         kx = k * math.cos(math.radians(lat0))
         pts = [(m, (o - self.chain[0][2]) * kx, (a - lat0) * k)
                for m, a, o in self.chain if lo - 0.3 <= m <= hi + 0.3]
@@ -185,6 +186,13 @@ def centerline_from_segments(collection: dict, route_id: str = "",
         coords = [pt for part in parts for pt in part]
         if len(coords) < 2:
             continue
+        if chain:
+            # digitizing direction is not guaranteed to follow the measure:
+            # keep the end that continues from the previous segment first
+            last = (chain[-1][1], chain[-1][2])
+            if (_hav_mi(last, (coords[-1][1], coords[-1][0]))
+                    < _hav_mi(last, (coords[0][1], coords[0][0]))):
+                coords = list(reversed(coords))
         d = [0.0]
         for i in range(1, len(coords)):
             d.append(d[-1] + _hav_mi((coords[i - 1][1], coords[i - 1][0]),
@@ -277,8 +285,9 @@ def horizontal_curves(cl: Centerline, lo: float, hi: float,
         h1 = heading(res[max(0, i - 2 * window_pts)], a)
         h2 = heading(b, res[min(n - 1, i + 2 * window_pts)])
         dh = (h2 - h1 + math.pi) % (2 * math.pi) - math.pi
-        arc = math.hypot(b[1] - a[1], b[2] - a[2]) + 2 * window_pts * step_ft
-        curv.append(dh / arc if arc else 0.0)
+        # the two chord midpoints sit 3 window widths apart along the line
+        arc = 3 * window_pts * step_ft
+        curv.append(dh / arc)
     runs, cur = [], None
     for i in range(n):
         r = abs(1 / curv[i]) if curv[i] else float("inf")

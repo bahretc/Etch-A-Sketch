@@ -35,7 +35,7 @@ pip install -e '.[maps]'    # + package map PDFs; then: playwright install chrom
 safety-eval doctor --network   # what is installed and which public services answer
 ```
 
-**Beta (0.2.0b1).** The fatal slip and HSIP fiche workflows run start to
+**Beta (0.2.0b2).** The fatal slip and HSIP fiche workflows run start to
 finish on the CLI and in the app; `docs/13-beta-walkthrough.md` is the
 two-page tour and lists the known limits. New in this version: the route
 centerline and its curves and crests (`route-features`), the location check

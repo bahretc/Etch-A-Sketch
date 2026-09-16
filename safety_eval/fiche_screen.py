@@ -450,11 +450,12 @@ def apply_hsip_review(workbook_in: str, workbook_out: str, determinations,
                 for r in range(2, ws.max_row + 1)
                 if ws.cell(row=r, column=col["id"]).value is not None}
     for cid_s, det in dets.items():
-        if cid_s in on_sheet:
+        if cid_s in on_sheet or not cid_s.isdigit():
             continue
         if initial is not None and int(cid_s) not in initial:
             continue
-        add_initial_study_row(wb, ws, cid_s, route=None)
+        if add_initial_study_row(wb, ws, cid_s, route=None) is None:
+            continue                    # not an initial-study crash: ignored
         comment = getattr(det, "comment", "") or ""
         if not comment.lower().startswith("in initial study"):
             det.comment = "in initial study, not fiche; " + comment
@@ -534,10 +535,12 @@ def apply_hsip_review(workbook_in: str, workbook_out: str, determinations,
 _SEVERITY_LETTER = {1: "K", 2: "A", 3: "B", 4: "C", 5: "O"}
 
 
-def add_initial_study_row(wb, ws, crash_id: str, route: str | None = None) -> int:
+def add_initial_study_row(wb, ws, crash_id: str, route: str | None = None):
     """Append a fiche row for an initial-study crash that is not on the
     fiche, from the ID sheet (road code, severity, date, time, T) and the
-    Initial Study sheet (milepost, road surface, light). Returns the row.
+    Initial Study sheet (milepost, road surface, light). Returns the row,
+    or None when the crash is not in the ID sheet's pasted export (then it
+    is not an initial-study crash and nothing is written).
 
     The From / Toward cells stay blank and On Road carries the road code
     when no name is known; the engineer fills them from the report. The
@@ -549,16 +552,20 @@ def add_initial_study_row(wb, ws, crash_id: str, route: str | None = None) -> in
     from .fiche_workbook import SHEET_ID, SHEET_INITIAL
     cid = str(crash_id).strip()
     road_code = sev = tcode = date = time = None
+    found = False
     if SHEET_ID in wb.sheetnames:
         ids = wb[SHEET_ID]
         for r in range(2, ids.max_row + 1):
             if str(ids.cell(row=r, column=8).value or "").strip() == cid:
+                found = True
                 road_code = ids.cell(row=r, column=9).value
                 sev = ids.cell(row=r, column=10).value
                 date = ids.cell(row=r, column=11).value
                 time = ids.cell(row=r, column=12).value
                 tcode = ids.cell(row=r, column=13).value
                 break
+    if not found:
+        return None
     mp = surface = light = mproad = None
     if SHEET_INITIAL in wb.sheetnames:
         ini = wb[SHEET_INITIAL]

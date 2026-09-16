@@ -137,3 +137,35 @@ def test_feature_pairs_and_text_limit():
                     ("CREST 1", 10.7), ("SAG 1", 10.9)]
     assert all(len(t) <= 20 for t, _ in rows)
     assert "Curve 1" in rg.features_markdown(curves, verts)
+
+
+def test_a_reversed_segment_is_chained_the_right_way_round():
+    seg1 = [_ll(0, y) for y in range(0, 5281, 528)]
+    seg2 = [_ll(0, y) for y in range(10560, 5279, -528)]     # digitized backwards
+    cl = rg.centerline_from_segments(_segments([seg1, seg2]))
+    lat, _ = cl.mp_to_ll(11.5)
+    assert abs(lat - (LAT0 + 7920 / FT_PER_DEG_LAT)) < 1e-6
+
+
+def test_the_radius_cutoff_means_what_it_says():
+    """A 2200 ft radius, 45 degree arc is reported at the default 2500 ft."""
+    R = 2200.0
+    pts = [(0.0, y) for y in range(0, 2001, 50)]
+    for k in range(1, 46):
+        a = math.radians(k)
+        pts.append((-R * (1 - math.cos(a)), 2000 + R * math.sin(a)))
+    ex, ey = pts[-1]
+    for d in range(50, 2001, 50):
+        pts.append((ex - d * math.sin(math.radians(45)),
+                    ey + d * math.cos(math.radians(45))))
+    length_mi, coords = 0.0, []
+    for i, (x, y) in enumerate(pts):
+        if i:
+            length_mi += math.hypot(x - pts[i - 1][0], y - pts[i - 1][1]) / 5280
+        coords.append(_ll(x, y))
+    coll = {"type": "FeatureCollection", "features": [{
+        "type": "Feature", "properties": {"RouteID": "x", "BeginMP": 0.0,
+                                          "EndMP": length_mi},
+        "geometry": {"type": "LineString", "coordinates": coords}}]}
+    curves = rg.horizontal_curves(rg.centerline_from_segments(coll), 0.0, length_mi)
+    assert len(curves) == 1 and abs(curves[0].radius_ft - R) / R < 0.12

@@ -20,6 +20,7 @@ Source documents: NCDOT TEPPL N-13 (HSIP methodology), TEAAS training chapters 8
 
 - Intersection AADT: entering volume assembled from approach AADTs (TEAAS Ch. 8 method). Known-value test target: 19,900 for the reference example.
 - Strip AADT: length-weighted along the section. Known-value test target: 1,700 for the reference example.
+- The generated CalculatedAADT workbook's Study Time Frame cell divides the date span by 365, matching the team's STRIP ADT sheet. Only the before/after period_years below uses 365.25.
 - Side/minor road estimates round to the nearest hundred.
 - Growth adjustments when counts and study years differ; document the assumption.
 - Evaluation workbook AADT rules (see docs/02 Evaluation Set-up): representative year = last year in each period with actual collected data, never 2020; black font for actual values, red for calculated/interpolated/assumed; one-way roads and 5+ leg intersections get manually computed entering volumes.

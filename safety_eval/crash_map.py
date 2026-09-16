@@ -667,13 +667,18 @@ def fetch_tiles(data: dict, kinds=("a", "s"), zooms=DEFAULT_ZOOMS,
     return tiles, misses
 
 
+def vendor(name: str) -> str:
+    """Text of a file under ``safety_eval/vendor`` (Leaflet, county shapes).
+
+    Shared with :mod:`package_maps`.
+    """
+    return (resources.files("safety_eval") / "vendor" / name).read_text(
+        encoding="utf-8")
+
+
 def render_map_html(data: dict, tiles: dict, out_path: str,
                     county: str = "") -> int:
     """Write the single self-contained HTML file. Returns its byte size."""
-    def vendor(name):
-        return (resources.files("safety_eval") / "vendor" / name).read_text(
-            encoding="utf-8")
-
     zs = sorted({int(k.split("/")[1]) for k in tiles}) or list(DEFAULT_ZOOMS)
     d = dict(data)
     d["zmin"], d["zmax"] = min(zs), max(zs)

@@ -69,3 +69,12 @@ def test_address_list_and_csv_round_trip(tmp_path):
     out = tmp_path / "out.csv"
     lc.write_csv(str(out), [lc.LocationRow("1", 10.5, 10.5, 12, note="agrees")])
     assert "agrees" in out.read_text(encoding="utf-8")
+
+
+def test_a_geocoder_failure_is_recorded_not_raised():
+    cl = _straight()
+
+    def boom(addr):
+        raise TimeoutError("census timed out")
+    rows = lc.check_addresses([("a", "1 Main St")], cl, geocoder=boom)
+    assert rows[0].address_mp is None and "geocoder error" in rows[0].note

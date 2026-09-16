@@ -42,7 +42,8 @@ from dataclasses import dataclass, field
 from importlib import resources
 
 from .aadt_arcgis import STATIONS_2025_URL
-from .route_geometry import Centerline, load_centerline
+from .crash_map import vendor as _vendor_text
+from .route_geometry import FT_PER_DEG_LAT, Centerline, load_centerline
 
 TIGER = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/"
 _UA = {"User-Agent": "safety-eval package-maps"}
@@ -116,6 +117,9 @@ class MapSpec:
         return ""
 
     def validate(self) -> None:
+        if isinstance(self.description, str):
+            self.description = [ln.strip() for ln in self.description.splitlines()
+                                if ln.strip()]
         if self.site not in ("strip", "intersection"):
             raise ValueError(f"site must be strip or intersection, not {self.site!r}")
         if self.is_intersection:
@@ -145,6 +149,9 @@ def load_spec(path: str) -> MapSpec:
     unknown = sorted(set(d) - known)
     if unknown:
         raise ValueError(f"unknown keys in the map spec: {', '.join(unknown)}")
+    if isinstance(kw.get("description"), str):
+        kw["description"] = [ln.strip() for ln in kw["description"].splitlines()
+                             if ln.strip()]
     spec = MapSpec(**kw)
     spec.validate()
     return spec
@@ -190,18 +197,24 @@ def _cached(cache_dir: str, name: str, producer):
     return data
 
 
+def _bbox_key(bbox: tuple) -> str:
+    return "_".join(f"{v:.3f}" for v in bbox).replace("-", "m")
+
+
 def fetch_tiger(bbox: tuple, cache_dir: str) -> dict:
-    """Roads (primary, secondary, local), incorporated places and hydro."""
-    roads = _cached(cache_dir, "tiger_roads.json", lambda: [
+    """Roads (primary, secondary, local), incorporated places and hydro,
+    cached per bounding box."""
+    key = _bbox_key(bbox)
+    roads = _cached(cache_dir, f"tiger_roads_{key}.json", lambda: [
         dict(layer=layer, **f)
         for layer in (2, 6, 8)
         for f in arc_query(f"{TIGER}Transportation/MapServer/{layer}/query",
                            bbox, "NAME,MTFCC,RTTYP")])
-    places = _cached(cache_dir, "tiger_places.json", lambda: [
+    places = _cached(cache_dir, f"tiger_places_{key}.json", lambda: [
         f["attributes"] for f in arc_query(
             f"{TIGER}Places_CouSub_ConCity_SubMCD/MapServer/4/query", bbox,
             "NAME,CENTLAT,CENTLON,LSADC", geom=False)])
-    hydro = _cached(cache_dir, "tiger_hydro.json", lambda: [
+    hydro = _cached(cache_dir, f"tiger_hydro_{key}.json", lambda: [
         f for layer in (0, 1)
         for f in arc_query(f"{TIGER}Hydro/MapServer/{layer}/query", bbox,
                            "NAME,MTFCC")])
@@ -210,7 +223,7 @@ def fetch_tiger(bbox: tuple, cache_dir: str) -> dict:
 
 def fetch_stations(bbox: tuple, cache_dir: str,
                    service_url: str = STATIONS_2025_URL) -> list:
-    return _cached(cache_dir, "aadt_stations.json",
+    return _cached(cache_dir, f"aadt_stations_{_bbox_key(bbox)}.json",
                    lambda: arc_query(f"{service_url}/query", bbox, "*"))
 
 
@@ -424,11 +437,6 @@ NORTH = ('<svg width="26" height="46" viewBox="0 0 26 46">'
          '<polygon points="13,2 13,27 5,34" fill="#111"/>'
          '<text x="13" y="44" text-anchor="middle" font-size="10" '
          'font-weight="bold" font-family="Arial" fill="#111">N</text></svg>')
-
-
-def _vendor_text(name: str) -> str:
-    return (resources.files("safety_eval") / "vendor" / name).read_text(
-        encoding="utf-8")
 
 
 def _vendor_bytes(name: str) -> bytes:
@@ -666,7 +674,7 @@ def _road_labels_near(ways, route, label, center, b, target_frac=0.32,
                       map_h=MAP_H) -> list:
     """Two labels for one road of an intersection, one each way from the
     center at about ``target_frac`` of the frame height, rotated along it."""
-    k = 364000.0
+    k = FT_PER_DEG_LAT
     kx = k * math.cos(math.radians(center[0]))
     target = target_frac * (b[2] - b[0]) * k
     cands = []
@@ -775,7 +783,8 @@ def location_payload(spec: MapSpec, cl: Centerline | None, ways: list,
     }
     tiles = None
     if tile_fetch is not None:
-        cache = os.path.join(cache_dir, "loc_tiles.json") if cache_dir else ""
+        cache = (os.path.join(cache_dir, f"loc_tiles_z{zoom}_{_bbox_key(b)}.json")
+                 if cache_dir else "")
         if cache and os.path.exists(cache):
             with open(cache, encoding="utf-8") as fh:
                 tiles = json.load(fh)
@@ -869,7 +878,7 @@ def governing_stations(spec: MapSpec, cl: Centerline | None,
         return picked
     if spec.is_intersection:
         c = (spec.center_lat, spec.center_lon)
-        k = 364000.0
+        k = FT_PER_DEG_LAT
         kx = k * math.cos(math.radians(c[0]))
 
         def dist(r):
@@ -1009,7 +1018,7 @@ def build_maps(spec: MapSpec, out_dir: str, cache_dir: str | None = None,
     cl = centerline
     if cl is None and not spec.is_intersection:
         cl = load_centerline(spec.route_id, cache_path=os.path.join(
-            cache_dir, "route_segments.json"))
+            cache_dir, f"route_{spec.route_id}_segments.json"))
     mid = _center(spec, cl)
     hl, hn = spec.area_half
     bbox = (mid[0] - hl - 0.01, mid[1] - hn - 0.01,

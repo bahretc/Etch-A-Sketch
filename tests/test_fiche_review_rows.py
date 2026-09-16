@@ -114,3 +114,18 @@ def test_off_lrs_rows_are_nis_only_when_asked(tmp_path):
                 for r in range(2, ws2.max_row + 1) if ws2.cell(row=r, column=12).value}
     assert statuses[2] == "NIS" and statuses[1] == "?"
     assert tally["NIS"] == 1
+
+
+def test_an_unknown_crash_id_never_gets_a_row(tmp_path):
+    """A determination for a crash that is on neither the fiche nor the ID
+    sheet is ignored, with or without --initial-ids; no ghost row."""
+    src = tmp_path / "in.xlsx"
+    out = tmp_path / "out.xlsx"
+    _workbook(str(src))
+    dets = [Determination("10839758", "DEL", comment="typo id"),
+            Determination("ABC", "DEL", comment="not a number")]
+    tally = apply_hsip_review(str(src), str(out), dets)
+    ws = openpyxl.load_workbook(str(out))["260307016EA_Fiche"]
+    ids = [ws.cell(row=r, column=12).value for r in range(2, ws.max_row + 1)]
+    assert 10839758 not in ids and "ABC" not in ids
+    assert "DEL" not in tally

@@ -80,6 +80,30 @@ The finishing layer above was built on a branch that had diverged from the crash
 - The Redact Crash Reports page gained the finishing branch's verify option (the `redact_verify` OCR oracle after the redactor's own probe passes), the same as `safety-eval redact --verify`.
 - Left to the CLI: the package headline metrics of the old Home tab (`package.workbook_summary`). The finishing pages are not offered for HSIP and fatal studies, which do not produce an Evaluation package; every finishing step is a subcommand for those.
 
+## Strip site package layer (September 2026, beta 0.2.0b1)
+
+Folded in from the 260307016EA fatal analysis, where they ran as scripts:
+
+- `route_geometry` - the NCDOT AADT traffic segments chained into a
+  milepost-calibrated centerline (`Centerline.mp_to_ll`, `snap`), horizontal
+  curves by heading change with a circle-fit radius, the USGS 3DEP profile
+  with crests, sags, grades and a line-of-sight estimate, and the
+  `(text, milepost)` rows for the TEAAS feature import. CLI `route-features`.
+- `location_check` - report coordinates and Census-geocoded property
+  addresses snapped to the centerline and compared with the coded milepost;
+  a report only, never a determination. CLI `locate-check`.
+- `package_maps` - the Location, Area and AADT maps from a study YAML
+  (`MapSpec`), TIGERweb roads, places and hydro, Esri tiles, NCDOT stations,
+  Playwright printing. CLI `package-maps`. Assets `vendor/nc_counties.json`
+  and `vendor/vhb_logo.png`.
+- `calc_aadt` - the strip CalculatedAADT workbook with live formulas.
+  CLI `calc-aadt`.
+- `fiche_screen.apply_hsip_review` adds a fiche row for an initial study
+  crash that is not on the fiche (from the ID and Initial Study sheets);
+  `screen_sheet(off_lrs_nis=True)` screens off-LRS rows NIS on strip studies.
+- The Streamlit fatal tab carries all four under "Package figures and
+  checks"; `doctor --network` probes the public services they use.
+
 ## Non-negotiables carried from live work
 
 - Combination-dependent (intersection) vs milepost-dependent (strip) crash identification implemented as separate, tested code paths.

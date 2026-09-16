@@ -25,6 +25,8 @@ Target stack: Python 3.11+, working directly with the real NCDOT Excel templates
 - docs/09-teaas-code-tables.md - T-code lookup, route code prefixes, fiche field conventions
 - docs/10-evaluation-archive.md - archive layout, manifest schema, the frozen train/verify split
 - docs/11-review-assist.md - the LLM review assist: decide vs prepare, redaction dependency, measured behaviour
+- docs/12-hsip-warrants.md - the three study types and the 2024 HSIP warrant thresholds
+- docs/13-beta-walkthrough.md - install, the fatal slip start to finish on CLI and app, known limits
 
 ## Hard rules (do not violate)
 

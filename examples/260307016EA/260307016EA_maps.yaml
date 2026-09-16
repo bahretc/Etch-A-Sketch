@@ -1,0 +1,20 @@
+# Package map spec for fatal slip 260307016EA (safety-eval package-maps).
+# Public data only; no crash records.
+wo: "260307016EA"
+division: "9"
+county: Forsyth
+route: US 311
+route_id: "20000311034"        # TEAAS road code 20000311 + county 034
+road_label: Walnut Cove Road
+mp_lo: 10.438
+mp_hi: 11.604
+description:
+  - "US 311 (Walnut Cove Road) from Waggoner Neal Road [MP 10.438]"
+  - "to 0.5 miles north of SR 1979 (Grubb Road) [MP 11.604]"
+  - "in Forsyth County"
+# point of first harmful event: the SR 1979 junction, MP 11.104
+crash_lat: 36.22315
+crash_lon: -80.16879
+crash_text: "Fatal Crash 108571088<br>US 311 at SR 1979<br>(Grubb Road), MP 11.11"
+median_year: 2023
+stations: ["0340000299", "0340000301"]

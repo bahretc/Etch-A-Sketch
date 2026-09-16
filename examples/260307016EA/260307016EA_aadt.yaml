@@ -1,0 +1,23 @@
+# CalculatedAADT spec for 260307016EA (safety-eval calc-aadt).
+log_number: "260307016EA"
+start_date: 2021-08-01
+end_date: 2026-07-31
+study_adt: 4400
+median_year: 2023
+sections:
+  - length_mi: 0.624
+    aadt: 4400
+    year: 2023
+    source: "NCDOT AADT station 0340000299, US 311 south of SR 1979 (Grubb Rd); traffic segment MP 9.389 to 11.062; section MP 10.438 to 11.062"
+  - length_mi: 0.542
+    aadt: 4500
+    year: 2023
+    source: "NCDOT AADT station 0340000301, US 311 north of SR 1940 (Lake Woussicket Rd); traffic segment MP 11.062 to 12.174; section MP 11.062 to 11.604"
+notes:
+  - "Strip section: US 311 (Walnut Cove Rd) from Waggoner Neal Rd [MP 10.438] to 0.5 mi north of SR 1979 (Grubb Rd) [MP 11.604], 1.166 mi, Forsyth County, Division 9."
+  - "Study period 8/1/2021 to 7/31/2026. 2023 is the median year used for the analysis, so the 2023 AADT is used for each section."
+  - "AADT values and section breaks come from the NCDOT AADT Mapping Application (2025 release of the AADT stations and traffic segmentation layers)."
+  - "Station 0340000299 history: 2017 4400, 2019 4200, 2020 3800, 2021 4300, 2023 4400, 2024 4400, 2025 4300."
+  - "Station 0340000301 history: 2017 4400, 2019 4200, 2021 4300, 2023 4500, 2024 4400, 2025 4000."
+  - "Total ADT is the length-weighted average of the sections (sum of length x ADT divided by total length), per the NCDOT strip ADT method."
+  - "The TEAAS strip analysis used ADT 4400 (route 30000311 in the study criteria). The calculated ADT rounds to 4400 and the difference is about 1 percent, so the study ADT is kept."

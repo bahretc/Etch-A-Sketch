@@ -30,7 +30,20 @@ before/after effectiveness, and writes a completed evaluation **workbook** and a
 pip install -e .            # core (PyYAML + openpyxl)
 pip install -e '.[pdf]'     # + PDF text extraction (pdfplumber / pypdf)
 pip install -e '.[ocr]'     # + OCR for scanned fiche (pytesseract / pdf2image)
+pip install -e '.[ui]'      # + the Streamlit app (streamlit run streamlit_app.py)
+pip install -e '.[maps]'    # + package map PDFs; then: playwright install chromium
+safety-eval doctor --network   # what is installed and which public services answer
 ```
+
+**Beta (0.2.0b1).** The fatal slip and HSIP fiche workflows run start to
+finish on the CLI and in the app; `docs/13-beta-walkthrough.md` is the
+two-page tour and lists the known limits. New in this version: the route
+centerline and its curves and crests (`route-features`), the location check
+of coded mileposts against report coordinates and geocoded addresses
+(`locate-check`), the Location / Area / AADT package maps from a study YAML
+(`package-maps`), the strip CalculatedAADT workbook (`calc-aadt`), and two
+review rules from live work (off-fiche initial study crashes get a fiche
+row; off-LRS rows can be screened NIS).
 
 ## Use
 

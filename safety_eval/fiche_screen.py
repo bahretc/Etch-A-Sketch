@@ -163,8 +163,17 @@ def needs_review(from_road, toward_road, on_road, features, lo, hi,
 
 
 def screen_sheet(ws, features: dict, lo: float, hi: float, initial_ids,
-                 route: str = "US 74", col=None, study="evaluation") -> dict:
+                 route: str = "US 74", col=None, study="evaluation",
+                 off_lrs_nis: bool = False) -> dict:
     """Fill IS?, colour the From/Toward cells, and sort. Returns a tally.
+
+    ``off_lrs_nis``: on a strip study a row ON the study route whose Milepost
+    Road is a different linear reference (US 311 mileposted on "I 74 WB
+    COUPLET", a concurrent freeway section miles away) can never fall in the
+    route's milepost window, so it is NIS without a review. This is not the
+    coded distance (which is never used to skip a review, docs/03); it is
+    the road the milepost is measured on. Off by default; the engineer turns
+    it on per study (docs/03, 2026-09).
 
     ``study`` is the study type (``study_type``). On an HSIP package the animal
     crashes come out as DEL before anything else is decided, which is the
@@ -193,9 +202,12 @@ def screen_sheet(ws, features: dict, lo: float, hi: float, initial_ids,
         # the study (never ADD) nor earns a "?". Marking it DEL would put an
         # off-branch status on 100+ rows of a real corridor fiche.
         animal = kind.deletes_animals and T_CODES.get(t) == ANIMAL_TYPE
+        mproad = normalize_feature(ws.cell(row=r, column=col["mproad"]).value)
+        off_lrs = (off_lrs_nis and mproad and mproad != route.upper()
+                   and normalize_feature(on) == route.upper())
         if cid in initial:
             status = "DEL" if animal else "IS"
-        elif animal:
+        elif animal or off_lrs:
             status = "NIS"
         else:
             status = needs_review(fr, tw, on, features, lo, hi, route)
@@ -430,6 +442,23 @@ def apply_hsip_review(workbook_in: str, workbook_out: str, determinations,
                          + " | ".join(problems_all))
     dets = {str(d.crash_id).strip(): d for d in determinations}
 
+    # An initial-study crash that TEAAS pulled from a road outside the fiche
+    # roads has no row here (its ID sheet Fiche? reads NO). It is reviewed
+    # like any other, so it gets a row built from the ID and Initial Study
+    # sheets first (docs/03, engineer 2026-09, crash 108397584).
+    on_sheet = {str(ws.cell(row=r, column=col["id"]).value).strip()
+                for r in range(2, ws.max_row + 1)
+                if ws.cell(row=r, column=col["id"]).value is not None}
+    for cid_s, det in dets.items():
+        if cid_s in on_sheet:
+            continue
+        if initial is not None and int(cid_s) not in initial:
+            continue
+        add_initial_study_row(wb, ws, cid_s, route=None)
+        comment = getattr(det, "comment", "") or ""
+        if not comment.lower().startswith("in initial study"):
+            det.comment = "in initial study, not fiche; " + comment
+
     # Pass 1: apply the edits, then capture every crash row in sheet order.
     # Banners and blanks are not captured; the rebuild lays fresh ones.
     ncol = ws.max_column
@@ -500,3 +529,79 @@ def apply_hsip_review(workbook_in: str, workbook_out: str, determinations,
     reanchor_sheet(ws)
     wb.save(workbook_out)
     return tally
+
+
+_SEVERITY_LETTER = {1: "K", 2: "A", 3: "B", 4: "C", 5: "O"}
+
+
+def add_initial_study_row(wb, ws, crash_id: str, route: str | None = None) -> int:
+    """Append a fiche row for an initial-study crash that is not on the
+    fiche, from the ID sheet (road code, severity, date, time, T) and the
+    Initial Study sheet (milepost, road surface, light). Returns the row.
+
+    The From / Toward cells stay blank and On Road carries the road code
+    when no name is known; the engineer fills them from the report. The
+    Type / Dir / Latitude / Longitude formulas are copied from the row
+    above and re-anchored.
+    """
+    import datetime as _dt
+
+    from .fiche_workbook import SHEET_ID, SHEET_INITIAL
+    cid = str(crash_id).strip()
+    road_code = sev = tcode = date = time = None
+    if SHEET_ID in wb.sheetnames:
+        ids = wb[SHEET_ID]
+        for r in range(2, ids.max_row + 1):
+            if str(ids.cell(row=r, column=8).value or "").strip() == cid:
+                road_code = ids.cell(row=r, column=9).value
+                sev = ids.cell(row=r, column=10).value
+                date = ids.cell(row=r, column=11).value
+                time = ids.cell(row=r, column=12).value
+                tcode = ids.cell(row=r, column=13).value
+                break
+    mp = surface = light = mproad = None
+    if SHEET_INITIAL in wb.sheetnames:
+        ini = wb[SHEET_INITIAL]
+        for r in range(1, ini.max_row + 1):
+            if (mp is None
+                    and str(ini.cell(row=r, column=2).value or "").strip() == cid):
+                mp = ini.cell(row=r, column=3).value
+                surface = ini.cell(row=r, column=12).value
+                light = ini.cell(row=r, column=13).value
+            v = ini.cell(row=r, column=1).value
+            if v == "Strip Road" and mproad is None:
+                mproad = ini.cell(row=r + 2, column=1).value
+    new = ws.max_row + 1
+    tmpl = next((r for r in range(ws.max_row, 1, -1)
+                 if ws.cell(row=r, column=12).value is not None), None)
+    if tmpl:
+        for c in range(1, ws.max_column + 1):
+            t = ws.cell(row=tmpl, column=c)
+            n = ws.cell(row=new, column=c)
+            v = t.value
+            n.value = _reanchor(v, new) if isinstance(v, str) and v.startswith("=") else None
+            n.number_format = t.number_format
+    values = {1: 0, 2: str(road_code) if road_code is not None else "",
+              7: route or mproad or "", 8: _num(mp), 12: int(cid),
+              14: _num(tcode), 15: _num(surface), 16: 0, 17: _num(light),
+              18: _SEVERITY_LETTER.get(_num(sev), "")}
+    if isinstance(date, _dt.datetime):
+        values[13] = date
+    elif isinstance(date, _dt.date):
+        values[13] = _dt.datetime(date.year, date.month, date.day)
+    elif date:
+        try:
+            values[13] = _dt.datetime.strptime(str(date)[:10], "%m/%d/%Y")
+        except ValueError:
+            values[13] = str(date)
+    for c, v in values.items():
+        ws.cell(row=new, column=c, value=v)
+    return new
+
+
+def _num(v):
+    try:
+        f = float(str(v).strip())
+    except (TypeError, ValueError):
+        return None
+    return int(f) if f.is_integer() else f

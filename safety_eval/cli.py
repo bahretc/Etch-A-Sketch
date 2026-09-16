@@ -536,7 +536,8 @@ def _cmd_fiche_workbook(args) -> int:
         ws = wb[f"{args.study}_Fiche" if args.study else "Fiche"]
         tally = screen_sheet(ws, parse_features_report(args.features),
                              args.lo, args.hi, ids, route=args.route,
-                             study=args.study_type)
+                             study=args.study_type,
+                             off_lrs_nis=args.off_lrs_nis)
         wb.save(out)
         print("screened: " + "   ".join(f"{k} {v}"
                                         for k, v in tally.items()))
@@ -980,6 +981,45 @@ def _cmd_doctor(args) -> int:
             print(f"  [ok] {mod}")
         except ImportError:
             print(f"  [--] {mod}")
+    print("Package maps / route geometry:")
+    try:
+        __import__("playwright")
+        print("  [ok] playwright")
+    except ImportError:
+        print("  [--] playwright (pip install 'safety-eval[maps]', then "
+              "playwright install chromium)")
+    from .package_maps import chromium_path
+    exe = chromium_path()
+    print(f"  [{'ok' if exe else '--'}] chromium"
+          + (f" ({exe})" if exe else " (Playwright default or "
+             "SAFETY_EVAL_CHROMIUM)"))
+    if getattr(args, "network", False):
+        import urllib.request
+        from .aadt_arcgis import SEGMENTS_URL, STATIONS_2025_URL
+        from .location_check import CENSUS_URL
+        from .package_maps import TIGER
+        from .route_geometry import EPQS_URL
+        print("Network (public services):")
+        for name, url in (("NCDOT AADT stations", STATIONS_2025_URL + "?f=json"),
+                          ("NCDOT AADT segments", SEGMENTS_URL + "?f=json"),
+                          ("Census TIGERweb roads",
+                           TIGER + "Transportation/MapServer?f=json"),
+                          ("Census geocoder", CENSUS_URL
+                           + "?address=1+Main+St+Raleigh+NC&benchmark="
+                           "Public_AR_Current&format=json"),
+                          ("USGS 3DEP elevation", EPQS_URL
+                           + "?x=-78.64&y=35.78&units=Feet&wkid=4326"),
+                          ("Esri World Imagery", "https://server.arcgisonline"
+                           ".com/ArcGIS/rest/services/World_Imagery/"
+                           "MapServer?f=json")):
+            try:
+                with urllib.request.urlopen(urllib.request.Request(
+                        url, headers={"User-Agent": "safety-eval doctor"}),
+                        timeout=20) as fh:
+                    fh.read(200)
+                print(f"  [ok] {name}")
+            except Exception as exc:  # noqa: BLE001 - report, don't die
+                print(f"  [--] {name}: {str(exc)[:60]}")
     return 0
 
 
@@ -1646,6 +1686,10 @@ def build_parser() -> argparse.ArgumentParser:
     fw.add_argument("--lo", type=float, help="Study MP begin (screen).")
     fw.add_argument("--hi", type=float, help="Study MP end (screen).")
     fw.add_argument("--route", default="", help='Study route, e.g. "US 74".')
+    fw.add_argument("--off-lrs-nis", dest="off_lrs_nis", action="store_true",
+                    help="Strip studies: rows on the route whose Milepost "
+                         "Road is another linear reference (a concurrent "
+                         "freeway couplet) are NIS without review (docs/03).")
     fw.set_defaults(func=_cmd_fiche_workbook)
 
     fi = sub.add_parser(
@@ -1857,7 +1901,84 @@ def build_parser() -> argparse.ArgumentParser:
     fn.add_argument("--lossless", action="store_true")
     fn.set_defaults(func=_cmd_finish)
 
+    rf = sub.add_parser(
+        "route-features",
+        help="Horizontal curves (PC/PI/PT, radius) from the NCDOT route "
+             "centerline and crests/sags from the USGS 3DEP profile for a "
+             "strip site; optionally written as the TEAAS feature "
+             "inclusion import.")
+    rf.add_argument("--route-id", dest="route_id", required=True,
+                    help="AADT layer RouteID: TEAAS road code + 3-digit "
+                         "county code, e.g. 20000311034.")
+    rf.add_argument("--lo", type=float, required=True)
+    rf.add_argument("--hi", type=float, required=True)
+    rf.add_argument("--out", help="Feature list file (<text>|<milepost>).")
+    rf.add_argument("--cache", help="Folder for the cached route geometry.")
+    rf.add_argument("--max-radius", dest="max_radius", type=float,
+                    default=2500.0, help="Curves tighter than this radius "
+                    "(ft) are reported; default 2500.")
+    rf.add_argument("--prominence", type=float, default=6.0,
+                    help="Minimum crest/sag height (ft); default 6.")
+    rf.add_argument("--sight-at", dest="sight_at", type=float,
+                    help="Milepost to estimate sight distance from.")
+    rf.add_argument("--no-profile", dest="no_profile", action="store_true",
+                    help="Skip the elevation profile (offline).")
+    rf.set_defaults(func=_cmd_route_features)
+
+    lk = sub.add_parser(
+        "locate-check",
+        help="Compare each study crash's coded milepost with the milepost "
+             "of its report coordinates on the route centerline, and "
+             "geocode report addresses (mailboxes, yards, driveways) to "
+             "mileposts. Writes a report; changes nothing (docs/03).")
+    lk.add_argument("--route-id", dest="route_id", required=True)
+    lk.add_argument("--detailed", required=True, help="Detailed Fiche CSV.")
+    lk.add_argument("--initial-ids", dest="initial_ids",
+                    help="TEAAS ID export; its crashes are checked.")
+    lk.add_argument("--determinations",
+                    help="Review JSONL; its crashes are checked too.")
+    lk.add_argument("--crash-id", dest="crash_ids", action="append",
+                    help="Extra crash id to check; repeatable.")
+    lk.add_argument("--addresses",
+                    help="File of '<crash id>|<address>' lines to geocode.")
+    lk.add_argument("--tolerance", type=float, default=0.05,
+                    help="Miles of coded vs coordinate difference that "
+                         "counts as agreeing; default 0.05.")
+    lk.add_argument("--out", help="CSV of the comparison.")
+    lk.set_defaults(func=_cmd_locate_check)
+
+    pmap = sub.add_parser(
+        "package-maps",
+        help="Build the Location, Area and AADT maps of a strip study in "
+             "the VHB figure format from a study YAML (see docs/13); "
+             "public NCDOT, Census TIGER, USGS and Esri sources, cached.")
+    pmap.add_argument("--spec", required=True, help="Study map YAML.")
+    pmap.add_argument("--out-dir", dest="out_dir",
+                      help="Output folder (default: beside the YAML).")
+    pmap.add_argument("--cache", help="Map data cache folder "
+                      "(default <out-dir>/mapdata).")
+    pmap.add_argument("--pdf", action="store_true",
+                      help="Also print the PDFs (Playwright + Chromium).")
+    pmap.add_argument("--png", action="store_true",
+                      help="With --pdf, keep a PNG preview of each map.")
+    pmap.add_argument("--no-tiles", dest="no_tiles", action="store_true",
+                      help="Skip the aerial tiles (offline layout check).")
+    pmap.set_defaults(func=_cmd_package_maps)
+
+    caa = sub.add_parser(
+        "calc-aadt",
+        help="Write the strip CalculatedAADT workbook (docs/04) from a "
+             "YAML of sections: log_number, start_date, end_date, "
+             "study_adt, median_year, sections [length_mi, aadt, year, "
+             "source], notes.")
+    caa.add_argument("--spec", required=True)
+    caa.add_argument("--out", required=True)
+    caa.set_defaults(func=_cmd_calc_aadt)
+
     d = sub.add_parser("doctor", help="Report available optional backends.")
+    d.add_argument("--network", action="store_true",
+                   help="Also probe the public services the maps, the "
+                        "location check and the route features use.")
     d.set_defaults(func=_cmd_doctor)
     return p
 
@@ -1942,6 +2063,119 @@ def _cmd_tsu_diagram(args) -> int:
 
     n = build_diagram(args.out, args.data, args.layout)
     print(f"Rendered {n} crash(es) -> {args.out}")
+    return 0
+
+
+def _cmd_route_features(args) -> int:
+    """Curves and crests along the study route from public geometry."""
+    from . import route_geometry as rg
+    from .teaas import write_feature_list
+
+    cache = args.cache or (os.path.dirname(os.path.abspath(args.out))
+                           if args.out else ".")
+    cl = rg.load_centerline(args.route_id, cache_path=os.path.join(
+        cache, f"route_{args.route_id}_segments.json"))
+    print(f"centerline: {len(cl.chain)} vertices, MP {cl.mp_min:.3f} to "
+          f"{cl.mp_max:.3f} ({cl.source})")
+    curves = rg.horizontal_curves(cl, args.lo, args.hi,
+                                  max_radius_ft=args.max_radius)
+    verticals = []
+    if not args.no_profile:
+        prof = rg.elevation_profile(cl, args.lo, args.hi)
+        missing = sum(1 for p in prof if p[3] is None)
+        print(f"profile: {len(prof)} samples, {missing} missing")
+        verticals = rg.vertical_features(prof, min_prominence_ft=args.prominence)
+        if args.sight_at is not None:
+            for d, name in ((1, "increasing MP"), (-1, "decreasing MP")):
+                print(f"sight distance at MP {args.sight_at:.3f} looking "
+                      f"{name}: about {rg.sight_distance(prof, args.sight_at, d):.0f} ft "
+                      "(estimate from the bare-earth model)")
+    print(rg.features_markdown(curves, verticals))
+    if args.out:
+        rows = rg.feature_pairs(curves, verticals, args.lo, args.hi)
+        n = write_feature_list(args.out, rows, truncate=True)
+        print(f"{n} feature(s) -> {args.out} (verify against a live TEAAS "
+              "import; docs/09)")
+    return 0
+
+
+def _cmd_locate_check(args) -> int:
+    """Coded milepost vs report coordinates and geocoded addresses."""
+    from . import location_check as lc
+    from . import route_geometry as rg
+    from .fiche_workbook import parse_initial_ids
+
+    cache = os.path.dirname(os.path.abspath(args.out)) if args.out else "."
+    cl = rg.load_centerline(args.route_id, cache_path=os.path.join(
+        cache, f"route_{args.route_id}_segments.json"))
+    ids = list(args.crash_ids or [])
+    if args.initial_ids:
+        _, raw = parse_initial_ids(args.initial_ids)
+        ids += [str(r[0]) for r in raw]
+    if args.determinations:
+        import json as _json
+        with open(args.determinations, encoding="utf-8") as fh:
+            ids += [str(_json.loads(ln)["crash_id"]) for ln in fh if ln.strip()]
+    rows = lc.check_crashes(lc.read_detailed_fiche(args.detailed), ids, cl,
+                            tolerance_mi=args.tolerance)
+    addr_rows = []
+    if args.addresses:
+        addr_rows = lc.check_addresses(lc.parse_address_list(args.addresses), cl)
+    print(lc.report_markdown(rows, addr_rows))
+    flagged = [r for r in rows if r.differs]
+    print(f"\n{len(rows)} crash(es) checked, {len(flagged)} differ by more "
+          f"than {args.tolerance} mi; the engineer decides RE / ADD / NIS "
+          "from the report (docs/03).")
+    if args.out:
+        lc.write_csv(args.out, rows + addr_rows)
+        print(f"wrote {args.out}")
+    return 0
+
+
+def _cmd_package_maps(args) -> int:
+    """The Location, Area and AADT maps from a study YAML."""
+    from . import package_maps as pm
+
+    spec = pm.load_spec(args.spec)
+    out_dir = args.out_dir or os.path.dirname(os.path.abspath(args.spec))
+    pages = pm.build_maps(spec, out_dir, cache_dir=args.cache,
+                          tiles=not args.no_tiles)
+    for name, path in pages.items():
+        print(f"  {name}: {path}")
+    if args.pdf:
+        pairs = [(p, os.path.splitext(p)[0] + ".pdf") for p in pages.values()]
+        try:
+            for pdf in pm.print_pdfs(pairs, screenshots=args.png):
+                print(f"  pdf: {pdf}")
+        except RuntimeError as exc:
+            print(f"  ! {exc}")
+            return 2
+    return 0
+
+
+def _cmd_calc_aadt(args) -> int:
+    """The strip CalculatedAADT workbook from a YAML of sections."""
+    import datetime as _dt
+
+    import yaml
+
+    from . import calc_aadt as ca
+
+    with open(args.spec, encoding="utf-8") as fh:
+        d = yaml.safe_load(fh)
+    secs = [ca.AadtSection(float(x["length_mi"]), int(x["aadt"]),
+                           int(x["year"]), str(x.get("source", "")))
+            for x in d.get("sections", [])]
+    spec = ca.StripAadtSpec(
+        log_number=str(d["log_number"]),
+        start_date=_dt.date.fromisoformat(str(d["start_date"])),
+        end_date=_dt.date.fromisoformat(str(d["end_date"])),
+        study_adt=int(d["study_adt"]), median_year=int(d["median_year"]),
+        sections=secs, notes=list(d.get("notes", [])),
+        tolerance=float(d.get("tolerance", 0.10)))
+    w = ca.write_strip_aadt_workbook(args.out, spec)
+    print(f"weighted AADT {w:,.1f} over {sum(s.length_mi for s in secs):.3f} "
+          f"mi; study ADT {spec.study_adt:,} -> {args.out}")
     return 0
 
 

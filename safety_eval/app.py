@@ -736,6 +736,151 @@ def _fatal_tab(st) -> None:
                     file_name=f"{stem}_FieldInvestigation.xlsx")
             st.success("Checklist prefilled from the slip; the field "
                        "observations are yours to fill on site.")
+    _fatal_package_section(st, ws)
+
+
+def _fatal_package_section(st, ws) -> None:
+    """The package figures and checks of a strip site: the three maps, the
+    route features (curves, crests) for the TEAAS feature import, the
+    location check of coded mileposts against report coordinates and
+    addresses, and the CalculatedAADT workbook. Each is a CLI subcommand
+    too (package-maps, route-features, locate-check, calc-aadt)."""
+    st.divider()
+    st.subheader("Package figures and checks (strip site)")
+    st.caption("Public NCDOT, Census TIGER, USGS and Esri sources; every "
+               "number is an estimate for the engineer to check. Results "
+               "are saved into the open study's outputs.")
+    c1, c2, c3 = st.columns(3)
+    wo = c1.text_input("WO number", value=(ws.study if ws else ""))
+    division = c2.text_input("NCDOT Division",
+                             value=str(ws.param("division", "") if ws else ""))
+    county = c3.text_input("County", value=(ws.param("county", "") if ws else ""))
+    r1, r2, r3 = st.columns(3)
+    route = r1.text_input("Route", value=(ws.param("route", "") if ws else ""),
+                          key="pkg_route", help='e.g. "US 311"')
+    route_id = r2.text_input(
+        "AADT RouteID", value=(ws.param("route_id", "") if ws else ""),
+        help="TEAAS road code + 3-digit county code, e.g. 20000311034.")
+    road_label = r3.text_input("Road name", value=(ws.param("road_label", "")
+                                                   if ws else ""),
+                               help='e.g. "Walnut Cove Road"')
+    m1, m2, m3 = st.columns(3)
+    lo = m1.number_input("MP begin", format="%.3f", step=0.001,
+                         value=float(ws.param("mp_lo", 0.0)) if ws else 0.0,
+                         key="pkg_lo")
+    hi = m2.number_input("MP end", format="%.3f", step=0.001,
+                         value=float(ws.param("mp_hi", 0.0)) if ws else 0.0,
+                         key="pkg_hi")
+    median_year = m3.number_input("Median year (boxed on the AADT map)",
+                                  value=int(ws.param("median_year", 2024))
+                                  if ws else 2024, step=1)
+    desc = st.text_area("Study Area (footer, up to three lines)",
+                        value=(ws.param("description", "") if ws else ""),
+                        height=90)
+    k1, k2, k3 = st.columns(3)
+    crash_lat = k1.text_input("Crash latitude", value=str(ws.param("crash_lat", "")
+                                                          if ws else ""))
+    crash_lon = k2.text_input("Crash longitude", value=str(ws.param("crash_lon", "")
+                                                           if ws else ""))
+    crash_text = k3.text_input("Crash text box", value=(ws.param("crash_text", "")
+                                                        if ws else ""),
+                               help="Use <br> for line breaks.")
+    stations = st.text_input("Governing AADT station ids (comma separated, "
+                             "optional)", value=(ws.param("stations", "")
+                                                 if ws else ""))
+    ready = bool(wo and division and county and route and route_id
+                 and hi > lo > 0)
+    if ws:
+        ws.set_params(division=division or None, county=county or None,
+                      route_id=route_id or None, road_label=road_label or None,
+                      description=desc or None, crash_lat=crash_lat or None,
+                      crash_lon=crash_lon or None, crash_text=crash_text or None,
+                      stations=stations or None, median_year=int(median_year))
+    b1, b2, b3 = st.columns(3)
+    out_dir = (os.path.join(ws.outputs_dir, "package") if ws
+               else tempfile.mkdtemp(prefix="package_"))
+    if b1.button("Build package maps", disabled=not ready):
+        from safety_eval import package_maps as pm
+        spec = pm.MapSpec(
+            wo=wo, division=division, county=county, route=route,
+            route_id=route_id, mp_lo=lo, mp_hi=hi,
+            description=[ln.strip() for ln in desc.splitlines() if ln.strip()],
+            road_label=road_label,
+            crash_lat=float(crash_lat) if crash_lat.strip() else None,
+            crash_lon=float(crash_lon) if crash_lon.strip() else None,
+            crash_text=crash_text, median_year=int(median_year),
+            stations=[s.strip() for s in stations.split(",") if s.strip()])
+        log = st.empty()
+        try:
+            pages = pm.build_maps(spec, out_dir, log=lambda m: log.caption(m))
+            pairs = [(p, os.path.splitext(p)[0] + ".pdf") for p in pages.values()]
+            pdfs = pm.print_pdfs(pairs, screenshots=True)
+        except Exception as exc:       # noqa: BLE001 - show, don't die
+            st.error(f"Maps: {exc}")
+            st.stop()
+        for pdf in pdfs:
+            png = os.path.splitext(pdf)[0] + ".png"
+            if os.path.exists(png):
+                st.image(png, caption=os.path.basename(pdf))
+            with open(pdf, "rb") as fh:
+                st.download_button("Download " + os.path.basename(pdf),
+                                   fh.read(), file_name=os.path.basename(pdf),
+                                   key="dl_" + os.path.basename(pdf))
+        st.success(f"Three maps written to {out_dir}")
+    if b2.button("Route features (curves, crests)", disabled=not ready):
+        from safety_eval import route_geometry as rg
+        from safety_eval.teaas import write_feature_list
+        try:
+            cl = rg.load_centerline(route_id, cache_path=os.path.join(
+                out_dir, "mapdata", f"route_{route_id}_segments.json"))
+            curves = rg.horizontal_curves(cl, lo, hi)
+            prof = rg.elevation_profile(cl, lo, hi)
+            verts = rg.vertical_features(prof)
+        except Exception as exc:       # noqa: BLE001
+            st.error(f"Route features: {exc}")
+            st.stop()
+        st.markdown(rg.features_markdown(curves, verts))
+        if crash_lat.strip():
+            mp = cl.snap(float(crash_lat), float(crash_lon))[0]
+            st.caption(f"Sight distance at the crash (MP {mp:.3f}): about "
+                       f"{rg.sight_distance(prof, mp, 1):.0f} ft looking up "
+                       f"the mileposts, {rg.sight_distance(prof, mp, -1):.0f} "
+                       "ft looking down; bare-earth estimate.")
+        fl = os.path.join(out_dir, f"{wo}_FeatureList.txt")
+        os.makedirs(out_dir, exist_ok=True)
+        n = write_feature_list(fl, rg.feature_pairs(curves, verts, lo, hi),
+                               truncate=True)
+        with open(fl, "rb") as fh:
+            st.download_button(f"Download {os.path.basename(fl)} ({n} lines)",
+                               fh.read(), file_name=os.path.basename(fl))
+        st.caption("Verify the feature import format against a live TEAAS "
+                   "import (docs/09).")
+    detailed = ws.path("detailed_fiche_csv") if ws else None
+    ids_txt = ws.path("initial_ids_txt") if ws else None
+    if b3.button("Location check", disabled=not (ready and detailed)):
+        from safety_eval import location_check as lc
+        from safety_eval import route_geometry as rg
+        from safety_eval.fiche_workbook import parse_initial_ids
+        try:
+            cl = rg.load_centerline(route_id, cache_path=os.path.join(
+                out_dir, "mapdata", f"route_{route_id}_segments.json"))
+            ids = []
+            if ids_txt:
+                _, raw = parse_initial_ids(ids_txt)
+                ids = [str(r[0]) for r in raw]
+            rows = lc.check_crashes(lc.read_detailed_fiche(detailed), ids, cl)
+        except Exception as exc:       # noqa: BLE001
+            st.error(f"Location check: {exc}")
+            st.stop()
+        st.markdown(lc.report_markdown(rows))
+        flagged = sum(1 for r in rows if r.differs)
+        st.caption(f"{len(rows)} crashes checked, {flagged} differ from the "
+                   "coded milepost by more than 0.05 mi. The engineer decides "
+                   "RE / ADD / NIS from the report (docs/03); addresses on the "
+                   "reports can be geocoded with the locate-check CLI.")
+    if not detailed:
+        st.caption("Location check needs the study's Detailed Fiche CSV "
+                   "attached (it carries the report coordinates).")
 
 
 def _assumptions_tab(st) -> None:

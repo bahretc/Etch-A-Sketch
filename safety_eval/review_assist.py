@@ -39,13 +39,13 @@ from .review_queue import (STATUS_VOCAB, Determination, branch_vocab,
 #: number of pages, so a supplemental-heavy report stays a sane request.
 MAX_IMAGE_SIDE = 1600
 MAX_PAGES = 4
-DEFAULT_MODEL = "claude-opus-4-8"
+DEFAULT_MODEL = "claude-opus-5"
 
 #: ``max_tokens`` is a ceiling on thinking PLUS the answer, and it is only
 #: billed for what is generated, so headroom is free and truncation is not.
-#: Measured live on one page of coded fields and a short narrative: 200 output
-#: tokens on claude-opus-4-8 (no thinking block), 460 on claude-opus-5 (which
-#: thinks by default).  A dense report with a full diagram goes higher, and a
+#: Measured live on one page of coded fields and a short narrative: 460 output
+#: tokens on claude-opus-5 (which thinks by default), 200 on claude-opus-4-8
+#: (no thinking block).  A dense report with a full diagram goes higher, and a
 #: truncated response loses the whole JSON object, not just its tail.
 DEFAULT_MAX_TOKENS = 4000
 

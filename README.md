@@ -26,18 +26,33 @@ before/after effectiveness, and writes a completed evaluation **workbook** and a
 
 ## Install
 
+Never installed a Python tool before? Read `INSTALL.md` and double click one
+file. It builds the environment, installs everything, fetches Chromium and
+prints what is available. Windows and Mac both covered.
+
+Everything else:
+
 ```bash
 pip install -e .            # core (PyYAML + openpyxl)
 pip install -e '.[pdf]'     # + PDF text extraction (pdfplumber / pypdf)
 pip install -e '.[ocr]'     # + OCR for scanned fiche (pytesseract / pdf2image)
 pip install -e '.[ui]'      # + the Streamlit app (streamlit run streamlit_app.py)
 pip install -e '.[maps]'    # + package map PDFs; then: playwright install chromium
+pip install -e '.[llm]'     # + AI assist, QA sweep, chat, drafting (needs ANTHROPIC_API_KEY)
 safety-eval doctor --network   # what is installed and which public services answer
 ```
 
-**Beta (0.2.0b2).** The fatal slip and HSIP fiche workflows run start to
+Or all of them at once, which is what the double click installer runs:
+
+```bash
+pip install -e '.[pdf,ocr,ui,deliverables,maps,llm]'
+```
+
+**Beta (0.2.0b3).** The fatal slip and HSIP fiche workflows run start to
 finish on the CLI and in the app; `docs/13-beta-walkthrough.md` is the
-two-page tour and lists the known limits. New in this version: the route
+two-page tour and lists the known limits. New in this version: a double click
+installer for Windows and Mac (`INSTALL.md`), and the assist, sweep, chat and
+drafting calls all on one current model. Added in 0.2.0b2: the route
 centerline and its curves and crests (`route-features`), the location check
 of coded mileposts against report coordinates and geocoded addresses
 (`locate-check`), the Location / Area / AADT package maps from a study YAML

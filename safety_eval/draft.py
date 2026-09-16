@@ -41,7 +41,7 @@ from .results_sheet import check_style
 BOILERPLATE_MIN_EVALS = 3
 #: authored cells shorter than this are dropped from targets (stray labels)
 MIN_AUTHORED_LEN = 12
-DEFAULT_MODEL = "claude-opus-4-8"
+DEFAULT_MODEL = "claude-opus-5"
 
 _WS_RE = re.compile(r"\s+")
 _COUNT_RE = re.compile(r"(?<!-)\b(\d{1,4})\s+(?:[a-z][a-z\- ]{0,40}\s)?"
@@ -225,7 +225,15 @@ def generate_draft(client, rec: dict, exemplars: list[dict],
     response = client.messages.create(**params)
     if response.stop_reason == "refusal":
         raise RuntimeError(f"Model declined drafting {rec.get('wo')}")
-    text = next(b.text for b in response.content if b.type == "text")
+    # The default model thinks before it answers, so the response carries a
+    # thinking block ahead of the JSON. A response with no text block at all
+    # means the answer was cut off (stop_reason "max_tokens"), and saying so
+    # beats a StopIteration from inside the generator.
+    text = next((b.text for b in response.content if b.type == "text"), "")
+    if not text:
+        raise RuntimeError(
+            f"No draft text for {rec.get('wo')} (stop reason "
+            f"{response.stop_reason!r}); raise max_tokens and retry")
     return parse_draft(text)
 
 

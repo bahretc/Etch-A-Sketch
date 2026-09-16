@@ -8,14 +8,24 @@ study's TEAAS exports.
 
 ## 0. Install (once per machine)
 
+If you have not installed a Python tool before, use INSTALL.md at the top of
+the folder instead: double click one file and it does everything below.
+
 Python 3.11 or newer. From the unpacked source zip or the repo:
 
 ```bash
 python -m venv .venv && . .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -e '.[pdf,ocr,ui,deliverables,maps]'
+pip install -e '.[pdf,ocr,ui,deliverables,maps,llm]'
 playwright install chromium                       # Chromium for the map PDFs
 safety-eval doctor --network                      # what is available, what is reachable
 ```
+
+The `llm` extra installs the Anthropic SDK, which the AI assist, the QA sweep,
+the chat tab and the results drafting all need. Leave it out and everything
+else still runs; those four report that they are not ready. They also need a
+key: set `ANTHROPIC_API_KEY` in the environment, or paste one into the app's
+AI assist settings, where it stays in the app process and is never written to
+disk.
 
 `doctor` reports the optional pieces. Two matter for a strip package:
 

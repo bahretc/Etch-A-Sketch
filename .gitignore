@@ -11,7 +11,7 @@ venv/
 # Tool output
 output/
 
-# written by start-windows.bat / start-mac.command when the repo root has no
+# written by run-app-windows.bat / run-app-mac.command when the repo root has no
 # streamlit_app.py (a wheel-only install folder)
 _launch_app.py
 

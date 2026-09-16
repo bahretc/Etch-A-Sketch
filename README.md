@@ -48,7 +48,7 @@ Or all of them at once, which is what the double click installer runs:
 pip install -e '.[pdf,ocr,ui,deliverables,maps,llm]'
 ```
 
-**Beta (0.2.0b3).** The fatal slip and HSIP fiche workflows run start to
+**Beta (0.2.0b4).** The fatal slip and HSIP fiche workflows run start to
 finish on the CLI and in the app; `docs/13-beta-walkthrough.md` is the
 two-page tour and lists the known limits. New in this version: a double click
 installer for Windows and Mac (`INSTALL.md`), and the assist, sweep, chat and

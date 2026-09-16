@@ -62,20 +62,44 @@ set "VPY=%~dp0.venv\Scripts\python.exe"
 rem ---- 3. the app and everything it needs ------------------------------------
 echo  [3/5] Downloading and installing the app. This is the slow part.
 "%VPY%" -m pip install --quiet --upgrade pip
+rem The wildcard must NOT be quoted here: cmd only expands an unquoted one,
+rem and a quoted pattern silently yields nothing, which would send a
+rem wheel-only folder down the install-the-folder path and fail there.
+rem cd /d at the top already put us in the script's own folder.
 set "WHEEL="
-for %%f in ("%~dp0*.whl") do set "WHEEL=%%~ff"
-if defined WHEEL (
-  "%VPY%" -m pip install "%WHEEL%[pdf,ocr,ui,deliverables,maps,llm]"
-) else (
-  "%VPY%" -m pip install ".[pdf,ocr,ui,deliverables,maps,llm]"
-)
+for %%f in (*.whl) do set "WHEEL=%%~ff"
+if defined WHEEL goto install_wheel
+if exist "pyproject.toml" goto install_folder
+echo.
+echo  [X] This folder has neither the app's wheel file (.whl) nor its source
+echo      (pyproject.toml), so there is nothing to install. Unzip the whole
+echo      folder you were sent and run this installer from inside it.
+echo.
+pause
+exit /b 1
+
+:install_wheel
+"%VPY%" -m pip install "%WHEEL%[pdf,ocr,ui,deliverables,maps,llm]"
 if errorlevel 1 goto failed
+goto installed
+
+:install_folder
+"%VPY%" -m pip install ".[pdf,ocr,ui,deliverables,maps,llm]"
+if errorlevel 1 goto failed
+
+:installed
 
 rem ---- 4. the browser that prints the map PDFs -------------------------------
 echo  [4/5] Installing the browser that prints the map PDFs
 "%VPY%" -m playwright install chromium
-if errorlevel 1 echo      (Chromium did not install. Maps will still be written
-if errorlevel 1 echo       as web pages you can open and print by hand.)
+rem Not fatal, so no goto failed here. Note the goto rather than a second
+rem "if errorlevel 1 echo": echo resets errorlevel, so the follow-on line
+rem would never print, and a leading "(" in an if body opens a command
+rem block instead of echoing.
+if not errorlevel 1 goto chromium_ok
+echo      Chromium did not install. The maps will still be written as web
+echo      pages you can open in any browser and print by hand.
+:chromium_ok
 
 rem ---- 5. report --------------------------------------------------------------
 echo.
@@ -86,7 +110,7 @@ if errorlevel 1 goto failed
 
 echo.
 echo  ===========================================================
-echo   Done. To open the app, double click:  start-windows.bat
+echo   Done. To open the app, double click:  run-app-windows.bat
 echo  ===========================================================
 echo.
 pause

@@ -79,11 +79,11 @@ echo " [5/5] Checking what is available on this machine"
 echo
 "$VPY" -m safety_eval.cli doctor || fail
 
-chmod +x "./start-mac.command" 2>/dev/null
+chmod +x "./run-app-mac.command" 2>/dev/null
 
 echo
 echo " ==========================================================="
-echo "  Done. To open the app, double click:  start-mac.command"
+echo "  Done. To open the app, double click:  run-app-mac.command"
 echo " ==========================================================="
 echo
 read -r -p " Press return to close. " _

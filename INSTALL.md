@@ -23,11 +23,11 @@ To remove the tool later, drag this folder to the trash.
      installer.
 3. **Wait for it to say Done.** The slow part is the middle, where it
    downloads. Five minutes is normal on office wifi.
-4. **Double click `start-windows.bat`.** Your web browser opens with the app
+4. **Double click `run-app-windows.bat`.** Your web browser opens with the app
    in it.
 
 Leave the black window open while you work. Closing it closes the app. To
-open the app again another day, double click `start-windows.bat` again. You
+open the app again another day, double click `run-app-windows.bat` again. You
 only run the installer once.
 
 ## Mac
@@ -42,7 +42,7 @@ only run the installer once.
    - If it tells you Python is missing, follow the steps it prints, then
      double click `install-mac.command` again.
 3. **Wait for it to say Done.**
-4. **Double click `start-mac.command`.** Your web browser opens with the app
+4. **Double click `run-app-mac.command`.** Your web browser opens with the app
    in it.
 
 ## Turning on the AI features

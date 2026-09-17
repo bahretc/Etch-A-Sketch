@@ -66,6 +66,13 @@ else
     "$VPY" -m pip install ".[pdf,ocr,ui,deliverables,maps,llm]" || fail
 fi
 
+# The desktop window library is best-effort: without it the launcher
+# falls back to a Chrome or Edge app window, or the default browser.
+if ! "$VPY" -m pip install --quiet pywebview; then
+    echo "     The native window library did not install; the app will"
+    echo "     open in a browser window instead."
+fi
+
 # ---- 4. the browser that prints the map PDFs ------------------------------
 echo " [4/5] Installing the browser that prints the map PDFs"
 if ! "$VPY" -m playwright install chromium; then

@@ -93,6 +93,7 @@ PAGE = {
     "report": f"{PAGES_DIR}/report.py",
     "assumptions": f"{PAGES_DIR}/assumptions.py",
     "fatal": f"{PAGES_DIR}/fatal.py",
+    "package": f"{PAGES_DIR}/package.py",
     "aadt": f"{PAGES_DIR}/aadt.py",
     "map_block": f"{PAGES_DIR}/map_block.py",
     "strip_diagram": f"{PAGES_DIR}/strip_diagram.py",
@@ -174,28 +175,23 @@ def main() -> None:
     from safety_eval.study_type import (EVALUATION, FATAL, STUDY_TYPES,
                                         choices)
 
-    st.set_page_config(page_title="NCDOT Safety Studies", layout="wide",
+    st.set_page_config(page_title="NCDOT Safety Studies",
+                       page_icon=":material/traffic:", layout="wide",
                        initial_sidebar_state="expanded")
     _style(st)
+    try:
+        from importlib import resources
+        st.logo(str(resources.files("safety_eval") / "vendor"
+                    / "vhb_logo.png"))
+    except Exception:                        # noqa: BLE001 - cosmetic only
+        pass
 
-    # The study type is chosen once, at set-up, and governs the run. The fiche
-    # and crash-review core is the same for all three; only the warrant screen
-    # and the animal-crash rule branch (docs/12).
+    # The study comes first: everything else follows it. A study carries its
+    # type on the manifest, so with a study open the type selector reads from
+    # it and locks; the selector only chooses for new studies and for working
+    # from uploads alone.
     keys = [k for k, _ in choices()]
     with st.sidebar:
-        study_key = st.selectbox(
-            "Study type", keys, key="study_type",
-            format_func=lambda k: STUDY_TYPES[k].label)
-        kind = STUDY_TYPES[study_key]
-        st.caption(kind.description)
-        notes = []
-        if kind.deletes_animals:
-            notes.append("animal crashes become DEL")
-        if kind.runs_warrants:
-            notes.append("the HSIP warrant screen runs")
-        if notes:
-            st.info("For this study type, " + " and ".join(notes) + ".")
-        st.divider()
         from safety_eval import workspace as wsm
         pending = st.session_state.pop("pending_study", None)
         if pending:
@@ -211,67 +207,100 @@ def main() -> None:
                                       placeholder="41000079305")
             if st.button("Create study", disabled=not new_study.strip()):
                 try:
-                    wsm.Workspace.create(new_study.strip(),
-                                         study_type=study_key)
+                    wsm.Workspace.create(
+                        new_study.strip(),
+                        study_type=st.session_state.get("study_type",
+                                                        keys[0]))
                 except (ValueError, OSError) as exc:
                     st.error(str(exc))
                 else:
                     st.session_state["pending_study"] = new_study.strip()
                     st.rerun()
-        st.caption("The engineer decides every status; the app prepares, "
-                   "checks and records.")
+        ws = _active_ws()
+        locked = bool(ws and ws.study_type in STUDY_TYPES)
+        if locked:
+            st.session_state["study_type"] = ws.study_type
+        study_key = st.selectbox(
+            "Study type", keys, key="study_type",
+            format_func=lambda k: STUDY_TYPES[k].label, disabled=locked,
+            help="The open study carries its type, so the selector follows "
+                 "it. With no study open it chooses for this session.")
+        kind = STUDY_TYPES[study_key]
+        st.caption(kind.description)
+        notes = []
+        if kind.deletes_animals:
+            notes.append("animal crashes become DEL")
+        if kind.runs_warrants:
+            notes.append("the HSIP warrant screen runs")
+        if notes:
+            st.info("For this study type, " + " and ".join(notes) + ".")
 
     # Pages a study type cannot use are not shown: an Evaluation never sees a
     # warrant screen it must not rely on, and only an Evaluation populates
-    # the NCDOT Evaluation Workbook template (docs/12). The groups follow the
-    # workflow: set up, work the crashes, then the study's own deliverables.
+    # the NCDOT Evaluation Workbook template (docs/12). Groups follow the
+    # workflow top to bottom, and every group stays small enough that the
+    # sidebar never folds pages behind a "view more".
+    core = [
+        st.Page(PAGE["fiche"], title="Fiche Workbook",
+                icon=":material/table_chart:"),
+        st.Page(PAGE["redact"], title="Redact Crash Reports",
+                icon=":material/visibility_off:"),
+        st.Page(PAGE["review"], title="Review Queue",
+                icon=":material/checklist:"),
+    ]
+    maps_page = st.Page(PAGE["package"], title="Maps and Checks",
+                        icon=":material/map:")
     pages = {
         "Start": [st.Page(PAGE["home"], title="Overview",
                           icon=":material/home:", default=True)],
-        "Crash data": [
-            st.Page(PAGE["fiche"], title="Fiche Workbook",
-                    icon=":material/table_chart:"),
-            st.Page(PAGE["redact"], title="Redact Crash Reports",
-                    icon=":material/visibility_off:"),
-            st.Page(PAGE["review"], title="Review Queue",
-                    icon=":material/checklist:"),
-        ],
+        "Crash review": core,
     }
     if kind.runs_warrants:
-        pages["Analysis"] = [st.Page(PAGE["warrants"], title="HSIP Warrants",
-                                     icon=":material/rule:")]
-    if study_key == EVALUATION:
         pages["Deliverables"] = [
+            st.Page(PAGE["warrants"], title="HSIP Warrants",
+                    icon=":material/rule:"),
+            maps_page,
+        ]
+    if study_key == FATAL:
+        pages["Deliverables"] = [maps_page]
+        # The Field Investigation File builder is parked for now; set
+        # SAFETY_EVAL_FIELD_INVESTIGATION=1 to bring the page back.
+        if os.environ.get("SAFETY_EVAL_FIELD_INVESTIGATION",
+                          "").strip() not in ("", "0"):
+            pages["Deliverables"].append(
+                st.Page(PAGE["fatal"], title="Field Investigation",
+                        icon=":material/fact_check:"))
+    if study_key == EVALUATION:
+        pages["Workbook"] = [
             st.Page(PAGE["evaluation"], title="Evaluation Workbook",
                     icon=":material/grid_on:"),
-            st.Page(PAGE["report"], title="Report Text",
-                    icon=":material/edit_note:"),
-            st.Page(PAGE["assumptions"], title="Assumptions Email",
-                    icon=":material/mail:"),
             st.Page(PAGE["aadt"], title="AADT and Set-up",
                     icon=":material/traffic:"),
             st.Page(PAGE["map_block"], title="Map Block",
                     icon=":material/map:"),
             st.Page(PAGE["strip_diagram"], title="Strip Collision Diagram",
                     icon=":material/timeline:"),
+        ]
+        pages["Report and finish"] = [
+            st.Page(PAGE["report"], title="Report Text",
+                    icon=":material/edit_note:"),
+            st.Page(PAGE["assumptions"], title="Assumptions Email",
+                    icon=":material/mail:"),
             st.Page(PAGE["print"], title="Print and Assemble",
                     icon=":material/print:"),
             st.Page(PAGE["qa"], title="QA Checks",
                     icon=":material/verified:"),
             st.Page(PAGE["finish"], title="Finish Package",
                     icon=":material/inventory_2:"),
-            st.Page(PAGE["assistant"], title="Assistant",
-                    icon=":material/chat:"),
         ]
-    if study_key == FATAL:
-        pages["Deliverables"] = [
-            st.Page(PAGE["fatal"], title="Field Investigation",
-                    icon=":material/fact_check:"),
-        ]
+        pages["Help"] = [st.Page(PAGE["assistant"], title="Assistant",
+                                 icon=":material/chat:")]
     # The shown-page titles, for the Overview page and the behaviour tests.
     st.session_state["nav_titles"] = [
         p.title for group in pages.values() for p in group]
-    st.navigation(pages, position="sidebar").run()
+    # expanded=True: never fold pages behind a "View more"; the Evaluation
+    # workflow's finish line must be visible from the start.
+    st.navigation(pages, position="sidebar", expanded=True).run()
 
 
 # --------------------------------------------------------------------------- #
@@ -330,6 +359,12 @@ def page_fatal() -> None:
     _fatal_tab(st)
 
 
+def page_package() -> None:
+    import streamlit as st
+    st.header("Maps and Checks")
+    _fatal_package_section(st, _active_ws(), heading=False)
+
+
 def page_aadt() -> None:
     import streamlit as st
     st.header("AADT and Set-up")
@@ -373,71 +408,14 @@ def page_assistant() -> None:
 
 
 def _home_page(st, kind) -> None:
-    from safety_eval.study_type import EVALUATION, FATAL
+    from safety_eval.study_type import EVALUATION
 
     st.header("NCDOT Safety Studies")
     st.caption("TEAAS-faithful crash analysis, review and deliverables. "
-               "Pick the study type in the sidebar; the pages in the sidebar "
-               "follow the workflow, top to bottom.")
+               "The sidebar follows the workflow, top to bottom; every "
+               "step below links to its page.")
 
-    steps = [
-        (PAGE["fiche"], "Build the fiche workbook",
-         "Assemble the TEAAS exports into the working sheet and run the "
-         "colour screen (IS / ? / NIS"
-         + (" / DEL for animals" if kind.deletes_animals else "") + ")."),
-        (PAGE["redact"], "Redact the crash reports",
-         "Every DMV-349 is redacted before it is stored or shown; ZIP codes "
-         "and crash IDs are kept."),
-        (PAGE["review"], "Review the crashes",
-         "The queue shows the redacted report beside the coded data; the "
-         "engineer decides every status, with optional AI assist."),
-    ]
-    if kind.runs_warrants:
-        steps.append((PAGE["warrants"], "Run the HSIP warrants",
-                      "Section or intersection warrant screen off your "
-                      "IS/RE/ADD determinations, with the import list and "
-                      "the crash map."))
-    if kind.key == EVALUATION:
-        steps.append((PAGE["evaluation"], "Populate the Evaluation Workbook",
-                      "A real NCDOT template; every write is "
-                      "integrity-verified and drawings stay byte-identical."))
-        steps.append((PAGE["report"], "Draft the report text",
-                      "Items for Discussion and Additional Information "
-                      "drafts from the workbook's tallies, style and "
-                      "number gated; the engineer reviews and pastes."))
-        steps.append((PAGE["assumptions"], "Send the assumptions email",
-                      "The docs/05 team-template .docx, from a YAML or the "
-                      "Master Evaluation Spreadsheet row."))
-        steps.append((PAGE["aadt"], "Fill the AADT table",
-                      "Leg AADTs from the NCDOT stations layer with the "
-                      "black/red convention and representative years, "
-                      "written into the Evaluation Set-up sheet."))
-        steps.append((PAGE["map_block"], "Compose the map block",
-                      "The Map/Satellite Views image in the team format, "
-                      "embedded on the results page."))
-        steps.append((PAGE["print"], "Print and bind the deliverables",
-                      "LibreOffice print of the results page matched to "
-                      "the Excel print; Complete Evaluation and Web PDFs."))
-        steps.append((PAGE["qa"], "Run the QA checks",
-                      "Deterministic checks on the workbook and PDFs, then "
-                      "the optional multi-agent sweep."))
-        steps.append((PAGE["finish"], "Finish the package",
-                      "One pass over the WO folder: redact, map, print, "
-                      "bind, QA log and certificate, zip with clean names."))
-    if kind.key == FATAL:
-        steps.append((PAGE["fatal"], "Build the Field Investigation File",
-                      "Checklist prefilled from the fatal slip and the "
-                      "site's TEAAS crash history; the field "
-                      "observations are the engineer's."))
-    for n, (path, title, blurb) in enumerate(steps, 1):
-        with st.container(border=True):
-            left, right = st.columns([3, 2], vertical_alignment="center")
-            with left:
-                st.page_link(path, label=f"{n}. {title}",
-                             icon=":material/arrow_forward:")
-            with right:
-                st.caption(blurb)
-
+    # ---- the open study, or how to open one, first ------------------------
     ws = _active_ws()
     if ws:
         from safety_eval import workspace as wsm
@@ -457,18 +435,89 @@ def _home_page(st, kind) -> None:
                                    for p in ws.paths(role)))
                         for role in wsm.ROLES if ws.paths(role)]
             if attached:
-                for lab, names in attached:
-                    st.write(f"**{lab}:** {names}")
+                with st.expander(f"Files in the study ({len(attached)})"):
+                    for lab, names in attached:
+                        st.write(f"**{lab}:** {names}")
             else:
                 st.caption("Nothing attached yet; the Fiche Workbook page "
                            "saves its inputs and workbook here as it "
                            "builds.")
             st.caption(f"Folder: {os.path.relpath(ws.root)}")
     else:
-        st.caption("No study is open. Create one in the sidebar and the "
-                   "pages will keep its TEAAS exports, study facts and "
-                   "built workbooks together, starting from them each "
-                   "time.")
+        st.info("No study is open. Open or create one under **Study** in "
+                "the sidebar and every page starts from its files; or "
+                "skip it and work from uploads alone.")
+
+    # ---- the workflow, with what is already done --------------------------
+    def _done(role):
+        return bool(ws and ws.path(role))
+
+    steps = [
+        (PAGE["fiche"], "Build the fiche workbook",
+         "Assemble the TEAAS exports into the working sheet and run the "
+         "colour screen (IS / ? / NIS"
+         + (" / DEL for animals" if kind.deletes_animals else "") + ").",
+         _done("workbook")),
+        (PAGE["redact"], "Redact the crash reports",
+         "Every DMV-349 is redacted before it is stored or shown; ZIP codes "
+         "and crash IDs are kept.", _done("binder_index")),
+        (PAGE["review"], "Review the crashes",
+         "The queue shows the redacted report beside the coded data; the "
+         "engineer decides every status, with optional AI assist.",
+         _done("reviewed_workbook")),
+    ]
+    if kind.runs_warrants:
+        steps.append((PAGE["warrants"], "Run the HSIP warrants",
+                      "Section or intersection warrant screen off your "
+                      "IS/RE/ADD determinations, with the import list and "
+                      "the crash map.", None))
+    if kind.key == EVALUATION:
+        steps.append((PAGE["evaluation"], "Populate the Evaluation Workbook",
+                      "A real NCDOT template; every write is "
+                      "integrity-verified and drawings stay byte-identical.",
+                      None))
+        steps.append((PAGE["aadt"], "Fill the AADT table",
+                      "Leg AADTs from the NCDOT stations layer with the "
+                      "black/red convention and representative years, "
+                      "written into the Evaluation Set-up sheet.", None))
+        steps.append((PAGE["map_block"], "Compose the map block",
+                      "The Map/Satellite Views image in the team format, "
+                      "embedded on the results page.", None))
+        steps.append((PAGE["report"], "Draft the report text",
+                      "Items for Discussion and Additional Information "
+                      "drafts from the workbook's tallies, style and "
+                      "number gated; the engineer reviews and pastes.",
+                      None))
+        steps.append((PAGE["assumptions"], "Send the assumptions email",
+                      "The docs/05 team-template .docx, from a YAML or the "
+                      "Master Evaluation Spreadsheet row.", None))
+        steps.append((PAGE["print"], "Print and bind the deliverables",
+                      "LibreOffice print of the results page matched to "
+                      "the Excel print; Complete Evaluation and Web PDFs.",
+                      None))
+        steps.append((PAGE["qa"], "Run the QA checks",
+                      "Deterministic checks on the workbook and PDFs, then "
+                      "the optional multi-agent sweep.", None))
+        steps.append((PAGE["finish"], "Finish the package",
+                      "One pass over the WO folder: redact, map, print, "
+                      "bind, QA log and certificate, zip with clean names.",
+                      None))
+    else:
+        steps.append((PAGE["package"], "Build the maps and checks",
+                      "Location, Study Area and AADT maps, route curves "
+                      "and crests for the feature import, the location "
+                      "check and the CalculatedAADT workbook.", None))
+    for n, (path, title, blurb, done) in enumerate(steps, 1):
+        with st.container(border=True):
+            left, right = st.columns([3, 2], vertical_alignment="center")
+            with left:
+                st.page_link(path, label=f"{n}. {title}",
+                             icon=":material/check_circle:" if done
+                             else ":material/arrow_forward:")
+                if done:
+                    st.caption("Done: saved in the study.")
+            with right:
+                st.caption(blurb)
 
     with st.expander("Environment check"):
         _environment_check(st)
@@ -736,18 +785,19 @@ def _fatal_tab(st) -> None:
                     file_name=f"{stem}_FieldInvestigation.xlsx")
             st.success("Checklist prefilled from the slip; the field "
                        "observations are yours to fill on site.")
-    _fatal_package_section(st, ws)
 
 
-def _fatal_package_section(st, ws, site_default: str = "strip") -> None:
+def _fatal_package_section(st, ws, site_default: str = "strip",
+                           heading: bool = True) -> None:
     """The package figures and checks of a site: the three maps (strip or
     intersection, fatal or HSIP), the route features (curves, crests) for
     the TEAAS feature import, the location check of coded mileposts against
     report coordinates and addresses, and the CalculatedAADT workbook. Each
     is a CLI subcommand too (package-maps, route-features, locate-check,
-    calc-aadt)."""
-    st.divider()
-    st.subheader("Package figures and checks")
+    calc-aadt). ``heading=False`` when the section is the whole page."""
+    if heading:
+        st.divider()
+        st.subheader("Package figures and checks")
     st.caption("Public NCDOT, Census TIGER, USGS and Esri sources; every "
                "number is an estimate for the engineer to check. Results "
                "are saved into the open study's outputs.")
@@ -1603,7 +1653,6 @@ def _hsip_tab(st) -> None:
                     if s["misses"]:
                         st.warning(f"{s['misses']} basemap tile(s) failed "
                                    "to download and will render blank.")
-    _fatal_package_section(st, _active_ws(), site_default="strip")
 
 
 def _section_results(st, run) -> None:

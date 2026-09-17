@@ -27,7 +27,8 @@ def _app(study_type=None, page=None):
     at = AppTest.from_file(_LAUNCHER)
     at.run(timeout=30)
     if study_type:
-        at.sidebar.selectbox[0].set_value(study_type)
+        next(s for s in at.sidebar.selectbox
+             if s.label == "Study type").set_value(study_type)
         at.run(timeout=30)
     if page:
         at.switch_page(PAGE[page])
@@ -59,20 +60,35 @@ def test_an_evaluation_gets_the_deliverable_pages_and_no_warrants():
     assert "HSIP Warrants" not in titles
 
 
-def test_a_fatal_analysis_gets_the_core_and_its_field_investigation():
+def test_a_fatal_analysis_gets_the_core_and_the_maps_page():
+    """The Field Investigation builder is parked for now; the fatal
+    deliverable page is the maps and checks of the analysis package."""
     at = _app("fatal")
     assert _nav_titles(at) == ["Overview", "Fiche Workbook",
                                "Redact Crash Reports", "Review Queue",
-                               "Field Investigation"]
+                               "Maps and Checks"]
+
+
+def test_the_field_investigation_page_is_behind_its_flag(monkeypatch):
+    monkeypatch.setenv("SAFETY_EVAL_FIELD_INVESTIGATION", "1")
+    at = _app("fatal")
+    assert "Field Investigation" in _nav_titles(at)
+
+
+def test_an_hsip_analysis_gets_the_maps_page_too():
+    at = _app("hsip")
+    titles = _nav_titles(at)
+    assert titles.index("HSIP Warrants") < titles.index("Maps and Checks")
 
 
 def test_every_study_type_renders_every_offered_page():
-    pages_for = {"hsip": ["home", "fiche", "redact", "review", "warrants"],
+    pages_for = {"hsip": ["home", "fiche", "redact", "review", "warrants",
+                          "package"],
                  "evaluation": ["home", "fiche", "redact", "review",
                                 "evaluation", "report", "assumptions",
                                 "aadt", "map_block", "strip_diagram",
                                 "print", "qa", "finish", "assistant"],
-                 "fatal": ["home", "fiche", "redact", "review", "fatal"]}
+                 "fatal": ["home", "fiche", "redact", "review", "package"]}
     for key, pages in pages_for.items():
         for page in pages:
             _app(key, page=page)
@@ -169,6 +185,24 @@ def test_creating_a_study_in_the_sidebar_opens_it(tmp_path, monkeypatch):
     assert wsm.Workspace.open("41000079305").study_type == "hsip"
 
 
+def test_an_open_study_locks_the_study_type_to_its_manifest(tmp_path,
+                                                            monkeypatch):
+    """A study carries its type; opening one must never leave the sidebar
+    contradicting the manifest."""
+    from safety_eval import workspace as wsm
+    monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
+    wsm.Workspace.create("260307016EA", study_type="fatal")
+    at = _app()
+    next(s for s in at.sidebar.selectbox
+         if s.label == "Study").set_value("260307016EA")
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    picked = next(s for s in at.sidebar.selectbox
+                  if s.label == "Study type")
+    assert picked.value == "fatal" and picked.disabled
+    assert "Maps and Checks" in _nav_titles(at)
+
+
 def test_pages_default_from_the_open_study(tmp_path, monkeypatch):
     from safety_eval import workspace as wsm
     monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
@@ -224,7 +258,8 @@ def test_the_report_text_page_gates_and_asks_for_its_inputs(monkeypatch):
     assert "never mined" in captions       # the provenance rule, in words
 
 
-def test_the_field_investigation_page_asks_for_the_slip():
+def test_the_field_investigation_page_asks_for_the_slip(monkeypatch):
+    monkeypatch.setenv("SAFETY_EVAL_FIELD_INVESTIGATION", "1")
     at = _app("fatal", page="fatal")
     captions = " ".join(getattr(el, "value", "") or "" for el in at.caption)
     assert "Fatal Crash Notification" in captions
@@ -242,7 +277,8 @@ def test_an_evaluation_offers_the_finishing_pages_under_deliverables():
                   "Print and Assemble", "QA Checks", "Finish Package",
                   "Assistant"):
         assert title in titles
-    assert titles.index("Assumptions Email") < titles.index("AADT and Set-up")
+    # workbook inputs (AADT, map block) come before the report writing
+    assert titles.index("AADT and Set-up") < titles.index("Report Text")
     assert "Finish Package" not in _nav_titles(_app("hsip"))
     assert "Finish Package" not in _nav_titles(_app("fatal"))
 

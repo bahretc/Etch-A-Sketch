@@ -89,6 +89,15 @@ if errorlevel 1 goto failed
 
 :installed
 
+rem The desktop window library is best-effort: without it the launcher
+rem falls back to an Edge or Chrome app window, so a failure here only
+rem changes which window opens, and must not fail the install.
+"%VPY%" -m pip install --quiet pywebview
+if not errorlevel 1 goto webview_ok
+echo      The native window library did not install; the app will open
+echo      in an Edge or Chrome window instead.
+:webview_ok
+
 rem ---- 4. the browser that prints the map PDFs -------------------------------
 echo  [4/5] Installing the browser that prints the map PDFs
 "%VPY%" -m playwright install chromium

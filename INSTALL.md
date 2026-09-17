@@ -13,7 +13,8 @@ To remove the tool later, drag this folder to the trash.
    "Extract All", and pick somewhere easy to find such as your Documents
    folder. Open the folder it creates.
 2. **Double click `install-windows.bat`.** A black window opens and starts
-   printing lines of text. That is normal.
+   printing lines of text. That is normal, and it is the only time you will
+   see one.
    - Windows may show a blue "Windows protected your PC" box. Click
      **More info**, then **Run anyway**. This happens for any file that did
      not come from the Microsoft Store.
@@ -23,12 +24,14 @@ To remove the tool later, drag this folder to the trash.
      installer.
 3. **Wait for it to say Done.** The slow part is the middle, where it
    downloads. Five minutes is normal on office wifi.
-4. **Double click `run-app-windows.bat`.** Your web browser opens with the app
-   in it.
+4. **Double click `run-app-windows.bat`.** The app opens in its own window,
+   titled NCDOT Safety Studies, within a few seconds. Close the window to
+   quit; double click the same file to open it again any other day.
+   - The first time, Windows Firewall may ask about Python. Click Cancel or
+     Allow, either is fine: the app talks only to itself on your own
+     computer.
 
-Leave the black window open while you work. Closing it closes the app. To
-open the app again another day, double click `run-app-windows.bat` again. You
-only run the installer once.
+You only run the installer once.
 
 ## Mac
 
@@ -42,8 +45,16 @@ only run the installer once.
    - If it tells you Python is missing, follow the steps it prints, then
      double click `install-mac.command` again.
 3. **Wait for it to say Done.**
-4. **Double click `run-app-mac.command`.** Your web browser opens with the app
-   in it.
+4. **Double click `run-app-mac.command`.** The app opens in its own window.
+   The small terminal window that appears can be closed; the app stays open.
+
+## What the app looks like
+
+A window titled **NCDOT Safety Studies**. On the left, the sidebar: the
+Study picker at the top under the page list, then the pages in workflow
+order, grouped Start, Crash review, and the study type's own deliverables.
+The Overview page walks the workflow step by step and shows what the open
+study already has.
 
 ## Turning on the AI features
 
@@ -70,8 +81,8 @@ is written into a workbook until you decide.
 Run the installer again. It is safe to run any number of times and will
 repair a half finished install.
 
-If it still fails, the last few lines in the window say why. Send those lines
-along with what you were doing.
+If the app window never appears, a log file named `safety_eval_desktop.log`
+in the system temp folder says why; send it along with what you were doing.
 
 Two things commonly show as unavailable in the checklist the installer prints
 at the end, and neither stops the main work:

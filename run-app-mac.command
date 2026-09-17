@@ -1,5 +1,5 @@
 #!/bin/bash
-# Opens the Safety Eval app in your web browser. Double click this file.
+# Opens Safety Eval in its own window. Double click this file.
 cd "$(dirname "$0")" || exit 1
 
 if [ ! -x ".venv/bin/python" ]; then
@@ -10,18 +10,10 @@ if [ ! -x ".venv/bin/python" ]; then
     exit 1
 fi
 
-# The app lives inside the package and needs a launcher file next to it.
-# The source zip ships one; if only the wheel was installed here, write it.
-APPFILE="streamlit_app.py"
-if [ ! -f "$APPFILE" ]; then
-    APPFILE="_launch_app.py"
-    printf 'from safety_eval.app import main\nmain()\n' > "$APPFILE"
-fi
-
+nohup ./.venv/bin/python -m safety_eval.desktop >/dev/null 2>&1 &
+disown
 echo
-echo " Starting Safety Eval. Your web browser will open in a moment."
-echo
-echo " Leave this window open while you work. Closing it closes the app."
-echo
-./.venv/bin/python -m streamlit run "$APPFILE"
-read -r -p " Press return to close. " _
+echo " Safety Eval is opening in its own window."
+echo " You can close this terminal window; the app stays open."
+sleep 2
+exit 0

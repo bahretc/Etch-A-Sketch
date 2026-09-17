@@ -992,6 +992,13 @@ def _cmd_doctor(args) -> int:
     print(f"  [{'ok' if exe else '--'}] chromium"
           + (f" ({exe})" if exe else " (Playwright default or "
              "SAFETY_EVAL_CHROMIUM)"))
+    print("Desktop window:")
+    try:
+        __import__("webview")
+        print("  [ok] pywebview (native app window)")
+    except ImportError:
+        print("  [--] pywebview (the app opens in an Edge or Chrome app "
+              "window, or the browser)")
     if getattr(args, "network", False):
         import urllib.request
         from .aadt_arcgis import SEGMENTS_URL, STATIONS_2025_URL

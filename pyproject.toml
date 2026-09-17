@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "safety-eval"
-version = "0.2.0b4"
+version = "0.2.0b5"
 description = "Automate NCDOT before/after safety evaluations from a TEAAS fiche and assignment."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -28,6 +28,9 @@ docx = ["python-docx>=1.1"]
 deliverables = ["pikepdf>=8", "Pillow>=10", "matplotlib>=3.7", "python-docx>=1.1"]
 # assistant chat (docs/07 phase 5), official Anthropic SDK
 llm = ["anthropic>=1.0"]
+# the app in a native desktop window (python -m safety_eval.desktop);
+# without it the launcher falls back to an Edge/Chrome app window
+desktop = ["pywebview>=5.0"]
 # package maps PDF printing (Chromium through Playwright); run
 # "playwright install chromium" once after installing
 maps = ["playwright>=1.40"]

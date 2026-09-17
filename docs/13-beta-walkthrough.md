@@ -184,7 +184,11 @@ safety-eval fatal-checklist --slip 260307016EA_FatalSlip.pdf \
   --initial-study 260307016EA_InitialStudy.csv --out 260307016EA_FieldInvestigation.xlsx
 ```
 
-App: **Fatal Crash** tab, "Build Field Investigation File".
+App: the Field Investigation page is parked for now (the CLI above still
+builds the file); set `SAFETY_EVAL_FIELD_INVESTIGATION=1` before starting
+the app to bring the page back. The maps, route features, location check
+and CalculatedAADT live on the **Maps and Checks** page for fatal and HSIP
+studies.
 
 ## 7. What goes back to TEAAS by hand
 

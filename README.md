@@ -48,11 +48,17 @@ Or all of them at once, which is what the double click installer runs:
 pip install -e '.[pdf,ocr,ui,deliverables,maps,llm]'
 ```
 
-**Beta (0.2.0b4).** The fatal slip and HSIP fiche workflows run start to
+**Beta (0.2.0b5).** The fatal slip and HSIP fiche workflows run start to
 finish on the CLI and in the app; `docs/13-beta-walkthrough.md` is the
-two-page tour and lists the known limits. New in this version: a double click
-installer for Windows and Mac (`INSTALL.md`), and the assist, sweep, chat and
-drafting calls all on one current model. Added in 0.2.0b2: the route
+two-page tour and lists the known limits. New in this version: the app runs
+in its own desktop window with no terminal and no browser chrome
+(`python -m safety_eval.desktop`), the sidebar puts the study first and the
+navigation follows the workflow with nothing folded away, the Overview shows
+what the open study already has, fatal and HSIP studies get a Maps and
+Checks page, and the Field Investigation builder is parked behind
+`SAFETY_EVAL_FIELD_INVESTIGATION=1`. Added in 0.2.0b4: the double click
+installer for Windows and Mac (`INSTALL.md`), one current model across the
+assist calls. Added in 0.2.0b2: the route
 centerline and its curves and crests (`route-features`), the location check
 of coded mileposts against report coordinates and geocoded addresses
 (`locate-check`), the Location / Area / AADT package maps from a study YAML
@@ -120,8 +126,8 @@ safety-eval qc --workbook eval.xlsx --treatment dual
 # exit 1 if any in-study crash had to be HELD for want of a milepost
 safety-eval teaas-import --workbook eval.xlsx --outdir out/
 
-# the app: upload -> redact -> review -> build, in a browser
-pip install -e '.[ui]' && streamlit run streamlit_app.py
+# the app in its own desktop window (or: streamlit run streamlit_app.py)
+pip install -e '.[ui]' && python -m safety_eval.desktop
 
 safety-eval parse  --fiche path/to/fiche.pdf     # preview parsed crashes
 safety-eval doctor                               # which OCR/PDF backends are available

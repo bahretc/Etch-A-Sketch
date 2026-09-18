@@ -48,9 +48,13 @@ Or all of them at once, which is what the double click installer runs:
 pip install -e '.[pdf,ocr,ui,deliverables,maps,llm]'
 ```
 
-**Beta (0.2.0b5).** The fatal slip and HSIP fiche workflows run start to
+**Beta (0.2.0b6).** The fatal slip and HSIP fiche workflows run start to
 finish on the CLI and in the app; `docs/13-beta-walkthrough.md` is the
-two-page tour and lists the known limits. New in this version: the app runs
+two-page tour and lists the known limits. New in this version: the Fiche
+Workbook, Review Queue, Evaluation Workbook and AADT pages are laid out as
+required then optional steps in plain words, disabled buttons say what they
+are missing, and the AADT page prefills from the open study. Added in
+0.2.0b5: the app runs
 in its own desktop window with no terminal and no browser chrome
 (`python -m safety_eval.desktop`), the sidebar puts the study first and the
 navigation follows the workflow with nothing folded away, the Overview shows

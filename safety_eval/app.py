@@ -1053,31 +1053,48 @@ def _evaluation_tab(st) -> None:
         os.path.join("templates", f) for f in os.listdir("templates")
         if f.endswith(".xlsx") and "~$" not in f
     ) if os.path.isdir("templates") else []
-    template = st.selectbox("Template", templates)
+    st.markdown("##### Required")
+    # The two standard workbooks first; the atypical one-page templates
+    # otherwise sort to the top and become an accidental default.
+    default_ix = next((i for i, t in enumerate(templates)
+                       if "Evaluation Workbook" in os.path.basename(t)), 0)
+    template = st.selectbox("Template", templates, index=default_ix)
     c1, c2 = st.columns(2)
+    before_up = c1.file_uploader("Before Crash ID list (5-col .txt)")
+    after_up = c2.file_uploader("After Crash ID list (5-col .txt)")
+
+    st.markdown("##### Optional inputs"
+                "&nbsp;&nbsp;:gray[each fills a sheet or a block]")
+    c1, c2, c3 = st.columns(3)
     with c1:
-        before_up = st.file_uploader("Before Crash ID list (5-col .txt)")
         before_mp_up = st.file_uploader("Before milepost import (.txt)",
                                         help="Section analyses only")
-        fiche_up = st.file_uploader("Original fiche (.csv)")
-        setup_up = st.file_uploader("Set-up YAML", type=["yaml", "yml"])
-    with c2:
-        after_up = st.file_uploader("After Crash ID list (5-col .txt)")
         after_mp_up = st.file_uploader("After milepost import (.txt)",
                                        help="Section analyses only")
-        results_up = st.file_uploader("Results YAML", type=["yaml", "yml"])
+    with c2:
+        fiche_up = st.file_uploader("Original fiche (.csv)")
         statuses_up = st.file_uploader(
             "Workbook with reviewed Filtered Fiche (.xlsx)",
             help="The engineer's IS/RE/ADD/DEL/NIS determinations drive "
                  "binning when provided.")
+    with c3:
+        setup_up = st.file_uploader("Set-up YAML", type=["yaml", "yml"])
+        results_up = st.file_uploader("Results YAML", type=["yaml", "yml"])
     routes = st.text_input("Study routes (comma-separated)", "")
     mp_range = st.text_input("Milepost range lo:hi", "")
     want_filtered = st.checkbox("Generate pre-screened Filtered Fiche", True)
     want_binned = st.checkbox("Populate Binned Crashes", True)
     recalc_pass = st.checkbox("LibreOffice recalc pass", True)
 
+    ready_to_build = bool(template and before_up and after_up)
+    if not ready_to_build:
+        missing = [m for m, ok in (
+            ("a template in templates/", template),
+            ("the Before Crash ID list", before_up),
+            ("the After Crash ID list", after_up)) if not ok]
+        st.caption("The build needs " + " and ".join(missing) + ".")
     if st.button("Build workbook", type="primary",
-                 disabled=not (template and before_up and after_up)):
+                 disabled=not ready_to_build):
         with tempfile.TemporaryDirectory() as tmp:
             argv = ["fill-template", "--template", template,
                     "--before", _save_upload(before_up, tmp),
@@ -1181,26 +1198,35 @@ def _fiche_tab(st, kind) -> None:
     if ws:
         st.caption(f"Study **{ws.study}** is open: the inputs and the built "
                    "workbook are saved into its folder.")
-    study = st.text_input("Study number", value=(ws.study if ws else ""),
+    st.markdown("##### Required")
+    c1, c2 = st.columns([1, 2], vertical_alignment="bottom")
+    study = c1.text_input("Study number", value=(ws.study if ws else ""),
                           placeholder="41000079305")
-    c1, c2 = st.columns(2)
-    with c1:
-        fiche_up = st.file_uploader("Fiche Report (.csv)", type=["csv"])
-        initial_up = st.file_uploader(
-            "Strip/Intersection Analysis Report (.csv)",
-            help="Becomes the Initial Study sheet; the Dir formulas walk it.")
-        detailed_up = st.file_uploader(
-            "Detailed Fiche (.csv)",
-            help="Carries latitude/longitude for the coordinate formulas.")
+    fiche_up = c2.file_uploader("Fiche Report (.csv)", type=["csv"])
+
+    st.markdown("##### Other TEAAS exports"
+                "&nbsp;&nbsp;:gray[optional; each adds a sheet or a check]")
+    c1, c2, c3 = st.columns(3)
+    initial_up = c1.file_uploader(
+        "Strip/Intersection Analysis Report (.csv)",
+        help="Becomes the Initial Study sheet; the Dir formulas walk it.")
+    ids_up = c2.file_uploader(
+        "TEAAS ID export (.txt)",
+        help="Pipe-delimited; marks the Initial Study crashes IS.")
+    detailed_up = c3.file_uploader(
+        "Detailed Fiche (.csv)",
+        help="Carries latitude/longitude for the coordinate formulas.")
+
+    st.markdown("##### Colour screen"
+                "&nbsp;&nbsp;:gray[optional; needs the Features Report and "
+                "the study limits]")
+    c1, c2 = st.columns([1, 1], vertical_alignment="bottom")
+    features_up = c1.file_uploader(
+        "Features Report (.pdf/.txt/.csv)",
+        help="Enables the colour screen: a From/Toward feature inside "
+             "the limits, or a blue/yellow bracket, sends the crash to "
+             "review (?).")
     with c2:
-        ids_up = st.file_uploader(
-            "TEAAS ID export (.txt)",
-            help="Pipe-delimited; marks the Initial Study crashes IS.")
-        features_up = st.file_uploader(
-            "Features Report (.pdf/.txt/.csv)",
-            help="Enables the colour screen: a From/Toward feature inside "
-                 "the limits, or a blue/yellow bracket, sends the crash to "
-                 "review (?).")
         r1, r2, r3 = st.columns(3)
         route = r1.text_input("Study route", placeholder="US 74",
                               value=(ws.param("route", "") if ws else ""))
@@ -1215,8 +1241,13 @@ def _fiche_tab(st, kind) -> None:
     if features_up is not None and not want_screen:
         st.info("Add the study route and MP limits to run the colour screen "
                 "with the build.")
+    ready_to_build = bool(study.strip() and fiche_up)
+    if not ready_to_build:
+        missing = [m for m, ok in (("the study number", study.strip()),
+                                   ("the Fiche Report", fiche_up)) if not ok]
+        st.caption("The build needs " + " and ".join(missing) + ".")
     if st.button("Build fiche workbook", type="primary",
-                 disabled=not (study.strip() and fiche_up)):
+                 disabled=not ready_to_build):
         from safety_eval.fiche_workbook import build_fiche_workbook, parse_initial_ids
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -1787,10 +1818,12 @@ def _review_queue_tab(st) -> None:
                  "Validation and the AI assist both narrow to the branch.")
     with c2:
         index_path = st.text_input(
-            "Binder index JSON (from `safety-eval binder-index`)",
+            "Binder index (.json path)",
             value=_wsp("binder_index"),
-            help="OCR page index of the scanned DMV-349 binder. Leave blank "
-                 "to review without report retrieval.")
+            help="The page index of the scanned DMV-349 binder, written by "
+                 "the Redact Crash Reports page (or `safety-eval "
+                 "binder-index`). Leave blank to review without report "
+                 "retrieval.")
         coords_path = st.text_input(
             "DetailedFiche (optional)",
             value=_wsp("detailed_fiche_csv"),
@@ -1828,6 +1861,10 @@ def _review_queue_tab(st) -> None:
     if not (wb_path and os.path.exists(wb_path)):
         if wb_path:
             st.error(f"Workbook not found: {wb_path}")
+        else:
+            st.info("The queue starts from a workbook. Build one on the "
+                    "Fiche Workbook page, or open a study in the sidebar "
+                    "and its workbook fills in here.")
         st.stop()
 
     if not sheet.strip():
@@ -2265,9 +2302,22 @@ def _aadt_tab(st) -> None:
                "published by NCDOT, red = interpolated, carried or assumed. "
                "Minor road estimates round to the nearest hundred; 2020 is "
                "never a representative year.")
+    study_ws = _active_ws()
+
+    def _coord(key, fallback):
+        try:
+            return float(study_ws.param(key)) if study_ws else fallback
+        except (TypeError, ValueError):
+            return fallback
+
+    st.markdown("##### 1 · Find the stations at the intersection")
     c1, c2, c3 = st.columns(3)
-    lat = c1.number_input("Latitude", value=35.0, format="%.6f", key="aadt_lat")
-    lon = c2.number_input("Longitude", value=-80.0, format="%.6f", key="aadt_lon")
+    lat = c1.number_input("Latitude", value=_coord("center_lat", 35.0),
+                          format="%.6f", key="aadt_lat",
+                          help="The intersection centre; prefilled from the "
+                               "open study when it has one.")
+    lon = c2.number_input("Longitude", value=_coord("center_lon", -80.0),
+                          format="%.6f", key="aadt_lon")
     radius = c3.number_input("Search radius (m)", value=2400, step=100,
                              key="aadt_radius")
     if st.button("Find NCDOT stations", key="aadt_find"):
@@ -2284,17 +2334,23 @@ def _aadt_tab(st) -> None:
                        **{str(y): v for y, v in sorted(s.years.items())
                           if y >= 2014}} for s in stations],
                      use_container_width=True)
+    if not stations:
+        st.caption("No stations loaded yet. Find them above, or enter each "
+                   "leg's published values by hand below.")
     by_id = {s.station_id: s for s in stations}
     choices = ["(none)"] + list(by_id)
+    st.markdown("##### 2 · Assign a station or values to each leg")
     years_lo, years_hi = st.slider("Table years", 2006, 2030, (2016, 2026),
                                    key="aadt_years")
     years = list(range(years_lo, years_hi + 1))
     leg_names = ("leg1", "leg2", "leg3", "leg4")
+    _leg_label = {0: "Leg 1 · major road", 1: "Leg 2 · major road",
+                  2: "Leg 3 · minor road", 3: "Leg 4 · minor road"}
     legs: dict[str, LegSeries] = {}
     cols = st.columns(4)
     for i, name in enumerate(leg_names):
         with cols[i]:
-            st.markdown(f"**{name}** {'(major)' if i < 2 else '(minor)'}")
+            st.markdown(f"**{_leg_label[i]}**")
             sid = st.selectbox("Station", choices, key=f"st_{name}")
             manual = st.text_input(
                 "Published values (year:aadt, ...)", key=f"man_{name}",
@@ -2325,6 +2381,7 @@ def _aadt_tab(st) -> None:
         st.error(str(exc))
         return
     st.code(describe(table))
+    st.markdown("##### 3 · Periods and representative years")
     c1, c2 = st.columns(2)
     before_end = c1.number_input("Before period last year", value=years_lo + 4,
                                  key="aadt_bend")

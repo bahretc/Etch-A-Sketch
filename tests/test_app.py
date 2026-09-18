@@ -291,6 +291,26 @@ def test_the_assistant_page_explains_a_missing_key(monkeypatch):
     assert any("ANTHROPIC_API_KEY" in v for v in infos)
 
 
+def test_the_maps_page_generates_fiche_roads_and_combinations():
+    """Intersection sites offer the TEAAS road lists: wide fiche pull with
+    defensive suffix variants, combinations cross x mainline only, and no
+    space between a route number and its suffix."""
+    at = _app("fatal", page="package")
+    next(r for r in at.radio if r.label == "Site").set_value("intersection")
+    at.run(timeout=30)
+    at.text_input(key="ir_mainline").set_value("US 19, US 23, US 74 ALT, Patton Ave")
+    at.run(timeout=30)
+    at.text_area(key="ir_cross").set_value(
+        "SR 1319, Johnston Blvd\nUS 19BUS, US 23BUS, Haywood Rd\nOrmand Ave")
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    text = "\n".join(c.value for c in at.code)
+    assert "INTERSECTION COMBINATIONS (24)" in text
+    assert "US 74ALT" in text and "US 74 ALT" not in text
+    assert "US 74BYP" in text                     # defensive, fiche only
+    assert "HAYWOOD RD         x  US 19" in text
+
+
 def test_the_aadt_page_builds_the_table_from_manual_values():
     at = _app("evaluation", page="aadt")
     at.text_input(key="man_leg1").set_value("2017:4100,2019:4500,2021:3500")

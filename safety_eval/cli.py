@@ -695,6 +695,23 @@ def _cmd_import_list(args) -> int:
     return 0
 
 
+def _cmd_intersection_roads(args) -> int:
+    """Fiche roads and road combinations for an intersection analysis."""
+    from .intersection_roads import leg_group, render
+
+    mainline = leg_group(n for n in args.mainline.split(",") if n.strip())
+    crosses = [leg_group(n for n in leg.split(",") if n.strip())
+               for leg in args.cross]
+    text = render(mainline, crosses,
+                  extra=[n for n in args.extra.split(",") if n.strip()])
+    print(text)
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as fh:
+            fh.write(text + "\n")
+        print(f"\nwrote {args.out}")
+    return 0
+
+
 def _cmd_feature_list(args) -> int:
     """Feature inclusions for TEAAS from '<text>|<milepost>' pair lines."""
     from .teaas import write_feature_list
@@ -1584,6 +1601,25 @@ def build_parser() -> argparse.ArgumentParser:
     fl.add_argument("--truncate", action="store_true",
                     help="Shorten over-length text instead of refusing.")
     fl.set_defaults(func=_cmd_feature_list)
+
+    ir = sub.add_parser(
+        "intersection-roads",
+        help="Fiche roads (wide net with defensive US suffix variants) and "
+             "the cross x mainline road combinations for a TEAAS "
+             "intersection analysis (docs/03 rule 5, docs/09 codes).")
+    ir.add_argument("--mainline", required=True,
+                    help="Comma-separated mainline names, e.g. "
+                         "'US 19,US 23,US 74ALT,Patton Ave'.")
+    ir.add_argument("--cross", action="append", required=True,
+                    help="One cross leg per flag, comma-separated names; "
+                         "repeat for each leg, e.g. "
+                         "--cross 'SR 1319,Johnston Blvd' "
+                         "--cross 'US 19BUS,US 23BUS,Haywood Rd'.")
+    ir.add_argument("--extra", default="",
+                    help="Comma-separated extra fiche-road spellings "
+                         "(fiche pull only, never combinations).")
+    ir.add_argument("--out", help="Also write the listing to this file.")
+    ir.set_defaults(func=_cmd_intersection_roads)
 
     cm = sub.add_parser(
         "crash-map",

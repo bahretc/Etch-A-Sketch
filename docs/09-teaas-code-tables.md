@@ -12,6 +12,16 @@ Frontal impact set: 23, 24, 25, 26, 27, 30.
 
 First digit(s) of the 8-digit road code indicate route class: 1 interstate, 2 US routes (20000064 = US 64; variants observed: 21000064 US 64ALT, 22000064 US 64BYP, 29000064 US 64BUS, 206xxxxx couplets), 3 NC routes (30000049 = NC 49), 4 secondary routes (40001156 = SR 1156), 5 local/municipal streets and named roads (50008504 = DIXIE).
 
+Naming: no space between the route number and ALT, BUS or BYP (US 74ALT,
+never "US 74 ALT"), matching the TEAAS road table. For US routes the second
+code digit carries the suffix: 0 plain, 1 ALT, 2 BYP, 9 BUS, then the
+zero-padded six-digit route number. Suffixed non-US routes have no observed
+convention; verify in the road search. `safety-eval intersection-roads`
+(module `intersection_roads`) derives these, expands the defensive suffix
+variants for the fiche pull, and writes the cross x mainline combination
+list; the same generator sits on the Maps and Checks page for intersection
+sites.
+
 ## Fiche field conventions
 
 - MP 999.999: crash not mileposted; located by address or PVA driveway reference in the On Road field ("*LCL {address}", "PVA {address}").

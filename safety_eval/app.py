@@ -787,6 +787,51 @@ def _fatal_tab(st) -> None:
                        "observations are yours to fill on site.")
 
 
+def _intersection_roads_section(st, route: str, cross_route: str) -> None:
+    """Fiche roads (wide net, with defensive US suffix variants) and the
+    cross x mainline road combinations for a TEAAS intersection analysis.
+    The engineer enters both in TEAAS; nothing here touches TEAAS."""
+    from safety_eval.intersection_roads import leg_group, render
+
+    st.caption("Every name a coder might have used goes in the fiche pull; "
+               "the combinations are the real legs only, each cross road "
+               "against each mainline name. No space between a route "
+               "number and ALT, BUS or BYP.")
+    mainline_txt = st.text_input(
+        "Mainline names (comma separated)",
+        value=route, key="ir_mainline",
+        placeholder="US 19, US 23, US 74ALT, Patton Ave",
+        help="Every route and street name signed on the through road.")
+    cross_txt = st.text_area(
+        "Cross legs, one per line, names comma separated",
+        key="ir_cross", height=90,
+        placeholder="SR 1319, Johnston Blvd\n"
+                    "US 19BUS, US 23BUS, Haywood Rd\nOrmand Ave")
+    extra_txt = st.text_input(
+        "Extra fiche-road spellings (comma separated, optional)",
+        key="ir_extra", placeholder="Ormond Ave",
+        help="Alternate spellings to add to the fiche pull only.")
+    if not (mainline_txt.strip() and cross_txt.strip()):
+        st.caption("Needs the mainline names and at least one cross leg.")
+        return
+    try:
+        mainline = leg_group(
+            n for n in mainline_txt.split(",") if n.strip())
+        crosses = [leg_group(n for n in line.split(",") if n.strip())
+                   for line in cross_txt.splitlines() if line.strip()]
+        text = render(mainline, crosses,
+                      extra=[n for n in extra_txt.split(",") if n.strip()])
+    except ValueError as exc:
+        st.error(str(exc))
+        return
+    st.code(text)
+    st.caption("Blank codes are county-assigned local street names: fill "
+               "them from the TEAAS road search. Roads tagged [defensive] "
+               "belong in the fiche pull only, never in a combination.")
+    st.download_button("Download the listing", text.encode("utf-8"),
+                       file_name="intersection_roads.txt", key="ir_dl")
+
+
 def _fatal_package_section(st, ws, site_default: str = "strip",
                            heading: bool = True) -> None:
     """The package figures and checks of a site: the three maps (strip or
@@ -850,6 +895,8 @@ def _fatal_package_section(st, ws, site_default: str = "strip",
         median_year = y3.number_input("Median year (boxed on the AADT map)",
                                       value=int(ws.param("median_year", 2024))
                                       if ws else 2024, step=1)
+        with st.expander("Fiche roads and combinations for TEAAS"):
+            _intersection_roads_section(st, route, cross_route)
     desc = st.text_area("Study Area (footer, up to three lines)",
                         value=(ws.param("description", "") if ws else ""),
                         height=90)

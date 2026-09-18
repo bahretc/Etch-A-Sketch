@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+from dataclasses import dataclass
 
 from openpyxl.styles import Font, PatternFill
 
@@ -110,16 +111,53 @@ def normalize_feature(text) -> str:
     return s
 
 
-def classify(name, features: dict, lo: float, hi: float):
+_STREET_SUFFIX = re.compile(
+    r"\s+(AVE|AVENUE|RD|ROAD|ST|STREET|DR|DRIVE|LN|LANE|PL|PLACE|BLVD|"
+    r"BOULEVARD|CT|COURT|WAY|PKWY|PARKWAY|HWY|HIGHWAY|CIR|CIRCLE|TRL|"
+    r"TRAIL|TER|TERRACE|LOOP|EXT)$")
+
+
+def lookup_feature(name, features: dict):
+    """The feature's mileposts, matching a fiche street the way the
+    Features Report names it: ``*LCL TAMPA AVE`` finds ``TAMPA``."""
+    key = normalize_feature(name)
+    mps = features.get(key)
+    if not mps and key:
+        mps = features.get(_STREET_SUFFIX.sub("", key))
+    return mps or None
+
+
+def _leg_name(raw) -> str | None:
+    """A fiche On/From/Toward cell as a junction leg name, or None when it
+    is a numbered address (``*LCL 120 PATTON AVE``), which places the crash
+    by geocoding, not by the road it is on. ``PVA PATTON AVE`` is a
+    driveway on Patton and reads as PATTON."""
+    s = normalize_feature(raw)
+    s = re.sub(r"^\*\w*\s*", "", s)
+    s = re.sub(r"^PVA\s+", "", s)
+    if not s or re.match(r"^\d", s):
+        return None
+    return _STREET_SUFFIX.sub("", s)
+
+
+def classify(name, features: dict, lo: float, hi: float, near=None):
     """``(bucket, milepost)`` for one From/Toward cell.
 
     bucket is "in", "ne", "sw", or None when the feature is not on the study
     route at all and therefore says nothing about where the crash was.
+
+    ``near``: when a feature name repeats along the route (HAYWOOD meets
+    US 19 at 9.651 and again at 10.157) and the row is mileposted on that
+    route, the instance TEAAS measured from is the one nearest the coded
+    milepost, so only that one is judged. This reads TEAAS's placement of
+    the reference feature, not the officer's distance. Without ``near``
+    every instance counts, and any one inside the limits is "in".
     """
-    key = normalize_feature(name)
-    mps = features.get(key)
+    mps = lookup_feature(name, features)
     if not mps:
         return None, None
+    if near is not None and len(mps) > 1:
+        mps = [min(mps, key=lambda m: abs(m - near))]
     if any(lo <= mp <= hi for mp in mps):
         return "in", min(mps, key=lambda m: abs(m - (lo + hi) / 2))
     mp = min(mps, key=lambda m: min(abs(m - lo), abs(m - hi)))
@@ -229,6 +267,13 @@ def screen_sheet(ws, features: dict, lo: float, hi: float, initial_ids,
                       str(ws.cell(row=r, column=col["from"]).value or "")),
                      values, buckets))
 
+    _finish_sheet(ws, rows, col)
+    return tally
+
+
+def _finish_sheet(ws, rows, col) -> None:
+    """Write the classified rows back sorted IS / ? / NIS, colour the
+    From/Toward cells, format, and place the unreviewed banner."""
     rows.sort(key=lambda t: t[0])
     fills = {"in": FILL_IN, "ne": FILL_NE, "sw": FILL_SW}
     for i, (_, values, buckets) in enumerate(rows, start=2):
@@ -245,7 +290,192 @@ def screen_sheet(ws, features: dict, lo: float, hi: float, initial_ids,
     _insert_banner(ws, rows)     # a heading, not content, no width
     # No conditional formatting on this sheet, ever: its extent goes stale the
     # moment a determination moves. The Warrant sheet is the highlight's home.
-    return tally
+
+
+# --------------------------------------------------------------------------- #
+# the intersection screen (docs/03: 150 ft rule, road-combination-dependent)
+# --------------------------------------------------------------------------- #
+@dataclass
+class LegScreen:
+    """One mileposted leg of the intersection.
+
+    ``route`` is the Milepost Road as the fiche writes it ("US 19");
+    ``aliases`` are the other On Road names for the same pavement ("US 23",
+    "US 74ALT", "PATTON"), which the strip rule would otherwise mistake for
+    cross streets; ``features`` is that route's Features Report and
+    ``lo``/``hi`` the junction milepost plus and minus the Y-line.
+    """
+    route: str
+    features: dict
+    lo: float
+    hi: float
+    aliases: tuple = ()
+
+    def names(self) -> set:
+        return {normalize_feature(self.route)} | {normalize_feature(a)
+                                                  for a in self.aliases}
+
+
+def screen_intersection_sheet(ws, legs: list, initial_ids, col=None,
+                              study: str = "fatal", coords: dict | None = None,
+                              junction: tuple | None = None,
+                              radius_mi: float = 0.1,
+                              off_lrs_nis: bool = False,
+                              cross_names=()) -> tuple[dict, dict]:
+    """Fill IS?, colour, sort and banner an intersection fiche sheet.
+
+    A wide-net fiche (every leg road, countywide) is screened leg by leg:
+
+    * a row mileposted on a leg, or coded On one of its aliases, is placed
+      by the colour rule against THAT leg's Features Report and window
+      (green or a bracket -> ?, both sides the same -> NIS);
+    * a row coded On a real cross street of a leg sits where that street
+      meets the leg (the strip rule), so it is ? only when that meeting is
+      inside the window;
+    * a row on no screened leg is ? when its On/From/Toward names touch two
+      different legs of this junction, because that pair IS one of the
+      study's road combinations; otherwise nothing places it.
+
+    What nothing places is **unresolved**. With ``coords`` (crash id ->
+    (lat, lon), the DetailedFiche coordinates, engineer-sanctioned for
+    deciding which reports to pull) and the ``junction`` point, an
+    unresolved row further than ``radius_mi`` is NIS and one inside it is
+    ?; with no coordinate it stays ?, since nothing rules it out. The coded
+    distance is never used (docs/03).
+
+    ``off_lrs_nis`` is the docs/03 off-LRS rule for an intersection: a row
+    mileposted on a linear reference that is none of the ``legs`` (PATTON
+    downtown when the junction is on US 19's mileposting; I 240) cannot be
+    at the junction, so it is NIS without a review. This is the road the
+    milepost is measured on, never the coded distance. Off by default; the
+    engineer turns it on per study. ``cross_names`` are junction legs with
+    no mileposting of their own (ORMAND, HANOVER), so that a row naming one
+    of them together with another leg counts as a road combination.
+
+    Returns ``(tally, reasons)``; ``reasons`` maps crash id to
+    ``(status, why)`` so the engineer can see every call.
+    """
+    from .location import haversine_mi
+
+    kind = _st.get(study)
+    col = col or {"on": 2, "from": 5, "toward": 6, "mproad": 7, "mp": 8,
+                  "is": 9, "id": 12, "t": 14}
+    initial = {int(c) for c in initial_ids}
+    by_route = {normalize_feature(lg.route): lg for lg in legs}
+    by_alias = {}
+    for lg in legs:
+        for a in lg.names():
+            by_alias.setdefault(a, lg)
+    groups = [lg.names() for lg in legs]
+    groups += [{normalize_feature(n)} for n in cross_names]
+    tally = {"IS": 0, "?": 0, "NIS": 0, "DEL": 0}
+    reasons: dict = {}
+    rows = []
+
+    def _touches(names) -> int:
+        return sum(1 for g in groups if names & g)
+
+    for r in range(2, ws.max_row + 1):
+        cid = ws.cell(row=r, column=col["id"]).value
+        if cid is None:
+            continue
+        on = normalize_feature(ws.cell(row=r, column=col["on"]).value)
+        fr_raw = ws.cell(row=r, column=col["from"]).value
+        tw_raw = ws.cell(row=r, column=col["toward"]).value
+        fr, tw = normalize_feature(fr_raw), normalize_feature(tw_raw)
+        mproad = normalize_feature(ws.cell(row=r, column=col["mproad"]).value)
+        t = ws.cell(row=r, column=col["t"]).value
+        animal = T_CODES.get(t) == ANIMAL_TYPE
+        buckets: dict = {}
+        try:
+            icid = int(str(cid).strip())
+        except ValueError:
+            icid = None
+
+        if icid in initial:
+            status, why = (("DEL", "animal, initial study")
+                           if animal and kind.deletes_animals
+                           else ("IS", "initial study"))
+        elif animal:
+            status, why = "NIS", "animal"
+        else:
+            mp = _mp_key(ws.cell(row=r, column=col["mp"]).value)
+            mileposted = bool(mproad) and mp < 999
+            on_key = _leg_name(on)
+            leg = by_route.get(mproad) or (by_alias.get(on_key)
+                                           if on_key else None)
+            status, why = None, ""
+            if off_lrs_nis and mileposted and mproad not in by_route:
+                status, why = ("NIS", f"mileposted on {mproad}, which does "
+                                      "not reach the junction")
+            elif leg is not None:
+                # a repeated feature name is judged at the instance TEAAS
+                # measured from, when the row is mileposted on this leg
+                near = mp if (mileposted and mproad == normalize_feature(
+                    leg.route)) else None
+                on_route = (not on) or (on_key in leg.names()
+                                        if on_key else False)
+                if on_route:
+                    b = {k: classify(v, leg.features, leg.lo, leg.hi,
+                                     near=near)[0]
+                         for k, v in (("from", fr_raw), ("toward", tw_raw))}
+                    buckets = b
+                    known = [x for x in b.values() if x]
+                    if "in" in known:
+                        status, why = "?", f"measured off the junction on {leg.route}"
+                    elif len(known) == 2 and known[0] != known[1]:
+                        status, why = "?", f"From/Toward bracket the junction on {leg.route}"
+                    elif len(known) == 2:
+                        status, why = "NIS", f"both features the same side on {leg.route}"
+                elif on_key:
+                    # a crash on a cross street sits where that street meets
+                    # the leg: by the Features Report, else by TEAAS's
+                    # milepost of that meeting when the row carries one
+                    b, _ = classify(on, leg.features, leg.lo, leg.hi,
+                                    near=near)
+                    if b is None and near is not None:
+                        b = "in" if leg.lo <= near <= leg.hi else "out"
+                    if b == "in":
+                        status, why = "?", f"{on} meets {leg.route} at the junction"
+                    elif b:
+                        status, why = "NIS", f"{on} meets {leg.route} away from the junction"
+            if status is None:
+                keys = {k for k in (on_key, _leg_name(fr), _leg_name(tw)) if k}
+                touched = _touches(keys)
+                if touched >= 2:
+                    status, why = "?", "names two legs of the junction"
+                elif touched == 1 and on_key and not any(
+                        on_key in g for g in groups):
+                    # On a street that is no leg of this junction, measured
+                    # off one leg: the crash is at that street's own meeting
+                    # with the leg, somewhere else
+                    status, why = ("NIS", f"on {on}, a side street off the "
+                                          "leg it references")
+            if status is None:
+                d = None
+                if coords and junction and icid in coords:
+                    lat, lon = coords[icid]
+                    d = haversine_mi(lat, lon, junction[0], junction[1])
+                if d is None:
+                    status, why = "?", "unresolved, no coordinate"
+                elif d > radius_mi:
+                    status, why = "NIS", f"coordinates {d * 5280:.0f} ft from the junction"
+                else:
+                    status, why = "?", f"coordinates {d * 5280:.0f} ft from the junction"
+
+        tally[status] += 1
+        reasons[str(cid)] = (status, why)
+        values = [ws.cell(row=r, column=c).value
+                  for c in range(1, ws.max_column + 1)]
+        values[col["is"] - 1] = status
+        rows.append(((STATUS_ORDER[status],
+                      str(ws.cell(row=r, column=col["mproad"]).value or ""),
+                      _mp_key(ws.cell(row=r, column=col["mp"]).value),
+                      str(ws.cell(row=r, column=col["from"]).value or "")),
+                     values, buckets))
+
+    _finish_sheet(ws, rows, col)
+    return tally, reasons
 
 
 def _insert_banner(ws, rows) -> int:

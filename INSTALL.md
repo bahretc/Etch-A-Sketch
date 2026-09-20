@@ -53,8 +53,11 @@ You only run the installer once.
 A window titled **NCDOT Safety Studies**. On the left, the sidebar: the
 Study picker at the top under the page list, then the pages in workflow
 order, grouped Start, Crash review, and the study type's own deliverables.
-The Overview page walks the workflow step by step and shows what the open
-study already has.
+The Overview page is where you start: type the study number, click
+**Create**, then drop the TEAAS exports and crash reports on **Drop your
+files here**. The page recognises each file from its content and files it in
+the study; the numbered steps below it walk the workflow, and the next step
+is marked.
 
 ## Turning on the AI features
 

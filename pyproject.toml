@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "safety-eval"
-version = "0.2.0b7"
+version = "0.2.0b8"
 description = "Automate NCDOT before/after safety evaluations from a TEAAS fiche and assignment."
 readme = "README.md"
 requires-python = ">=3.10"

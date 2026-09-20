@@ -48,9 +48,15 @@ Or all of them at once, which is what the double click installer runs:
 pip install -e '.[pdf,ocr,ui,deliverables,maps,llm]'
 ```
 
-**Beta (0.2.0b7).** The fatal slip and HSIP fiche workflows run start to
+**Beta (0.2.0b8).** The fatal slip and HSIP fiche workflows run start to
 finish on the CLI and in the app; `docs/13-beta-walkthrough.md` is the
-two-page tour and lists the known limits. New in this version: the intersection fiche roads and road combination generator (`intersection-roads` on the CLI, and on the Maps and Checks page for intersection sites). Added in 0.2.0b6: the Fiche
+two-page tour and lists the known limits. New in this version: the Start
+page has one drop zone. Every file dropped there is recognised from its
+content (the TEAAS banner, the header row, the PDF's first page, the
+workbook's sheet names; `safety_eval/intake.py`) and filed under its study
+role, the study can be created right on the page, a checklist says in words
+what the study has, and the Fiche Workbook and Redact pages fill in from
+those files so nothing is uploaded twice. Added in 0.2.0b7: the intersection fiche roads and road combination generator (`intersection-roads` on the CLI, and on the Maps and Checks page for intersection sites). Added in 0.2.0b6: the Fiche
 Workbook, Review Queue, Evaluation Workbook and AADT pages are laid out as
 required then optional steps in plain words, disabled buttons say what they
 are missing, and the AADT page prefills from the open study. Added in

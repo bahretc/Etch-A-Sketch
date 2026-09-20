@@ -330,3 +330,38 @@ def test_the_aadt_page_builds_the_table_from_manual_values():
 def test_the_print_page_reports_the_toolchain():
     at = _app("evaluation", page="print")
     assert at.selectbox(key="pr_sheet").value == "1 page results - 1 Target"
+
+
+def test_the_start_page_has_one_drop_zone_and_a_study_creator():
+    """docs/07: an unfamiliar engineer drops the files and follows steps."""
+    at = _app("hsip", page="home")
+    uploaders = at.get("file_uploader")
+    assert len(uploaders) == 1
+    assert uploaders[0].label == "Drop files here"
+    labels = {t.label for t in at.text_input}
+    assert "Study number" in labels
+    assert any(b.label == "Create" for b in at.button)
+
+
+def test_the_start_page_files_dropped_inputs_into_the_study(tmp_path,
+                                                            monkeypatch):
+    """With a study open, the checklist names what is attached, in words."""
+    from safety_eval import workspace as wsm
+    monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
+    ws = wsm.Workspace.create("41000079549", study_type="hsip")
+    ws.attach("fiche_csv", "41000079549_Fiche.csv", b"Fiche Report\n")
+    at = _app()
+    next(s for s in at.sidebar.selectbox
+         if s.label == "Study").set_value("41000079549")
+    at.run(timeout=30)
+    at.switch_page(PAGE["home"])
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    html = " ".join(m.value for m in at.markdown)
+    assert "✓ Fiche Report" in html and "○ Features Report" in html
+    # the fiche page fills in from the study and can build without an upload
+    at.switch_page(PAGE["fiche"])
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    build = next(b for b in at.button if b.label == "Build fiche workbook")
+    assert not build.disabled

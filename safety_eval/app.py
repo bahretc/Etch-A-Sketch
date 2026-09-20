@@ -62,21 +62,40 @@ def _style(st) -> None:
         <style>
         #MainMenu, footer {visibility: hidden;}
         [data-testid="stToolbar"], [data-testid="stAppDeployButton"],
-        [data-testid="stDecoration"] {display: none;}
-        .block-container {padding-top: 1.8rem; padding-bottom: 3rem;
-                          max-width: 1150px;}
+        [data-testid="stDecoration"], [data-testid="stStatusWidget"] {display: none;}
+        html, body, [class*="css"] {
+            font-family: -apple-system, "Segoe UI", Inter, Roboto, "Helvetica Neue",
+                         Arial, sans-serif;}
+        .block-container {padding-top: 1.6rem; padding-bottom: 3rem;
+                          max-width: 1180px;}
         h1, h2, h3 {letter-spacing: -0.015em;}
+        h2 {font-size: 1.55rem; margin-bottom: 0.2rem;}
         [data-testid="stMetric"] {
             background: var(--secondary-background-color);
             border: 1px solid rgba(23, 27, 38, 0.08);
-            border-radius: 12px; padding: 14px 18px;}
+            border-radius: 14px; padding: 14px 18px;}
         [data-testid="stMetric"] label {opacity: 0.75;}
         div[data-testid="stExpander"] {
-            border: 1px solid rgba(23, 27, 38, 0.08); border-radius: 12px;}
+            border: 1px solid rgba(23, 27, 38, 0.08); border-radius: 14px;}
+        [data-testid="stVerticalBlockBorderWrapper"] > div {
+            border-radius: 14px;}
         [data-testid="stSidebar"] {
             border-right: 1px solid rgba(23, 27, 38, 0.06);}
-        [data-testid="stFileUploader"] section {border-radius: 10px;}
-        div[data-testid="stTable"] {border-radius: 10px; overflow: hidden;}
+        [data-testid="stSidebarNav"] a {border-radius: 10px;}
+        [data-testid="stFileUploader"] section,
+        [data-testid="stFileUploaderDropzone"] {
+            border: 2px dashed rgba(0, 114, 178, 0.45) !important;
+            border-radius: 14px; background: rgba(0, 114, 178, 0.035);
+            padding: 1.1rem 1.2rem; min-height: 118px; align-items: center;
+            justify-content: center; transition: background 0.15s;}
+        [data-testid="stFileUploader"] section:hover,
+        [data-testid="stFileUploaderDropzone"]:hover {
+            background: rgba(0, 114, 178, 0.08);}
+        button[kind="primary"], [data-testid="stBaseButton-primary"] {
+            border-radius: 999px; padding: 0.45rem 1.2rem; font-weight: 600;}
+        [data-testid="stBaseButton-secondary"] {border-radius: 999px;}
+        div[data-testid="stTable"] {border-radius: 12px; overflow: hidden;}
+        [data-testid="stPageLink"] a {border-radius: 999px;}
         </style>""", unsafe_allow_html=True)
 
 
@@ -408,119 +427,13 @@ def page_assistant() -> None:
 
 
 def _home_page(st, kind) -> None:
-    from safety_eval.study_type import EVALUATION
+    """The Start page: study, drop zone, checklist, steps (ui_start)."""
+    from safety_eval import workspace as wsm
+    from safety_eval.study_type import STUDY_TYPES, choices
+    from safety_eval.ui_start import start_page
 
-    st.header("NCDOT Safety Studies")
-    st.caption("TEAAS-faithful crash analysis, review and deliverables. "
-               "The sidebar follows the workflow, top to bottom; every "
-               "step below links to its page.")
-
-    # ---- the open study, or how to open one, first ------------------------
-    ws = _active_ws()
-    if ws:
-        from safety_eval import workspace as wsm
-        from safety_eval.study_type import STUDY_TYPES
-        with st.container(border=True):
-            st.subheader(f"Study {ws.study}")
-            label = STUDY_TYPES.get(ws.study_type)
-            facts = [label.label if label else ws.study_type]
-            for key, fmt in (("route", "{}"), ("mp_lo", "MP {}"),
-                             ("mp_hi", "to {}"), ("context", "{}")):
-                v = ws.param(key)
-                if v is not None and v != "":
-                    facts.append(fmt.format(v))
-            st.caption(" · ".join(str(f) for f in facts))
-            attached = [(wsm.ROLES[role][0],
-                         ", ".join(os.path.basename(p)
-                                   for p in ws.paths(role)))
-                        for role in wsm.ROLES if ws.paths(role)]
-            if attached:
-                with st.expander(f"Files in the study ({len(attached)})"):
-                    for lab, names in attached:
-                        st.write(f"**{lab}:** {names}")
-            else:
-                st.caption("Nothing attached yet; the Fiche Workbook page "
-                           "saves its inputs and workbook here as it "
-                           "builds.")
-            st.caption(f"Folder: {os.path.relpath(ws.root)}")
-    else:
-        st.info("No study is open. Open or create one under **Study** in "
-                "the sidebar and every page starts from its files; or "
-                "skip it and work from uploads alone.")
-
-    # ---- the workflow, with what is already done --------------------------
-    def _done(role):
-        return bool(ws and ws.path(role))
-
-    steps = [
-        (PAGE["fiche"], "Build the fiche workbook",
-         "Assemble the TEAAS exports into the working sheet and run the "
-         "colour screen (IS / ? / NIS"
-         + (" / DEL for animals" if kind.deletes_animals else "") + ").",
-         _done("workbook")),
-        (PAGE["redact"], "Redact the crash reports",
-         "Every DMV-349 is redacted before it is stored or shown; ZIP codes "
-         "and crash IDs are kept.", _done("binder_index")),
-        (PAGE["review"], "Review the crashes",
-         "The queue shows the redacted report beside the coded data; the "
-         "engineer decides every status, with optional AI assist.",
-         _done("reviewed_workbook")),
-    ]
-    if kind.runs_warrants:
-        steps.append((PAGE["warrants"], "Run the HSIP warrants",
-                      "Section or intersection warrant screen off your "
-                      "IS/RE/ADD determinations, with the import list and "
-                      "the crash map.", None))
-    if kind.key == EVALUATION:
-        steps.append((PAGE["evaluation"], "Populate the Evaluation Workbook",
-                      "A real NCDOT template; every write is "
-                      "integrity-verified and drawings stay byte-identical.",
-                      None))
-        steps.append((PAGE["aadt"], "Fill the AADT table",
-                      "Leg AADTs from the NCDOT stations layer with the "
-                      "black/red convention and representative years, "
-                      "written into the Evaluation Set-up sheet.", None))
-        steps.append((PAGE["map_block"], "Compose the map block",
-                      "The Map/Satellite Views image in the team format, "
-                      "embedded on the results page.", None))
-        steps.append((PAGE["report"], "Draft the report text",
-                      "Items for Discussion and Additional Information "
-                      "drafts from the workbook's tallies, style and "
-                      "number gated; the engineer reviews and pastes.",
-                      None))
-        steps.append((PAGE["assumptions"], "Send the assumptions email",
-                      "The docs/05 team-template .docx, from a YAML or the "
-                      "Master Evaluation Spreadsheet row.", None))
-        steps.append((PAGE["print"], "Print and bind the deliverables",
-                      "LibreOffice print of the results page matched to "
-                      "the Excel print; Complete Evaluation and Web PDFs.",
-                      None))
-        steps.append((PAGE["qa"], "Run the QA checks",
-                      "Deterministic checks on the workbook and PDFs, then "
-                      "the optional multi-agent sweep.", None))
-        steps.append((PAGE["finish"], "Finish the package",
-                      "One pass over the WO folder: redact, map, print, "
-                      "bind, QA log and certificate, zip with clean names.",
-                      None))
-    else:
-        steps.append((PAGE["package"], "Build the maps and checks",
-                      "Location, Study Area and AADT maps, route curves "
-                      "and crests for the feature import, the location "
-                      "check and the CalculatedAADT workbook.", None))
-    for n, (path, title, blurb, done) in enumerate(steps, 1):
-        with st.container(border=True):
-            left, right = st.columns([3, 2], vertical_alignment="center")
-            with left:
-                st.page_link(path, label=f"{n}. {title}",
-                             icon=":material/check_circle:" if done
-                             else ":material/arrow_forward:")
-                if done:
-                    st.caption("Done: saved in the study.")
-            with right:
-                st.caption(blurb)
-
-    with st.expander("Environment check"):
-        _environment_check(st)
+    start_page(st, kind, _active_ws(), PAGE, wsm.ROLES, STUDY_TYPES,
+               [k for k, _ in choices()], wsm, _environment_check)
 
 
 def _environment_check(st) -> None:
@@ -1203,16 +1116,29 @@ def _redact_tab(st) -> None:
                "addresses, DOB, phone, and license numbers are removed. "
                "ZIP codes and crash IDs are kept. Spot-check the result; "
                "OCR can miss handwriting.")
+    ws = _active_ws()
+    in_study = ws.paths("crash_report") if ws else []
+    study_pick = None
+    if in_study:
+        study_pick = st.selectbox(
+            f"Crash report from study {ws.study}",
+            ["(upload instead)"] + [os.path.basename(p) for p in in_study],
+            index=1,
+            help="The reports dropped on the Start page; pick one, or "
+                 "upload another below.")
+        if study_pick == "(upload instead)":
+            study_pick = None
     report_up = st.file_uploader("Crash report (PDF/TIFF/PNG/JPG)",
                                  type=["pdf", "tif", "tiff", "png", "jpg"])
     keep_zip = st.checkbox("Keep ZIP codes visible", True)
     verify = st.checkbox("Verify the output (OCR the redacted pages and "
                          "search them for the original's personal tokens)",
                          True)
-    if report_up and st.button("Redact", type="primary"):
+    if (report_up or study_pick) and st.button("Redact", type="primary"):
         from safety_eval.redact import redact_file
         with tempfile.TemporaryDirectory() as tmp:
-            src = _save_upload(report_up, tmp)
+            src = _save_upload(report_up, tmp) if report_up else next(
+                p for p in in_study if os.path.basename(p) == study_pick)
             out = os.path.join(tmp, "redacted.pdf")
             rep = redact_file(src, out, keep_zip=keep_zip)
             st.write(f"Redacted {rep.boxes} region(s) across "
@@ -1242,26 +1168,43 @@ def _fiche_tab(st, kind) -> None:
                   if kind.deletes_animals else "")
                + ", and the grey NOT-REVIEWED banner is placed.")
     ws = _active_ws()
+
+    def _have(role):
+        return ws.path(role) if ws else None
+
+    def _tag(label, role):
+        """The uploader label, naming the study file it defaults to."""
+        p = _have(role)
+        return f"{label}  ·  from study: {os.path.basename(p)}" if p else label
+
     if ws:
-        st.caption(f"Study **{ws.study}** is open: the inputs and the built "
-                   "workbook are saved into its folder.")
+        n_have = sum(1 for r in ("fiche_csv", "initial_study_csv",
+                                 "initial_ids_txt", "detailed_fiche_csv",
+                                 "features_report") if _have(r))
+        st.caption(f"Study **{ws.study}** is open"
+                   + (f": {n_have} of its 5 TEAAS exports are attached and "
+                      "fill in below; upload only to replace one."
+                      if n_have else ": drop the TEAAS exports on the Start "
+                      "page or upload them here; the build saves into its "
+                      "folder."))
     st.markdown("##### Required")
     c1, c2 = st.columns([1, 2], vertical_alignment="bottom")
     study = c1.text_input("Study number", value=(ws.study if ws else ""),
                           placeholder="41000079305")
-    fiche_up = c2.file_uploader("Fiche Report (.csv)", type=["csv"])
+    fiche_up = c2.file_uploader(_tag("Fiche Report (.csv)", "fiche_csv"),
+                                type=["csv"])
 
     st.markdown("##### Other TEAAS exports"
                 "&nbsp;&nbsp;:gray[optional; each adds a sheet or a check]")
     c1, c2, c3 = st.columns(3)
     initial_up = c1.file_uploader(
-        "Strip/Intersection Analysis Report (.csv)",
+        _tag("Strip/Intersection Analysis Report (.csv)", "initial_study_csv"),
         help="Becomes the Initial Study sheet; the Dir formulas walk it.")
     ids_up = c2.file_uploader(
-        "TEAAS ID export (.txt)",
+        _tag("TEAAS ID export (.txt)", "initial_ids_txt"),
         help="Pipe-delimited; marks the Initial Study crashes IS.")
     detailed_up = c3.file_uploader(
-        "Detailed Fiche (.csv)",
+        _tag("Detailed Fiche (.csv)", "detailed_fiche_csv"),
         help="Carries latitude/longitude for the coordinate formulas.")
 
     st.markdown("##### Colour screen"
@@ -1269,7 +1212,7 @@ def _fiche_tab(st, kind) -> None:
                 "the study limits]")
     c1, c2 = st.columns([1, 1], vertical_alignment="bottom")
     features_up = c1.file_uploader(
-        "Features Report (.pdf/.txt/.csv)",
+        _tag("Features Report (.pdf/.txt/.csv)", "features_report"),
         help="Enables the colour screen: a From/Toward feature inside "
              "the limits, or a blue/yellow bracket, sends the crash to "
              "review (?).")
@@ -1284,27 +1227,34 @@ def _fiche_tab(st, kind) -> None:
                              step=0.005, key="fiche_hi",
                              value=(ws.param("mp_hi", 0.0) if ws else 0.0))
 
-    want_screen = features_up is not None and route.strip() and hi > lo
-    if features_up is not None and not want_screen:
+    have_features = features_up is not None or bool(_have("features_report"))
+    have_fiche = fiche_up is not None or bool(_have("fiche_csv"))
+    want_screen = have_features and route.strip() and hi > lo
+    if have_features and not want_screen:
         st.info("Add the study route and MP limits to run the colour screen "
                 "with the build.")
-    ready_to_build = bool(study.strip() and fiche_up)
+    ready_to_build = bool(study.strip() and have_fiche)
     if not ready_to_build:
         missing = [m for m, ok in (("the study number", study.strip()),
-                                   ("the Fiche Report", fiche_up)) if not ok]
+                                   ("the Fiche Report", have_fiche)) if not ok]
         st.caption("The build needs " + " and ".join(missing) + ".")
     if st.button("Build fiche workbook", type="primary",
                  disabled=not ready_to_build):
         from safety_eval.fiche_workbook import build_fiche_workbook, parse_initial_ids
 
+        def _src(up, role, tmp):
+            """The upload when given, else the study's file for the role."""
+            return _save_upload(up, tmp) or _have(role)
+
         with tempfile.TemporaryDirectory() as tmp:
             out = os.path.join(tmp, f"{study.strip()}_Fiche.xlsx")
+            ids_src = _src(ids_up, "initial_ids_txt", tmp)
             try:
                 counts = build_fiche_workbook(
-                    out, fiche_csv=_save_upload(fiche_up, tmp),
-                    initial_study_csv=_save_upload(initial_up, tmp),
-                    initial_id_txt=_save_upload(ids_up, tmp),
-                    detailed_fiche_csv=_save_upload(detailed_up, tmp),
+                    out, fiche_csv=_src(fiche_up, "fiche_csv", tmp),
+                    initial_study_csv=_src(initial_up, "initial_study_csv", tmp),
+                    initial_id_txt=ids_src,
+                    detailed_fiche_csv=_src(detailed_up, "detailed_fiche_csv", tmp),
                     study=study.strip())
             except (ValueError, KeyError) as exc:
                 st.error(f"Build failed: {exc}")
@@ -1315,14 +1265,14 @@ def _fiche_tab(st, kind) -> None:
 
                 from safety_eval.fiche_screen import parse_features_report, screen_sheet
                 ids = []
-                if ids_up is not None:
-                    _, raw = parse_initial_ids(
-                        os.path.join(tmp, ids_up.name))
+                if ids_src:
+                    _, raw = parse_initial_ids(ids_src)
                     ids = [r[0] for r in raw]
                 wb = openpyxl.load_workbook(out)
-                ws = wb[f"{study.strip()}_Fiche"]
+                sheet = wb[f"{study.strip()}_Fiche"]
                 tally = screen_sheet(
-                    ws, parse_features_report(_save_upload(features_up, tmp)),
+                    sheet, parse_features_report(
+                        _src(features_up, "features_report", tmp)),
                     lo, hi, ids, route=route.strip(),
                     study=kind.key)
                 wb.save(out)

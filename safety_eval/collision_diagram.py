@@ -1651,11 +1651,14 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
 
     svg = []
     throat = float(layout.get("throat", 52))
+    aerial = bool(layout.get("underlay"))
     # Pavement edges: each leg's two edge lines start where they meet the
     # neighbouring leg's edge, so the junction mouth closes cleanly the
     # way a drawn sheet's does, instead of eight lines stopping short.
+    # On an aerial the imagery IS the pavement, so nothing is drawn.
     n = len(legs)
-    for i, lg in enumerate(legs):
+    for i, lg in enumerate(legs if layout.get("draw_roads", not aerial)
+                           else []):
         dx, dy = lg["dx"], lg["dy"]
         nx, ny = -dy, dx                       # left of outbound
         for side, nb in ((1, legs[(i - 1) % n]), (-1, legs[(i + 1) % n])):
@@ -1692,13 +1695,23 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
                    for t in layout.get("title", [])), default=0.0)
     layout.setdefault("title_x", max(46.0 + title_w / 2, 160.0))
     layout.setdefault("north_x",
+                      1560.0 if layout.get("underlay") else
                       min(layout["title_x"] + title_w / 2 + 70.0, 880.0))
 
-    keep_out = [(LEGEND_X - 8, LEGEND_Y - 8,
-                 LEGEND_X + LEGEND_W + 8, LEGEND_Y + LEGEND_H + 8),
-                (1300, 826, 1632, 1056),                 # TSU title block
-                (layout["north_x"] - 40, 18,
-                 layout["north_x"] + 40, 232)]
+    fur = _furniture(layout)
+    layout.setdefault("north_x", fur["north"][0])
+    keep_out = [(fur["legend"][0] - 8, fur["legend"][1] - 8,
+                 fur["legend"][0] + LEGEND_W + 8,
+                 fur["legend"][1] + LEGEND_H + 8),
+                (fur["tsu"][0] - 8, fur["tsu"][1] - 8,
+                 fur["tsu"][0] + 308, fur["tsu"][1] + 208),
+                (fur["north"][0] - 40, fur["north"][1] - 22,
+                 fur["north"][0] + 40, fur["north"][1] + 192)]
+    sb = layout.get("scale_bar")
+    if sb:
+        keep_out.append((sb["x"] - 10, sb["y"] - 26,
+                         sb["x"] + sb["ft"] * sb["px_per_ft"] + 10,
+                         sb["y"] + 16))
 
     def text_box(cx0, cy0, lines, size, lead, anchor="middle"):
         w = max((_text_width(t, size) for t in lines), default=0.0)
@@ -1706,7 +1719,7 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
         return (x0 - 12, cy0 - size, x0 + w + 12,
                 cy0 + lead * (len(lines) - 1) + size)
 
-    keep_out.append(text_box(layout["title_x"], 54,
+    keep_out.append(text_box(layout["title_x"], layout.get("title_y", 54),
                              layout.get("title", []), TITLE_SIZE,
                              TITLE_LEAD))
     for note in layout.get("notes", []):
@@ -1764,6 +1777,12 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
                             break
                     if placed:
                         break
+            if aerial:
+                bb = text_box(lx, ly, lg["label"], ROUTE_SIZE, ROUTE_LEAD)
+                svg.append(f'<rect x="{bb[0]:.1f}" y="{bb[1]:.1f}" '
+                           f'width="{bb[2] - bb[0]:.1f}" '
+                           f'height="{bb[3] - bb[1]:.1f}" fill="#fff" '
+                           'fill-opacity="0.82" stroke="none"/>')
             for k, line in enumerate(lg["label"]):
                 svg.append(_stroke_text(lx, ly + k * ROUTE_LEAD, line,
                                         size=ROUTE_SIZE, sw=1.05))
@@ -1892,16 +1911,55 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
     return _sheet(svg, layout, crashes)
 
 
+def _furniture(layout: dict) -> dict:
+    """Where the sheet furniture stands. The schematic sheets keep the
+    legend top right and the TSU block bottom right; an aerial sheet
+    (``underlay``) follows the office's aerial layout, legend bottom
+    right over the imagery and the TSU block bottom left, unless the
+    layout says otherwise."""
+    aerial = bool(layout.get("underlay"))
+    lx, ly = layout.get("legend_xy", (LEGEND_X, PAGE_H - LEGEND_H - 16)
+                        if aerial else (LEGEND_X, LEGEND_Y))
+    tx, ty = layout.get("tsu_xy", (22, PAGE_H - 214) if aerial
+                        else (1318, 842))
+    nx = layout.get("north_x", 1560 if aerial else 856)
+    ny = layout.get("north_y", 40)
+    return {"legend": (lx, ly), "tsu": (tx, ty), "north": (nx, ny)}
+
+
+def _text_bbox(cx, y0, lines, size, lead, pad=10):
+    w = max((_text_width(t, size) for t in lines), default=0.0)
+    return (cx - w / 2 - pad, y0 - size - pad + 4,
+            cx + w / 2 + pad, y0 + lead * (len(lines) - 1) + size * 0.5 + pad)
+
+
 def _sheet(body_svg: list, layout: dict, crashes) -> str:
     svg = [f'<rect x="14" y="14" width="{PAGE_W - 28}" '
            f'height="{PAGE_H - 28}" fill="#fff" stroke="#000" '
            'stroke-width="2"/>']
+    underlay = layout.get("underlay")
+    if underlay and os.path.exists(underlay):
+        ext = os.path.splitext(underlay)[1].lstrip(".").lower()
+        mime = {"jpg": "jpeg", "jpeg": "jpeg", "png": "png"}.get(ext, "png")
+        b64 = base64.b64encode(open(underlay, "rb").read()).decode()
+        svg.append(f'<image x="14" y="14" width="{PAGE_W - 28}" '
+                   f'height="{PAGE_H - 28}" preserveAspectRatio="none" '
+                   f'href="data:image/{mime};base64,{b64}" '
+                   f'opacity="{layout.get("underlay_opacity", 1.0)}"/>')
+    fur = _furniture(layout)
     tx = layout.get("title_x", 760)
-    for i, line in enumerate(layout.get("title", [])):
-        svg.append(_stroke_text(tx, 54 + i * TITLE_LEAD, line,
+    ty = layout.get("title_y", 54)
+    title = layout.get("title", [])
+    if title and (layout.get("title_box") or underlay):
+        bb = _text_bbox(tx, ty, title, TITLE_SIZE, TITLE_LEAD)
+        svg.append(f'<rect x="{bb[0]:.1f}" y="{bb[1]:.1f}" '
+                   f'width="{bb[2] - bb[0]:.1f}" height="{bb[3] - bb[1]:.1f}" '
+                   'fill="#fff" fill-opacity="0.82" stroke="none"/>')
+    for i, line in enumerate(title):
+        svg.append(_stroke_text(tx, ty + i * TITLE_LEAD, line,
                                 size=TITLE_SIZE, sw=1.15))
-    svg.append(legend_block(LEGEND_X, LEGEND_Y))
-    svg.append(north_needle(layout.get("north_x", 856), 40,
+    svg.append(legend_block(*fur["legend"]))
+    svg.append(north_needle(fur["north"][0], fur["north"][1],
                             rot=layout.get("north_rot", 0.0)))
     rl = layout.get("route_label", [])
     rx, ry = layout.get("route_label_xy", (520, 940))
@@ -1910,10 +1968,33 @@ def _sheet(body_svg: list, layout: dict, crashes) -> str:
                                 size=ROUTE_SIZE, sw=1.05))
     # Notes carry no heading: each one sits by the crash it explains.
     for note in layout.get("notes", []):
+        if note.get("box") or underlay:
+            bb = _text_bbox(note["x"], note["y"], note["text"], NOTE_SIZE,
+                            NOTE_LEAD, pad=8)
+            svg.append(f'<rect x="{bb[0]:.1f}" y="{bb[1]:.1f}" '
+                       f'width="{bb[2] - bb[0]:.1f}" '
+                       f'height="{bb[3] - bb[1]:.1f}" fill="#fff" '
+                       'fill-opacity="0.85" stroke="none"/>')
         for i, line in enumerate(note["text"]):
             svg.append(_stroke_text(note["x"], note["y"] + i * NOTE_LEAD,
                                     line, size=NOTE_SIZE))
-    svg.append(tsu_block(1318, 842, layout.get("prepared_by", ""),
+    sb = layout.get("scale_bar")
+    if sb:
+        # a bar of ``ft`` feet at the sheet's ground scale
+        px = float(sb["ft"]) * float(sb["px_per_ft"])
+        x0, y0 = float(sb["x"]), float(sb["y"])
+        svg.append(f'<rect x="{x0 - 8:.1f}" y="{y0 - 22:.1f}" '
+                   f'width="{px + 16:.1f}" height="36" fill="#fff" '
+                   'fill-opacity="0.85"/>')
+        svg.append(f'<rect x="{x0:.1f}" y="{y0:.1f}" width="{px / 2:.1f}" '
+                   'height="6" fill="#000"/>'
+                   f'<rect x="{x0 + px / 2:.1f}" y="{y0:.1f}" '
+                   f'width="{px / 2:.1f}" height="6" fill="#fff" '
+                   'stroke="#000" stroke-width="1"/>')
+        svg.append(_stroke_text(x0 + px / 2, y0 - 10,
+                                f"{int(sb['ft'])} ft", size=NOTE_SIZE))
+    svg.append(tsu_block(fur["tsu"][0], fur["tsu"][1],
+                         layout.get("prepared_by", ""),
                          layout.get("date", ""),
                          layout.get("logo_b64", "")))
     svg.extend(body_svg)

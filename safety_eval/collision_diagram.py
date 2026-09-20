@@ -1837,10 +1837,13 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
             # from the middle outward, the way the drawn sheets cluster.
             leg = it["leg"]
             la = math.degrees(math.atan2(leg["dy"], leg["dx"]))
+            # A busy junction (80 cells on 41000079549) fills the near
+            # sweep, so the walk keeps going, finer and further, until it
+            # reaches the frame; no two cells may ever share one spot.
             cands = []
-            for r in range(0, 560, 30):
-                for da in (0, 35, -35, 70, -70, 105, -105, 140,
-                           -140, 180):
+            for r in range(0, 900, 24):
+                for da in range(0, 360, 20):
+                    da = da if da <= 180 else da - 360
                     a = math.radians(la + da)
                     tx = it["sx"] + r * math.cos(a)
                     ty = it["sy"] + r * math.sin(a)
@@ -1856,6 +1859,25 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
                         for r2 in all_boxes):
                     spot = (tx, ty, bb)
                     break
+            if spot is None:
+                # the polar sweep thins out with radius; a fine grid over
+                # the whole sheet, nearest the seed first, finds any gap
+                # that is left before a cell is ever dropped on another
+                grid = sorted(
+                    ((math.hypot(gx - it["sx"], gy - it["sy"]), gx, gy)
+                     for gy in range(30, PAGE_H - 30, 8)
+                     for gx in range(30, PAGE_W - 30, 8)),
+                    key=lambda t: t[0])
+                for _, tx, ty in grid:
+                    # a tighter clearance than the sweep: the gap is real
+                    bb = (tx + it["box"][0] - 1, ty + it["box"][2] - 1,
+                          tx + it["box"][1] + 1, ty + it["box"][3] + 1)
+                    if clear(bb) and not any(
+                            bb[0] < r2[2] and bb[2] > r2[0]
+                            and bb[1] < r2[3] and bb[3] > r2[1]
+                            for r2 in all_boxes):
+                        spot = (tx, ty, bb)
+                        break
             if spot is None:
                 tx, ty = it["sx"], it["sy"]
                 spot = (tx, ty,

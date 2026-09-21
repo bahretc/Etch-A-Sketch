@@ -1814,6 +1814,30 @@ def build_parser() -> argparse.ArgumentParser:
                     "PDF at 17x11 in a browser or headless Chromium).")
     td.set_defaults(func=_cmd_tsu_diagram)
 
+    jd = sub.add_parser(
+        "junction-diagram",
+        help="Render the intersection collision diagram on a measured "
+             "junction: lanes, medians, islands, crosswalks, stop bars and "
+             "arrows from a junction spec JSON, every crash placed on its "
+             "approach with no cell over another, overflow in lettered "
+             "insets. Writes the 11x17 HTML plus <stem>_index.csv and "
+             "<stem>_review.csv.")
+    jd.add_argument("--spec", required=True,
+                    help="Junction spec JSON (legs, edges, islands, "
+                         "crosswalks, labels; see docs/07).")
+    jd.add_argument("--data", required=True,
+                    help="<WO>_CollisionDiagramData.txt (one row per unit).")
+    jd.add_argument("--out", required=True, help="Output .html.")
+    jd.add_argument("--exclude", help="Text file of crash ids to leave off "
+                                      "(one per line), e.g. the TEAAS delete list.")
+    jd.add_argument("--analysis", help="<WO>_CrashAnalysis.csv, for the crash "
+                                       "type text in the index.")
+    jd.add_argument("--note", action="append", default=[],
+                    help="Extra note line for the sheet (repeatable).")
+    jd.add_argument("--pdf", action="store_true",
+                    help="Also print <stem>.pdf and <stem>.png with headless Chromium.")
+    jd.set_defaults(func=_cmd_junction_diagram)
+
     rp = sub.add_parser(
         "report-pdf",
         help="Print the '1 page results' sheet to a one-page PDF (UNO "
@@ -2104,6 +2128,18 @@ def _cmd_tsu_diagram(args) -> int:
 
     n = build_diagram(args.out, args.data, args.layout)
     print(f"Rendered {n} crash(es) -> {args.out}")
+    return 0
+
+
+def _cmd_junction_diagram(args) -> int:
+    from .junction_diagram import build
+
+    res = build(args.spec, args.data, args.out, exclude_path=args.exclude,
+                note=args.note or None, analysis_csv=args.analysis, pdf=args.pdf)
+    print(f"Rendered {res['crashes']} crash(es): {res['placed']} on the sheet, "
+          f"{res['inset']} in insets -> {args.out}")
+    if res["unplaced"]:
+        print("Not plotted (no room): " + ", ".join(str(n) for n in res["unplaced"]))
     return 0
 
 

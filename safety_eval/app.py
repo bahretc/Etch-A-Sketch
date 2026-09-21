@@ -1510,7 +1510,8 @@ def _hsip_tab(st) -> None:
                        "reference, and the DMV-349 diagram places that "
                        "crash (docs/03).")
             sheet_kind = st.radio(
-                "Sheet", ["Intersection", "Bike/Ped (aerial)"],
+                "Sheet", ["Intersection", "Bike/Ped (aerial)",
+                          "Junction (measured spec)"],
                 horizontal=True, key="tsu_kind",
                 help="A Bike/Ped analysis is always a 10-year "
                      "intersection pull with a 300 ft y-line (docs/12), "
@@ -1519,88 +1520,152 @@ def _hsip_tab(st) -> None:
                      "signal heads, the blue Bike/Ped markers "
                      "(59X00239 is the reference).")
             is_bp = sheet_kind.startswith("Bike")
-            data_up = st.file_uploader(
-                "CollisionDiagramData (.txt)", type=["txt", "csv"],
-                key="tsu_data",
-                help="The TEAAS per-unit export "
-                     "(<WO>_CollisionDiagramData.txt).")
-            underlay_up = None
-            if is_bp:
-                underlay_up = st.file_uploader(
-                    "Aerial underlay (TransparentMap .jpg/.png)",
-                    type=["jpg", "jpeg", "png"], key="tsu_underlay",
-                    help="Embedded untouched behind the sheet; pin each "
-                         "cell from its report with the layout's `at`.")
-            study_no = (ws.study if ws else "")
-            if is_bp:
-                starter = {
-                    "kind": "bikeped",
-                    "title": [f"PH# {study_no}".strip(), "WO#", "County",
-                              "Main St at Side St",
-                              "10-year period"],
-                    "cell_scale": 0.62,
-                    "at": {},
-                    "lights": [], "ped_signals": [], "markers": [],
-                    "labels": [{"x": 400, "y": 120,
-                                "text": ["Land Use"], "box": True}],
-                    "footnotes": ["Notes:",
-                                  "1. Basemap aerial image accessed from "
-                                  "ArcGIS on <date>."],
-                }
-            else:
-                starter = {
-                    "kind": "intersection",
-                    "title": [f"Order# {study_no}".strip(),
-                              "County", "Main St at Side St",
-                              "period"],
-                    "roads": [],
-                    "legs": [
-                        {"bearing": 270, "width": 36,
-                         "label": ["Main St", "AADT (Year)",
-                                   "n,nnn (20xx)", "55 mph"]},
-                        {"bearing": 90, "width": 36,
-                         "label": ["Main St", "AADT (Year)",
-                                   "n,nnn (20xx)", "55 mph"]},
-                        {"bearing": 0, "width": 30, "stop": True,
-                         "label": ["Side St", "AADT (Year)",
-                                   "n,nnn (20xx)", "45 mph"]},
-                        {"bearing": 180, "width": 30, "stop": True,
-                         "label": ["Side St", "AADT (Year)",
-                                   "n,nnn (20xx)", "45 mph"]},
-                    ],
-                    "notes": [],
-                }
-            layout_text = st.text_area(
-                "Layout (JSON)", value=_json.dumps(starter, indent=1),
-                height=280, key=f"tsu_layout_{'bp' if is_bp else 'int'}")
-            if st.button("Build diagram", disabled=not data_up):
-                from safety_eval.collision_diagram import (
-                    load_logo, read_data_csv, render_bikeped,
-                    render_intersection)
-                try:
-                    layout = _json.loads(layout_text)
-                except ValueError as exc:
-                    st.error(f"Layout JSON: {exc}")
-                    st.stop()
-                layout["kind"] = "bikeped" if is_bp else "intersection"
-                layout["logo_b64"] = load_logo(layout.get("logo"))
-                with tempfile.TemporaryDirectory() as tmp:
-                    dpath = _save_upload(data_up, tmp)
-                    if is_bp and underlay_up is not None:
-                        layout["underlay"] = _save_upload(underlay_up, tmp)
+            is_jn = sheet_kind.startswith("Junction")
+            if is_jn:
+                st.caption("The sheet on the junction as measured: lanes, "
+                           "medians, islands, crosswalks, stop bars and "
+                           "arrows from a junction spec JSON (legs, edges, "
+                           "labels; the study's junction_spec.json is the "
+                           "reference), each crash on its approach with no "
+                           "cell over another, overflow in lettered insets "
+                           "with a matching marker at the spot.")
+                spec_up = st.file_uploader(
+                    "Junction spec (.json)", type=["json"], key="jn_spec")
+                jn_data = st.file_uploader(
+                    "CollisionDiagramData (.txt)", type=["txt", "csv"],
+                    key="jn_data")
+                jn_excl = st.file_uploader(
+                    "Crash ids to leave off (.txt, optional)", type=["txt"],
+                    key="jn_excl",
+                    help="One crash id per line, e.g. the TEAAS delete list "
+                         "from the report review.")
+                if st.button("Build junction diagram",
+                             disabled=not (spec_up and jn_data)):
+                    from safety_eval import junction_diagram as jdm
                     try:
-                        dcrashes = read_data_csv(dpath)
-                        render = render_bikeped if is_bp \
-                            else render_intersection
-                        html = render(dcrashes, layout)
-                    except (ValueError, KeyError) as exc:
-                        st.error(str(exc))
+                        jspec = _json.loads(spec_up.getvalue().decode("utf-8"))
+                    except ValueError as exc:
+                        st.error(f"Spec JSON: {exc}")
                         st.stop()
-                stem2 = (study_no or "study")
-                st.download_button(
-                    f"Download {stem2}_CollisionDiagram.html "
-                    f"({len(dcrashes)} crashes; print at 17x11)",
-                    html, file_name=f"{stem2}_CollisionDiagram.html")
+                    stem2 = (ws.study if ws else "") or "study"
+                    with tempfile.TemporaryDirectory() as tmp:
+                        dpath = _save_upload(jn_data, tmp)
+                        excl = ()
+                        if jn_excl is not None:
+                            excl = tuple(
+                                ln.strip() for ln in
+                                jn_excl.getvalue().decode("utf-8").splitlines()
+                                if ln.strip())
+                        out_html = os.path.join(
+                            tmp, f"{stem2}_CollisionDiagram.html")
+                        try:
+                            res = jdm.render(jspec, dpath, out_html,
+                                             exclude=excl)
+                        except (ValueError, KeyError) as exc:
+                            st.error(str(exc))
+                            st.stop()
+                        html = open(out_html, encoding="utf-8").read()
+                        idx = open(out_html[:-5] + "_index.csv").read()
+                        rev = open(out_html[:-5] + "_review.csv").read()
+                    msg = (f"{res['crashes']} crashes: {res['placed']} on "
+                           f"the sheet, {res['inset']} in insets")
+                    if res["unplaced"]:
+                        msg += ", not plotted: " + ", ".join(
+                            str(n) for n in res["unplaced"])
+                    st.success(msg)
+                    st.download_button(
+                        f"Download {stem2}_CollisionDiagram.html "
+                        "(print at 17x11)", html,
+                        file_name=f"{stem2}_CollisionDiagram.html")
+                    st.download_button(
+                        "Download the sheet index (.csv)", idx,
+                        file_name=f"{stem2}_CollisionDiagram_index.csv")
+                    st.download_button(
+                        "Download the placement review (.csv)", rev,
+                        file_name=f"{stem2}_CollisionDiagram_review.csv")
+            else:
+                data_up = st.file_uploader(
+                    "CollisionDiagramData (.txt)", type=["txt", "csv"],
+                    key="tsu_data",
+                    help="The TEAAS per-unit export "
+                         "(<WO>_CollisionDiagramData.txt).")
+                underlay_up = None
+                if is_bp:
+                    underlay_up = st.file_uploader(
+                        "Aerial underlay (TransparentMap .jpg/.png)",
+                        type=["jpg", "jpeg", "png"], key="tsu_underlay",
+                        help="Embedded untouched behind the sheet; pin each "
+                             "cell from its report with the layout's `at`.")
+                study_no = (ws.study if ws else "")
+                if is_bp:
+                    starter = {
+                        "kind": "bikeped",
+                        "title": [f"PH# {study_no}".strip(), "WO#", "County",
+                                  "Main St at Side St",
+                                  "10-year period"],
+                        "cell_scale": 0.62,
+                        "at": {},
+                        "lights": [], "ped_signals": [], "markers": [],
+                        "labels": [{"x": 400, "y": 120,
+                                    "text": ["Land Use"], "box": True}],
+                        "footnotes": ["Notes:",
+                                      "1. Basemap aerial image accessed from "
+                                      "ArcGIS on <date>."],
+                    }
+                else:
+                    starter = {
+                        "kind": "intersection",
+                        "title": [f"Order# {study_no}".strip(),
+                                  "County", "Main St at Side St",
+                                  "period"],
+                        "roads": [],
+                        "legs": [
+                            {"bearing": 270, "width": 36,
+                             "label": ["Main St", "AADT (Year)",
+                                       "n,nnn (20xx)", "55 mph"]},
+                            {"bearing": 90, "width": 36,
+                             "label": ["Main St", "AADT (Year)",
+                                       "n,nnn (20xx)", "55 mph"]},
+                            {"bearing": 0, "width": 30, "stop": True,
+                             "label": ["Side St", "AADT (Year)",
+                                       "n,nnn (20xx)", "45 mph"]},
+                            {"bearing": 180, "width": 30, "stop": True,
+                             "label": ["Side St", "AADT (Year)",
+                                       "n,nnn (20xx)", "45 mph"]},
+                        ],
+                        "notes": [],
+                    }
+                layout_text = st.text_area(
+                    "Layout (JSON)", value=_json.dumps(starter, indent=1),
+                    height=280, key=f"tsu_layout_{'bp' if is_bp else 'int'}")
+                if st.button("Build diagram", disabled=not data_up):
+                    from safety_eval.collision_diagram import (
+                        load_logo, read_data_csv, render_bikeped,
+                        render_intersection)
+                    try:
+                        layout = _json.loads(layout_text)
+                    except ValueError as exc:
+                        st.error(f"Layout JSON: {exc}")
+                        st.stop()
+                    layout["kind"] = "bikeped" if is_bp else "intersection"
+                    layout["logo_b64"] = load_logo(layout.get("logo"))
+                    with tempfile.TemporaryDirectory() as tmp:
+                        dpath = _save_upload(data_up, tmp)
+                        if is_bp and underlay_up is not None:
+                            layout["underlay"] = _save_upload(underlay_up, tmp)
+                        try:
+                            dcrashes = read_data_csv(dpath)
+                            render = render_bikeped if is_bp \
+                                else render_intersection
+                            html = render(dcrashes, layout)
+                        except (ValueError, KeyError) as exc:
+                            st.error(str(exc))
+                            st.stop()
+                    stem2 = (study_no or "study")
+                    st.download_button(
+                        f"Download {stem2}_CollisionDiagram.html "
+                        f"({len(dcrashes)} crashes; print at 17x11)",
+                        html, file_name=f"{stem2}_CollisionDiagram.html")
 
     if is_section:
         with st.expander("GIS crash map (self-contained HTML)"):

@@ -1634,10 +1634,14 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
     diagram when the cluster is not where it belongs.
     """
     cx, cy = layout.get("center", (740, 560))
+    # The delivered sheets turn the drawing so the major road runs across
+    # the page and tilt the needle to match (41000077750); ``rotate`` is
+    # that turn in degrees, applied to every bearing and to the cells.
+    rot = float(layout.get("rotate", 0.0))
     legs = []
     for lg in layout.get("legs", []) or [{"bearing": b}
                                          for b in (0, 90, 180, 270)]:
-        b = float(lg.get("bearing", 0)) % 360.0
+        b = (float(lg.get("bearing", 0)) + rot) % 360.0
         dx, dy = _brg_vec(b)
         legs.append({
             "bearing": b, "dx": dx, "dy": dy,
@@ -1647,6 +1651,13 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
             "label": lg.get("label", []),
             "label_xy": lg.get("label_xy"),
         })
+        li, lo = lg.get("lanes_in"), lg.get("lanes_out")
+        if li is not None or lo is not None:
+            lw = float(layout.get("lane_w", 15.0))
+            legs[-1]["lanes_in"], legs[-1]["lanes_out"] = int(li or 1), int(lo or 1)
+            legs[-1]["median"] = float(lg.get("median", 0.0))
+            legs[-1]["hw"] = ((legs[-1]["lanes_in"] + legs[-1]["lanes_out"]) * lw
+                              + legs[-1]["median"]) / 2.0
     legs.sort(key=lambda lg: lg["bearing"])
 
     svg = []
@@ -1657,11 +1668,35 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
     # way a drawn sheet's does, instead of eight lines stopping short.
     # On an aerial the imagery IS the pavement, so nothing is drawn.
     n = len(legs)
+    lane_w = float(layout.get("lane_w", 15.0))
+    corner_pts = []
     for i, lg in enumerate(legs if layout.get("draw_roads", not aerial)
                            else []):
         dx, dy = lg["dx"], lg["dy"]
         nx, ny = -dy, dx                       # left of outbound
-        for side, nb in ((1, legs[(i - 1) % n]), (-1, legs[(i + 1) % n])):
+        if "lanes_in" in lg:
+            # lane lines: the drawn sheets show every lane, dashed, and
+            # a solid centreline (a pair when there is a median). Inbound
+            # traffic keeps right coming in, which is the LEFT of the
+            # outbound vector on the page, so inbound lanes sit on +n.
+            sx0, sy0 = cx + dx * (throat + 26), cy + dy * (throat + 26)
+            ex0, ey0 = cx + dx * lg["len"], cy + dy * lg["len"]
+            med = lg["median"]
+            for k in range(1, lg["lanes_in"]):
+                off = -(med / 2 + k * lane_w)
+                svg.append(f'<line x1="{sx0 + nx * off:.1f}" y1="{sy0 + ny * off:.1f}" '
+                           f'x2="{ex0 + nx * off:.1f}" y2="{ey0 + ny * off:.1f}" '
+                           'stroke="#000" stroke-width="0.8" stroke-dasharray="10 10"/>')
+            for k in range(1, lg["lanes_out"]):
+                off = med / 2 + k * lane_w
+                svg.append(f'<line x1="{sx0 + nx * off:.1f}" y1="{sy0 + ny * off:.1f}" '
+                           f'x2="{ex0 + nx * off:.1f}" y2="{ey0 + ny * off:.1f}" '
+                           'stroke="#000" stroke-width="0.8" stroke-dasharray="10 10"/>')
+            for off in ((med / 2, -med / 2) if med else (0.0,)):
+                svg.append(f'<line x1="{sx0 + nx * off:.1f}" y1="{sy0 + ny * off:.1f}" '
+                           f'x2="{ex0 + nx * off:.1f}" y2="{ey0 + ny * off:.1f}" '
+                           'stroke="#000" stroke-width="1.1"/>')
+        for side, nb in ((1, legs[(i + 1) % n]), (-1, legs[(i - 1) % n])):
             px = cx + side * nx * lg["hw"]
             py = cy + side * ny * lg["hw"]
             nnx, nny = -nb["dy"], nb["dx"]
@@ -1670,14 +1705,26 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
             qy = cy + nside * nny * nb["hw"]
             start = _line_x((px, py), (dx, dy), (qx, qy),
                             (nb["dx"], nb["dy"])) if n > 1 else None
-            if start is None or \
-                    math.hypot(start[0] - cx, start[1] - cy) > 4 * throat:
+            # the corner must lie OUT along both legs; a meeting point
+            # behind the centre would draw the edge back through the box
+            if start is not None:
+                t_me = (start[0] - px) * dx + (start[1] - py) * dy
+                t_nb = (start[0] - qx) * nb["dx"] + (start[1] - qy) * nb["dy"]
+                if t_me < 0 or t_nb < 0:
+                    start = None
+            joined = start is not None and \
+                math.hypot(start[0] - cx, start[1] - cy) <= 4 * throat \
+                and not layout.get("square_mouth")
+            if not joined:
                 start = (px + dx * throat, py + dy * throat)
+            corner_pts.append((i, side, start, joined))
             ex = px + dx * lg["len"]
             ey = py + dy * lg["len"]
             svg.append(f'<line x1="{start[0]:.1f}" y1="{start[1]:.1f}" '
                        f'x2="{ex:.1f}" y2="{ey:.1f}" stroke="#000" '
                        'stroke-width="1.3"/>')
+        if "lanes_in" in lg:
+            continue
         # centreline, dashed, clear of the junction mouth
         sx = cx + dx * (throat + 26)
         sy = cy + dy * (throat + 26)
@@ -1686,6 +1733,17 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
         svg.append(f'<line x1="{sx:.1f}" y1="{sy:.1f}" x2="{ex:.1f}" '
                    f'y2="{ey:.1f}" stroke="#000" stroke-width="0.9" '
                    'stroke-dasharray="14 12"/>')
+
+    # close the junction mouth: a straight corner between neighbouring
+    # edges that did not meet on their own
+    starts = {(i, side): (pt, joined) for i, side, pt, joined in corner_pts}
+    for i in range(n if layout.get("draw_roads", not aerial) else 0):
+        a = starts.get((i, 1))
+        b = starts.get(((i + 1) % n, -1))
+        if a and b and not (a[1] and b[1]):
+            svg.append(f'<line x1="{a[0][0]:.1f}" y1="{a[0][1]:.1f}" '
+                       f'x2="{b[0][0]:.1f}" y2="{b[0][1]:.1f}" stroke="#000" '
+                       'stroke-width="1.3"/>')
 
     # The header stands top left with the needle beside it, the way the
     # delivered sheet reads; both defaults are measured off the title so
@@ -1793,7 +1851,7 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
                                      ROUTE_SIZE, ROUTE_LEAD))
 
     if "north_rot" not in layout:
-        layout["north_rot"] = 0.0            # the sheet is drawn north up
+        layout["north_rot"] = rot            # the needle turns with the sheet
 
     def clear(bb):
         if bb[0] < 26 or bb[2] > PAGE_W - 26 or bb[1] < 26 \
@@ -1809,7 +1867,7 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
     items = []
     for cr in crashes:
         hd = layout.get("headings", {}).get(cr.crash_id)
-        g, box, _n = crash_glyph(cr, base_ang=0.0, route_forward="E",
+        g, box, _n = crash_glyph(cr, base_ang=rot, route_forward="E",
                                  heading=hd)
         # the seed: the junction, or out the coded leg for a crash coded
         # some distance from one of the junction's OWN roads
@@ -1819,7 +1877,7 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
                 and cr.from_road in junction_roads:
             ddx, ddy = _brg_vec({"N": 0, "NE": 45, "E": 90, "SE": 135,
                                  "S": 180, "SW": 225, "W": 270,
-                                 "NW": 315}[cr.dist_dir])
+                                 "NW": 315}[cr.dist_dir] + rot)
             leg = min(legs, key=lambda lg: math.hypot(lg["dx"] - ddx,
                                                       lg["dy"] - ddy))
             run = min(cr.dist_mi * px_mi, leg["len"] - 110)
@@ -1830,7 +1888,7 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
             ddx, ddy = _brg_vec(
                 ({"N": 0, "NE": 45, "E": 90, "SE": 135, "S": 180,
                   "SW": 225, "W": 270, "NW": 315}[cr.units[0].direction]
-                 + 180) % 360)
+                 + 180 + rot) % 360)
             leg = min(legs, key=lambda lg: math.hypot(lg["dx"] - ddx,
                                                       lg["dy"] - ddy))
         if leg is None:
@@ -1851,7 +1909,7 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
     insets = list(layout.get("insets", []))
     inset_leg = []
     for ins in insets:
-        b = float(ins.get("bearing", 0)) % 360.0
+        b = (float(ins.get("bearing", 0)) + rot) % 360.0
         inset_leg.append(min(legs, key=lambda lg: min(abs(lg["bearing"] - b),
                                                       360 - abs(lg["bearing"] - b))))
     # Membership in three passes: explicit road/direction claims, then the
@@ -1933,6 +1991,79 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
         all_boxes.append((bx - 6, by - 6, bx + bw + 6, by + bh + 6))
     items = [it for it in items if it["cr"].crash_id not in placed_in_inset]
 
+    # On-pavement placement, the way the delivered sheets (41000077750)
+    # read: each cell sits in an inbound lane of its approach at its coded
+    # distance from the junction and, when that spot is taken, queues
+    # outward along the lane. layout["approaches"] names each approach's
+    # road codes and unit-1 directions (as the insets do); ``cell_scale``
+    # draws the cells at the sheet's small size.
+    if layout.get("on_pavement"):
+        cs = float(layout.get("cell_scale", 0.55))
+        aps = []
+        for ap in layout.get("approaches", []):
+            b = (float(ap.get("bearing", 0)) + rot) % 360.0
+            leg = min(legs, key=lambda lg: min(abs(lg["bearing"] - b),
+                                               360 - abs(lg["bearing"] - b)))
+            aps.append((leg, {str(r) for r in ap.get("roads", [])},
+                        {str(d).upper() for d in ap.get("dirs", [])}))
+        lane_use: dict = {}
+        placed_pav: set = set()
+        for it in sorted(items, key=lambda it: it["cr"].seq):
+            cr = it["cr"]
+            if cr.crash_id in pinned:
+                continue
+            u1 = cr.units[0].direction if cr.units else ""
+            leg = None
+            for lg, roads, dirs in aps:
+                if (not roads or cr.on_road in roads) and (not dirs or u1 in dirs):
+                    leg = lg
+                    break
+            if leg is None:
+                leg = it["leg"]
+            n_in = int(leg.get("lanes_in", 2))
+            n_out = int(leg.get("lanes_out", 1))
+            nx, ny = -leg["dy"], leg["dx"]
+            med = leg.get("median", 0.0)
+            hw = leg["hw"]
+            # offsets across the road, nearest the junction first along
+            # the leg: the inbound lanes (right side coming in, -n), then
+            # the outbound lanes, then the shoulders beside the pavement,
+            # which is how the drawn sheets fit a busy approach
+            offs = [-(med / 2 + (k + 0.5) * lane_w) for k in range(n_in)]
+            offs += [med / 2 + (k + 0.5) * lane_w for k in range(n_out)]
+            offs += [-(hw + 30), hw + 30, -(hw + 70), hw + 70, -(hw + 110), hw + 110]
+            run0 = throat * 0.35 + (cr.dist_mi * px_mi
+                                    if cr.from_road in junction_roads else 0.0)
+            x0, x1, y0, y1 = (v * cs for v in it["box"])
+            spot = None
+            # fill lane by lane: a queue runs out along the first inbound
+            # lane before the next lane starts, the way rear ends line up
+            # on the drawn sheets; the shoulders are the last resort
+            for off in offs:
+                for run in range(int(run0), int(leg["len"] - 30), 8):
+                    tx = cx + leg["dx"] * run + nx * off
+                    ty = cy + leg["dy"] * run + ny * off
+                    bb = (tx + x0 - 2, ty + y0 - 2, tx + x1 + 2, ty + y1 + 2)
+                    if not any(bb[0] < r2[2] and bb[2] > r2[0]
+                               and bb[1] < r2[3] and bb[3] > r2[1] for r2 in all_boxes) \
+                            and clear(bb):
+                        spot = (tx, ty, bb)
+                        break
+                if spot:
+                    break
+            if spot is None:
+                layout.setdefault("_unplaced", []).append(
+                    (cr.crash_id, cr.on_road, u1, leg["bearing"]))
+                continue
+            tx, ty, bb = spot
+            all_boxes.append(bb)
+            dxn, dyn = layout.get("nudges", {}).get(cr.crash_id, (0, 0))
+            svg.append(f'<g data-crash="{cr.crash_id}" data-seq="{cr.seq}" '
+                       f'transform="translate({tx + dxn:.1f},{ty + dyn:.1f}) '
+                       f'scale({cs:.2f})">{it["g"]}</g>')
+            placed_pav.add(cr.crash_id)
+        items = [it for it in items if it["cr"].crash_id not in placed_pav]
+
     for it in items:
         xy = pinned.get(it["cr"].crash_id)
         if xy:
@@ -2000,9 +2131,10 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
                          tx + it["box"][1] + 4, ty + it["box"][3] + 4))
             ox, oy, bb = spot
             all_boxes.append(bb)
+        fs = float(layout.get("cell_scale", 1.0)) if layout.get("on_pavement") else 1.0
         svg.append(f'<g data-crash="{cr.crash_id}" data-seq="{cr.seq}" '
                    f'transform="translate({ox + dxn:.1f},'
-                   f'{oy + dyn:.1f})">{it["g"]}</g>')
+                   f'{oy + dyn:.1f}) scale({fs:.2f})">{it["g"]}</g>')
 
     return _sheet(svg, layout, crashes)
 

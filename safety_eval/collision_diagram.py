@@ -1712,6 +1712,9 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
         keep_out.append((sb["x"] - 10, sb["y"] - 26,
                          sb["x"] + sb["ft"] * sb["px_per_ft"] + 10,
                          sb["y"] + 16))
+    for ins in layout.get("insets", []):
+        bx, by, bw, bh = (float(v) for v in ins["box"])
+        keep_out.append((bx - 6, by - 6, bx + bw + 6, by + bh + 6))
 
     def text_box(cx0, cy0, lines, size, lead, anchor="middle"):
         w = max((_text_width(t, size) for t in lines), default=0.0)
@@ -1837,6 +1840,99 @@ def render_intersection(crashes: list[DiagramCrash], layout: dict) -> str:
 
     all_boxes: list[tuple] = []
     pinned = layout.get("at", {})
+
+    # Insets: an office that will not have cells all over the aerial groups
+    # them by approach in white panels around the junction, each panel
+    # leadered to its leg. layout["insets"] = [{"bearing": 232, "box":
+    # [x, y, w, h], "title": [...], "scale": 0.85}, ...]; a cell whose
+    # approach leg has a panel is packed into it in sheet order, the rest
+    # place as before. A panel that overflows shrinks its cells to fit.
+    placed_in_inset: set = set()
+    insets = list(layout.get("insets", []))
+    inset_leg = []
+    for ins in insets:
+        b = float(ins.get("bearing", 0)) % 360.0
+        inset_leg.append(min(legs, key=lambda lg: min(abs(lg["bearing"] - b),
+                                                      360 - abs(lg["bearing"] - b))))
+    # Membership in three passes: explicit road/direction claims, then the
+    # approach leg for panels that make no claim, then the approach leg for
+    # whatever is left, so a cell coded "S" on a road that runs NE-SW still
+    # lands in a panel rather than loose on the imagery.
+    members: dict = {i: [] for i in range(len(insets))}
+    claimed: set = set()
+    free = [it for it in items if it["cr"].crash_id not in pinned]
+    for i, ins in enumerate(insets):
+        roads = {str(r) for r in ins.get("roads", [])}
+        dirs = {str(d).upper() for d in ins.get("dirs", [])}
+        if not (roads or dirs):
+            continue
+        for it in free:
+            cr = it["cr"]
+            u1 = cr.units[0].direction if cr.units else ""
+            if cr.crash_id not in claimed and (not roads or cr.on_road in roads) \
+                    and (not dirs or u1 in dirs):
+                members[i].append(it)
+                claimed.add(cr.crash_id)
+    for pass_no in (1, 2):
+        for i, ins in enumerate(insets):
+            if pass_no == 1 and (ins.get("roads") or ins.get("dirs")):
+                continue
+            for it in free:
+                if it["cr"].crash_id not in claimed and it["leg"] is inset_leg[i]:
+                    members[i].append(it)
+                    claimed.add(it["cr"].crash_id)
+    for i, ins in enumerate(insets):
+        leg = inset_leg[i]
+        bx, by, bw, bh = (float(v) for v in ins["box"])
+        title = ins.get("title", [])
+        th = ROUTE_LEAD * len(title) + (10 if title else 0)
+        panel = sorted(members[i], key=lambda it: it["cr"].seq)
+        scale = float(ins.get("scale", 0.85))
+        pad = 6.0
+        while True:
+            # shelf packing in sheet order
+            x = bx + pad
+            y = by + th + pad
+            row_h = 0.0
+            spots = []
+            for it in panel:
+                x0, x1, y0, y1 = (v * scale for v in it["box"])
+                w_, h_ = x1 - x0 + pad, y1 - y0 + pad
+                if x + w_ > bx + bw - pad and spots:
+                    x = bx + pad
+                    y += row_h
+                    row_h = 0.0
+                spots.append((it, x - x0, y - y0))
+                x += w_
+                row_h = max(row_h, h_)
+            if y + row_h <= by + bh - pad or scale <= 0.45:
+                break
+            scale -= 0.05
+        svg.append(f'<rect x="{bx:.1f}" y="{by:.1f}" width="{bw:.1f}" '
+                   f'height="{bh:.1f}" fill="#fff" fill-opacity="0.94" '
+                   'stroke="#000" stroke-width="1.6"/>')
+        for k, line in enumerate(title):
+            svg.append(_stroke_text(bx + bw / 2, by + 16 + k * ROUTE_LEAD,
+                                    line, size=ROUTE_SIZE, sw=1.05))
+        # leader from the panel's nearest edge point to the approach
+        ax = cx + leg["dx"] * (throat + 70)
+        ay = cy + leg["dy"] * (throat + 70)
+        ex = min(max(ax, bx), bx + bw)
+        ey = min(max(ay, by), by + bh)
+        svg.append(f'<line x1="{ex:.1f}" y1="{ey:.1f}" x2="{ax:.1f}" '
+                   f'y2="{ay:.1f}" stroke="#000" stroke-width="1.4" '
+                   'stroke-dasharray="6 5"/>'
+                   f'<circle cx="{ax:.1f}" cy="{ay:.1f}" r="5" fill="#fff" '
+                   'stroke="#000" stroke-width="1.4"/>')
+        for it, ox, oy in spots:
+            cr = it["cr"]
+            svg.append(f'<g data-crash="{cr.crash_id}" data-seq="{cr.seq}" '
+                       f'transform="translate({ox:.1f},{oy:.1f}) '
+                       f'scale({scale:.2f})">{it["g"]}</g>')
+            placed_in_inset.add(cr.crash_id)
+        all_boxes.append((bx - 6, by - 6, bx + bw + 6, by + bh + 6))
+    items = [it for it in items if it["cr"].crash_id not in placed_in_inset]
+
     for it in items:
         xy = pinned.get(it["cr"].crash_id)
         if xy:

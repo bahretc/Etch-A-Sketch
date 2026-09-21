@@ -407,7 +407,11 @@ def _stop_bars():
         qa = line_x(base, d, A.pt(0, n0), A.out)
         qb = line_x(base, d, A.pt(0, n1), A.out)
         if qa and qb:
-            A.stop = (A.frame(qa)[0] + A.frame(qb)[0]) / 2
+            # the leg's stop station is the bar's along at the middle of
+            # its approach lanes (a skewed bar reads differently per lane)
+            mid = sum(A.lanes_in.values()) / len(A.lanes_in) if A.lanes_in else (n0 + n1) / 2
+            qm = line_x(base, d, A.pt(0, mid), A.out)
+            A.stop = A.frame(qm)[0] if qm else (A.frame(qa)[0] + A.frame(qb)[0]) / 2
             bars.append((A, qa, qb))
     return bars
 
@@ -417,6 +421,8 @@ def junction_svg():
     obstacle is (kind, prim) in page px; sets each leg's ``stop``."""
     out, obs = [], []
     bars = _stop_bars()
+    def painted(p, q):
+        obs.append(("line", ("s", page(p), page(q), 0.5)))
     for A in LEGS.values():
         for n, a0, a1, style in A.lines:
             a0 = _line_start(A, n, a0)
@@ -425,14 +431,15 @@ def junction_svg():
                                 stroke_dasharray=f"{10 * PX:.0f} {30 * PX:.0f}"))
             else:
                 out.append(poly([A.pt(a0, n), A.pt(a1, n)], stroke="#000", stroke_width=LINE_SW))
+            painted(A.pt(a0, n), A.pt(a1, n))
         for n, a0, a1 in A.double:
             a0 = _line_start(A, n, a0)
             for dn in (-0.5, 0.5):
                 out.append(poly([A.pt(a0, n + dn), A.pt(a1, n + dn)], stroke="#000", stroke_width=LINE_SW))
-        for (a0, n0), (a1, n1) in getattr(A, "gore", []):
+            painted(A.pt(a0, n), A.pt(a1, n))
+        for (a0, n0), (a1, n1) in getattr(A, "gore", []) + getattr(A, "tapers", []):
             out.append(poly([A.pt(a0, n0), A.pt(a1, n1)], stroke="#000", stroke_width=LINE_SW))
-        for (a0, n0), (a1, n1) in getattr(A, "tapers", []):
-            out.append(poly([A.pt(a0, n0), A.pt(a1, n1)], stroke="#000", stroke_width=LINE_SW))
+            painted(A.pt(a0, n0), A.pt(a1, n1))
     for key, A in LEGS.items():
         mp = getattr(A, "median_poly", None)
         if mp:
@@ -472,7 +479,7 @@ def junction_svg():
         for lane, n in A.lanes_in.items():
             if lane in getattr(A, "no_arrow", ()):
                 continue
-            svg, prims = pav_arrow(A, A.stop + arrow_at, n, lane[0])
+            svg, prims = pav_arrow(A, A.stop + float(getattr(A, "arrow_at", arrow_at)), n, lane[0])
             out.append(svg)
             obs += [("arrow", p) for p in prims]
     return out, obs
@@ -888,6 +895,20 @@ def gap(a, b):
     return math.hypot(a[1][0] - b[1][0], a[1][1] - b[1][1]) - a[2] - b[2]
 
 
+def _along_line(seg, line, max_ang=14.0, clear=4.0):
+    """True when a cell shaft runs parallel to a painted line segment
+    (within ``max_ang`` degrees) and within ``clear`` px of it."""
+    d1 = (seg[2][0] - seg[1][0], seg[2][1] - seg[1][1])
+    d2 = (line[2][0] - line[1][0], line[2][1] - line[1][1])
+    l1, l2 = math.hypot(*d1), math.hypot(*d2)
+    if l1 < 6.0 or l2 == 0:
+        return False
+    cosang = abs(d1[0] * d2[0] + d1[1] * d2[1]) / (l1 * l2)
+    if cosang < math.cos(math.radians(max_ang)):
+        return False
+    return _seg_seg(seg[1], seg[2], line[1], line[2]) < clear + seg[3] + line[3]
+
+
 def prim_bbox(p):
     if p[0] == "s":
         return (min(p[1][0], p[2][0]) - p[3], min(p[1][1], p[2][1]) - p[3],
@@ -973,6 +994,12 @@ class Scene:
         for i in self._obs_near(bb, clear_obs):
             kind, prim = self.obs[i]
             if kind in cell.exempt or kind in soft:
+                continue
+            if kind == "line":
+                # a shaft lying along a painted line reads as the line
+                # extended: keep every parallel shaft clear of it
+                if any(p[0] == "s" and _along_line(p, prim) for p, _ in cell.prims):
+                    return False
                 continue
             need = 0.5 if kind == "edge" else clear_obs
             for p, ex in cell.prims:
@@ -1244,6 +1271,22 @@ def cell_turn(cr, X, spec, tag=""):
 
 
 # ---------------------------------------------------------------- placement
+def lane_slots(L, outbound, prefer):
+    """Lateral stations across an approach: the lane centres and the
+    half-lane stations beside them, nearest the preferred lane first (the
+    painted-line rule at placement keeps a shaft off any line that runs
+    at that station)."""
+    lanes = sorted((L.lanes_out if outbound else L.lanes_in).values())
+    lo, hi = lanes[0] - 1.5, lanes[-1] + 1.5
+    cands = set()
+    for v in lanes:
+        for dv in (0.0, 3.5, -3.5):
+            n = round(v + dv, 1)
+            if lo <= n <= hi:
+                cands.add(n)
+    return sorted(cands, key=lambda v: (abs(v - prefer), v))
+
+
 def _slots(band_lo, band_hi, prefer):
     """Lateral stations across an approach, nearest the preferred lane first."""
     lo, hi = band_lo - 1.5, band_hi + 1.5
@@ -1253,11 +1296,12 @@ def _slots(band_lo, band_hi, prefer):
     return sorted(vals, key=lambda v: abs(v - prefer))
 
 
-def _nest_order(imax=12, jmax=8):
-    """Grid offsets (i back along the travel line, j across it), nearest
-    first; a tie goes to the cell behind and outside, the way the sheets
-    nest a stack back from its conflict point."""
-    pts = [(i, j) for i in range(-imax, imax + 1) for j in range(-jmax, jmax + 1)]
+def _nest_order(imax=12, jmax=8, jstep=1.0):
+    """Grid offsets (i back along the travel line, j across it, in steps
+    of NEST_STEP and jstep * NEST_STEP), nearest first; a tie goes to the
+    cell behind and outside, the way the sheets nest a stack back from
+    its conflict point."""
+    pts = [(i, j * jstep) for i in range(-imax, imax + 1) for j in range(-jmax, jmax + 1)]
     return sorted(pts, key=lambda ij: (round(math.hypot(ij[0], ij[1]), 3), -ij[0], -ij[1]))
 
 
@@ -1339,7 +1383,7 @@ def plan(crashes):
                     h2 = hq + 90
                 pref = band[0]
                 build = lambda X, cr=cr, hq=hq, h2=h2: cell_angle(cr, X, hq, h2)    # noqa: E731
-            slots = _slots(min(band[0], pref), max(band[-1], pref), pref)
+            slots = lane_slots(L, outbound, pref) if not single else _slots(min(band[0], pref), max(band[-1], pref), pref)
             cands = [L.pt(ft + sh, n) for sh in (0, 8, -8, 16, -16, 24, -24, 32, -32, 40, -40, 48, -48, 56, -56, 64, -64)
                      for n in slots]
             items.append(Item(cr, ("remote", key_leg), build, cands, L.pt(ft, pref),
@@ -1383,7 +1427,7 @@ def plan(crashes):
             lanes = L.lanes_out if outbound else L.lanes_in
             band = sorted(lanes.values())
             pref = lane_pref(L, outbound)
-            slots = _slots(band[0], band[-1], pref)
+            slots = lane_slots(L, outbound, pref)
             lat = (L.right[0], L.right[1]) if outbound else (-L.right[0], -L.right[1])
             start = (L.cw[1] + 4.0 if L.cw else L.stop + 4.0) if outbound else L.stop + 5.0
             cands = [L.pt(start + k * ALONG_STEP, n) for k in range(0, 40) for n in slots]
@@ -1400,7 +1444,7 @@ def plan(crashes):
             if c is None:
                 c = L.median[0] - 1.5 if getattr(L, "median", None) else 0.0
             h1 = L.hin
-            cands = [L.pt(L.stop + 28 + k * ALONG_STEP, c + dn) for k in range(0, 24) for dn in (0, -8, 8)]
+            cands = [L.pt(L.stop + 28 + k * ALONG_STEP, c + dn) for k in range(0, 24) for dn in (0, -5, 5, -8, 8)]
             items.append(Item(cr, ("centre", L.key), lambda X, cr=cr, h1=h1: cell_headon(cr, X, h1),
                               cands, L.pt(L.stop + 40, c), f"{L.key} centreline",
                               fwd=hv(h1), stack="lateral"))
@@ -1420,7 +1464,7 @@ def plan(crashes):
                 X0 = add(p1, d1, 25)
             fwd = hv(h1)
             rt = (fwd[1], -fwd[0])
-            cands = [add(add(X0, fwd, -i * NEST_STEP), rt, j * NEST_STEP) for i, j in _nest_order()]
+            cands = [add(add(X0, fwd, -i * NEST_STEP), rt, j * NEST_STEP) for i, j in _nest_order(12, 16, 0.5)]
             cands = [X for X in cands if on_travel_side(X, h1)]
             items.append(Item(cr, ("angle", a1, a2), lambda X, cr=cr, h1=h1, h2=h2: cell_angle(cr, X, h1, h2),
                               cands, X0, f"angle {a1} {a2}", fwd=hv(h1)))
@@ -1476,7 +1520,7 @@ def plan(crashes):
         spec = {"t_h": t_h, "o_hd": o_hd, "exit_h": exit_h, "turner": turner, "lat": lat_out}
         fwd = inb
         rt = lat_out
-        cands = [add(add(X0, fwd, -i * NEST_STEP), rt, j * NEST_STEP) for i, j in _nest_order()]
+        cands = [add(add(X0, fwd, -i * NEST_STEP), rt, j * NEST_STEP) for i, j in _nest_order(12, 16, 0.5)]
         cands = [X for X in cands if on_travel_side(X, t_h)]
         items.append(Item(cr, ("turn", typ, t_app, exit_leg), lambda X, cr=cr, spec=spec: cell_turn(cr, X, spec),
                           cands, X0, f"turn {typ} {t_app} {exit_leg}", fwd=inb))
@@ -1503,12 +1547,17 @@ def place(items, scene):
                 except Exception as exc:      # noqa: BLE001
                     print("build failed", it.cr.crash_id, exc)
                     break
-            # a clean spot first; failing that the sheets let a cell lie
-            # across a crosswalk or a stop bar rather than leave the road
-            for soft in ((), ("cw", "stop")):
+            # a clean spot only, unless the spec allows a cell to lie
+            # across painted lines, a crosswalk or a stop bar (some office
+            # sheets do) before it goes to an inset
+            passes = [()]
+            allow = tuple(SPEC.get("allow_over", ()))
+            if allow:
+                passes.append(allow)
+            for soft in passes:
                 for k, cell in enumerate(cells):
                     if scene.free(cell, soft=soft):
-                        cell.tag = it.where + (" (over crosswalk)" if soft else "")
+                        cell.tag = it.where + (" (over crosswalk)" if "cw" in soft else " (over line)" if soft else "")
                         scene.add_cell(cell)
                         placed.append(cell)
                         chosen[it.cr.crash_id] = k

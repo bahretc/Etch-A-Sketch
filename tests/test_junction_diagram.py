@@ -190,10 +190,12 @@ def test_render_places_every_crash_without_overlap(tmp_path):
         for kind, prim in obstacles:
             if kind in a.exempt:
                 continue
+            if kind == "line":
+                # a shaft may cross a painted line but never lie along it
+                assert not any(p[0] == "s" and jd._along_line(p, prim) for p, _ in a.prims), (a.cr.seq, "line")
+                continue
             for p, ex in a.prims:
                 if ex and kind in ("edge", "cw", "stop", "island"):
-                    continue
-                if kind in ("cw", "stop") and "over crosswalk" in a.tag:
                     continue
                 need = 0.5 if kind == "edge" else jd.CLEAR_OBS
                 assert jd.gap(p, prim) >= need - 1e-6, (a.cr.seq, kind)

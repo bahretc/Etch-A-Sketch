@@ -42,6 +42,7 @@ from dataclasses import dataclass, field
 from importlib import resources
 
 from .aadt_arcgis import STATIONS_2025_URL
+from .aadt_table import LegSeries, fill_series
 from .crash_map import vendor as _vendor_text
 from .route_geometry import FT_PER_DEG_LAT, Centerline, load_centerline
 
@@ -501,6 +502,8 @@ width:172px;font-size:8.4px;line-height:1.33}}
 .panel .row b{{color:#9A9A9A;font-weight:normal;width:66px;flex-shrink:0}}
 .panel .row span{{word-break:break-word}}
 .panel .row.hot{{outline:2px solid #E8112D;outline-offset:-1px}}
+.panel .row span.est{{font-style:italic}}
+.panel .note{{color:#9A9A9A;font-size:8px;margin-top:2px}}
 #alegend{{position:absolute;right:12px;bottom:122px;z-index:1300;background:#fff;
 border:1px solid #999;padding:6px 12px 7px;font-size:10.5px}}
 #alegend .r{{display:flex;align-items:center;gap:8px;margin-top:3px}}
@@ -595,18 +598,41 @@ if(P.panelLeaders){
   const svg=document.getElementById("leader");
   svg.setAttribute("width",mr.width);svg.setAttribute("height",mr.height);
   let lines="";
+  const rel=el=>{const r=el.getBoundingClientRect();
+    return [r.left-mr.left,r.top-mr.top,r.right-mr.left,r.bottom-mr.top];};
+  const boxes=[...document.querySelectorAll(".panel, .bx, #alegend")]
+    .map(el=>({el:el,r:rel(el)}));
+  const drawn=[];
+  const orient=(a,b,c)=>(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
+  const xseg=(p,q,u,v)=>{const d1=orient(u,v,p),d2=orient(u,v,q),
+    d3=orient(p,q,u),d4=orient(p,q,v);
+    return (d1>0)!==(d2>0)&&(d3>0)!==(d4>0);};
+  const xrect=(p,q,r,pad)=>{const x0=r[0]-pad,y0=r[1]-pad,x1=r[2]+pad,y1=r[3]+pad;
+    const inside=z=>z[0]>x0&&z[0]<x1&&z[1]>y0&&z[1]<y1;
+    if(inside(p)||inside(q)) return true;
+    return xseg(p,q,[x0,y0],[x1,y0])||xseg(p,q,[x1,y0],[x1,y1])||
+      xseg(p,q,[x1,y1],[x0,y1])||xseg(p,q,[x0,y1],[x0,y0]);};
   for(const pl of P.panelLeaders){
     const el=document.getElementById(pl.id);
     if(!el) continue;
-    const r=el.getBoundingClientRect();
-    const t=cpt(pl.ll);
-    const cx=r.left-mr.left+r.width/2, cy=r.top-mr.top+r.height/2;
-    const dx=t.x-cx, dy=t.y-cy;
-    const tx=dx!==0?(r.width/2)/Math.abs(dx):1e9,
-      ty=dy!==0?(r.height/2)/Math.abs(dy):1e9;
-    const tt=Math.min(tx,ty);
-    lines+='<line x1="'+(cx+dx*tt)+'" y1="'+(cy+dy*tt)+'" x2="'+t.x+
-      '" y2="'+t.y+'" stroke="#000" stroke-width="1.3"/>';
+    const r=rel(el), t=[cpt(pl.ll).x,cpt(pl.ll).y];
+    const w=r[2]-r[0], h=r[3]-r[1];
+    // anchors on the panel edge: midpoints, quarter points and corners
+    const cands=[];
+    for(const f of [0.5,0.25,0.75,0,1]){
+      cands.push([r[0]+f*w,r[1]]);cands.push([r[0]+f*w,r[3]]);
+      cands.push([r[0],r[1]+f*h]);cands.push([r[2],r[1]+f*h]);}
+    cands.sort((a,b)=>Math.hypot(a[0]-t[0],a[1]-t[1])-Math.hypot(b[0]-t[0],b[1]-t[1]));
+    const clean=a=>{
+      const p=[a[0]+(t[0]-a[0])*0.02,a[1]+(t[1]-a[1])*0.02];
+      const q=[t[0]-(t[0]-a[0])*0.03,t[1]-(t[1]-a[1])*0.03];
+      for(const b of boxes){ if(b.el===el) continue; if(xrect(p,q,b.r,3)) return false;}
+      for(const d of drawn){ if(xseg(p,q,d[0],d[1])) return false;}
+      return true;};
+    let a=cands.find(clean)||cands[0];
+    drawn.push([a,t]);
+    lines+='<line x1="'+a[0]+'" y1="'+a[1]+'" x2="'+t[0]+
+      '" y2="'+t[1]+'" stroke="#000" stroke-width="1.3"/>';
   }
   svg.innerHTML=lines;
 }
@@ -944,6 +970,22 @@ def aadt_payload(spec: MapSpec, cl: Centerline | None, ways: list,
     else:
         positions = [(12, 112), (836, 12)]
     gov = governing_stations(spec, cl, stations, bbox=b)[:len(positions)]
+    if spec.is_intersection and len(gov) > 1:
+        # west stations take the left panels, east the right; within a
+        # side the northern station takes the upper panel, so leaders
+        # run straight out to their stations instead of across each other
+        def fx(r):
+            return (r[2] - b[1]) / (b[3] - b[1] or 1)
+
+        def fy(r):
+            return (b[2] - r[1]) / (b[2] - b[0] or 1)
+        by_x = sorted(gov, key=fx)
+        n_left = (len(gov) + 1) // 2
+        left = sorted(by_x[:n_left], key=fy)
+        right = sorted(by_x[n_left:], key=fy)
+        slots = [positions[0], positions[2]][:len(left)] + [positions[1], positions[3]][:len(right)]
+        gov = left + right
+        positions = slots
     for n, (sid, lat, lon, a) in enumerate(gov, 1):
         x, y = positions[n - 1]
         loc = f'{a.get("Approach", "")} {a.get("Crossroad", "")}'.strip().upper()
@@ -956,14 +998,30 @@ def aadt_payload(spec: MapSpec, cl: Centerline | None, ways: list,
         years = sorted(int(k[5:]) for k in a if re.match(r"^AADT_\d{4}$", k))
         if spec.is_intersection and len(years) > 8:
             years = years[-8:]          # four panels have to fit the corners
+        # the median year of the study period governs the calculation;
+        # NCDOT counts on a two year cycle, so a year without a count is
+        # interpolated between its neighbours (docs/04: side roads to the
+        # nearest hundred, main roads to 50) and shown in italics
+        published = {yy: a.get(f"AADT_{yy}") for yy in years if a.get(f"AADT_{yy}") is not None}
+        est = ""
+        if spec.median_year not in published and published:
+            minor = str(a.get("RTE_CLS", "")) in ("4", "5", "8")
+            cell = fill_series(LegSeries("s", published, is_minor=minor), [spec.median_year])[spec.median_year]
+            est = cell.value
         for yy in years:
             v = a.get(f"AADT_{yy}")
             hot = " hot" if yy == spec.median_year else ""
+            if yy == spec.median_year and v is None and est != "":
+                rows += (f'<div class="row{hot}"><b>AADT_{yy}</b>'
+                         f'<span class="est">{est}</span></div>')
+                continue
             rows += (f'<div class="row{hot}"><b>AADT_{yy}</b>'
                      f'<span>{"" if v is None else v}</span></div>')
+        note = ('<div class="note">italic: interpolated between counts</div>'
+                if est != "" else "")
         pid = f"panel{n}"
         panels += (f'<div class="panel" id="{pid}" style="left:{x}px;top:{y}px">'
-                   f'<div class="bd">{rows}</div></div>')
+                   f'<div class="bd">{rows}{note}</div></div>')
         leaders.append({"id": pid, "ll": [round(lat, 5), round(lon, 5)]})
         numbered.append({"ll": [round(lat, 5), round(lon, 5)], "n": n})
     skip = tuple(abbr(x) for x in (spec.road_label, spec.cross_road_label) if x)

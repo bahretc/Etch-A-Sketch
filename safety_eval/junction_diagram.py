@@ -330,7 +330,8 @@ def crosswalks():
             leg = LEGS[cw["leg"]] if cw.get("leg") else None
         out.append({"p0": p0, "p1": p1, "width": float(cw["width"]), "bar_brg": float(cw["bar_brg"]),
                     "leg": leg, "pitch": float(cw.get("pitch", 4.0)), "bar_w": float(cw.get("bar_w", 2.0)),
-                    "stop": cw.get("stop", True)})
+                    "stop": cw.get("stop", True),
+                    **{k: float(cw[k]) for k in ("stop_n0", "stop_n1") if k in cw}})
     return out
 
 
@@ -372,18 +373,60 @@ def pav_arrow(A, along, n, kind):
     return "".join(svg), prims
 
 
+def _line_start(A, n, a0):
+    """Painted lines stop short of the stop bar on the approach side and
+    of the crosswalk on the departure side."""
+    med = getattr(A, "median", None)
+    c = getattr(A, "centre", None)
+    split = med[0] if med else (c if c is not None else 0.0)
+    if n <= split:
+        return max(a0, A.stop + 1.5)
+    if A.cw:
+        return max(a0, A.cw[1] + 1.0)
+    return a0
+
+
+def _stop_bars():
+    """Stop bars are set before any line is drawn so the lines can stop
+    at them: returns [(leg, qa, qb)] and updates each leg's ``stop``."""
+    bars = []
+    for cw in crosswalks():
+        A = cw["leg"]
+        if A is None or not cw["stop"]:
+            continue
+        p0, p1 = cw["p0"], cw["p1"]
+        d = (p1[0] - p0[0], p1[1] - p0[1])
+        ln = math.hypot(*d) or 1.0
+        d = (d[0] / ln, d[1] / ln)
+        nb = hv(cw["bar_brg"])
+        outward = nb if dot(nb, A.out) > 0 else (-nb[0], -nb[1])
+        base = add(p0, outward, cw["width"] / 2 + 4.0)
+        stop_hi = A.median[0] if getattr(A, "median", None) else getattr(A, "centre", 0.0)
+        n0 = cw.get("stop_n0", A.in_edge + 0.8)
+        n1 = cw.get("stop_n1", stop_hi - 0.8)
+        qa = line_x(base, d, A.pt(0, n0), A.out)
+        qb = line_x(base, d, A.pt(0, n1), A.out)
+        if qa and qb:
+            A.stop = (A.frame(qa)[0] + A.frame(qb)[0]) / 2
+            bars.append((A, qa, qb))
+    return bars
+
+
 def junction_svg():
     """The junction linework. Returns (svg list, obstacles) where each
     obstacle is (kind, prim) in page px; sets each leg's ``stop``."""
     out, obs = [], []
+    bars = _stop_bars()
     for A in LEGS.values():
         for n, a0, a1, style in A.lines:
+            a0 = _line_start(A, n, a0)
             if style == "dashed":
                 out.append(poly([A.pt(a0, n), A.pt(a1, n)], stroke="#000", stroke_width=LINE_SW,
                                 stroke_dasharray=f"{10 * PX:.0f} {30 * PX:.0f}"))
             else:
                 out.append(poly([A.pt(a0, n), A.pt(a1, n)], stroke="#000", stroke_width=LINE_SW))
         for n, a0, a1 in A.double:
+            a0 = _line_start(A, n, a0)
             for dn in (-0.5, 0.5):
                 out.append(poly([A.pt(a0, n + dn), A.pt(a1, n + dn)], stroke="#000", stroke_width=LINE_SW))
         for (a0, n0), (a1, n1) in getattr(A, "gore", []):
@@ -393,8 +436,9 @@ def junction_svg():
     for key, A in LEGS.items():
         mp = getattr(A, "median_poly", None)
         if mp:
-            pts = chaikin([A.pt(a, n) for a, n in mp], passes=1, closed=True)
-            out.append(poly(pts, close=True, fill="#fff", stroke="#000", stroke_width=EDGE_SW).replace('fill="none" ', ""))
+            pts = [A.pt(a, n) for a, n in mp]
+            out.append(poly(pts, close=True, fill="#fff", stroke="#000", stroke_width=EDGE_SW,
+                            stroke_linejoin="round").replace('fill="none" ', ""))
             obs.append(("island", ("p", [page(p) for p in pts])))
     for isl in islands():
         out.append(poly(isl, close=True, fill="#fff", stroke="#000", stroke_width=EDGE_SW).replace('fill="none" ', ""))
@@ -420,18 +464,9 @@ def junction_svg():
             out.append(poly([add(c, nb, -w / 2 + 0.5), add(c, nb, w / 2 - 0.5)], stroke="#000",
                             stroke_width=f"{cw['bar_w'] * PX * 0.9:.1f}"))
             k += cw["pitch"]
-        A = cw["leg"]
-        if A is None or not cw["stop"]:
-            continue
-        outward = nb if dot(nb, A.out) > 0 else (-nb[0], -nb[1])
-        base = add(p0, outward, w / 2 + 4.0)
-        stop_hi = A.median[0] if getattr(A, "median", None) else getattr(A, "centre", 0.0)
-        qa = line_x(base, d, A.pt(0, A.in_edge + 0.8), A.out)
-        qb = line_x(base, d, A.pt(0, stop_hi - 0.8), A.out)
-        if qa and qb:
-            out.append(poly([qa, qb], stroke="#000", stroke_width=f"{max(2.4, 1.5 * PX * 0.5):.1f}"))
-            obs.append(("stop", ("s", page(qa), page(qb), 2.0)))
-            A.stop = (A.frame(qa)[0] + A.frame(qb)[0]) / 2
+    for A, qa, qb in bars:
+        out.append(poly([qa, qb], stroke="#000", stroke_width=f"{max(2.4, 1.5 * PX * 0.5):.1f}"))
+        obs.append(("stop", ("s", page(qa), page(qb), 2.0)))
     arrow_at = float(SPEC.get("arrow_at", 60.0))
     for A in LEGS.values():
         for lane, n in A.lanes_in.items():
@@ -1005,20 +1040,33 @@ def unit_svg(tip, heading, unit, night, kind="straight", exit_heading=None,
     return "".join(svg), tail, prims
 
 
-def decor(tail, heading, cr):
-    """Badge, at-fault asterisk and surface letter on one tail."""
+def at_fault(unit):
+    """The driver at fault carries a violation code on the DMV-349 (the
+    deck's fault indicator); TEAAS exports it per unit as VIOLATION."""
+    return bool(unit is not None and unit.violation)
+
+
+def decor(tail, heading, cr, idx=0, badge=True):
+    """The marks on one unit's tail: the crash number badge and surface
+    letter on the cell's numbered unit, the magenta asterisk beside any
+    unit whose driver was at fault."""
     a = math.radians(page_ang(heading))
     c, s = math.cos(a), math.sin(a)
     lx, ly = s, -c
-    br = cd.BUBBLE_R + (2.0 if len(str(cr.seq)) > 1 else 0.0)
-    bx, by = tail[0] - (br + 1.0) * c, tail[1] - (br + 1.0) * s
-    out = cd._badge(bx, by, cr.seq)
+    out, prims = "", []
     ds, dn = cd.DECOR_S * CS, cd.DECOR_N * CS + 0.5
-    sx, sy = tail[0] + ds * c + dn * lx, tail[1] + ds * s + dn * ly
-    out += cd._stroke_text(sx, sy + 1.5, "*", size=11, color=cd.MAGENTA, sw=1.0)
-    cx_, cy_ = tail[0] + ds * c - dn * lx, tail[1] + ds * s - dn * ly
-    out += cd._stroke_text(cx_, cy_, cr.road_cond, size=8, color=cd.GREEN)
-    prims = [(("d", (bx, by), br + 1.0), False), (("d", (sx, sy), 4.0), False), (("d", (cx_, cy_), 4.0), False)]
+    if badge:
+        br = cd.BUBBLE_R + (2.0 if len(str(cr.seq)) > 1 else 0.0)
+        bx, by = tail[0] - (br + 1.0) * c, tail[1] - (br + 1.0) * s
+        out += cd._badge(bx, by, cr.seq)
+        cx_, cy_ = tail[0] + ds * c - dn * lx, tail[1] + ds * s - dn * ly
+        out += cd._stroke_text(cx_, cy_, cr.road_cond, size=8, color=cd.GREEN)
+        prims += [(("d", (bx, by), br + 1.0), False), (("d", (cx_, cy_), 4.0), False)]
+    unit = cr.units[idx] if idx < len(cr.units) else None
+    if at_fault(unit):
+        sx, sy = tail[0] + ds * c + dn * lx, tail[1] + ds * s + dn * ly
+        out += cd._stroke_text(sx, sy + 1.5, "*", size=11, color=cd.MAGENTA, sw=1.0)
+        prims.append((("d", (sx, sy), 4.0), False))
     return out, prims
 
 
@@ -1090,7 +1138,8 @@ def cell_queue(cr, X, hq, lat_dir, tag=""):
         s2, tail2, p2 = unit_svg(tip2, hq, u[1], night)
         sv, sp = sev(tip, hq, cr)
         d, dp = decor(tail1, hq, cr)
-        c = Cell(cr, s1 + s2 + sv + d, prims + p2 + sp + dp)
+        d2, dp2 = decor(tail2, hq, cr, idx=1, badge=False)
+        c = Cell(cr, s1 + s2 + sv + d + d2, prims + p2 + sp + dp + dp2)
         c.tag = tag
         return c
     if typ == 31:                                        # backing: leader reversing into the follower
@@ -1100,7 +1149,8 @@ def cell_queue(cr, X, hq, lat_dir, tag=""):
         t, tp = tick(imp, hq)
         sv, sp = sev(tip, hq, cr)
         d, dp = decor(tail1, hq, cr)
-        c = Cell(cr, s1 + s2 + t + sv + d, prims + p1 + tp + sp + dp)
+        d2, dp2 = decor(tail2, hq + 180, cr, idx=1, badge=False)
+        c = Cell(cr, s1 + s2 + t + sv + d + d2, prims + p1 + tp + sp + dp + dp2)
         c.tag = tag
         return c
     s2, tail2, prims = unit_svg(tip, hq, u[1], night)
@@ -1109,7 +1159,8 @@ def cell_queue(cr, X, hq, lat_dir, tag=""):
     t, tp = tick(imp, hq)
     sv, sp = sev(tip, hq, cr)
     d, dp = decor(tail1, hq, cr)
-    c = Cell(cr, s1 + s2 + t + sv + d, prims + p1 + tp + sp + dp)
+    d2, dp2 = decor(tail2, hq, cr, idx=1, badge=False)
+    c = Cell(cr, s1 + s2 + t + sv + d + d2, prims + p1 + tp + sp + dp + dp2)
     c.tag = tag
     return c
 
@@ -1130,7 +1181,8 @@ def cell_headon(cr, X, h1, tag=""):
         sv = cd._severity_circle(px_, py_, cr.severity)
         sp = [(("d", (px_, py_), cd.SEV_R + 1.0), False)] if sv else []
         d, dp = decor(tail1, h1, cr)
-        c = Cell(cr, s1 + s2 + t + sv + d, prims + p2 + tp + sp + dp)
+        d2, dp2 = decor(tail2, h1 + 180, cr, idx=1, badge=False)
+        c = Cell(cr, s1 + s2 + t + sv + d + d2, prims + p2 + tp + sp + dp + dp2)
     else:
         half = cd.LANE_SEP * CS / 2
         tip1 = (mid[0] + lx * half + 18 * ca, mid[1] + ly * half + 18 * sa)
@@ -1139,7 +1191,8 @@ def cell_headon(cr, X, h1, tag=""):
         s2, tail2, p2 = unit_svg(tip2, h1 + 180, u[1], night)
         sv, sp = sev(tip1, h1, cr)
         d, dp = decor(tail1, h1, cr)
-        c = Cell(cr, s1 + s2 + sv + d, prims + p2 + sp + dp)
+        d2, dp2 = decor(tail2, h1 + 180, cr, idx=1, badge=False)
+        c = Cell(cr, s1 + s2 + sv + d + d2, prims + p2 + sp + dp + dp2)
     c.tag = tag
     return c
 
@@ -1157,7 +1210,8 @@ def cell_angle(cr, X, h1, h2, tag=""):
     s2, tail2, p2 = unit_svg(tip2, h2, u[1], night, shaft=shaft - 12)
     sv, sp = sev(tip1, h1, cr)
     d, dp = decor(tail1, h1, cr)
-    c = Cell(cr, s1 + s2 + sv + d, prims + p2 + sp + dp)
+    d2, dp2 = decor(tail2, h2, cr, idx=1, badge=False)
+    c = Cell(cr, s1 + s2 + sv + d + d2, prims + p2 + sp + dp + dp2)
     c.tag = tag
     return c
 
@@ -1178,11 +1232,13 @@ def cell_turn(cr, X, spec, tag=""):
                               shaft=_shaft() - (8 if typ != 25 else 0))
     if turner == 0:
         sv, sp = sev(tipx, exit_h, cr)
-        d, dp = decor(tailt, t_h, cr)
+        d, dp = decor(tailt, t_h, cr, idx=0)
+        d2, dp2 = decor(tailo, o_hd, cr, idx=1, badge=False)
     else:
         sv, sp = sev(page(po), o_hd, cr)
-        d, dp = decor(tailo, o_hd, cr)
-    c = Cell(cr, st + so + sv + d, prims + po_ + sp + dp)
+        d, dp = decor(tailo, o_hd, cr, idx=0)
+        d2, dp2 = decor(tailt, t_h, cr, idx=1, badge=False)
+    c = Cell(cr, st + so + sv + d + d2, prims + po_ + sp + dp + dp2)
     c.tag = tag
     return c
 

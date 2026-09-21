@@ -54,6 +54,9 @@ def four_leg_spec():
 
 
 def crash(cid, typ, units, on="10000001", frm="20000002", dist=0.0, ddir="", sev="O", night=False):
+    """Unit 1 carries the violation (is at fault) unless the units say otherwise."""
+    if units and all(u.violation is None for u in units):
+        units[0].violation = 12
     return cd.DiagramCrash(crash_id=cid, dt="01/02/2024 13:00", severity=sev, acc_typ=typ,
                            road_cond="D", night=night, units=units, on_road=on, from_road=frm,
                            dist_mi=dist, dist_dir=ddir)
@@ -66,12 +69,13 @@ def sample_crashes():
         crash("100000002", 21, [U(1, "E", 25, 4), U(2, "E", 0, 1)], night=True),
         crash("100000003", 21, [U(1, "W", 30, 4), U(2, "W", 5, 4)], sev="C"),
         crash("100000004", 30, [U(1, "E", 40, 4), U(2, "N", 20, 4)], sev="B"),      # angle
-        crash("100000005", 30, [U(1, "E", 35, 4), U(2, "N", 25, 4)]),
+        crash("100000005", 30, [U(1, "E", 35, 4, violation=0), U(2, "N", 25, 4, violation=13)]),  # unit 2 at fault
         crash("100000006", 23, [U(1, "W", 15, 8), U(2, "E", 45, 4)], sev="A"),      # left turn vs opposing
         crash("100000007", 26, [U(1, "N", 10, 7), U(2, "W", 40, 4)]),               # right turn, different roads
         crash("100000008", 1, [U(1, "E", 55, 4)], sev="C"),                          # ran off road right
         crash("100000009", 14, [U(1, "N", 10, 4)], on="20000002", frm="10000001", sev="B"),  # pedestrian
-        crash("100000010", 27, [U(1, "N", 30, 4), U(2, "S", 30, 4)], on="20000002", frm="10000001", sev="K"),
+        crash("100000010", 27, [U(1, "N", 30, 4, violation=33), U(2, "S", 30, 4, violation=33)],
+              on="20000002", frm="10000001", sev="K"),                              # both at fault
         crash("100000011", 21, [U(1, "E", 40, 4), U(2, "E", 0, 1)], dist=0.05, ddir="W"),   # 264 ft out the west leg
         crash("100000012", 28, [U(1, "W", 40, 4), U(2, "W", 35, 4)]),               # sideswipe same direction
     ]
@@ -174,6 +178,10 @@ def test_render_places_every_crash_without_overlap(tmp_path):
     scene.add_rect("signal", sb)
     placed, overflow, chosen = jd.place(jd.plan(crashes), scene)
     assert not overflow
+    # the fault indicator sits beside every unit whose driver was at fault, and nowhere else
+    for c in placed:
+        want = sum(1 for u in c.cr.units[:2] if u.violation)
+        assert c.svg.count(cd.MAGENTA) == want, (c.cr.crash_id, c.svg.count(cd.MAGENTA), want)
     for i, a in enumerate(placed):
         for b in placed[i + 1:]:
             for p, _ in a.prims:

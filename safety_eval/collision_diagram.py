@@ -125,6 +125,7 @@ class Unit:
     direction: str = ""
     speed: int | None = None
     maneuver: int | None = None
+    violation: int | None = None     # DMV-349 violation code; nonzero marks the driver at fault
 
 
 @dataclass
@@ -202,11 +203,13 @@ def read_data_csv(path: str) -> list[DiagramCrash]:
                 by_id[cid] = cr
                 order.append(cid)
             spd = (row.get("SPD_EST_NBR") or "").strip()
+            viol = (row.get("VIOLATION") or "").strip()
             cr.units.append(Unit(
                 number=int(row.get("UNT_NBR") or len(cr.units) + 1),
                 direction=(row.get("DIRECT") or "").strip().upper(),
                 speed=int(spd) if spd.isdigit() else None,
                 maneuver=int(row.get("MANEUVER") or 0) or None,
+                violation=int(viol) if viol.isdigit() else None,
             ))
     # The data file's row order is the plot order. TEAAS writes it that
     # way on purpose: an intersection study is ordered by date, a strip
@@ -248,7 +251,8 @@ def write_data_csv(path: str, crashes: list[DiagramCrash], county_nbr="",
                 cr.dt, sev_code.get(cr.severity, 5), cr.acc_typ, "2",
                 cond_code.get(cr.road_cond, 1), "1" if not cr.night else "5",
                 "1", "", u.speed if u.speed is not None else "",
-                "", u.maneuver or "", "", u.direction, u.number])
+                "", u.maneuver or "", u.violation if u.violation is not None else "",
+                u.direction, u.number])
     with open(path, "w", newline="") as fh:
         fh.write(buf.getvalue())
 

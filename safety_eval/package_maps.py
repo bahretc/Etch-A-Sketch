@@ -98,6 +98,9 @@ class MapSpec:
     aadt_limit_offsets: tuple = ((-120, 40), (120, -40))
     loc_limit_offsets: tuple = ((-110, 46), (110, -46))
     loc_shift_lon: float = -0.004   # nudge the aerial frame off a mosaic seam
+    # boxed notes with a leader, e.g. an estimated AADT on a leg with no
+    # station: [{"lat", "lon", "text", "off": [dx, dy], "maps": ["aadt"]}]
+    annotations: list = field(default_factory=list)
 
     @property
     def is_intersection(self) -> bool:
@@ -571,6 +574,14 @@ const XMARK='<svg width="27" height="27"><circle cx="13.5" cy="13.5" '+
   '<line x1="6.5" y1="6.5" x2="20.5" y2="20.5" stroke="#5E5320" '+
   'stroke-width="2.2"/><line x1="20.5" y1="6.5" x2="6.5" y2="20.5" '+
   'stroke="#5E5320" stroke-width="2.2"/></svg>';
+for(const m of (P.notes||[])){
+  const ap=cpt(m.ll), bc=[ap.x+m.off[0],ap.y+m.off[1]];
+  L.polyline([m.ll,cll(bc)],{color:"#000",weight:1.4,
+    interactive:false}).addTo(map);
+  lbl(cll(bc),m.txt,"bx",0,0,0,800);
+  L.circleMarker(m.ll,{radius:4,color:"#000",weight:1.4,fillColor:"#fff",
+    fillOpacity:1,interactive:false}).addTo(map);
+}
 for(const m of (P.limits||[])){
   const ap=cpt(m.ll), bc=[ap.x+m.off[0],ap.y+m.off[1]];
   L.polyline([m.ll,cll(bc)],{color:"#000",weight:1.4,
@@ -1059,6 +1070,9 @@ def aadt_payload(spec: MapSpec, cl: Centerline | None, ways: list,
         "roads": clip_ways(ways, b, cls),
         "stations": dots, "numbered": numbered, "panelLeaders": leaders,
         "limits": limits,
+        "notes": [{"ll": [float(a["lat"]), float(a["lon"])], "off": list(a.get("off", [120, 60])),
+                   "txt": str(a["text"]).replace("\n", "<br>")}
+                  for a in spec.annotations if "aadt" in a.get("maps", ["aadt"])],
         "crash": _crash_payload(spec, spec.aadt_label_offset),
         "labels": labels,
     }

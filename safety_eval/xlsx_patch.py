@@ -545,6 +545,7 @@ def xlsx_patch(path_in: str, path_out: str,
                             '<calcPr fullCalcOnLoad="1"/></workbook>')
                     data = text.encode("utf-8")
                 zout.writestr(info, data)
+    drop_calc_chain(path_out)
 
 
 # LibreOffice profile seed: force full recalculation of OOXML files on load
@@ -604,6 +605,7 @@ def replace_sheet_rows(path_in: str, path_out: str, sheet: str,
                                       '<calcPr fullCalcOnLoad="1" ', text, 1)
                     data = text.encode("utf-8")
                 zout.writestr(info, data)
+    drop_calc_chain(path_out)
 
 
 def render_row(row: int, cells: dict[str, object],
@@ -743,6 +745,52 @@ def recalc(path: str, timeout: int = 180) -> bool:
                       ignore_errors=True)
 
 
+CALC_CHAIN = "xl/calcChain.xml"
+_CALC_CHAIN_OVERRIDE = re.compile(
+    r'<Override\b[^>]*PartName="/xl/calcChain\.xml"[^>]*/>')
+_CALC_CHAIN_REL = re.compile(
+    r'<Relationship\b[^>]*Type="[^"]*/relationships/calcChain"[^>]*/>')
+
+
+def drop_calc_chain(path: str) -> bool:
+    """Remove ``xl/calcChain.xml`` from a patched package (docs/06).
+
+    A template's calculation chain lists every formula cell, in Excel's
+    own calculation order, with markers for array formulas and threads.
+    A patch that writes a value over a chained cell (the One Pager picks,
+    a previous project's rows) leaves the chain stale, and Excel then
+    repairs the file on open ("Removed Records: Formula from
+    /xl/calcChain.xml part"). Rewriting the chain ourselves does not help:
+    the markers cannot be reproduced without Excel's dependency engine,
+    and a chain that disagrees with the sheets is repaired just the same.
+
+    The chain is an optional cache. Excel rebuilds it silently on open when
+    the part is absent (openpyxl never writes one), so the patch removes
+    the part together with its content-type override and workbook
+    relationship. ``fullCalcOnLoad`` on ``calcPr`` then recomputes every
+    cell from the sheets. Returns True when a chain was removed.
+    """
+    with zipfile.ZipFile(path) as z:
+        members = z.infolist()
+        if CALC_CHAIN not in {i.filename for i in members}:
+            return False
+        payload = {i.filename: z.read(i.filename) for i in members}
+    ct = payload["[Content_Types].xml"].decode("utf-8")
+    payload["[Content_Types].xml"] = _CALC_CHAIN_OVERRIDE.sub("", ct).encode("utf-8")
+    rels_name = "xl/_rels/workbook.xml.rels"
+    if rels_name in payload:
+        rels = payload[rels_name].decode("utf-8")
+        payload[rels_name] = _CALC_CHAIN_REL.sub("", rels).encode("utf-8")
+    tmp = path + ".chain.tmp"
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+        for info in members:
+            if info.filename == CALC_CHAIN:
+                continue
+            zout.writestr(info, payload[info.filename])
+    os.replace(tmp, path)
+    return True
+
+
 @dataclass
 class IntegrityReport:
     ok: bool
@@ -758,7 +806,9 @@ def verify_integrity(original: str, output: str,
 
     ``allow_added``/``allow_modified`` name the exact members a deliberate
     picture embed touched (from add_sheet_picture); everything else is
-    still held byte-identical, and nothing may ever be removed.
+    still held byte-identical, and nothing may ever be removed. The one
+    exception is the calculation chain, which every patch drops on purpose
+    (see :func:`drop_calc_chain`).
     """
     rep = IntegrityReport(ok=True)
 
@@ -793,9 +843,10 @@ def verify_integrity(original: str, output: str,
     if defined_a != defined_b:
         rep.ok = False
         rep.problems.append("defined names changed")
-    if names_a - names_b:
+    missing = names_a - names_b - {CALC_CHAIN}
+    if missing:
         rep.ok = False
-        rep.problems.append(f"members missing from output: {sorted(names_a - names_b)}")
+        rep.problems.append(f"members missing from output: {sorted(missing)}")
     return rep
 
 

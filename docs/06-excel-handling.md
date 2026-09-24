@@ -11,6 +11,7 @@ The deliverable workbooks are NCDOT templates containing embedded drawings, imag
    - Respect sharedStrings: adding text means either appending shared strings and updating counts or using inline strings consistently.
 3. **One LibreOffice headless recalc pass at the end** so formula caches match the edited values (`soffice --headless --calc --convert-to xlsx` round-trip, or an equivalent recalc script). One pass only; repeated round-trips invite drift.
 4. **Verify after recalc**: extract and hash `xl/drawings/*` and `xl/media/*` from original and output; they must be byte-identical. Diff the sheet count, defined names, and image counts. On SS-6002M this check was the acceptance gate: all 15 sheets, 8 drawings, 6 media images byte-identical.
+5. **Drop `xl/calcChain.xml`** (with its `[Content_Types].xml` override and workbook relationship) from every patched package. The chain is Excel's cached calculation order for every formula cell, with markers for array formulas and threads. Writing a value over a chained cell leaves it stale, and Excel then repairs the file on open ("Removed Records: Formula from /xl/calcChain.xml part"). A chain rebuilt from the sheets is repaired just the same, because the markers cannot be reproduced without Excel's dependency engine (05-20-62123, 2026-09). Excel rebuilds the chain silently when the part is absent; `fullCalcOnLoad` on `calcPr` recomputes every cell. `xlsx_patch` and `replace_sheet_rows` do this, and `verify_integrity` allows only that member to go missing.
 
 ## When openpyxl writing is acceptable
 

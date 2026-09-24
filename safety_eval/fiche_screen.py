@@ -321,7 +321,8 @@ def screen_intersection_sheet(ws, legs: list, initial_ids, col=None,
                               junction: tuple | None = None,
                               radius_mi: float = 0.1,
                               off_lrs_nis: bool = False,
-                              cross_names=()) -> tuple[dict, dict]:
+                              cross_names=(), muni_ok=None,
+                              muni_names: dict | None = None) -> tuple[dict, dict]:
     """Fill IS?, colour, sort and banner an intersection fiche sheet.
 
     A wide-net fiche (every leg road, countywide) is screened leg by leg:
@@ -343,6 +344,13 @@ def screen_intersection_sheet(ws, legs: list, initial_ids, col=None,
     ?; with no coordinate it stays ?, since nothing rules it out. The coded
     distance is never used (docs/03).
 
+    ``muni_ok`` is the set of Muni. Codes a row may carry and still be at
+    the junction: the junction's own municipality plus "0" (rural, the
+    county outside every town). A row coded inside another municipality
+    (Creedmoor's Main Street when the junction is on Oxford's) is NIS
+    without a review; ``muni_names`` maps codes to names for the reason.
+    Off when None.
+
     ``off_lrs_nis`` is the docs/03 off-LRS rule for an intersection: a row
     mileposted on a linear reference that is none of the ``legs`` (PATTON
     downtown when the junction is on US 19's mileposting; I 240) cannot be
@@ -359,7 +367,9 @@ def screen_intersection_sheet(ws, legs: list, initial_ids, col=None,
 
     kind = _st.get(study)
     col = col or {"on": 2, "from": 5, "toward": 6, "mproad": 7, "mp": 8,
-                  "is": 9, "id": 12, "t": 14}
+                  "is": 9, "id": 12, "t": 14, "muni": 1}
+    muni_ok = {str(m).strip() for m in muni_ok} if muni_ok is not None else None
+    muni_names = {str(k): v for k, v in (muni_names or {}).items()}
     initial = {int(c) for c in initial_ids}
     by_route = {normalize_feature(lg.route): lg for lg in legs}
     by_alias = {}
@@ -392,12 +402,18 @@ def screen_intersection_sheet(ws, legs: list, initial_ids, col=None,
         except ValueError:
             icid = None
 
+        muni = str(ws.cell(row=r, column=col["muni"]).value or "").strip()
+        if muni.endswith(".0"):
+            muni = muni[:-2]
         if icid in initial:
             status, why = (("DEL", "animal, initial study")
                            if animal and kind.deletes_animals
                            else ("IS", "initial study"))
         elif animal:
             status, why = "NIS", "animal"
+        elif muni_ok is not None and muni and muni not in muni_ok:
+            status, why = "NIS", (f"in {muni_names.get(muni, 'municipality ' + muni)}, "
+                                  "not the junction's municipality")
         else:
             mp = _mp_key(ws.cell(row=r, column=col["mp"]).value)
             mileposted = bool(mproad) and mp < 999
@@ -456,7 +472,16 @@ def screen_intersection_sheet(ws, legs: list, initial_ids, col=None,
                 if coords and junction and icid in coords:
                     lat, lon = coords[icid]
                     d = haversine_mi(lat, lon, junction[0], junction[1])
-                if d is None:
+                if d is None and touched == 0 and on_key and fr and tw and not any(
+                        on_key in g for g in groups):
+                    # On a street that is no leg of this junction and
+                    # measured between two other named streets: none of the
+                    # three roads the fiche names reaches the junction. A
+                    # coordinate, when the row has one, outranks the names;
+                    # a row with a blank Toward stays unresolved.
+                    status, why = ("NIS", f"on {on}, between streets that "
+                                          "are no legs of the junction")
+                elif d is None:
                     status, why = "?", "unresolved, no coordinate"
                 elif d > radius_mi:
                     status, why = "NIS", f"coordinates {d * 5280:.0f} ft from the junction"

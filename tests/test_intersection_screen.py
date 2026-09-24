@@ -95,3 +95,43 @@ def test_an_hsip_study_deletes_an_initial_animal_and_ignores_the_rest():
     _, reasons = screen_intersection_sheet(ws, _legs(), [1, 11], study="hsip")
     assert reasons["11"][0] == "DEL"
     assert reasons["1"][0] == "IS"
+
+
+def test_another_municipality_is_NIS_before_any_placement():
+    """Oxford's Main Street and Creedmoor's share a fiche (05-20-62123):
+    a row coded in the other town cannot be at the junction whatever its
+    From and Toward say. Rural (0) and the junction's own town are placed
+    as usual; the rule is off when muni_ok is None."""
+    wb, ws = _sheet()
+    _row(ws, 13, 12, "US 19", "SR 1319", "TAMPA", "US 19", 10.157)   # green
+    ws.cell(row=13, column=1, value=131)
+    _row(ws, 14, 13, "US 19", "SR 1319", "TAMPA", "US 19", 10.157)
+    ws.cell(row=14, column=1, value="0")
+    _row(ws, 15, 14, "US 19", "SR 1319", "TAMPA", "US 19", 10.157)
+    ws.cell(row=15, column=1, value=11.0)
+    _, reasons = screen_intersection_sheet(
+        ws, _legs(), [1], muni_ok={"11", "0"}, muni_names={"131": "Creedmoor"})
+    assert reasons["12"] == ("NIS", "in Creedmoor, not the junction's municipality")
+    assert reasons["13"][0] == "?" and reasons["14"][0] == "?"
+    wb, ws = _sheet()
+    _row(ws, 13, 12, "US 19", "SR 1319", "TAMPA", "US 19", 10.157)
+    ws.cell(row=13, column=1, value=131)
+    _, reasons = screen_intersection_sheet(ws, _legs(), [1])
+    assert reasons["12"][0] == "?"
+
+
+def test_a_row_between_streets_that_are_no_legs_is_NIS_unless_a_coordinate_says_otherwise():
+    """On SR 1522 from SALEM toward SR 1195: none of the three roads
+    reaches the junction, so the crash is somewhere else. With a
+    coordinate the coordinate decides instead."""
+    wb, ws = _sheet()
+    _row(ws, 13, 12, "COXE", "ASTON", "LEXINGTON", "", 999.999)
+    _row(ws, 14, 13, "COXE", "ASTON", "LEXINGTON", "", 999.999)
+    _, reasons = screen_intersection_sheet(
+        ws, _legs(), [1], coords={13: (35.5830, -82.6060)},
+        junction=(35.583003, -82.606048))
+    assert reasons["12"] == ("NIS", "on COXE, between streets that are no legs of the junction")
+    assert reasons["13"][0] == "?" and "ft from the junction" in reasons["13"][1]
+    # the existing COXE rows with a blank Toward still fall through to
+    # the coordinate fallback
+    assert reasons["9"][0] == "?" and reasons["10"][0] == "?"

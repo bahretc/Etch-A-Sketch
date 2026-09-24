@@ -5,7 +5,7 @@
 | Crash | Date | Period | Branch | Status | Dist ft | Type | V1 | V2 | Fault | Conf | Location note | Flag |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 105034371 | 2017-03-10 | before | candidate | NIS | 75 | Backing | backing | parked | 1 | medium | location block 100' N of Front St, diagram in the Post Office angled parking row on Main (140' to 250' N of Spring); not placed within 150' | adjudicated |
-| 105172416 | 2017-07-19 | before | initial study | IS | 60 | Backing | EBT | backing | 2 | medium | backing from a W Spring angled space beside the circle, Post Office and Library on the diagram, about 60' W of Main | adjudicated |
+| 105172416 | 2017-07-19 | before | initial study | IS | 60 | Backing | EBT | backing | 2 | medium | backing from a W Spring angled space beside the roundabout, Post Office and Library on the diagram, about 60' W of Main | adjudicated |
 | 105202508 | 2017-08-18 | before | candidate | NIS | 1730 | RE | EBT | EBL | 1 | high | at Orange St per diagram, 1,730' W of Main |  |
 | 105220466 | 2017-09-13 | before | candidate | NIS | 710 | RE | NBR | NBR | 1 | high | on SR 1602 merge ramp 50' S of US 158 per diagram and narrative, >150' |  |
 | 105255322 | 2017-10-17 | before | candidate | NIS | 160 | Backing | parked | backing | 2 | medium | in Main St angled parking mid-block between Williamsboro and Spring per diagram, about 160' N of Spring, >150' |  |
@@ -39,10 +39,10 @@
 | 107479858 | 2023-09-22 | after | initial study | DEL | 50 | Backing | backing | SBT | 1 | low | backing from a Main St space into SB unit 2 per narrative, no diagram; SB traffic passes the west side Post Office row, which starts about 140' N of Spring; not placed within 150' | adjudicated |
 | 107674222 | 2024-04-02 | after | initial study | DEL | 75 | Backing | backing | SBT | 1 | high | Post Office angled parking row on Main per diagram (row starts about 140' N of Spring); coded at Spring with no distance, >150' | adjudicated |
 | 107817083 | 2024-08-01 | after | initial study | DEL | 75 | Backing | backing | SBT | 1 | high | Post Office angled parking row on Main per diagram, unit 1 ran up on the Post Office curb; coded at Spring with no distance, >150' | adjudicated |
-| 107863132 | 2024-09-20 | after | initial study | IS | 0 | SSSD | SBT | SBT | 1 | high | entering the traffic circle per narrative, at Spring St per location block | adjudicated |
+| 107863132 | 2024-09-20 | after | initial study | IS | 0 | SSSD | SBT | SBT | 1 | high | entering the roundabout per narrative, at Spring St per location block | adjudicated |
 | 107874844 | 2024-10-07 | after | candidate | NIS | 875 | SSSD | WBL | WBT | 2 | high | at MLK Jr Ave per narrative and location block, 875' W of Main |  |
 | 107935640 | 2024-11-12 | after | candidate | NIS | 875 | LTSR | WBL | EBT | 1 | high | at MLK Jr Ave per narrative, 875' W of Main |  |
-| 107982237 | 2025-01-08 | after | initial study | IS | 0 | RTDR | NBT | WBR | 2 | high | in the traffic circle at Main and E Spring per narrative, Unit 2 entered from E Spring through the yield | adjudicated |
+| 107982237 | 2025-01-08 | after | initial study | IS | 0 | RTDR | NBT | WBR | 2 | high | in the roundabout at Main and E Spring per narrative, Unit 2 entered from E Spring through the yield | adjudicated |
 | 108004793 | 2025-01-25 | after | initial study | DEL | 100 | Backing | backing | parked | 1 | high | drawn in front of the U.S. Post Office, 144 Main St, mid-building per diagram, about 200' N of Spring; coded 100' NW of Spring | adjudicated |
 | 108080999 | 2025-04-16 | after | candidate | NIS | 500 | Backing | backing | parked | 1 | low | backed into parked car at 200 W Spring St per narrative, no diagram (vehicles moved), coded toward MLK; 200 block is W of Wall St, >150' | no verdict on a call that needed one |
 | 108089406 | 2025-04-24 | after | initial study | DEL | 50 | Backing | parked | backing | 2 | high | backing from a Post Office parking space on Main per narrative, no diagram; the row starts about 140' N of Spring, >150' | adjudicated |

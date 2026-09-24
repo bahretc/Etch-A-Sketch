@@ -4,6 +4,7 @@
 
 - Plain, peer-to-peer, understated. No LLM phrasing, no flourishes, no wordplay.
 - **No em dashes anywhere.** Use commas, periods, colons, or parentheses.
+- **A roundabout or mini-roundabout is never "the circle" or "a traffic circle"** in any text, comment or note (engineer, 2026-09). Write roundabout.
 - Brief; never restate values already visible in the adjacent table.
 - Deliverable text is formal; internal QC notes to a reviewer drop tentative language ("I guess" comes out).
 - Sentiment in client emails stays understated and plain.

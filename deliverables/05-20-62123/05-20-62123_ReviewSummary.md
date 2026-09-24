@@ -1,6 +1,6 @@
 # 05-20-62123 report review summary
 
-45 of 45 reports reviewed; 6 flagged for adjudication; missing []
+45 of 45 reports reviewed; 0 flagged for adjudication; missing []
 
 | Crash | Date | Period | Branch | Status | Dist ft | Type | V1 | V2 | Fault | Conf | Location note | Flag |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -18,12 +18,12 @@
 | 105563645 | 2018-08-03 | before | candidate | NIS | 2400 | RE | NBT | NBT | 1 | high | rural SR 1602 at Shalag US Inc PVA, 0.6 mi S of US 158 outside town per location block and diagram, >150' |  |
 | 105733123 | 2019-01-02 | before | candidate | NIS | 300 | Backing | WBL | backing |  | high | at Little John St per diagram and narrative, backing from Main St parking space, >150' |  |
 | 105774815 | 2019-02-15 | before | initial study | DEL | 100 | Backing | backing | parked | 1 | medium | drawn in the Post Office angled row opposite the middle of the building per diagram, about 200' N of Spring; coded 100' N | adjudicated |
-| 105803061 | 2019-03-16 | before | candidate | NIS | 700 | Parked | NBR | parked | 1 | medium | angled parking on Main 60' S of Williamsboro per location block and diagram, about 700' N of Spring, >150' | no verdict on a call that needed one |
+| 105803061 | 2019-03-16 | before | candidate | NIS | 700 | Parked | NBR | parked | 1 | medium | angled parking on Main 60' S of Williamsboro per location block and diagram, about 700' N of Spring, >150' | adjudicated |
 | 106017912 | 2019-10-01 | before | candidate | NIS | 120 | Backing | backing | NBT | 1 | medium | entirely in the SunTrust Bank parking lot (PVA) per diagram and narrative; parking lot crash | adjudicated |
 | 106036274 | 2019-10-23 | before | candidate | NIS | 20 | Parked | parked | backing | 2 | low | in a PVA off W Spring per location block, no diagram (hit and run); parking lot crash | adjudicated |
 | 106038134 | 2019-10-25 | before | candidate | NIS | 90 | Backing | backing | SBT | 1 | medium | Post Office angled parking on Main per diagram, coded 500' N of Spring; >150' | adjudicated |
 | 106097127 | 2019-12-06 | before | initial study | IS | 20 | RE | WBT | WBT | 1 | high | RE at the E Spring stop line at Main per diagram and narrative | adjudicated |
-| 106197362 | 2020-03-25 | before | candidate | NIS | 340 | RE | SBT | SBT | 1 | medium | impact drawn N of Little John St in SB Main lane per diagram, unit 1 fled down Little John, >150' | no verdict on a call that needed one |
+| 106197362 | 2020-03-25 | before | candidate | NIS | 340 | RE | SBT | SBT | 1 | medium | impact drawn N of Little John St in SB Main lane per diagram, unit 1 fled down Little John, >150' | adjudicated |
 | 106412908 | 2020-11-17 | before | initial study | IS | 50 | Parked | WBT | parked | 1 | high | unit 1 crossed Main onto Spring and struck a parked car in the first angled spaces past the corner per diagram and narrative; within 150' | adjudicated |
 | 106558296 | 2021-04-23 | before | candidate | NIS | 1100 | RE | SBT | SBT | 1 | high | at E Front St crosswalk per diagram and narrative, 1,100' S of Spring |  |
 | 106594525 | 2021-05-26 | before | initial study | IS | 0 | LTSR | WBT | EBL | 2 | high | at Main and Spring per narrative, 0 ft | adjudicated |
@@ -35,7 +35,7 @@
 | 107195886 | 2022-10-14 | after | candidate | NIS | 1730 | LTSR | SBL | NBT | 1 | high | at Orange St per narrative and location block, 1,730' W of Main |  |
 | 107343387 | 2023-05-17 | after | candidate | NIS | 60 | Parked | SBT | parked | 1 | medium | parked at the Post Office on Main, coded 150' N of Little John (about 470' N of Spring); >150' | adjudicated |
 | 107433763 | 2023-08-24 | after | candidate | NIS | 100 | Backing | backing | WBT | 1 | medium | entirely in the Library parking lot off W Spring per diagram and narrative; parking lot crash | adjudicated |
-| 107470908 | 2023-09-27 | after | candidate | NIS | 320 | RE | NBT | NBT | 1 | medium | at Little John St per location block, no diagram, narrative does not place it nearer Spring, >150' | no verdict on a call that needed one |
+| 107470908 | 2023-09-27 | after | candidate | NIS | 320 | RE | NBT | NBT | 1 | medium | at Little John St per location block, no diagram, narrative does not place it nearer Spring, >150' | adjudicated |
 | 107479858 | 2023-09-22 | after | initial study | DEL | 50 | Backing | backing | SBT | 1 | low | backing from a Main St space into SB unit 2 per narrative, no diagram; SB traffic passes the west side Post Office row, which starts about 140' N of Spring; not placed within 150' | adjudicated |
 | 107674222 | 2024-04-02 | after | initial study | DEL | 75 | Backing | backing | SBT | 1 | high | Post Office angled parking row on Main per diagram (row starts about 140' N of Spring); coded at Spring with no distance, >150' | adjudicated |
 | 107817083 | 2024-08-01 | after | initial study | DEL | 75 | Backing | backing | SBT | 1 | high | Post Office angled parking row on Main per diagram, unit 1 ran up on the Post Office curb; coded at Spring with no distance, >150' | adjudicated |
@@ -44,10 +44,10 @@
 | 107935640 | 2024-11-12 | after | candidate | NIS | 875 | LTSR | WBL | EBT | 1 | high | at MLK Jr Ave per narrative, 875' W of Main |  |
 | 107982237 | 2025-01-08 | after | initial study | IS | 0 | RTDR | NBT | WBR | 2 | high | in the roundabout at Main and E Spring per narrative, Unit 2 entered from E Spring through the yield | adjudicated |
 | 108004793 | 2025-01-25 | after | initial study | DEL | 100 | Backing | backing | parked | 1 | high | drawn in front of the U.S. Post Office, 144 Main St, mid-building per diagram, about 200' N of Spring; coded 100' NW of Spring | adjudicated |
-| 108080999 | 2025-04-16 | after | candidate | NIS | 500 | Backing | backing | parked | 1 | low | backed into parked car at 200 W Spring St per narrative, no diagram (vehicles moved), coded toward MLK; 200 block is W of Wall St, >150' | no verdict on a call that needed one |
+| 108080999 | 2025-04-16 | after | candidate | NIS | 500 | Backing | backing | parked | 1 | low | backed into parked car at 200 W Spring St per narrative, no diagram (vehicles moved), coded toward MLK; 200 block is W of Wall St, >150' | adjudicated |
 | 108089406 | 2025-04-24 | after | initial study | DEL | 50 | Backing | parked | backing | 2 | high | backing from a Post Office parking space on Main per narrative, no diagram; the row starts about 140' N of Spring, >150' | adjudicated |
-| 108099425 | 2025-05-05 | after | candidate | NIS | 760 | Backing | backing | SBT | 1 | low | backing from Main St parking space, coded from Hillsboro toward Spring with distance blank, diagram shows no cross street or landmark; not placed within 150' of Spring | no verdict on a call that needed one |
-| 108256216 | 2025-09-29 | after | candidate | NIS | 1000 | LTDR | WBL | EBT | 1 | medium | T&M Foodmart PVA on W Spring, drawn between MLK Jr Ave and Granville St on 106955408, about 1,000' W of Main | no verdict on a call that needed one |
+| 108099425 | 2025-05-05 | after | candidate | NIS | 760 | Backing | backing | SBT | 1 | low | backing from Main St parking space, coded from Hillsboro toward Spring with distance blank, diagram shows no cross street or landmark; not placed within 150' of Spring | adjudicated |
+| 108256216 | 2025-09-29 | after | candidate | NIS | 1000 | LTDR | WBL | EBT | 1 | medium | T&M Foodmart PVA on W Spring, drawn between MLK Jr Ave and Granville St on 106955408, about 1,000' W of Main | adjudicated |
 | 108526964 | 2026-06-12 | after | candidate | NIS | 120 | Backing | backing | parked | 1 | medium | entirely in the Post Office parking lot off W Spring per diagram; parking lot crash | adjudicated |
 
 ## Dissent and fixes
@@ -65,4 +65,4 @@
 - Target Crashes: Failed to Yield: before 2, after 2
 - Target Crashes: Ran Stop Sign: before 1, after 0
 - Rear End Crashes: before 1, after 0
-- On-Street Parking Maneuver Crashes: before 3, after 0
+- On-Street Parking Crashes: before 3, after 0

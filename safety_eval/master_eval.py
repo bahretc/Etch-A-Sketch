@@ -39,6 +39,16 @@ _COLUMNS = {
     "division (web)": "division_web",
     "county (web)": "county_web",
     "evaluation comments": "comments",
+    # cost breakdown and B/C for the Total Cost Estimate bullet (docs/05)
+    "contract cost": "contract_cost",
+    "pe cost": "pe_cost",
+    "row cost": "row_cost",
+    "right of way cost": "row_cost",
+    "utility cost": "utility_cost",
+    "companion funding amount": "companion_cost",
+    "b/c": "bc_ratio",
+    "statement of problem": "problem",
+    "severity index": "severity_index",
 }
 
 _SHEET_HINT = re.compile(r"projects", re.I)
@@ -147,6 +157,20 @@ def to_assumptions_data(row: dict) -> AssumptionsData:
     correctable = _plain(row.get("correctable"))
     if dev and correctable:
         dev += f" ({correctable} correctable per project development)"
+    si = _plain(row.get("severity_index"))
+    if dev and si:
+        dev += f"; severity index {si}"
+
+    breakdown = []
+    for role, label in (("contract_cost", "Construction"), ("pe_cost", "PE"),
+                        ("row_cost", "ROW"), ("utility_cost", "Utilities"),
+                        ("companion_cost", "Companion funding")):
+        cost = _fmt_cost(row.get(role))
+        if cost and cost != "$0":
+            breakdown.append(f"{label}: {cost}")
+    bc = row.get("bc_ratio")
+    bc_text = (f"{float(bc):.2f}" if isinstance(bc, (int, float))
+               else _plain(bc))
 
     return AssumptionsData(
         order_id=_plain(row.get("order_id")).split(".")[0],
@@ -161,7 +185,10 @@ def to_assumptions_data(row: dict) -> AssumptionsData:
         signal_id=(signal if signal and signal.upper() not in
                    ("N/A", "NA", "NONE") else None),
         countermeasure=_plain(row.get("countermeasure")),
+        statement_of_problem=_plain(row.get("problem")),
         project_cost=_fmt_cost(row.get("cost")),
+        cost_breakdown=breakdown,
+        bc_ratio=bc_text,
         project_completion=_fmt_completion(row.get("completion")),
         project_dev_summary=dev,
     )

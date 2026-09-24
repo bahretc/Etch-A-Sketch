@@ -79,3 +79,33 @@ def test_generated_draft_passes_style_gate(master, tmp_path):
     assert "—" not in data.countermeasure
     out = str(tmp_path / "draft.docx")
     generate_assumptions_email(data, out)             # style gate enforces
+
+
+def test_cost_breakdown_bc_and_problem(tmp_path):
+    """The Total Cost Estimate bullet carries the breakdown and B/C (docs/05);
+    the columns come from the real 032525 sheet (05-20-62123 row)."""
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "SS-HE Projects - 032525"
+    ws.append(["", "banner"])
+    ws.append(["#", "Evaluation Order Number", "TOTAL COST ESTIMATE (From DB)",
+               "Crash History (from DB)", "PE Cost", "PE App'd (TMSD)",
+               "Contract Cost", "Companion Funding Amount", "B/C",
+               "Statement of Existing Physical Conditions",
+               "Statement of Problem", "Severity Index"])
+    ws.append([1, 41000076579, 278000,
+               "4 total injury crashes.  CR = 3.16 total injury crashes",
+               22000, 22000, 100000, 156000, 8.52,
+               "Spring St intersects with Main St.",
+               "Angle type crashes are occurring.", 2.56])
+    path = str(tmp_path / "m.xlsx")
+    wb.save(path)
+    data = to_assumptions_data(find_assignment(path, "41000076579"))
+    assert data.project_cost == "$278,000"
+    assert data.cost_breakdown == ["Construction: $100,000", "PE: $22,000",
+                                   "Companion funding: $156,000"]
+    assert data.bc_ratio == "8.52"
+    assert data.statement_of_problem == "Angle type crashes are occurring."
+    assert data.project_dev_summary.endswith("severity index 2.56")

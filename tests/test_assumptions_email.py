@@ -66,3 +66,27 @@ def test_yaml_loader(tmp_path):
     assert d.signal_id == "n/a"
     assert d.construction_months == 14
     assert d.teaas_date == date(2026, 5, 31)
+
+
+def test_total_cost_estimate_carries_breakdown_and_bc(tmp_path):
+    from dataclasses import replace
+
+    data = replace(DATA, project_cost="$278,000",
+                   cost_breakdown=["Construction: $100,000", "PE: $22,000"],
+                   bc_ratio="8.52")
+    out = str(tmp_path / "x.docx")
+    generate_assumptions_email(data, out)
+    text = _doc_text(out)
+    lines = text.splitlines()
+    i = lines.index("Total Cost Estimate: $278,000")
+    assert lines[i + 1:i + 4] == ["Construction: $100,000", "PE: $22,000",
+                                  "B/C Ratio: 8.52"]
+    assert lines[i + 4].startswith("Project Completion:")
+
+
+def test_yaml_loader_reads_cost_breakdown(tmp_path):
+    p = tmp_path / "a.yaml"
+    p.write_text("order_id: '1'\ncost_breakdown:\n  - 'PE: $22,000'\n"
+                 "bc_ratio: 8.52\n")
+    d = load_assumptions_yaml(str(p))
+    assert d.cost_breakdown == ["PE: $22,000"] and d.bc_ratio == "8.52"

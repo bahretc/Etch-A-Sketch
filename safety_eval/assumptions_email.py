@@ -30,6 +30,8 @@ class AssumptionsData:
     countermeasure: str = ""
     statement_of_problem: str = ""
     project_cost: str = ""
+    cost_breakdown: list = field(default_factory=list)     # sub-bullets
+    bc_ratio: str = ""                  # "8.52"; sub-bullet under the cost
     project_completion: str = ""
     completion_notes: list = field(default_factory=list)   # sub-bullets
     teaas_date: date | None = None      # for computed time periods
@@ -88,6 +90,7 @@ def generate_assumptions_email(data: AssumptionsData, output_path: str) -> str:
         if value:
             check_style(str(value), name)
     for i, note in enumerate(list(data.completion_notes)
+                             + list(data.cost_breakdown)
                              + list(data.additional_notes)):
         check_style(str(note), f"note[{i}]")
 
@@ -119,7 +122,13 @@ def generate_assumptions_email(data: AssumptionsData, output_path: str) -> str:
         bullet("Signal ID", data.signal_id or "n/a")
     bullet("Countermeasure", data.countermeasure or "n/a")
     bullet("Statement of Problem", data.statement_of_problem or "n/a")
-    bullet("Project Cost", data.project_cost or "n/a")
+    # docs/05: Total Cost Estimate is one main bullet carrying the
+    # Construction / PE / ROW-Utilities breakdown and the B/C ratio
+    bullet("Total Cost Estimate", data.project_cost or "n/a")
+    for item in data.cost_breakdown:
+        bullet("", str(item), style="List Bullet 2")
+    if data.bc_ratio:
+        bullet("", f"B/C Ratio: {data.bc_ratio}", style="List Bullet 2")
     bullet("Project Completion", data.project_completion or "n/a")
     for note in data.completion_notes:
         bullet("", str(note), style="List Bullet 2")
@@ -173,6 +182,8 @@ def load_assumptions_yaml(path: str) -> AssumptionsData:
         countermeasure=str(d.get("countermeasure", "")),
         statement_of_problem=str(d.get("statement_of_problem", "")),
         project_cost=str(d.get("project_cost", "")),
+        cost_breakdown=list(d.get("cost_breakdown", []) or []),
+        bc_ratio=str(d.get("bc_ratio", "") or ""),
         project_completion=str(d.get("project_completion", "")),
         completion_notes=list(d.get("completion_notes", []) or []),
         teaas_date=_as_date(d.get("teaas_date")),

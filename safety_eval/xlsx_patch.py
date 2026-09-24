@@ -684,7 +684,118 @@ def _cache_map(sheet_xml: str) -> dict[str, tuple[str | None, str | None]]:
     return out
 
 
-def recalc(path: str, timeout: int = 180) -> bool:
+#: Excel functions (the ``_xlfn.`` namespace, Excel 2021 and 365) that the
+#: LibreOffice builds used for the recalc pass do not implement. LibreOffice
+#: answers #NAME? for them, or the IFERROR fallback when wrapped, so their
+#: caches (and those of every cell that depends on them) keep the value
+#: Excel itself stored in the template. Excel recomputes on open regardless
+#: (fullCalcOnLoad); this keeps the stored caches honest for previews and
+#: for tools that read cached values.
+EXCEL_ONLY_FUNCTIONS = frozenset({
+    "XLOOKUP", "XMATCH", "FILTER", "SORT", "SORTBY", "UNIQUE", "SEQUENCE",
+    "RANDARRAY", "LET", "LAMBDA", "MAP", "REDUCE", "SCAN", "MAKEARRAY",
+    "BYROW", "BYCOL", "ISOMITTED", "REGEXEXTRACT", "REGEXTEST",
+    "REGEXREPLACE", "TEXTSPLIT", "TEXTBEFORE", "TEXTAFTER", "VSTACK",
+    "HSTACK", "TAKE", "DROP", "CHOOSECOLS", "CHOOSEROWS", "TOCOL", "TOROW",
+    "WRAPROWS", "WRAPCOLS", "EXPAND", "IMAGE", "GROUPBY", "PIVOTBY",
+    "TRIMRANGE", "PERCENTOF", "ARRAYTOTEXT", "VALUETOTEXT"})
+
+_XLFN_RE = re.compile(r"_xlfn\.(?:_xlws\.)?([A-Z][A-Z0-9.]*)\(")
+_STRING_LIT_RE = re.compile(r'"(?:[^"]|"")*"')
+_REF_RE = re.compile(
+    r"(?<![\w$.\]])(?:(?:'((?:[^']|'')+)'|([A-Za-z_][\w.]*))!)?"
+    r"(\$?)([A-Z]{1,3})(\$?)(\d+)(?::(\$?)([A-Z]{1,3})(\$?)(\d+))?(?![\w(!])")
+_COLRANGE_RE = re.compile(
+    r"(?<![\w$.\]])(?:(?:'((?:[^']|'')+)'|([A-Za-z_][\w.]*))!)?"
+    r"\$?([A-Z]{1,3}):\$?([A-Z]{1,3})(?![\w(!])")
+
+
+def _col_letters(n: int) -> str:
+    s = ""
+    while n:
+        n, r = divmod(n - 1, 26)
+        s = chr(65 + r) + s
+    return s
+
+
+def _formula_ranges(text: str, own: str, dr: int = 0, dc: int = 0):
+    """(sheet, c1, r1, c2, r2) boxes a formula reads; relative parts shift
+    by (dr, dc) for a shared-formula child."""
+    text = _STRING_LIT_RE.sub('""', text)
+    out = []
+    for m in _REF_RE.finditer(text):
+        sheet = (m.group(1) or "").replace("''", "'") or m.group(2) or own
+        c1 = _col_index(m.group(4)) + (0 if m.group(3) else dc)
+        r1 = int(m.group(6)) + (0 if m.group(5) else dr)
+        if m.group(8):
+            c2 = _col_index(m.group(8)) + (0 if m.group(7) else dc)
+            r2 = int(m.group(10)) + (0 if m.group(9) else dr)
+        else:
+            c2, r2 = c1, r1
+        out.append((sheet, min(c1, c2), min(r1, r2), max(c1, c2), max(r1, r2)))
+    for m in _COLRANGE_RE.finditer(text):
+        sheet = (m.group(1) or "").replace("''", "'") or m.group(2) or own
+        a, b = _col_index(m.group(3)), _col_index(m.group(4))
+        out.append((sheet, min(a, b), 1, max(a, b), 1_048_576))
+    return out
+
+
+def excel_only_cells(path: str) -> set[tuple[str, str]]:
+    """(sheet, ref) of every formula cell LibreOffice cannot evaluate like
+    Excel: cells calling an :data:`EXCEL_ONLY_FUNCTIONS` function, and every
+    formula cell that reads one of those, transitively."""
+    files = sheet_files(path)
+    formulas: dict[tuple[str, str], list] = {}
+    tainted: set[tuple[str, str]] = set()
+    with zipfile.ZipFile(path) as z:
+        for sheet, member in files.items():
+            xml = z.read(member).decode("utf-8")
+            masters: dict[str, tuple[str, int, int]] = {}
+            for m in _CELL_RE.finditer(xml):
+                ref, body = m.group(1), m.group(3) or ""
+                fm = re.search(r"<f\b([^>]*)>(.*?)</f>|<f\b([^>]*)/>", body, re.S)
+                if not fm:
+                    continue
+                attrs = fm.group(1) if fm.group(1) is not None else fm.group(3)
+                text = fm.group(2) or ""
+                si = re.search(r'\bsi="(\d+)"', attrs or "")
+                row, col = _row_of(ref), _col_index(_col_of(ref))
+                if text:
+                    from xml.sax.saxutils import unescape
+                    text = unescape(text, {"&quot;": '"', "&apos;": "'"})
+                    if si:
+                        masters[si.group(1)] = (text, row, col)
+                    ranges = _formula_ranges(text, sheet)
+                elif si and si.group(1) in masters:
+                    text, mrow, mcol = masters[si.group(1)]
+                    ranges = _formula_ranges(text, sheet, row - mrow, col - mcol)
+                else:
+                    continue
+                formulas[(sheet, ref)] = ranges
+                if any(f in EXCEL_ONLY_FUNCTIONS for f in _XLFN_RE.findall(text)):
+                    tainted.add((sheet, ref))
+    if not tainted:
+        return tainted
+    changed = True
+    while changed:
+        changed = False
+        boxes = {}
+        for sheet, ref in tainted:
+            boxes.setdefault(sheet, []).append((_col_index(_col_of(ref)), _row_of(ref)))
+        for key, ranges in formulas.items():
+            if key in tainted:
+                continue
+            for sheet, c1, r1, c2, r2 in ranges:
+                if any(c1 <= c <= c2 and r1 <= r <= r2
+                       for c, r in boxes.get(sheet, ())):
+                    tainted.add(key)
+                    changed = True
+                    break
+    return tainted
+
+
+def recalc(path: str, timeout: int = 180,
+           assume: dict[str, dict[str, object]] | None = None) -> bool:
     """One LibreOffice recalc pass that PRESERVES the patched file (docs/06).
 
     A naive ``--convert-to xlsx`` round-trip rewrites drawings XML and fails
@@ -693,10 +804,31 @@ def recalc(path: str, timeout: int = 180) -> bool:
     recalculated formula caches (``<v>`` and the cached-type ``t`` attribute)
     are transplanted back into the patched file's formula cells.  Drawings,
     media, styles, and rels remain exactly as :func:`xlsx_patch` wrote them.
+
+    Two places where LibreOffice and Excel part ways are handled here:
+
+    * cells that call an Excel-only function, and their dependents, keep the
+      cache Excel stored (see :func:`excel_only_cells`);
+    * ``assume`` ({sheet: {ref: value}}) computes the caches as if those
+      input cells held those values, while the file keeps its own. Use it
+      only where the template's formulas treat the two alike, e.g. a blank
+      severity the evaluation workbook counts as "O": LibreOffice trims a
+      trailing blank cell out of a COUNTIFS range, Excel does not.
     """
-    converted = _lo_convert(path, timeout=timeout)
+    source = path
+    tmpdir = None
+    if assume:
+        tmpdir = tempfile.mkdtemp(prefix="assume-")
+        source = os.path.join(tmpdir, os.path.basename(path))
+        xlsx_patch(path, source, edits={
+            sheet: [CellEdit(ref, value) for ref, value in cells.items()]
+            for sheet, cells in assume.items()})
+    converted = _lo_convert(source, timeout=timeout)
     if converted is None:
+        if tmpdir:
+            shutil.rmtree(tmpdir, ignore_errors=True)
         return False
+    keep = excel_only_cells(path)
     try:
         ours = sheet_files(path)
         theirs = sheet_files(converted)
@@ -724,6 +856,8 @@ def recalc(path: str, timeout: int = 180) -> bool:
                     return m.group(0)          # not a formula cell
                 if ref not in caches:
                     return m.group(0)
+                if (sheet_name, ref) in keep and "<v>" in body:
+                    return m.group(0)          # Excel's own cache stands
                 t_new, v_new = caches[ref]
                 attrs_wo_t = re.sub(r'\s+t="[^"]*"', "", attrs)
                 t_attr = f' t="{t_new}"' if t_new else ""
@@ -743,6 +877,8 @@ def recalc(path: str, timeout: int = 180) -> bool:
         # temp dir is two levels above the produced file (mkdtemp/out/file)
         shutil.rmtree(os.path.dirname(os.path.dirname(converted)),
                       ignore_errors=True)
+        if tmpdir:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 CALC_CHAIN = "xl/calcChain.xml"
@@ -791,6 +927,122 @@ def drop_calc_chain(path: str) -> bool:
     return True
 
 
+_LINK_REF_RE = re.compile(
+    r"'\[(\d+)\]((?:[^']|'')+)'!|\[(\d+)\]([A-Za-z_][\w.]*)!|\[(\d+)\]")
+_FORMULA_ELEMENTS = re.compile(
+    r"(<(f|formula|formula1|formula2|xm:f|definedName)\b[^>]*>)(.*?)(</\2>)", re.S)
+
+
+def drop_external_links(path: str, drop, names: dict[str, str] | None = None
+                        ) -> list[str]:
+    """Remove external workbook links that point at stale copies of THIS
+    workbook, re-homing their references inside the file (docs/06).
+
+    ``drop`` holds 1-based link indexes, in the order of the workbook's
+    ``externalReferences`` (the ``[n]`` of ``[n]Sheet!A1``). Every formula,
+    validation or defined-name reference ``[n]Sheet!`` becomes the internal
+    ``Sheet!``; the sheet must exist here, or its defined names must be
+    listed in ``names`` ({name: new definition}). Links that stay are
+    renumbered. The link parts, their rels, content-type overrides and
+    workbook relationships go. Returns the removed member names (for
+    :func:`verify_integrity`'s ``allow_removed``).
+    """
+    drop = set(drop)
+    names = names or {}
+    with zipfile.ZipFile(path) as z:
+        members = z.infolist()
+        payload = {i.filename: z.read(i.filename) for i in members}
+    wb = payload["xl/workbook.xml"].decode("utf-8")
+    rels_name = "xl/_rels/workbook.xml.rels"
+    rels = payload[rels_name].decode("utf-8")
+    block = re.search(r"<externalReferences>(.*?)</externalReferences>", wb, re.S)
+    if not block:
+        return []
+    rids = re.findall(r'r:id="(rId\d+)"', block.group(1))
+    if not drop <= set(range(1, len(rids) + 1)):
+        raise ValueError(f"link index out of range: {sorted(drop)} of {len(rids)}")
+    targets = {}
+    for rel in re.findall(r"<Relationship\b[^>]*>", rels):
+        rid = re.search(r'\bId="(rId\d+)"', rel)
+        tgt = re.search(r'\bTarget="([^"]+)"', rel)
+        if rid and tgt:
+            targets[rid.group(1)] = tgt.group(1)
+    renumber, n_new = {}, 0
+    for i in range(1, len(rids) + 1):
+        if i not in drop:
+            n_new += 1
+            renumber[i] = n_new
+    sheets = set(re.findall(r'<sheet\b[^>]*\bname="([^"]+)"', wb))
+
+    def fix(text: str, where: str) -> str:
+        # one pass, so a renumbered [m] is never rewritten a second time
+        def one(m):
+            if m.group(1):                                  # '[n]Sheet name'!
+                n, sheet, quote = int(m.group(1)), m.group(2), "'"
+            elif m.group(3):                                # [n]Sheet!
+                n, sheet, quote = int(m.group(3)), m.group(4), ""
+            else:                                           # [n] elsewhere
+                n = int(m.group(5))
+                if n in drop:
+                    raise ValueError(
+                        f"{where}: unsupported reference form {m.group(0)!r}")
+                return f"[{renumber[n]}]"
+            if n in drop:
+                if sheet.replace("''", "'") not in sheets:
+                    raise ValueError(f"{where}: [{n}]{sheet} has no internal sheet")
+                return f"{quote}{sheet}{quote}!"
+            return f"{quote}[{renumber[n]}]{sheet}{quote}!"
+
+        return _LINK_REF_RE.sub(one, text)
+
+    def fix_part(xml: str, where: str) -> str:
+        def one(m):
+            open_tag, tag, body, close = m.group(1), m.group(2), m.group(3), m.group(4)
+            if tag == "definedName":
+                nm = re.search(r'\bname="([^"]+)"', open_tag).group(1)
+                if nm in names:
+                    return open_tag + escape(names[nm]) + close
+            if "[" not in body:
+                return m.group(0)
+            return open_tag + fix(body, where) + close
+        return _FORMULA_ELEMENTS.sub(one, xml)
+
+    wb = fix_part(wb, "workbook.xml")
+    removed: list[str] = []
+    for i in sorted(drop):
+        rid = rids[i - 1]
+        wb = re.sub(rf'<externalReference r:id="{rid}"\s*/>', "", wb)
+        rels = re.sub(rf'<Relationship\b[^>]*\bId="{rid}"[^>]*/>', "", rels)
+        part = "xl/" + targets[rid].lstrip("/").removeprefix("xl/")
+        removed.append(part)
+        rel_part = posix_rels(part)
+        if rel_part in payload:
+            removed.append(rel_part)
+        ct = payload["[Content_Types].xml"].decode("utf-8")
+        ct = re.sub(rf'<Override\b[^>]*PartName="/{re.escape(part)}"[^>]*/>', "", ct)
+        payload["[Content_Types].xml"] = ct.encode("utf-8")
+    wb = re.sub(r"<externalReferences>\s*</externalReferences>", "", wb)
+    payload["xl/workbook.xml"] = wb.encode("utf-8")
+    payload[rels_name] = rels.encode("utf-8")
+    for sheet, member in sheet_files(path).items():
+        xml = payload[member].decode("utf-8")
+        payload[member] = fix_part(xml, sheet).encode("utf-8")
+    tmp = path + ".links.tmp"
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+        for info in members:
+            if info.filename in removed:
+                continue
+            zout.writestr(info, payload[info.filename])
+    os.replace(tmp, path)
+    return removed
+
+
+def posix_rels(part: str) -> str:
+    """The rels member of a package part: xl/a/b.xml -> xl/a/_rels/b.xml.rels."""
+    head, tail = part.rsplit("/", 1)
+    return f"{head}/_rels/{tail}.rels"
+
+
 @dataclass
 class IntegrityReport:
     ok: bool
@@ -801,14 +1053,17 @@ class IntegrityReport:
 def verify_integrity(original: str, output: str,
                      allow_added: set[str] | frozenset[str] = frozenset(),
                      allow_modified: set[str] | frozenset[str] = frozenset(),
+                     allow_removed: set[str] | frozenset[str] = frozenset(),
                      ) -> IntegrityReport:
     """Acceptance gate per docs/06: drawings/media byte-identical, inventory equal.
 
     ``allow_added``/``allow_modified`` name the exact members a deliberate
     picture embed touched (from add_sheet_picture); everything else is
-    still held byte-identical, and nothing may ever be removed. The one
-    exception is the calculation chain, which every patch drops on purpose
-    (see :func:`drop_calc_chain`).
+    still held byte-identical, and nothing may ever be removed. The
+    exceptions are the calculation chain, which every patch drops on
+    purpose (see :func:`drop_calc_chain`), and the exact members named in
+    ``allow_removed`` (the stale link parts :func:`drop_external_links`
+    returns).
     """
     rep = IntegrityReport(ok=True)
 
@@ -843,7 +1098,7 @@ def verify_integrity(original: str, output: str,
     if defined_a != defined_b:
         rep.ok = False
         rep.problems.append("defined names changed")
-    missing = names_a - names_b - {CALC_CHAIN}
+    missing = names_a - names_b - {CALC_CHAIN} - set(allow_removed)
     if missing:
         rep.ok = False
         rep.problems.append(f"members missing from output: {sorted(missing)}")

@@ -134,6 +134,35 @@ Single table with period banner rows: "Prior to the Before Period (before {date}
 
 Header row 3, data from row 4 in the xlsx versions. Columns A through M are the ONLY manually edited columns: A Crash ID, B Date, C T, D C, E F, F L, G S, H-K Analyst's Notes Columns 1-4, L Target-1?, M Target-2? (literal "Y"; Target-2? blank when a single target is defined). Right of column M are auto-calculated blocks: Crash #, Crash Year, Severity Index, Target-1 SI and KABCO, Target-2 SI and KABCO, plus KABCO summary tables (K/A/B/C/O/Total/SI) for Total, Target-1, Target-2, and All Targets. Generated workbooks must write only A-M and let the formulas do the rest.
 
+### Office Accessible xlsm (VHB v2): Before/After vocabulary, Trends, One Pager
+
+The office's macro workbook (Accessible Intersection Evaluation Workbook,
+VHB v2) keeps Before/After A to N but fixes H to K to drop-down lists: H
+Crash Type (Angle, LTSR, LTDR, RTSR, RTDR, HeadOn, U-Turn, RE, RORR, RORL,
+RORS, SSSD, SSDD, Overturn, Ped, Bike, Animal, Other), I/J Vehicle 1/2
+movement codes (NBT, NBL, NBR, NBU, ... WBU, Unk), K At Fault (V1, V2,
+Unclear), L to N Target-1 to 3 ("Y"). The Binned Crashes macro copies H to K
+from Filtered Fiche X to AA, so those take the same vocabulary. A backing
+vehicle is Unk, a parked vehicle is left blank, and backing or
+parked-vehicle crashes are Other; the Notes column (AB) keeps the detail.
+
+The One Pager sheet builds the one pager; its Additional Information picks
+(J5:J10) are Trends lines looked up by label: INDEX(Trends!C:C or D:D,
+MATCH(pick, Trends!F:F)) for the crash-type lines, then INDEX(Trends!I:I or
+J:J, MATCH(pick, Trends!L:L)) for fault, approach, target and condition
+lines. Trends (v2 layout, written by `safety_eval.trends_sheet`): summary
+rows 4 to 9 with a check that the type totals equal the crash total; type
+by direction in six-row blocks from row 11 (labels F, counts C/D); fault,
+approach, target and condition lines in L/I/J rows 11 to 70; custom lines
+from row 73 (label L, counts I/J, definition M) for Additional Information
+rows the standard lines do not cover (sums of standard lines, or listed
+crash IDs); drop-down lists in O to S that the defined names CrashTypeList,
+VehicleCodeList, AtFaultList, YList and TrendsMetricList point at.
+
+Copies of this workbook have been found with Trends formulas, the pick list
+and the drop-down lists pointing at other copies in a Downloads folder (so
+Trends showed another project's counts); see docs/06 for the fix.
+
 ### 1 page results (1 Target and 2 Targets variants)
 
 Blocks, top to bottom: Order ID, Project ID, Signal ID, Location, GPS Coordinates, County, City, Division; Treatment Information table (Total Crashes, Total Severity Index, Target Crashes, Target Crash Severity Index, Volume with the two representative years in the label, each with Before / After / Percent Reduction (-) Percent Increase (+)); Countermeasure(s); Estimated Project Cost; Completion Date; period dates table (automated from the Date Range Calculator); Analysis Criteria; Target Crashes definition; Project Development Comparison (crashes per year by Project Development / Before / After with severity rows and the period years, e.g. 10.00 vs 4.67 vs 4.67); Target Injury Crash Summary; Additional Information table (4 free rows for the user; unused rows keep "n/a" in the leftmost column); Items for Discussion (one large merged cell; ALT+ENTER line breaks); Map and Satellite Views; footer (Data Prepared For the Traffic Safety Unit / Data Prepared By / Principal Investigator / Work Group-Consultant / Date). The 2-Target variant splits into All Target, Target-1, and Target-2 rows.

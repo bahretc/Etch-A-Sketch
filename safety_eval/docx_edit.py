@@ -114,9 +114,11 @@ def paragraph_texts(xml: str) -> list[str]:
 
 
 def replace_paragraph_text(xml: str, old: str, new: str) -> tuple[str, int]:
-    """Rewrite each paragraph whose text contains ``old``: the paragraph's full
-    text becomes its text with ``old`` replaced by ``new``, written into the
-    first text run (its formatting kept); the other runs' text is emptied.
+    """Replace ``old`` with ``new`` in each paragraph whose text contains it,
+    even when ``old`` spans several runs. ``new`` goes into the run where
+    ``old`` begins and takes that run's formatting; the rest of ``old`` is
+    cut from the runs after it. Text outside ``old`` stays in its own run, so
+    a bold label ("Countermeasure(s):") stays bold and its value plain.
     Returns (xml, paragraphs changed)."""
     from xml.sax.saxutils import unescape
     count = 0
@@ -125,22 +127,36 @@ def replace_paragraph_text(xml: str, old: str, new: str) -> tuple[str, int]:
         nonlocal count
         para = m.group(0)
         ts = list(_T_RE.finditer(para))
-        text = unescape("".join(t.group(2) for t in ts))
-        if old not in text or not ts:
+        parts = [unescape(t.group(2)) for t in ts]
+        text = "".join(parts)
+        if not old or old not in text:
             return para
         count += 1
-        full = text.replace(old, new)
-        pieces, last = [], 0
-        for k, t in enumerate(ts):
+        spans, s = [], text.find(old)
+        while s >= 0:
+            spans.append((s, s + len(old)))
+            s = text.find(old, s + len(old))
+        pieces, last, a = [], 0, 0
+        for t, part in zip(ts, parts):
+            b = a + len(part)
+            kept, p = [], a
+            for s, e in spans:
+                if e <= p or s >= b:
+                    continue
+                if s >= p:                 # old begins in this run
+                    kept += [text[p:s], new]
+                p = min(e, b)
+            kept.append(text[p:b])
             pieces.append(para[last:t.start()])
-            open_tag = t.group(1)
-            if k == 0:
+            value = "".join(kept)
+            if value == part:
+                pieces.append(t.group(0))
+            else:
+                open_tag = t.group(1)
                 if 'xml:space="preserve"' not in open_tag:
                     open_tag = open_tag[:-1] + ' xml:space="preserve">'
-                pieces.append(open_tag + escape(full) + t.group(3))
-            else:
-                pieces.append(open_tag + t.group(3))
-            last = t.end()
+                pieces.append(open_tag + escape(value) + t.group(3))
+            last, a = t.end(), b
         pieces.append(para[last:])
         return "".join(pieces)
 

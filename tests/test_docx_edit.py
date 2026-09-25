@@ -54,7 +54,7 @@ def test_stop_tracking():
     assert "trackRevisions" not in stop_tracking(s)
 
 
-def test_replace_paragraph_text_across_runs_keeps_first_run_format():
+def test_replace_paragraph_text_leaves_text_outside_the_match_alone():
     xml = _body('<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Frontal Impact Crashes in </w:t></w:r>'
                 '<w:r><w:t>Intersection (Angle, LTDR)</w:t></w:r></w:p>')
     out, n = replace_paragraph_text(xml, " (Angle, LTDR)",
@@ -62,7 +62,32 @@ def test_replace_paragraph_text_across_runs_keeps_first_run_format():
     assert n == 1
     assert paragraph_texts(out) == [
         "Frontal Impact Crashes in Intersection: Angle and Left Turn Different Roadways (LTDR)"]
-    assert re.search(r"<w:b/></w:rPr><w:t xml:space=\"preserve\">Frontal", out)
+    assert "<w:b/></w:rPr><w:t>Frontal Impact Crashes in </w:t>" in out
+
+
+def test_a_bold_label_stays_bold_and_the_value_plain():
+    """The one pager writes "Countermeasure(s):" in a bold run and the value
+    in a plain one; replacing the value must not make it bold."""
+    xml = _body('<w:p><w:r><w:rPr><w:b/></w:rPr><w:t xml:space="preserve">Countermeasure(s): '
+                '</w:t></w:r><w:r><w:t>Construct a Mini-Roundabout</w:t></w:r>'
+                '<w:r><w:t xml:space="preserve"> including pedestrian upgrades</w:t></w:r></w:p>')
+    out, n = replace_paragraph_text(xml, "Construct a Mini-Roundabout including pedestrian upgrades",
+                                    "Construct a Mini-Roundabout. Signs: yield (R1-2) & chevrons.")
+    assert n == 1
+    assert paragraph_texts(out) == [
+        "Countermeasure(s): Construct a Mini-Roundabout. Signs: yield (R1-2) & chevrons."]
+    bold = re.search(r"<w:b/></w:rPr><w:t[^>]*>([^<]*)</w:t>", out).group(1)
+    assert bold == "Countermeasure(s): "
+    assert "&amp; chevrons." in out
+    assert re.search(r'<w:r><w:t xml:space="preserve">Construct a Mini-Roundabout\. ', out)
+
+
+def test_a_match_that_starts_inside_a_run_keeps_the_text_before_it():
+    xml = _body('<w:p><w:r><w:t>Target Crashes: Frontal (Angle, </w:t></w:r>'
+                '<w:r><w:rPr><w:i/></w:rPr><w:t>LTDR)</w:t></w:r><w:r><w:t> end</w:t></w:r></w:p>')
+    out, _ = replace_paragraph_text(xml, "(Angle, LTDR)", "Angle and Left Turn (LTDR)")
+    assert paragraph_texts(out) == ["Target Crashes: Frontal Angle and Left Turn (LTDR) end"]
+    assert "<w:i/></w:rPr><w:t xml:space=\"preserve\"></w:t>" in out
 
 
 def _png(w, h, color):

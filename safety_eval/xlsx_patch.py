@@ -161,11 +161,38 @@ class SheetPatcher:
         return style
 
     def apply(self, edits: list[CellEdit]) -> None:
+        # a sheet with no cells (the template's empty Parameters paste tab)
+        # carries a self-closing <sheetData/> and a placeholder dimension A1
+        was_empty = re.search(r"<sheetData\s*/>|<sheetData>\s*</sheetData>",
+                              self.xml) is not None
+        self.xml = re.sub(r"<sheetData\s*/>", "<sheetData></sheetData>",
+                          self.xml, 1)
         by_row: dict[int, list[CellEdit]] = {}
         for e in edits:
             by_row.setdefault(_row_of(e.ref), []).append(e)
         for row, row_edits in sorted(by_row.items()):
             self._apply_row(row, row_edits)
+        self._widen_dimension([e.ref for e in edits], was_empty)
+
+    def _widen_dimension(self, refs: list[str], was_empty: bool) -> None:
+        """Grow the sheet's used-range hint to cover every edited cell."""
+        m = re.search(r'<dimension ref="([A-Z]+)(\d+)(?::([A-Z]+)(\d+))?"/>',
+                      self.xml)
+        if m is None or not refs:
+            return
+        cols = [_col_index(_col_of(r)) for r in refs]
+        rows = [_row_of(r) for r in refs]
+        if not was_empty:
+            c0, r0 = _col_index(m.group(1)), int(m.group(2))
+            c1, r1 = ((_col_index(m.group(3)), int(m.group(4))) if m.group(3)
+                      else (c0, r0))
+            cols += [c0, c1]
+            rows += [r0, r1]
+        c0, r0, c1, r1 = min(cols), min(rows), max(cols), max(rows)
+        new = f"{_col_letters(c0)}{r0}"
+        if (c0, r0) != (c1, r1):
+            new += f":{_col_letters(c1)}{r1}"
+        self.xml = self.xml[:m.start()] + f'<dimension ref="{new}"/>' + self.xml[m.end():]
 
     def _apply_row(self, row: int, edits: list[CellEdit]) -> None:
         for e in edits:

@@ -11,6 +11,7 @@ markers cannot be reproduced). Every patch therefore drops the chain part,
 its content-type override and its workbook relationship; Excel rebuilds
 the chain silently when the part is absent.
 """
+import re
 import zipfile
 
 import openpyxl
@@ -129,3 +130,36 @@ def test_the_integrity_gate_allows_only_the_chain_to_go_missing(tmp_path):
     rep = verify_integrity(src, broken)
     assert not rep.ok
     assert any("xl/styles.xml" in p for p in rep.problems)
+
+
+def test_an_empty_sheet_takes_a_paste(tmp_path):
+    """The template's Parameters tab ships with no cells (<sheetData/>); the
+    TEAAS fiche parameters are pasted into it (Assignment 37 QC)."""
+    src, out = str(tmp_path / "in.xlsx"), str(tmp_path / "out.xlsx")
+    wb = openpyxl.Workbook()
+    wb.active.title = "Data"
+    wb.active["A1"] = 1
+    wb.create_sheet("Parameters")
+    wb.save(src)
+    # Excel writes an empty sheet as <dimension ref="A1"/> ... <sheetData/>
+    with zipfile.ZipFile(src) as z:
+        members = z.infolist()
+        payload = {i.filename: z.read(i.filename) for i in members}
+    sheet = payload["xl/worksheets/sheet2.xml"].decode()
+    sheet = re.sub(r"<dimension [^>]*/>", "", sheet)
+    sheet = sheet.replace("<sheetData></sheetData>", "<sheetData/>")
+    sheet = re.sub(r"(<sheetViews>)", r'<dimension ref="A1"/>\1', sheet, 1)
+    assert "<sheetData/>" in sheet and '<dimension ref="A1"/>' in sheet
+    payload["xl/worksheets/sheet2.xml"] = sheet.encode()
+    with zipfile.ZipFile(src, "w", zipfile.ZIP_DEFLATED) as zout:
+        for info in members:
+            zout.writestr(info, payload[info.filename])
+    xlsx_patch(src, out, edits={"Parameters": [
+        CellEdit("A1", "County"), CellEdit("K1", "Road Code"),
+        CellEdit("A2", "GRANVILLE"), CellEdit("K2", 40001602)]})
+    with zipfile.ZipFile(out) as z:
+        sheet = z.read("xl/worksheets/sheet2.xml").decode()
+    assert '<dimension ref="A1:K2"/>' in sheet
+    ws = openpyxl.load_workbook(out)["Parameters"]
+    assert [ws["A1"].value, ws["K1"].value, ws["A2"].value, ws["K2"].value] == [
+        "County", "Road Code", "GRANVILLE", 40001602]

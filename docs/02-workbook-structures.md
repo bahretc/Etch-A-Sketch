@@ -161,7 +161,14 @@ VehicleCodeList, AtFaultList, YList and TrendsMetricList point at.
 
 Copies of this workbook have been found with Trends formulas, the pick list
 and the drop-down lists pointing at other copies in a Downloads folder (so
-Trends showed another project's counts); see docs/06 for the fix.
+Trends showed another project's counts). The QC direction (Assignment 37,
+2026-09) is to use the template's own Trends tab as delivered and report the
+defect; see docs/06 rule 6.
+
+The Parameters tab is a paste area with no formulas or macro use: paste the
+TEAAS fiche parameters export (County, County Code, Division, Municipality,
+Municipality Code, Begin Date, End Date, Years, Y-Line Feet, Road Name, Road
+Code; one row per road pulled) so NCDOT can check that every road was pulled.
 
 ### 1 page results (1 Target and 2 Targets variants)
 

@@ -36,7 +36,7 @@ Bulleted narrative covering, in rough order:
 
 ## Map/Satellite View (one pager image)
 
-Zoom in so the treated intersection is easy to see (QC, Assignment 37); the leg boxes (road, speed, AADT) sit beside their legs without covering the intersection. The image carries alt text: a one-line description followed by the Assumptions leg rows (Q12:Q15, "West leg: SR 1207 (Spring Street), 35 mph, 2025 AADT: 2800"). Alt text set on the workbook image copies over to Word with the image. Convert the finished one pager with Save As PDF (tagged), never Print to PDF: the accessibility features do not survive printing (NCDOT).
+Zoom in so the treated intersection is easy to see (QC, Assignment 37); the leg boxes (road, speed, AADT) sit beside their legs without covering the intersection. The image carries alt text, and it is exactly what the template builds: the Assumptions leg rows Q12:Q15 ("Alt Text (Copy each row into the Alt Text for the Map)"), verbatim, in the sheet's row order (West, East, North, South), one row per line, with no added lead sentence and no reordering ("West leg: SR 1207 (Spring Street), 35 mph, 2025 AADT: 2800"). Set it on the workbook map picture (Picture 11 on the Assumptions sheet) and, identically, on the one pager map picture, as `descr` only; the Alt Text pane in Word writes no title, so none is added. Alt text set on the workbook image copies over to Word when that image is pasted; a one pager map built separately (a zoomed composite) gets the same text set directly. Convert the finished one pager with Save As PDF (tagged), never Print to PDF: the accessibility features do not survive printing (NCDOT).
 
 ## Assumptions submission
 

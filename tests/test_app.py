@@ -560,3 +560,25 @@ def test_an_open_study_decides_the_package_site(tmp_path, monkeypatch):
     assert not at.exception, at.exception
     assert next(r for r in at.radio if r.label == "Site").value == \
         "intersection"
+
+
+def test_a_study_with_an_unknown_type_opens_without_an_exception(tmp_path,
+                                                                 monkeypatch):
+    """The sidebar tolerated an unrecognised manifest type before the
+    analysis existed (the type selector just stays unlocked); it must
+    still."""
+    from safety_eval import workspace as wsm
+    monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
+    ws = wsm.Workspace.create("OLD1", study_type="hsip")
+    ws.manifest["study_type"] = "unknown-type"
+    ws.save()
+    at = _app()
+    next(s for s in at.sidebar.selectbox
+         if s.label == "Study").set_value("OLD1")
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    box = _analysis_box(at)
+    assert box.value == "section" and not box.disabled
+    at.switch_page(PAGE["home"])
+    at.run(timeout=30)
+    assert not at.exception, at.exception

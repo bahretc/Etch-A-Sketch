@@ -135,3 +135,27 @@ def test_a_study_from_before_the_field_answers_from_its_site(base):
     old.set_analysis("intersection")
     again = wsm.Workspace.open("260307016EA")
     assert again.analysis == "intersection" and again.has_analysis
+
+
+def test_a_manifest_with_an_unknown_study_type_still_answers(base):
+    """A hand-edited or foreign-version manifest must not crash the app:
+    the analysis reads as a section and stays open to record."""
+    ws = wsm.Workspace.create("OLD1", study_type="hsip")
+    ws.manifest["study_type"] = "unknown-type"
+    del ws.manifest["analysis"]
+    ws.save()
+    old = wsm.Workspace.open("OLD1")
+    assert old.analysis == "section" and not old.has_analysis
+
+
+def test_a_stale_recorded_analysis_counts_as_unrecorded(base):
+    """A recorded value the type does not offer (the type was changed by
+    hand, say) falls back AND reads as unrecorded, so the selector stays
+    open and the record can be repaired."""
+    ws = wsm.Workspace.create("s1", study_type="hsip", analysis="bikeped")
+    ws.manifest["study_type"] = "evaluation"
+    ws.save()
+    again = wsm.Workspace.open("s1")
+    assert again.analysis == "intersection" and not again.has_analysis
+    again.set_analysis("section")
+    assert wsm.Workspace.open("s1").has_analysis

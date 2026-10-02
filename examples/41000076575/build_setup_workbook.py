@@ -7,10 +7,11 @@ The engineer's starting copy in the WO folder is the previous evaluation's
 workbook (08-17-5149, SS-4908BK) renamed, so this script also clears that
 project's data from the sheets the later steps fill (Parameters, Initial
 Crash ID list, Original/Filtered Fiche, Binned Crashes, Before, After, the
-One Pager picks and the staff CRF row), without deleting rows or columns
-(the instructions: that breaks the formulas and macros). Trends, the One
-Pager layout, the lists and the links are left exactly as the template
-carries them.
+One Pager picks, template path and the staff CRF row), removes its map
+block and station map pictures, and drops the formula caches LibreOffice
+cannot recompute, all without deleting rows or columns (the instructions:
+that breaks the formulas and macros). Trends, the One Pager layout, the
+lists and the links are left exactly as the template carries them.
 
 Every write is an XML-level cell edit on a copy (docs/06); drawings, media,
 the VBA project and the Power Query parts stay byte-identical, and the
@@ -35,8 +36,8 @@ from datetime import date
 
 import openpyxl
 
-from safety_eval.xlsx_patch import (CellEdit, recalc, sheet_files,
-                                    verify_integrity, xlsx_patch)
+from safety_eval.xlsx_patch import (CellEdit, excel_only_cells, recalc,
+                                    sheet_files, verify_integrity, xlsx_patch)
 
 # --------------------------------------------------------------------------- #
 # the facts (source in brackets: MES = Master Evaluation Spreadsheet row for
@@ -46,8 +47,8 @@ from safety_eval.xlsx_patch import (CellEdit, recalc, sheet_files,
 # AADT = NCDOT AADT stations and 2025 traffic segments, ArcGIS services)
 # --------------------------------------------------------------------------- #
 TEAAS_DATE = date(2026, 8, 31)        # TEAAS data available through August 2026
-CONSTRUCTION_END = date(2021, 7, 31)  # built July 2, 2021 (HNTB; MES CON Completion)
-CONSTRUCTION_MONTHS = 1               # one whole month (the tool works in whole months)
+CONSTRUCTION_END = date(2021, 7, 31)  # completed July 2, 2021 (HNTB; MES CON Completion), rounded to the month end
+CONSTRUCTION_MONTHS = 3               # CON start (let) 5/24/2021 (MES DM3) rounded to the first of May: May to July
 REP_BEFORE_YEAR = 2019                # last full before year that is not 2020
 REP_AFTER_YEAR = 2025                 # last full after year
 
@@ -67,15 +68,20 @@ ASSUMPTIONS = {
     "D15": "Intersection Realignment",                   # Typical Target Crash Types row 12; MES U3
     "D16": 665000,                                       # MES AI3 (TMSD approved total 861,000: MES FH3)
     "D17": date(2021, 7, 2),                             # HNTB; MES AJ3/DN3
-    "D18": "Construction began and was completed on July 2, 2021 per the "
-           "HNTB compliance memo of June 24, 2024 (contract R-2721A); the "
-           "RTE was notified complete on September 16, 2021. The two-phase "
-           "fully actuated signal 05-1723 (plan sealed February 25, 2022) "
-           "later replaced the flashers; its turn-on date is not in the "
-           "project files. The assignment comment expects an extended "
-           "construction period to cover the signal installation: confirm "
-           "the turn-on date and, if so, extend the construction period on "
-           "the Evaluation Set-up sheet (cells D5 and E10).",
+    "D18": "The Master Evaluation Spreadsheet carries a construction start "
+           "(let) date of May 24, 2021 and a completion date of July 2, "
+           "2021; the HNTB compliance memo of June 24, 2024 lists July 2, "
+           "2021 as both the construction begin and completion date, and "
+           "the RTE was notified complete on September 16, 2021. The "
+           "construction period is set to the three whole months May to "
+           "July 2021 (start rounded to the first of the month, completion "
+           "to the end of the month). The two-phase fully actuated signal "
+           "05-1723 (plan sealed February 25, 2022) later replaced the "
+           "flashers; its turn-on date is not in the project files, and the "
+           "assignment comment expects an extended construction period to "
+           "cover it. Confirm the turn-on date and, if so, extend the "
+           "construction period on the Evaluation Set-up sheet (cells D5 "
+           "and E10).",
     "D19": 150,
     "D20": "Frontal Impact Crashes in Intersection: Angle, Left Turn "
            "Different Roadways (LTDR), Left Turn Same Roadway (LTSR), Right "
@@ -93,9 +99,11 @@ ASSUMPTIONS = {
            "one another just south of the curve, and rear end crashes "
            "occurred exiting the curve behind vehicles turning right from "
            "SR 1390 and then left onto SR 1503 (project justification). The "
-           "realignment moved the SR 1390 tie-in about 190 ft south of its "
-           "old location, so the y-line may need to be extended to cover the "
-           "old leg (target crash guidance for realignments). Prior project "
+           "realignment moved the SR 1390 tie-in about 190 ft south (the "
+           "pre-realignment Census TIGER centerline end measured against the "
+           "current junction; confirm against the plan sheet), so the y-line "
+           "may need to be extended to cover the old leg (target crash "
+           "guidance for realignments). Prior project "
            "W-5205W (05-13-6035, sight distance improvements, completed 2017) "
            "was not evaluated because this project began construction in "
            "2021; to be mentioned in the report (assignment comment). Speed "
@@ -107,9 +115,11 @@ ASSUMPTIONS = {
            "station between the intersection and SR 1404 (Johnson Pond "
            "Road); the station about 1 mile west is used. The Leg #4 (SR "
            "1503) station is east of SR 1392 (Ransdell Road), 0.15 mi from "
-           "the intersection. The NC 540 interchange with US 401 about half "
-           "a mile away was built under the same contract; note its opening "
-           "date when discussing volume changes in the after period.",
+           "the intersection. The Division status comment says construction "
+           "was completed under contract R-2721A. The NC 540 ramps at US 401 "
+           "(AADT stations 0920002579 to 0920002585, no counts yet) are about "
+           "half a mile away; confirm when that interchange opened before "
+           "discussing after-period volumes.",
     # project development (PJS p1 and the strip analysis severity summary)
     "H7": date(2011, 1, 1), "H8": date(2015, 12, 31),
     "H10": 35, "H11": 0, "H12": 0, "H13": 2, "H14": 7, "H15": 26,
@@ -236,8 +246,9 @@ def constant_cells(path: str, sheet: str, row: int) -> list[str]:
 def setup_edits(setup_xml: str) -> list[CellEdit]:
     black = style_of(setup_xml, "L18")      # a counted year, black font
     red = style_of(setup_xml, "L19")        # an interpolated year, red font
-    if not black or not red:
-        raise RuntimeError("could not read the year-table styles from L18/L19")
+    count_style = style_of(setup_xml, "L62")   # a count in the station block
+    if not black or not red or not count_style:
+        raise RuntimeError("could not read the Set-up styles from L18/L19/L62")
     edits = [
         CellEdit("D4", TEAAS_DATE),
         CellEdit("D5", CONSTRUCTION_MONTHS),
@@ -295,7 +306,7 @@ def setup_edits(setup_xml: str) -> list[CellEdit]:
         ]
         for year in range(FIRST_AADT_YEAR, 2026):
             edits.append(CellEdit(f"{col}{station_row(year)}",
-                                  st["counts"].get(year)))
+                                  st["counts"].get(year), style=count_style))
     for ref, text in STATION_NOTES.items():
         edits.append(CellEdit(ref, text))
     return edits
@@ -345,16 +356,132 @@ def set_cached(path: str, values: dict) -> None:
     os.replace(tmp, path)
 
 
+#: The previous project's map block (Assumptions: aerial, location map and
+#: four leg text boxes) and station map (Evaluation Set-up): the pictures
+#: and their media go; the drawing parts stay, empty, so the sheets keep
+#: their drawing relationships. The map block for this project is composed
+#: later (the Map Block page) with alt text from the Assumptions leg table.
+STALE_DRAWINGS = {
+    "xl/drawings/drawing2.xml": ("xl/drawings/_rels/drawing2.xml.rels",
+                                 ("xl/media/image3.jpeg", "xl/media/image4.png")),
+    "xl/drawings/drawing3.xml": ("xl/drawings/_rels/drawing3.xml.rels",
+                                 ("xl/media/image5.png",)),
+}
+_ANCHOR = re.compile(r"<xdr:(twoCellAnchor|oneCellAnchor|absoluteAnchor)\b.*?</xdr:\1>", re.S)
+_REL = re.compile(r"<Relationship\b[^>]*/>")
+
+
+def empty_drawing(xml: str) -> str:
+    return _ANCHOR.sub("", xml)
+
+
+def prune_rels(rels_xml: str, keep_ids: set | None = None, drop_types=()) -> str:
+    """Drop relationships of the given types (by suffix) that are not in
+    ``keep_ids``; an empty Relationships element is valid."""
+    def sub(m):
+        rel = m.group(0)
+        rid = re.search(r'\bId="([^"]+)"', rel)
+        typ = re.search(r'\bType="([^"]+)"', rel)
+        if typ and typ.group(1).endswith(tuple(drop_types)) and (
+                keep_ids is None or (rid and rid.group(1) not in keep_ids)):
+            return ""
+        return rel
+    return _REL.sub(sub, rels_xml)
+
+
+def hyperlink_ids(sheet_xml: str) -> set:
+    return set(re.findall(r'<hyperlink\b[^>]*\br:id="([^"]+)"', sheet_xml))
+
+
+def strip_hyperlinks(sheet_xml: str) -> str:
+    return re.sub(r"<hyperlinks>.*?</hyperlinks>", "", sheet_xml, flags=re.S)
+
+
+def strip_saved_path(workbook_xml: str) -> str:
+    """The absPath Excel writes on save names the folder the copy was last
+    saved in (the previous WO folder); Excel writes a fresh one next save."""
+    return re.sub(r"<mc:AlternateContent\b(?:(?!</mc:AlternateContent>).)*?absPath"
+                  r"(?:(?!</mc:AlternateContent>).)*</mc:AlternateContent>",
+                  "", workbook_xml, flags=re.S)
+
+
+def drop_members(path: str, names: set) -> None:
+    with zipfile.ZipFile(path) as z:
+        infos = z.infolist()
+        payload = {i.filename: z.read(i.filename) for i in infos}
+    tmp = path + ".drop.tmp"
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+        for info in infos:
+            if info.filename in names:
+                continue
+            zout.writestr(info, payload[info.filename])
+    os.replace(tmp, path)
+
+
+def clear_cached(path: str, cells) -> int:
+    """Remove the cached value of formula cells LibreOffice could not
+    compute (Excel-only functions and their dependents): the previous
+    project's results must not show anywhere; Excel recomputes on open."""
+    files = sheet_files(path)
+    by_sheet = {}
+    for sheet, ref in cells:
+        by_sheet.setdefault(sheet, set()).add(ref)
+    with zipfile.ZipFile(path) as z:
+        infos = z.infolist()
+        payload = {i.filename: z.read(i.filename) for i in infos}
+    n = 0
+    for sheet, refs in by_sheet.items():
+        member = files[sheet]
+        xml = payload[member].decode("utf-8")
+
+        def sub(m):
+            nonlocal n
+            if m.group(1) + m.group(2) not in refs or "<f" not in (m.group(5) or ""):
+                return m.group(0)
+            attrs = re.sub(r'\s+t="[^"]*"', "", m.group(3))
+            f_part = re.search(r"<f\b.*?(?:/>|</f>)", m.group(5), re.S).group(0)
+            n += 1
+            return f'<c r="{m.group(1)}{m.group(2)}"{attrs}>{f_part}</c>'
+        payload[member] = re.sub(
+            r'<c r="([A-Z]+)(\d+)"([^>]*?)(/>|>(.*?)</c>)', sub, xml, flags=re.S).encode("utf-8")
+    tmp = path + ".cache.tmp"
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+        for info in infos:
+            zout.writestr(info, payload[info.filename])
+    os.replace(tmp, path)
+    return n
+
+
 def build(source: str, out: str, do_recalc: bool = True) -> None:
     files = sheet_files(source)
     with zipfile.ZipFile(source) as z:
         xml = {name: z.read(member).decode("utf-8") for name, member in files.items()}
+        raw = {i.filename: z.read(i.filename) for i in z.infolist()}
 
     replace_members = {}
+    # the previous project's map block and station map
+    for drawing, (rels, _media) in STALE_DRAWINGS.items():
+        replace_members[drawing] = empty_drawing(raw[drawing].decode("utf-8")).encode("utf-8")
+        replace_members[rels] = prune_rels(raw[rels].decode("utf-8"),
+                                           drop_types=("/image",)).encode("utf-8")
+    # the One Pager's hyperlink to the previous WO folder, and the folder
+    # path Excel saved on the workbook
+    xml["One Pager"] = strip_hyperlinks(xml["One Pager"])
+    replace_members[files["One Pager"]] = xml["One Pager"].encode("utf-8")
+    replace_members["xl/workbook.xml"] = strip_saved_path(
+        raw["xl/workbook.xml"].decode("utf-8")).encode("utf-8")
     # the previous project's data: rows go on the TEAAS paste sheets, cell
     # values go on the sheets whose rows carry formulas
     for sheet in ("Original Fiche", "Filtered Fiche", "Binned Crashes"):
-        replace_members[files[sheet]] = drop_rows_from(xml[sheet], 2).encode("utf-8")
+        xml[sheet] = drop_rows_from(xml[sheet], 2)
+        replace_members[files[sheet]] = xml[sheet].encode("utf-8")
+    # hyperlink relationships the dropped rows (and the One Pager path) used
+    for sheet in ("Original Fiche", "Filtered Fiche", "Binned Crashes", "One Pager"):
+        rels = files[sheet].replace("worksheets/", "worksheets/_rels/") + ".rels"
+        if rels in raw:
+            replace_members[rels] = prune_rels(
+                raw[rels].decode("utf-8"), keep_ids=hyperlink_ids(xml[sheet]),
+                drop_types=("/hyperlink",)).encode("utf-8")
     for sheet in ("Before", "After"):
         replace_members[files[sheet]] = clear_cells(
             xml[sheet], set("ABCDEFGHIJKLMN"), 4, 1003).encode("utf-8")
@@ -370,7 +497,8 @@ def build(source: str, out: str, do_recalc: bool = True) -> None:
         # target count boxes follow the two targets; the date is today's
         "One Pager": [CellEdit(f"{c}{r}", None) for r in range(5, 11) for c in "JKLM"]
                      + [CellEdit("E5", False), CellEdit("E6", True), CellEdit("E7", False),
-                        CellEdit("I24", date.today())],
+                        CellEdit("I24", date.today()),
+                        CellEdit("I26", None)],       # the previous WO folder's template path
         # staff email sheet: the CRF row is copied from the NCDOT CRF sheet
         # for THIS countermeasure; the previous one is cleared
         "For NCDOT staff - Email": [CellEdit(ref, None) for ref in
@@ -383,7 +511,13 @@ def build(source: str, out: str, do_recalc: bool = True) -> None:
     division = county_division(out, ASSUMPTIONS["D11"])
     set_cached(out, {cell: division for cell in DIVISION_CELLS})
     print(f"Division cache set to {division} on {len(DIVISION_CELLS)} XLOOKUP-dependent cells")
-    rep = verify_integrity(source, out)
+    stale = excel_only_cells(out) - set(DIVISION_CELLS)
+    print(f"cleared {clear_cached(out, stale)} Excel-only caches (recomputed by Excel on open)")
+    media = {m for _, (_, ms) in STALE_DRAWINGS.items() for m in ms}
+    drop_members(out, media)
+    changed = set(STALE_DRAWINGS) | {rels for rels, _ in STALE_DRAWINGS.values()}
+    rep = verify_integrity(source, out, allow_added=media | changed,
+                           allow_modified=changed, allow_removed=media)
     print("integrity:", "ok" if rep.ok else rep.problems, f"({rep.checked_members} drawing/media parts)")
     if not rep.ok:
         sys.exit(1)

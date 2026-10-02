@@ -156,8 +156,11 @@ def _record_analysis(study: str | None) -> None:
         return
     try:
         wsm.Workspace.open(study).set_analysis(st.session_state["analysis"])
-    except (OSError, ValueError, json.JSONDecodeError):
-        pass
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        # the next run reads the manifest back, so say why the pick did
+        # not stick instead of letting it snap back silently
+        st.session_state["analysis_error"] = (
+            f"The analysis was not recorded on study {study}: {exc}")
 
 
 def _active_ws():
@@ -313,6 +316,9 @@ def main() -> None:
         if ws and not a_locked:
             st.caption("This study was set up before the analysis was "
                        "recorded; the pick above is saved to it.")
+        record_error = st.session_state.pop("analysis_error", None)
+        if record_error:
+            st.warning(record_error)
 
     # Pages a study type cannot use are not shown: an Evaluation never sees a
     # warrant screen it must not rely on, and only an Evaluation populates

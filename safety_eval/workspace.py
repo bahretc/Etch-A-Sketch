@@ -155,7 +155,8 @@ class Workspace:
         section), else the study type's default. :meth:`has_analysis` says
         which, so the UI can leave the choice open on such a study.
         """
-        from safety_eval.study_type import (check_analysis, default_analysis,
+        from safety_eval.study_type import (SECTION, STUDY_TYPES,
+                                            check_analysis, default_analysis,
                                             get_analysis)
 
         recorded = self.manifest.get("analysis")
@@ -170,12 +171,27 @@ class Workspace:
                 return check_analysis(self.study_type, get_analysis(site).key)
             except ValueError:
                 pass
+        # a manifest with a type this version does not know (hand-edited,
+        # or from another version) still opens: the app leaves its selectors
+        # unlocked, and a section is the shape every type offers
+        if self.study_type not in STUDY_TYPES:
+            return SECTION
         return default_analysis(self.study_type)
 
     @property
     def has_analysis(self) -> bool:
-        """True when the manifest records the analysis (not inferred)."""
-        return bool(self.manifest.get("analysis"))
+        """True when the manifest records an analysis the study type offers
+        (not inferred, not stale); the UI locks the selector only then."""
+        from safety_eval.study_type import check_analysis
+
+        recorded = self.manifest.get("analysis")
+        if not recorded:
+            return False
+        try:
+            check_analysis(self.study_type, recorded)
+        except ValueError:
+            return False
+        return True
 
     def set_analysis(self, analysis: str) -> str:
         """Record the study's shape; refused when the type does not offer

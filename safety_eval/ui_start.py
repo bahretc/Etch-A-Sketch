@@ -219,9 +219,10 @@ def steps(st, ws, kind, PAGE, analysis=None) -> None:
     ]
     if kind.runs_warrants:
         if a_key == BIKEPED:
-            blurb = ("Bike/Ped intersection analysis: the 10-year pull with "
-                     "a 300 ft y-line off your IS/RE/ADD determinations, the "
-                     "import list and the aerial-exhibit collision diagram.")
+            blurb = ("Intersection warrant screen off your IS/RE/ADD "
+                     "determinations, the import list, and the aerial-exhibit "
+                     "collision diagram sheet; the pull itself is the 10-year, "
+                     "300 ft y-line TEAAS export (docs/12).")
         else:
             blurb = (f"{shape.label} warrant screen off your IS/RE/ADD "
                      "determinations, with the import list and the crash "

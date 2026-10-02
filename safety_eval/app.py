@@ -131,6 +131,35 @@ def _current_kind():
     return STUDY_TYPES[st.session_state.get("study_type", HSIP)]
 
 
+def _current_analysis():
+    """The AnalysisKind the sidebar selector holds: intersection, section or
+    bike/ped intersection (the study type's default before first render)."""
+    import streamlit as st
+
+    from safety_eval.study_type import ANALYSIS_KINDS
+    kind = _current_kind()
+    key = st.session_state.get("analysis")
+    if key not in kind.analyses:
+        key = kind.default_analysis
+    return ANALYSIS_KINDS[key]
+
+
+def _record_analysis(study: str | None) -> None:
+    """Sidebar callback: a study made before the manifest carried its
+    analysis keeps the choice open and records the first pick."""
+    import json
+
+    import streamlit as st
+
+    from safety_eval import workspace as wsm
+    if not study:
+        return
+    try:
+        wsm.Workspace.open(study).set_analysis(st.session_state["analysis"])
+    except (OSError, ValueError, json.JSONDecodeError):
+        pass
+
+
 def _active_ws():
     """The open study Workspace, or None (no study, or unreadable folder)."""
     import json
@@ -191,8 +220,8 @@ def _stage_wb(study_wb: str | None, wb_up, tmp: str) -> str | None:
 def main() -> None:
     import streamlit as st
 
-    from safety_eval.study_type import (EVALUATION, FATAL, STUDY_TYPES,
-                                        choices)
+    from safety_eval.study_type import (ANALYSIS_KINDS, EVALUATION, FATAL,
+                                        SECTION, STUDY_TYPES, choices)
 
     st.set_page_config(page_title="NCDOT Safety Studies",
                        page_icon=":material/traffic:", layout="wide",
@@ -206,9 +235,10 @@ def main() -> None:
         pass
 
     # The study comes first: everything else follows it. A study carries its
-    # type on the manifest, so with a study open the type selector reads from
-    # it and locks; the selector only chooses for new studies and for working
-    # from uploads alone.
+    # type and its analysis (intersection, section, bike/ped intersection)
+    # on the manifest, so with a study open the selectors read from it and
+    # lock; they only choose for new studies and for working from uploads
+    # alone.
     keys = [k for k, _ in choices()]
     with st.sidebar:
         from safety_eval import workspace as wsm
@@ -225,11 +255,14 @@ def main() -> None:
             new_study = st.text_input("Study number", key="new_study",
                                       placeholder="41000079305")
             if st.button("Create study", disabled=not new_study.strip()):
+                new_type = st.session_state.get("study_type", keys[0])
+                new_analysis = st.session_state.get("analysis")
+                if new_analysis not in STUDY_TYPES[new_type].analyses:
+                    new_analysis = None          # the type's default
                 try:
-                    wsm.Workspace.create(
-                        new_study.strip(),
-                        study_type=st.session_state.get("study_type",
-                                                        keys[0]))
+                    wsm.Workspace.create(new_study.strip(),
+                                         study_type=new_type,
+                                         analysis=new_analysis)
                 except (ValueError, OSError) as exc:
                     st.error(str(exc))
                 else:
@@ -253,6 +286,33 @@ def main() -> None:
             notes.append("the HSIP warrant screen runs")
         if notes:
             st.info("For this study type, " + " and ".join(notes) + ".")
+        # The analysis is the study's second fact. A study made before the
+        # manifest carried it keeps the choice open (it reads as the study
+        # type's default, or as its package-maps site) and records the
+        # first pick; from then on the selector follows the manifest.
+        a_keys = list(kind.analyses)
+        a_locked = bool(ws and ws.has_analysis)
+        if ws:
+            st.session_state["analysis"] = ws.analysis
+        elif (st.session_state.get("analysis") not in a_keys
+              or st.session_state.get("analysis_of") != study_key):
+            # a new study type starts from its own default analysis
+            st.session_state["analysis"] = a_keys[0]
+        st.session_state["analysis_of"] = study_key
+        analysis_key = st.selectbox(
+            "Analysis", a_keys, key="analysis",
+            format_func=lambda k: ANALYSIS_KINDS[k].label, disabled=a_locked,
+            on_change=_record_analysis, args=(ws.study if ws else None,),
+            help="What the study looks at: one intersection, a section of "
+                 "road between mileposts, or (HSIP packages only) bicycle "
+                 "and pedestrian crashes at one intersection. The open "
+                 "study carries it; with none open it chooses for this "
+                 "session.")
+        analysis = ANALYSIS_KINDS[analysis_key]
+        st.caption(analysis.description)
+        if ws and not a_locked:
+            st.caption("This study was set up before the analysis was "
+                       "recorded; the pick above is saved to it.")
 
     # Pages a study type cannot use are not shown: an Evaluation never sees a
     # warrant screen it must not rely on, and only an Evaluation populates
@@ -297,9 +357,13 @@ def main() -> None:
                     icon=":material/traffic:"),
             st.Page(PAGE["map_block"], title="Map Block",
                     icon=":material/map:"),
-            st.Page(PAGE["strip_diagram"], title="Strip Collision Diagram",
-                    icon=":material/timeline:"),
         ]
+        # The strip collision diagram belongs to a section evaluation; an
+        # intersection evaluation has no strip to draw.
+        if analysis.key == SECTION:
+            pages["Workbook"].append(
+                st.Page(PAGE["strip_diagram"], title="Strip Collision Diagram",
+                        icon=":material/timeline:"))
         pages["Report and finish"] = [
             st.Page(PAGE["report"], title="Report Text",
                     icon=":material/edit_note:"),
@@ -327,7 +391,7 @@ def main() -> None:
 # --------------------------------------------------------------------------- #
 def page_home() -> None:
     import streamlit as st
-    _home_page(st, _current_kind())
+    _home_page(st, _current_kind(), _current_analysis())
 
 
 def page_fiche() -> None:
@@ -426,14 +490,15 @@ def page_assistant() -> None:
     _assistant_tab(st)
 
 
-def _home_page(st, kind) -> None:
+def _home_page(st, kind, analysis=None) -> None:
     """The Start page: study, drop zone, checklist, steps (ui_start)."""
     from safety_eval import workspace as wsm
     from safety_eval.study_type import STUDY_TYPES, choices
     from safety_eval.ui_start import start_page
 
     start_page(st, kind, _active_ws(), PAGE, wsm.ROLES, STUDY_TYPES,
-               [k for k, _ in choices()], wsm, _environment_check)
+               [k for k, _ in choices()], wsm, _environment_check,
+               analysis=analysis)
 
 
 def _environment_check(st) -> None:
@@ -492,7 +557,9 @@ def _report_text_tab(st) -> None:
     c1, c2, c3 = st.columns(3)
     analysis_type = c1.selectbox(
         "Analysis type", ["", "section", "intersection"],
-        help="For exemplar matching: same-type deliveries are preferred.")
+        index=2 if _current_analysis().is_intersection else 1,
+        help="For exemplar matching: same-type deliveries are preferred. "
+             "Follows the study's analysis.")
     family = c2.text_input("Countermeasure family",
                            help="For exemplar matching, e.g. "
                                 "rumble-strips.")
@@ -759,10 +826,16 @@ def _fatal_package_section(st, ws, site_default: str = "strip",
     st.caption("Public NCDOT, Census TIGER, USGS and Esri sources; every "
                "number is an estimate for the engineer to check. Results "
                "are saved into the open study's outputs.")
+    # The study's analysis decides the site (a section is a strip); a
+    # study from before the analysis was recorded answers from its site
+    # param, and with no study open the sidebar's analysis decides.
+    from safety_eval.study_type import ANALYSIS_KINDS
+    site_now = (ANALYSIS_KINDS[ws.analysis].site if ws
+                else _current_analysis().site)
     site = st.radio("Site", ["strip", "intersection"], horizontal=True,
-                    index=0 if (ws.param("site", site_default) if ws
-                                else site_default) == "strip" else 1,
-                    key="pkg_site")
+                    index=0 if site_now == "strip" else 1,
+                    key="pkg_site",
+                    help="Follows the study's analysis in the sidebar.")
     c1, c2, c3, c4 = st.columns(4)
     wo = c1.text_input("WO number", value=(ws.study if ws else ""))
     ph = c2.text_input("PH number (HSIP)", value=(ws.param("ph", "") if ws else ""))
@@ -1014,11 +1087,20 @@ def _evaluation_tab(st) -> None:
         if f.endswith(".xlsx") and "~$" not in f
     ) if os.path.isdir("templates") else []
     st.markdown("##### Required")
-    # The two standard workbooks first; the atypical one-page templates
-    # otherwise sort to the top and become an accidental default.
-    default_ix = next((i for i, t in enumerate(templates)
-                       if "Evaluation Workbook" in os.path.basename(t)), 0)
-    template = st.selectbox("Template", templates, index=default_ix)
+    # The study's analysis picks its standard workbook (Intersection or
+    # Section); the atypical one-page templates otherwise sort to the top
+    # and become an accidental default.
+    from safety_eval.study_type import SECTION
+    want = ("Section" if _current_analysis().key == SECTION
+            else "Intersection") + " Evaluation Workbook -"
+    default_ix = next(
+        (i for i, t in enumerate(templates)
+         if os.path.basename(t).startswith(want)),
+        next((i for i, t in enumerate(templates)
+              if "Evaluation Workbook" in os.path.basename(t)), 0))
+    template = st.selectbox("Template", templates, index=default_ix,
+                            help="Follows the study's analysis: the "
+                                 "Intersection or the Section workbook.")
     c1, c2 = st.columns(2)
     before_up = c1.file_uploader("Before Crash ID list (5-col .txt)")
     after_up = c2.file_uploader("After Crash ID list (5-col .txt)")
@@ -1322,12 +1404,21 @@ def _hsip_tab(st) -> None:
                "findings); an intersection analysis screens the urban or "
                "rural intersection warrants. The ADD+RE milepost import is "
                "written alongside. Determinations are read, never changed.")
+    from safety_eval.study_type import BIKEPED, SECTION
+    shape = _current_analysis()
     analysis = st.radio(
         "Analysis", ["Section (strip)", "Intersection"], horizontal=True,
+        index=0 if shape.key == SECTION else 1,
         help="Sections are milepost-dependent, intersections are "
              "road-combination-dependent; this is the fundamental split in "
-             "crash identification (docs/01).")
+             "crash identification (docs/01). Follows the study's analysis "
+             "in the sidebar.")
     is_section = analysis.startswith("Section")
+    if shape.key == BIKEPED and not is_section:
+        st.info("Bike/Ped intersection analysis: bicycle and pedestrian "
+                "crashes only, a 10-year pull with a 300 ft y-line; the "
+                "collision diagram sheet below defaults to the aerial "
+                "exhibit (docs/12).")
 
     ws = _active_ws()
     study_wb = (ws.path("reviewed_workbook") or ws.path("workbook")) \
@@ -1513,6 +1604,7 @@ def _hsip_tab(st) -> None:
                 "Sheet", ["Intersection", "Bike/Ped (aerial)",
                           "Junction (measured spec)"],
                 horizontal=True, key="tsu_kind",
+                index=1 if shape.key == BIKEPED else 0,
                 help="A Bike/Ped analysis is always a 10-year "
                      "intersection pull with a 300 ft y-line (docs/12), "
                      "and its sheet is an aerial exhibit: cells pinned on "
@@ -1870,8 +1962,11 @@ def _review_queue_tab(st) -> None:
             help="Blank finds it: the <study>_Fiche working sheet if the "
                  "workbook has one, else Filtered Fiche.")
         analysis_type = st.selectbox("Analysis type", ["section", "intersection"],
+                                     index=1 if _current_analysis().is_intersection
+                                     else 0,
                                      help="Controls the status vocabulary; "
-                                          "RE only exists for sections.")
+                                          "RE only exists for sections. "
+                                          "Follows the study's analysis.")
         initial_path = st.text_input(
             "TEAAS ID export (.txt path, recommended)",
             value=_wsp("initial_ids_txt"),

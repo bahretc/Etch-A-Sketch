@@ -90,3 +90,48 @@ def test_manifest_is_plain_readable_json(base):
     assert data["study_type"] == "evaluation"
     assert data["files"]["setup_yaml"] == [os.path.join("inputs",
                                                         "setup.yaml")]
+
+
+# --------------------------------------------------------------------------- #
+# the study's analysis (intersection, section, bike/ped intersection)
+# --------------------------------------------------------------------------- #
+def test_a_new_study_records_its_analysis_defaulting_per_type(base):
+    hs = wsm.Workspace.create("41000079305", study_type="hsip")
+    assert hs.analysis == "section" and hs.has_analysis
+    ev = wsm.Workspace.create("41000076575", study_type="evaluation")
+    assert ev.analysis == "intersection"
+    data = json.load(open(os.path.join(ev.root, "manifest.json")))
+    assert data["analysis"] == "intersection"
+    bp = wsm.Workspace.create("59X00239", study_type="hsip",
+                              analysis="bikeped")
+    assert wsm.Workspace.open("59X00239").analysis == "bikeped"
+
+
+def test_an_analysis_the_type_does_not_offer_is_refused(base):
+    with pytest.raises(ValueError, match="not Bike/Ped"):
+        wsm.Workspace.create("s1", study_type="evaluation",
+                             analysis="bikeped")
+    assert wsm.list_studies() == []          # nothing half-made
+    ws = wsm.Workspace.create("s1", study_type="fatal")
+    with pytest.raises(ValueError):
+        ws.set_analysis("bikeped")
+    assert ws.set_analysis("intersection") == "intersection"
+    assert wsm.Workspace.open("s1").analysis == "intersection"
+
+
+def test_a_study_from_before_the_field_answers_from_its_site(base):
+    """Older manifests carry no analysis: the package-maps ``site`` param
+    stands in (``strip`` is a section), else the type's default, and the
+    choice stays open until recorded."""
+    ws = wsm.Workspace.create("260307016EA", study_type="fatal")
+    del ws.manifest["analysis"]
+    ws.save()
+    old = wsm.Workspace.open("260307016EA")
+    assert old.analysis == "section" and not old.has_analysis
+    old.set_params(site="intersection")
+    assert wsm.Workspace.open("260307016EA").analysis == "intersection"
+    old.set_params(site="strip")
+    assert wsm.Workspace.open("260307016EA").analysis == "section"
+    old.set_analysis("intersection")
+    again = wsm.Workspace.open("260307016EA")
+    assert again.analysis == "intersection" and again.has_analysis

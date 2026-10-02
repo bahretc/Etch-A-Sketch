@@ -52,8 +52,11 @@ Put the study's exports in one folder, named with the work order:
 | `<WO>_InitialStudy.csv`, `<WO>_InitialID.txt` | TEAAS strip analysis and ID export |
 | `<WO>_FeaturesReport_<route>.pdf` | TEAAS features report for the route |
 
-App: on the **Overview** page type the study number, click **Create**, and
-drop the whole folder on **Drop your files here**. Each file is recognised
+App: on the **Overview** page type the study number, pick the study type
+(Fatal Crash Analysis) and its analysis (Section for this strip site;
+Intersection for a junction; HSIP packages also offer Bike/Ped
+Intersection), click **Create**, and drop the whole folder on **Drop your
+files here**. Each file is recognised
 from its content, not its name (the TEAAS banner, the header row, the PDF's
 first page, a workbook's sheet names), and the page says what it took each
 one for before you click **Add to study**. A file it cannot place is skipped

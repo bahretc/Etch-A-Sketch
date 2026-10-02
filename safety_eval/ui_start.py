@@ -4,7 +4,9 @@ An engineer who has never seen the app should be able to open it, drop the
 TEAAS exports and the crash reports in one go, and be told what to click
 next. The page therefore does three things, top to bottom:
 
-1. **Study** - open one or create one, right here (the sidebar mirrors it).
+1. **Study** - open one or create one, right here (the sidebar mirrors it):
+   the study number, its type and its analysis (intersection, section, or a
+   bike/ped intersection for an HSIP package).
 2. **Drop zone** - every file is recognised from its content
    (:mod:`safety_eval.intake`) and filed under its study role; anything
    the sniff cannot place is offered back with its choices.
@@ -40,10 +42,13 @@ def _card_css() -> str:
 
 def study_panel(st, ws, kinds, keys, wsm) -> None:
     """Open or create the study in the main column."""
+    from safety_eval.study_type import ANALYSIS_KINDS
+
     with st.container(border=True):
         if ws:
             label = kinds.get(ws.study_type)
-            facts = [label.label if label else ws.study_type]
+            facts = [label.label if label else ws.study_type,
+                     ANALYSIS_KINDS[ws.analysis].label]
             for key, fmt in (("route", "{}"), ("mp_lo", "MP {}"),
                              ("mp_hi", "to {}"), ("context", "{}")):
                 v = ws.param(key)
@@ -55,14 +60,25 @@ def study_panel(st, ws, kinds, keys, wsm) -> None:
             c2.caption(f"Folder: {os.path.relpath(ws.root)}")
             return
         st.markdown("**Start a study**")
-        st.caption("Type the study number and pick the study type; every "
-                   "file you drop below is filed into its folder.")
-        c1, c2, c3 = st.columns([2, 2, 1], vertical_alignment="bottom")
+        st.caption("Type the study number, pick the study type and what it "
+                   "looks at (an intersection, a section, or a bike/ped "
+                   "intersection for an HSIP package); every file you drop "
+                   "below is filed into its folder.")
+        c1, c2, c3, c4 = st.columns([2, 2, 2, 1], vertical_alignment="bottom")
         number = c1.text_input("Study number", key="start_study_number",
                                placeholder="41000079549")
         kind_key = c2.selectbox("Study type", keys, key="start_study_type",
                                 format_func=lambda k: kinds[k].label)
-        if c3.button("Create", type="primary", key="start_create",
+        a_keys = list(kinds[kind_key].analyses)
+        if (st.session_state.get("start_analysis") not in a_keys
+                or st.session_state.get("start_analysis_of") != kind_key):
+            st.session_state["start_analysis"] = a_keys[0]
+        st.session_state["start_analysis_of"] = kind_key
+        a_key = c3.selectbox("Analysis", a_keys, key="start_analysis",
+                             format_func=lambda k: ANALYSIS_KINDS[k].label,
+                             help=ANALYSIS_KINDS[
+                                 st.session_state["start_analysis"]].description)
+        if c4.button("Create", type="primary", key="start_create",
                      use_container_width=True):
             if not number.strip():
                 st.warning("Type the study number first.")
@@ -71,7 +87,8 @@ def study_panel(st, ws, kinds, keys, wsm) -> None:
                 if number.strip() in wsm.list_studies():
                     wsm.Workspace.open(number.strip())   # open, not error
                 else:
-                    wsm.Workspace.create(number.strip(), study_type=kind_key)
+                    wsm.Workspace.create(number.strip(), study_type=kind_key,
+                                         analysis=a_key)
             except (ValueError, OSError) as exc:
                 st.error(str(exc))
             else:
@@ -174,9 +191,14 @@ def checklist(st, ws) -> None:
         st.caption("Still useful to drop: " + "; ".join(missing) + ".")
 
 
-def steps(st, ws, kind, PAGE) -> None:
+def steps(st, ws, kind, PAGE, analysis=None) -> None:
     """The workflow, numbered, with the next step made obvious."""
-    from safety_eval.study_type import EVALUATION
+    from safety_eval.study_type import (ANALYSIS_KINDS, BIKEPED, EVALUATION,
+                                        SECTION)
+
+    a_key = (ws.analysis if ws else
+             analysis.key if analysis else kind.default_analysis)
+    shape = ANALYSIS_KINDS[a_key]
 
     def done(role):
         return bool(ws and ws.path(role))
@@ -196,10 +218,16 @@ def steps(st, ws, kind, PAGE) -> None:
          done("reviewed_workbook")),
     ]
     if kind.runs_warrants:
-        items.append((PAGE["warrants"], "Run the HSIP warrants",
-                      "Section or intersection warrant screen off your "
-                      "IS/RE/ADD determinations, with the import list and "
-                      "the crash map.", False))
+        if a_key == BIKEPED:
+            blurb = ("Bike/Ped intersection analysis: the 10-year pull with "
+                     "a 300 ft y-line off your IS/RE/ADD determinations, the "
+                     "import list and the aerial-exhibit collision diagram.")
+        else:
+            blurb = (f"{shape.label} warrant screen off your IS/RE/ADD "
+                     "determinations, with the import list and the crash "
+                     "map.")
+        items.append((PAGE["warrants"], "Run the HSIP warrants", blurb,
+                      False))
     if kind.key == EVALUATION:
         items += [
             (PAGE["evaluation"], "Populate the Evaluation Workbook",
@@ -210,6 +238,12 @@ def steps(st, ws, kind, PAGE) -> None:
              "convention, written into the Set-up sheet.", False),
             (PAGE["map_block"], "Compose the map block",
              "The Map/Satellite Views image in the team format.", False),
+        ]
+        if a_key == SECTION:
+            items.append((PAGE["strip_diagram"], "Draw the strip collision "
+                          "diagram", "Fan-out callouts along the section "
+                          "from the reviewed crashes.", False))
+        items += [
             (PAGE["report"], "Draft the report text",
              "Items for Discussion and Additional Information drafts; you "
              "review and paste.", False),
@@ -247,7 +281,8 @@ def steps(st, ws, kind, PAGE) -> None:
             mid.caption(blurb)
 
 
-def start_page(st, kind, ws, PAGE, ROLES, kinds, keys, wsm, env_check) -> None:
+def start_page(st, kind, ws, PAGE, ROLES, kinds, keys, wsm, env_check,
+               analysis=None) -> None:
     st.markdown(_card_css(), unsafe_allow_html=True)
     st.markdown('<div class="se-hero"><h1>NCDOT Safety Studies</h1>'
                 '<p>Drop the files, follow the steps. Every number stays '
@@ -256,6 +291,6 @@ def start_page(st, kind, ws, PAGE, ROLES, kinds, keys, wsm, env_check) -> None:
     study_panel(st, ws, kinds, keys, wsm)
     drop_zone(st, ws, ROLES)
     checklist(st, ws)
-    steps(st, ws, kind, PAGE)
+    steps(st, ws, kind, PAGE, analysis=analysis)
     with st.expander("Environment check"):
         env_check(st)

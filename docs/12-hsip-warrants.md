@@ -4,8 +4,19 @@
 
 NCDOT crash work splits into **Fatal Crash Analyses**, **HSIP Package
 Analyses**, and **Evaluations**. The fiche/crash-analysis core is the same for
-all three; the app should ask which one at set-up. Only HSIP packages ask
+all three; the app asks which one at set-up. Only HSIP packages ask
 whether a location *warrants* a project, which is `safety_eval/warrants.py`.
+
+Each study also has an **analysis**, asked at the same time and carried on
+the study's manifest beside its type (`safety_eval/study_type.py`,
+`ANALYSES`): a Fatal Crash Analysis or an Evaluation looks at an
+**intersection** or a **section**; an HSIP Package Analysis looks at an
+intersection, a section, or a **bike/ped intersection** (below). The pages
+that ask section-or-intersection (the warrant screen, the package maps'
+site, the review queue's status vocabulary, the Evaluation Workbook
+template, the collision diagram sheet) start from that answer. Older study
+folders that carry no analysis read as their package-maps site, else the
+type's default, and record the first pick.
 
 ## Section warrants
 

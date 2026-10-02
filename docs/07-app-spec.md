@@ -130,8 +130,15 @@ cannot run as a bare script). The sidebar's study type governs the tabs:
 every type gets Fiche Workbook, Redact Crash Reports and Review Queue; an
 Evaluation adds Evaluation Workbook; an HSIP Package Analysis adds HSIP
 Warrants (section or intersection). Tabs a study type must not use are not
-rendered (docs/12). Theme: Okabe-Ito primary, no state carried by colour
-alone; verdicts are words.
+rendered (docs/12). Beside the type, the sidebar and the Start page ask the
+study's analysis: intersection or section for a fatal analysis or an
+evaluation, intersection, section or bike/ped intersection for an HSIP
+package (docs/12). It is recorded on the study manifest at creation
+(`Workspace.create(..., analysis=)`), locks while the study is open, and
+is the default of every page that asks the shape (warrant screen, package
+site, review vocabulary, workbook template, diagram sheet); a section
+evaluation also gets the Strip Collision Diagram page. Theme: Okabe-Ito
+primary, no state carried by colour alone; verdicts are words.
 
 Fatal crash Field Investigation File (Phase 4 item 17): `safety-eval
 fatal-checklist --slip <slip>.pdf --fiche <study>_Fiche.xlsx` parses the

@@ -373,7 +373,11 @@ pytest -q
       workflow order (Overview, Fiche Workbook, Redact Crash Reports,
       Review Queue, then the study type's own HSIP Warrants or Evaluation
       Workbook + Assumptions Email pages), with an environment check and
-      per-session AI assist settings.
+      per-session AI assist settings. Each study is set up as a type and
+      an analysis: Fatal Crash Analysis (intersection or section), HSIP
+      Package Analysis (intersection, section, or bike/ped intersection),
+      Evaluation (intersection or section); the pages default their shape
+      from it.
 - [x] Fiche review queue with redacted DMV-349 page retrieval (docs/07
       Phase 3): binder OCR page index (`safety-eval binder-index` /
       `binder-get`), queue ordered by GPS or milepost distance, quick

@@ -13,7 +13,9 @@ so a page never guesses which csv is which: attaching replaces the file for
 single-file roles and accumulates for multi-file roles, and ``path(role)``
 hands a page its default. Params are the study facts the pages share
 (route, milepost limits, urban/rural context, study point) so they are
-typed once.
+typed once. The study type and its analysis (intersection, section, or a
+bike/ped intersection; :mod:`safety_eval.study_type`) sit on the manifest
+beside them, chosen once at set-up and read by every page.
 
 Nothing here deletes anything: removing a study or an attached file is a
 file-manager job, on purpose, and the app only ever adds. The workspace is
@@ -96,15 +98,24 @@ class Workspace:
     # ---- lifecycle --------------------------------------------------------
     @classmethod
     def create(cls, study: str, study_type: str = "hsip",
-               base: str | None = None) -> "Workspace":
+               base: str | None = None,
+               analysis: str | None = None) -> "Workspace":
+        """Create the study folder. ``analysis`` is the study's shape
+        (``intersection``, ``section`` or ``bikeped``); left out, the study
+        type's default applies. A shape the type does not offer is refused.
+        """
+        from safety_eval.study_type import check_analysis, default_analysis
+
         study = _check_name(study)
+        analysis = (check_analysis(study_type, analysis) if analysis
+                    else default_analysis(study_type))
         root = os.path.join(base_dir(base), study)
         if os.path.isfile(os.path.join(root, "manifest.json")):
             raise ValueError(f"study {study} already exists; open it instead")
         os.makedirs(os.path.join(root, "inputs"), exist_ok=True)
         os.makedirs(os.path.join(root, "outputs"), exist_ok=True)
         ws = cls(root=root, manifest={
-            "study": study, "study_type": study_type,
+            "study": study, "study_type": study_type, "analysis": analysis,
             "created": _now(), "files": {}, "params": {}})
         ws.save()
         return ws
@@ -134,6 +145,48 @@ class Workspace:
     @property
     def study_type(self) -> str:
         return self.manifest.get("study_type", "hsip")
+
+    @property
+    def analysis(self) -> str:
+        """The study's shape: ``intersection``, ``section`` or ``bikeped``.
+
+        A study made before the manifest carried it answers from what it
+        does carry: the package-maps ``site`` param (``strip`` is a
+        section), else the study type's default. :meth:`has_analysis` says
+        which, so the UI can leave the choice open on such a study.
+        """
+        from safety_eval.study_type import (check_analysis, default_analysis,
+                                            get_analysis)
+
+        recorded = self.manifest.get("analysis")
+        if recorded:
+            try:
+                return check_analysis(self.study_type, recorded)
+            except ValueError:
+                pass
+        site = self.param("site")
+        if site:
+            try:
+                return check_analysis(self.study_type, get_analysis(site).key)
+            except ValueError:
+                pass
+        return default_analysis(self.study_type)
+
+    @property
+    def has_analysis(self) -> bool:
+        """True when the manifest records the analysis (not inferred)."""
+        return bool(self.manifest.get("analysis"))
+
+    def set_analysis(self, analysis: str) -> str:
+        """Record the study's shape; refused when the type does not offer
+        it. Returns the normalised key."""
+        from safety_eval.study_type import check_analysis
+
+        key = check_analysis(self.study_type, analysis)
+        if self.manifest.get("analysis") != key:
+            self.manifest["analysis"] = key
+            self.save()
+        return key
 
     # ---- files by role ----------------------------------------------------
     def attach(self, role: str, filename: str, data: bytes) -> str:

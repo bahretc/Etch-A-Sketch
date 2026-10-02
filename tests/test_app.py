@@ -23,12 +23,16 @@ _LAUNCHER = str(pathlib.Path(__file__).resolve().parent.parent
                 / "streamlit_app.py")
 
 
-def _app(study_type=None, page=None):
+def _app(study_type=None, page=None, analysis=None):
     at = AppTest.from_file(_LAUNCHER)
     at.run(timeout=30)
     if study_type:
         next(s for s in at.sidebar.selectbox
              if s.label == "Study type").set_value(study_type)
+        at.run(timeout=30)
+    if analysis:
+        next(s for s in at.sidebar.selectbox
+             if s.label == "Analysis").set_value(analysis)
         at.run(timeout=30)
     if page:
         at.switch_page(PAGE[page])
@@ -86,12 +90,19 @@ def test_every_study_type_renders_every_offered_page():
                           "package"],
                  "evaluation": ["home", "fiche", "redact", "review",
                                 "evaluation", "report", "assumptions",
-                                "aadt", "map_block", "strip_diagram",
-                                "print", "qa", "finish", "assistant"],
+                                "aadt", "map_block", "print", "qa", "finish",
+                                "assistant"],
                  "fatal": ["home", "fiche", "redact", "review", "package"]}
     for key, pages in pages_for.items():
         for page in pages:
             _app(key, page=page)
+    # the strip collision diagram is a section evaluation's page
+    _app("evaluation", page="strip_diagram", analysis="section")
+    # every analysis of every type renders its Overview
+    from safety_eval.study_type import analyses_for
+    for key in pages_for:
+        for analysis in analyses_for(key):
+            _app(key, page="home", analysis=analysis)
 
 
 def test_the_home_page_walks_the_workflow_in_order():
@@ -273,9 +284,8 @@ def test_an_evaluation_offers_the_finishing_pages_under_deliverables():
     """The package-finishing steps belong to an Evaluation; the other
     study types do not produce that package and do not see them."""
     titles = _nav_titles(_app("evaluation"))
-    for title in ("AADT and Set-up", "Map Block", "Strip Collision Diagram",
-                  "Print and Assemble", "QA Checks", "Finish Package",
-                  "Assistant"):
+    for title in ("AADT and Set-up", "Map Block", "Print and Assemble",
+                  "QA Checks", "Finish Package", "Assistant"):
         assert title in titles
     # workbook inputs (AADT, map block) come before the report writing
     assert titles.index("AADT and Set-up") < titles.index("Report Text")
@@ -365,3 +375,188 @@ def test_the_start_page_files_dropped_inputs_into_the_study(tmp_path,
     assert not at.exception, at.exception
     build = next(b for b in at.button if b.label == "Build fiche workbook")
     assert not build.disabled
+
+
+# --------------------------------------------------------------------------- #
+# the analysis: intersection, section, or a bike/ped intersection
+# --------------------------------------------------------------------------- #
+def _analysis_box(at):
+    return next(s for s in at.sidebar.selectbox if s.label == "Analysis")
+
+
+def test_the_sidebar_offers_the_analyses_of_each_study_type():
+    """A fatal analysis and an evaluation look at an intersection or a
+    section; an HSIP package adds the bike/ped intersection (docs/12)."""
+    assert _analysis_box(_app("hsip")).options == [
+        "Section", "Intersection", "Bike/Ped Intersection"]
+    assert _analysis_box(_app("fatal")).options == ["Section", "Intersection"]
+    assert _analysis_box(_app("evaluation")).options == [
+        "Intersection", "Section"]
+    # a pick that the next study type cannot use falls back to its default
+    at = _app("hsip", analysis="bikeped")
+    next(s for s in at.sidebar.selectbox
+         if s.label == "Study type").set_value("evaluation")
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    assert _analysis_box(at).value == "intersection"
+
+
+def test_the_sidebar_states_the_analysis_in_words():
+    at = _app("hsip", analysis="bikeped")
+    captions = " ".join(getattr(el, "value", "") or ""
+                        for el in at.sidebar.caption)
+    assert "10-year" in captions and "300 ft" in captions
+
+
+def test_a_section_evaluation_offers_the_strip_diagram_and_an_intersection_does_not():
+    assert "Strip Collision Diagram" not in _nav_titles(_app("evaluation"))
+    titles = _nav_titles(_app("evaluation", analysis="section"))
+    assert "Strip Collision Diagram" in titles
+    assert titles.index("Map Block") < titles.index("Strip Collision Diagram")
+
+
+def test_creating_a_study_in_the_sidebar_records_the_analysis(tmp_path,
+                                                              monkeypatch):
+    from safety_eval import workspace as wsm
+    monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
+    at = _app("hsip", analysis="bikeped")
+    at.sidebar.text_input(key="new_study").set_value("59X00239")
+    at.run(timeout=30)
+    next(b for b in at.sidebar.button
+         if b.label == "Create study").click()
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    ws = wsm.Workspace.open("59X00239")
+    assert (ws.study_type, ws.analysis) == ("hsip", "bikeped")
+    box = _analysis_box(at)
+    assert box.value == "bikeped" and box.disabled
+
+
+def test_an_open_study_locks_the_analysis_to_its_manifest(tmp_path,
+                                                          monkeypatch):
+    from safety_eval import workspace as wsm
+    monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
+    wsm.Workspace.create("04-15-39049", study_type="evaluation",
+                         analysis="section")
+    at = _app()
+    next(s for s in at.sidebar.selectbox
+         if s.label == "Study").set_value("04-15-39049")
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    box = _analysis_box(at)
+    assert box.value == "section" and box.disabled
+    assert "Strip Collision Diagram" in _nav_titles(at)
+
+
+def test_a_study_from_before_the_field_keeps_the_choice_open(tmp_path,
+                                                             monkeypatch):
+    """Older study folders carry no analysis: the selector stays enabled,
+    reads as the site the study already knows, and the first pick is
+    recorded on the manifest."""
+    from safety_eval import workspace as wsm
+    monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
+    ws = wsm.Workspace.create("260307016EA", study_type="fatal")
+    del ws.manifest["analysis"]
+    ws.set_params(site="intersection")
+    at = _app()
+    next(s for s in at.sidebar.selectbox
+         if s.label == "Study").set_value("260307016EA")
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    box = _analysis_box(at)
+    assert box.value == "intersection" and not box.disabled
+    captions = " ".join(getattr(el, "value", "") or ""
+                        for el in at.sidebar.caption)
+    assert "before the analysis was recorded" in captions
+    box.set_value("section")
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    again = wsm.Workspace.open("260307016EA")
+    assert again.analysis == "section" and again.has_analysis
+    box = _analysis_box(at)
+    assert box.value == "section" and box.disabled
+
+
+def test_the_start_page_creates_a_study_with_its_analysis(tmp_path,
+                                                          monkeypatch):
+    from safety_eval import workspace as wsm
+    monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
+    at = _app("hsip", page="home")
+    boxes = {s.label: s for s in at.main.selectbox}
+    assert boxes["Analysis"].options == [
+        "Section", "Intersection", "Bike/Ped Intersection"]
+    boxes["Study type"].set_value("evaluation")
+    at.run(timeout=30)
+    boxes = {s.label: s for s in at.main.selectbox}
+    assert boxes["Analysis"].options == ["Intersection", "Section"]
+    at.text_input(key="start_study_number").set_value("41000076575")
+    at.run(timeout=30)
+    next(b for b in at.button if b.label == "Create").click()
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    ws = wsm.Workspace.open("41000076575")
+    assert (ws.study_type, ws.analysis) == ("evaluation", "intersection")
+    # the open study's panel names the analysis, and the steps follow it
+    html = " ".join(c.value for c in at.caption)
+    assert "Intersection" in html
+    labels = [ln.label for ln in at.get("page_link")]
+    assert not any("strip collision" in lb.lower() for lb in labels)
+
+
+def test_the_overview_steps_follow_the_analysis():
+    at = _app("hsip", page="home", analysis="bikeped")
+    captions = " ".join(c.value for c in at.caption)
+    assert "300 ft y-line" in captions
+    at = _app("evaluation", page="home", analysis="section")
+    labels = [ln.label for ln in at.get("page_link")]
+    assert any("strip collision diagram" in lb.lower() for lb in labels)
+
+
+def test_the_pages_default_their_shape_from_the_analysis():
+    """Every page that asks section-or-intersection starts from the study's
+    analysis; the engineer can still override on the page."""
+    at = _app("hsip", page="warrants", analysis="intersection")
+    assert next(r for r in at.radio if r.label == "Analysis").value == \
+        "Intersection"
+    at = _app("hsip", page="warrants", analysis="bikeped")
+    assert next(r for r in at.radio if r.label == "Analysis").value == \
+        "Intersection"
+    assert any("300 ft y-line" in (i.value or "") for i in at.info)
+    assert next(r for r in at.radio if r.label == "Sheet").value == \
+        "Bike/Ped (aerial)"
+    at = _app("hsip", page="warrants")
+    assert next(r for r in at.radio if r.label == "Analysis").value == \
+        "Section (strip)"
+    at = _app("fatal", page="package", analysis="intersection")
+    assert next(r for r in at.radio if r.label == "Site").value == \
+        "intersection"
+    at = _app("fatal", page="package")
+    assert next(r for r in at.radio if r.label == "Site").value == "strip"
+    at = _app("hsip", page="review", analysis="intersection")
+    assert next(s for s in at.selectbox
+                if s.label == "Analysis type").value == "intersection"
+    at = _app("evaluation", page="evaluation", analysis="section")
+    assert "Section Evaluation Workbook -" in next(
+        s for s in at.selectbox if s.label == "Template").value
+    at = _app("evaluation", page="evaluation")
+    assert "Intersection Evaluation Workbook -" in next(
+        s for s in at.selectbox if s.label == "Template").value
+    at = _app("evaluation", page="report", analysis="section")
+    assert next(s for s in at.selectbox
+                if s.label == "Analysis type").value == "section"
+
+
+def test_an_open_study_decides_the_package_site(tmp_path, monkeypatch):
+    from safety_eval import workspace as wsm
+    monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
+    wsm.Workspace.create("41000077750", study_type="hsip",
+                         analysis="intersection")
+    at = _app()
+    next(s for s in at.sidebar.selectbox
+         if s.label == "Study").set_value("41000077750")
+    at.run(timeout=30)
+    at.switch_page(PAGE["package"])
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    assert next(r for r in at.radio if r.label == "Site").value == \
+        "intersection"

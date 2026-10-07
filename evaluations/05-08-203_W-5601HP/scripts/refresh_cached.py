@@ -17,6 +17,7 @@ for part, name in SHEETS.items():
         if '<f' not in inner: return m.group(0)
         v = ws[ref].value
         if v is None and ('Assumptions!D13' in inner or 'Assumptions!$D$13' in inner or "'One Pager'!I10" in inner or "'One Pager'!$I$10" in inner): v = 5  # XLOOKUP (division) unsupported by LibreOffice
+        if 'REGEXEXTRACT(E5' in inner: v = 'W-5601HP'  # TIP number; REGEXEXTRACT unsupported by LibreOffice
         if v is None or (isinstance(v, str) and v.startswith('#')): return m.group(0)
         if isinstance(v, datetime.datetime): v = (v - datetime.datetime(1899, 12, 30)).days + v.hour / 24
         elif isinstance(v, datetime.date): v = (v - datetime.date(1899, 12, 30)).days

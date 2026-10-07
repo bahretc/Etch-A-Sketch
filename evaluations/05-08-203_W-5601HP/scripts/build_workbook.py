@@ -196,13 +196,13 @@ A['D20'] = ('Frontal Impact Crashes in the Intersection (angle, left turn differ
 A['D21'] = ('Rear End Crashes on SR 1375 (Lake Wheeler Road) approaching the intersection (both directions)', 's')
 A['D22'] = (None, 'blank')
 A['D23'] = ('Limited sight distance on SR 1375 (Lake Wheeler Road) and the offset condition of SR 1390 (Optimist Farm Road) with SR 1503 (Donnybrook Road) is contributing to angle and rear end type crashes (35 total crashes 1/1/2011-12/31/2015; 14 correctable).', 's')
-A['D24'] = ("""PROJECT / CONSTRUCTION: W-5601HP (05-08-203, WBS 50138.3.225, HSIP, B/C 3.43, evaluation order 41000076575) realigned SR 1390 (Optimist Farm Rd) about 200 ft south to tie directly across from SR 1503 (Donnybrook Rd) at SR 1375 MP 4.70 and installed "Vehicle Entering When Flashing" flashers on both SR 1375 approaches (VEWF signs +/- 325 ft). Built under the R-2721A (Complete 540) contract: CON start 5/24/2021 per the NCDOT tracking database (same as its let date; the HNTB memo lists 7/2/2021 as both begin and completion) - check dated aerials for earlier grading.
+A['D24'] = ("""PROJECT / CONSTRUCTION: W-5601HP (05-08-203, WBS 50138.3.225, HSIP, B/C 3.43, evaluation order 41000076575) realigned SR 1390 (Optimist Farm Rd) about 200 ft south to tie directly across from SR 1503 (Donnybrook Rd) at SR 1375 MP 4.70 and installed "Vehicle Entering When Flashing" flashers on both SR 1375 approaches. Built under the R-2721A (Complete 540) contract: CON start 5/24/2021 per the NCDOT tracking database (same as its let date; the HNTB memo lists 7/2/2021 as both begin and completion) - check dated aerials for earlier grading.
 SIGNAL (CONFOUNDER): traffic signal 05-1723 (2-phase, fully actuated, isolated; plan sealed 2/25/2022; not part of W-5601HP) replaced the flashers in 2022 and removed the VEWF signs and beacons. The turn-on date is not documented, so the construction period runs through 12/31/2022 and the after period (1/1/2023-8/31/2026) reflects realignment + signal. If the turn-on month is confirmed, set 'Evaluation Set-up' E10 to the end of that month AND D5 to the number of months from May 2021 through that month (e.g. June 2022 = 14) so that D10 stays 5/1/2021.
-PRIOR PROJECT: W-5205W / 05-13-6035 (sight distance improvements here, completed 2017; month not in the files) was never evaluated because this project began in 2021. The before period therefore starts 1/1/2018 (unequal time period, 'Evaluation Set-up' B14 checked; 3 yr 4 mo vs 3 yr 8 mo after). If W-5205W is confirmed complete by 8/31/2017, uncheck B14 for equal periods (before = 9/1/2017-4/30/2021).
-Y-LINE: 350 ft from the signalized intersection (MP 4.70) = about 200 ft offset to the former SR 1390 junction (MP 4.66) + 150 ft, per the "Y-lines may need to be extended / analyze the entire area impacted by the realignment" guidance; it also covers the VEWF sign locations. Rear end crashes on the north approach between the curve and the Y-line (about MP 4.56-4.63, the project-development strip) fall outside the Y-line; review them for the additional-information table. Pull the TEAAS fiche on SR 1375 (40001375) from about MP 4.55 to 4.85 plus SR 1390, SR 1503, SR 1392 (Ransdell Rd, which joins SR 1503 east of the intersection) and local route 50078941092 (the realigned SR 1390 approach in the TSU inventory); confirm in TEAAS whether the SR 1390 feature on SR 1375 was moved from MP 4.66 to 4.70 before binning by distance.
+PRIOR PROJECT: W-5205W / 05-13-6035 (sight distance improvements here, completed 2017; month not in the files) was never evaluated because this project began in 2021. The before period therefore starts 1/1/2018 (unequal time period, 'Evaluation Set-up' B14 checked; 3 yr 4 mo vs 3 yr 8 mo after). If W-5205W is confirmed complete by 8/31/2017, uncheck B14 for equal periods.
+Y-LINE: 350 ft from the signalized intersection (MP 4.70) = about 200 ft offset to the former SR 1390 junction (MP 4.66) + 150 ft, per the "Y-lines may need to be extended / analyze the entire area impacted by the realignment" guidance. Review rear end crashes on the north approach beyond the Y-line (curve exit, about MP 4.56-4.63) for the additional-information table. Pull the TEAAS fiche on SR 1375 (40001375) from about MP 4.55 to 4.85 plus SR 1390, SR 1503, SR 1392 (Ransdell Rd, which joins SR 1503 east of the intersection) and local route 50078941092 (the realigned SR 1390 approach in the TSU inventory); confirm in TEAAS whether the SR 1390 feature moved from MP 4.66 to 4.70.
 TARGETS: Target 1 = frontal impact crashes in the intersection (realignment / VEWF / signal); Target 2 = rear end crashes on the SR 1375 approaches. Use the 2-target one pager and state the signal replacement in the discussion.
-SPEED LIMITS: SR 1375 posted 45 mph (both signal plans; crash reports) - the NCDOT speed-limit GIS layer shows 55 mph (statutory). SR 1390 35 mph (2022 plan and GIS; 45 on the 2019 plan). SR 1503 45 mph (both plans and TSU inventory; GIS shows 35). O7 (minor) = 35 mph for SR 1390, the realigned leg. Verify postings.
-VOLUMES: NCDOT 2025 AADT stations on all four legs (notes in 'Evaluation Set-up' L72:L76). The minor-leg stations are off the intersection (SR 1390 about 1 mi west beyond SR 1404 Johnson Pond Rd; SR 1503 east of SR 1392 Ransdell Rd), so both minor legs are shown in red and flagged as estimated; the same stations serve both periods, so the before/after exposure ratio is unaffected. Representative years 2021 (before; last counted year in the period) and 2025 (after).
+SPEED LIMITS: SR 1375 posted 45 mph (signal plans, crash reports; NCDOT GIS layer 55 statutory). SR 1390 35 mph (2022 plan and GIS; 45 on the 2019 plan). SR 1503 45 mph (plans, TSU inventory; GIS 35). O7 (minor) = 35 mph for SR 1390, the realigned leg. Verify postings.
+VOLUMES: NCDOT 2025 AADT stations on all four legs (notes in 'Evaluation Set-up' L72:L76). The minor-leg stations are off the intersection (about 1 mi west beyond SR 1404; east of SR 1392), so both minor legs are shown in red and flagged as estimated; the same stations serve both periods, so the before/after exposure ratio is unaffected. Representative years 2021 (before; last counted year in the period) and 2025 (after).
 OTHER CHANGES: Complete 540 (NC 540; construction from 2019 per NCDOT's project page) opened 9/24/2024 and crosses SR 1375 about 0.3 mi north with no interchange there, changing travel patterns in the last two years of the after period. TEAAS date 8/31/2026 assumed - update 'Evaluation Set-up' D4 if newer data is available.""", 's')
 for ref, (val, kind) in A.items():
     s3.set(ref, val, kind)
@@ -230,7 +230,7 @@ for ref, v in {'M19': BEFORE_START, 'N19': BEFORE_END, 'O19': 3, 'P19': 4, 'M20'
                'M21': AFTER_START, 'N21': AFTER_END, 'O21': 3, 'P21': 8}.items():
     s3.set_cached(ref, v)
 s3.set_row_height(24, 409)
-for _r, _h in ((14, 31), (18, 62), (20, 31), (23, 31)): s3.set_row_height(_r, _h)
+for _r, _h in ((14, 33), (18, 80), (20, 33), (23, 33)): s3.set_row_height(_r, _h)
 s3.xml = s3.xml.replace('<selection activeCell="D10" sqref="D10"/>', '<selection activeCell="D6" sqref="D6"/>')
 
 # ================================================================== drawings
@@ -238,8 +238,18 @@ d2 = z.read('xl/drawings/drawing2.xml').decode('utf-8')
 PIC_CX, PIC_CY = 4845686, 2602032
 MAP_CX, MAP_CY = 1668925, 896178
 COL, ROW, COLOFF, ROWOFF = 6, 18, 22224, 174869
+_cols = {int(m.group(1)): float(m.group(2)) for m in re.finditer(r'<col min="(\d+)" max="\d+" width="([\d.]+)"', s3.xml)}
+def col_emu(c0):  # 0-based column index -> width in EMU (Excel: px = floor(chars*7+5) at 96 dpi)
+    w = _cols.get(c0 + 1, 9.15625); return int(w * 7 + 5) * 9525
+_rows = {int(m.group(1)): float(m.group(2)) for m in re.finditer(r'<row r="(\d+)"[^>]*? ht="([\d.]+)"', s3.xml)}
+def row_emu(r0):  # 0-based row index -> height in EMU
+    return int(_rows.get(r0 + 1, 14.4) * 12700)
 def anchor(dx, dy, cx, cy, inner):
-    return (f'<xdr:oneCellAnchor><xdr:from><xdr:col>{COL}</xdr:col><xdr:colOff>{COLOFF + dx}</xdr:colOff><xdr:row>{ROW}</xdr:row><xdr:rowOff>{ROWOFF + dy}</xdr:rowOff></xdr:from>'
+    c, x = COL, COLOFF + dx
+    while x >= col_emu(c): x -= col_emu(c); c += 1
+    r, y = ROW, ROWOFF + dy
+    while y >= row_emu(r): y -= row_emu(r); r += 1
+    return (f'<xdr:oneCellAnchor><xdr:from><xdr:col>{c}</xdr:col><xdr:colOff>{int(x)}</xdr:colOff><xdr:row>{r}</xdr:row><xdr:rowOff>{int(y)}</xdr:rowOff></xdr:from>'
             f'<xdr:ext cx="{cx}" cy="{cy}"/>{inner}<xdr:clientData/></xdr:oneCellAnchor>')
 def pic(idn, name, descr, rid, cx, cy):
     return (f'<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="{idn}" name="{name}" descr="{escape(descr, {chr(34): "&quot;"})}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'

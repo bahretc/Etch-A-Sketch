@@ -98,9 +98,10 @@ s4 = Sheet(z.read('xl/worksheets/sheet4.xml').decode('utf-8'))
 
 # ------------------------------------------------------------------ dates
 TEAAS = serial(2026, 8, 31)
-CON_END = serial(2022, 7, 31); CON_START = serial(2021, 5, 1); CON_MONTHS = 15
-BEFORE_START = serial(2017, 4, 1); BEFORE_END = serial(2021, 4, 30)   # equal periods (B14 unchecked)
-AFTER_START = serial(2022, 8, 1); AFTER_END = TEAAS
+CON_END = serial(2022, 10, 31); CON_START = serial(2021, 5, 1); CON_MONTHS = 18
+BEFORE_START = serial(2017, 7, 1); BEFORE_END = serial(2021, 4, 30)   # equal periods (B14 unchecked)
+UNEQUAL_START = serial(2017, 4, 1)   # preset in D14 for the unequal option
+AFTER_START = serial(2022, 11, 1); AFTER_END = TEAAS
 # ------------------------------------------------------------------ AADT data (NCDOT 2025 AADT Stations)
 STA = {  # col: (locid, located_on, approach, crossroad, {year: aadt})
  'L': ('0920000868', 'SR 1375 (Lake Wheeler Rd)', 'NORTH OF', 'SR 1390 (Optimist Farm Rd)', {2003:5300,2005:6200,2007:6600,2009:6500,2011:6400,2013:9400,2015:6700,2017:7300,2019:8200,2021:8400,2023:7800,2025:8900}),
@@ -135,11 +136,11 @@ for col, (loc, on, appr, cross, data) in STA.items():
 # ================================================================== SHEET 4 : Evaluation Set-up
 s4.unshare(4)                                  # P19:P27 shared formula group -> explicit (all rewritten below anyway)
 s4.set('D4', TEAAS, 'n'); s4.set('D5', CON_MONTHS, 'n'); s4.set('E10', CON_END, 'n')
-s4.set('N5', 2021, 'n'); s4.set('N6', 2025, 'n'); s4.set('B14', False, 'b'); s4.set('D14', BEFORE_START, 'n')
+s4.set('N5', 2021, 'n'); s4.set('N6', 2025, 'n'); s4.set('B14', False, 'b'); s4.set('D14', UNEQUAL_START, 'n')
 # cached values of the date-range calculator
-for ref, val in {'AF8': 2021, 'AG8': 4, 'AH8': 49, 'AF9': 2022, 'AG9': 7, 'AH9': 15, 'AG10': AFTER_END + 1, 'AH10': 49,
-                 'D9': BEFORE_START, 'E9': BEFORE_END, 'F9': 4, 'G9': 1, 'D10': CON_START, 'F10': 1, 'G10': 3,
-                 'D11': AFTER_START, 'E11': AFTER_END, 'F11': 4, 'G11': 1}.items():
+for ref, val in {'AF8': 2021, 'AG8': 4, 'AH8': 46, 'AF9': 2022, 'AG9': 10, 'AH9': 18, 'AG10': AFTER_END + 1, 'AH10': 46,
+                 'D9': BEFORE_START, 'E9': BEFORE_END, 'F9': 3, 'G9': 10, 'D10': CON_START, 'F10': 1, 'G10': 6,
+                 'D11': AFTER_START, 'E11': AFTER_END, 'F11': 3, 'G11': 10}.items():
     s4.set_cached(ref, val)
 # AADT calculator rows 18-27
 NQR = {}
@@ -176,7 +177,7 @@ NOTES4 = [
  "Even years = average of the adjacent odd-year counts, rounded to the nearest 100; 2020 = 0.85 x the interpolated value (COVID); 2026 = 2025 value carried forward.",
  "Leg #3 station 0920001913 is about 1 mi west of the intersection, west of SR 1404 (Johnson Pond Rd, 4,600 vpd in 2025), so the SR 1390 leg is flagged as estimated in the Assumptions leg table (counted years are still shown in black); the TSU intersection inventory (7/2026) also assigns 4,800 vpd (2024) to the SR 1390 leg. The same stations are used in both periods, so the before/after exposure ratio is unaffected.",
  "Leg #4 station 0920001914 is about 0.15 mi east of the intersection, east of SR 1392 (Ransdell Rd, 2,300 vpd in 2025), so the SR 1503 leg volume at SR 1375 is probably higher than the station value (TSU inventory probe estimate about 4,200 vpd in 2021, about 1.28 x the station count). The station value is used unadjusted (counted years in black) and the leg is flagged as estimated in the Assumptions leg table.",
- "Representative years: 2021 (before: the last year in the before period with published counts, per the instructions above; 2020 excluded per the COVID guidance; the 2021 counts may have been taken during the 2021 construction) and 2025 (after). The before period starts 4/1/2017, so 2017 counts are included in the table. Project-development ADT: 6,500 (2010) on SR 1375; total entering volume 9,000 vpd. The 2013 counts (9,400/9,500 on SR 1375) are an outlier outside the study period.",
+ "Representative years: 2021 (before: the last year in the before period with published counts, per the instructions above; 2020 excluded per the COVID guidance; the 2021 counts may have been taken during the 2021 construction) and 2025 (after). The before period starts 7/1/2017, so 2017 counts are included in the table. Project-development ADT: 6,500 (2010) on SR 1375; total entering volume 9,000 vpd. The 2013 counts (9,400/9,500 on SR 1375) are an outlier outside the study period.",
 ]
 for i, t in enumerate(NOTES4):
     s4.set(f'L{72 + i}', t, 's', style='98')
@@ -190,19 +191,19 @@ A['D9'] = ('SR 1375 (Lake Wheeler Road) at SR 1390 (Optimist Farm Road)/SR 1503 
 A['D10'] = ('35.657816, -78.717261', 's'); A['D11'] = ('Wake', 's'); A['D12'] = ('Fuquay-Varina (unincorporated Wake County)', 's')
 A['D14'] = ('Realign SR 1390 (Optimist Farm Road) and SR 1503 (Donnybrook Road) to tie directly across from one another and install shoulder-mounted actuated ("Vehicle Entering When Flashing") flashers in both directions on SR 1375 (Lake Wheeler Road)', 's')
 A['D15'] = ('Intersection Realignment', 's'); A['D16'] = (665000, 'n'); A['D17'] = (serial(2021, 7, 2), 'n')
-A['D18'] = ('Realignment and flashers: CON start 5/24/2021 and completion 7/2/2021 per the NCDOT tracking database (the HNTB compliance memo lists 7/2/2021 as both the begin and completion date), built under the R-2721A (Complete 540) contract; RTE notified 9/16/2021; HNTB compliance review 6/7/2024 (substantial compliance). Dated aerials support the start: the Wake County orthophoto of 2/17/2021 and Nearmap captures of 9/15/2020 and 1/23/2021 show the old SR 1390 T-intersection in use and the new corridor still wooded (the grading north of the old junction in the January 2021 capture is the lot and driveway of 8736 Lake Wheeler Rd, built 2021), and the Nearmap capture of 5/20/2021 shows clearing and earthwork just under way in the southwest quadrant (excavator and spoil piles) with the old T still open. The flashers were then replaced by traffic signal 05-1723 (plan sealed 2/25/2022). Imagery brackets the turn-on: Nearmap 5/30/2022 shows the span wire up but no stop bars on SR 1375, Street View June 2022 shows the heads bagged with the side-street stop signs still up, and Nearmap 10/21/2022 shows stop bars on both SR 1375 approaches (signal operating). Turn-on is taken as July 2022, so the construction period runs from 5/1/2021 through 7/31/2022.', 's')
+A['D18'] = ('Realignment and flashers: CON start 5/24/2021 and completion 7/2/2021 per the NCDOT tracking database (the HNTB compliance memo lists 7/2/2021 as both the begin and completion date), built under the R-2721A (Complete 540) contract; RTE notified 9/16/2021; HNTB compliance review 6/7/2024 (substantial compliance). The flashers were then replaced by traffic signal 05-1723 (plan sealed 2/25/2022). Imagery brackets the turn-on: Nearmap 5/30/2022 shows the span wire up but no stop bars on SR 1375, Street View June 2022 shows the heads bagged with the side-street stop signs still up, and Nearmap 10/21/2022 shows stop bars on both SR 1375 approaches (signal operating), so the construction period runs from 5/1/2021 through 10/31/2022.', 's')
 A['D19'] = ('150 (350 on N leg)', 's')
 A['D20'] = ('Frontal Impact Crashes in the Intersection (angle, left turn different roadways, right turn different roadways, left/right turn same roadway and head-on) within the Y-line', 's')
 A['D21'] = ('Rear End Crashes on SR 1375 (Lake Wheeler Road) approaching the intersection (both directions)', 's')
 A['D22'] = (None, 'blank')
 A['D23'] = ('Limited sight distance on SR 1375 (Lake Wheeler Road) and the offset condition of SR 1390 (Optimist Farm Road) with SR 1503 (Donnybrook Road) is contributing to angle and rear end type crashes (35 total crashes 1/1/2011-12/31/2015; 14 correctable).', 's')
-A['D24'] = ("""PROJECT / CONSTRUCTION: W-5601HP (05-08-203, WBS 50138.3.225, HSIP, B/C 3.43, evaluation order 41000076575) moved the SR 1390 (Optimist Farm Rd) approach about 200 ft south so it ties into SR 1375 directly across from SR 1503 (Donnybrook Rd) at MP 4.70, and added "Vehicle Entering When Flashing" flashers on both SR 1375 approaches. Built under the R-2721A (Complete 540) contract; the tracking database gives a 5/24/2021 start (also the let date) while the HNTB memo lists 7/2/2021 as both begin and completion. Dated aerials support the start: the Wake County orthophoto of 2/17/2021 and Nearmap captures of 9/15/2020 and 1/23/2021 show the old T in use and the new corridor still wooded, and Nearmap 5/20/2021 shows clearing just under way in the southwest quadrant, so the construction period starts 5/1/2021.
+A['D24'] = ("""PROJECT/CONSTRUCTION: W-5601HP (05-08-203, WBS 50138.3.225, HSIP, B/C 3.43, evaluation order 41000076575) moved the SR 1390 (Optimist Farm Rd) approach about 200 ft south so it ties into SR 1375 directly across from SR 1503 (Donnybrook Rd) at MP 4.70, and added "Vehicle Entering When Flashing" flashers on both SR 1375 approaches. Built under the R-2721A (Complete 540) contract; the tracking database gives a 5/24/2021 start (also the let date) and the HNTB memo lists 7/2/2021 as the completion.
 
-SIGNAL (CONFOUNDER): In 2022 a traffic signal (05-1723, 2-phase fully actuated; plan sealed 2/25/2022; not part of W-5601HP) replaced the flashers, and the VEWF signs and beacons came out. Imagery (see the completion-date notes) brackets the turn-on between late June and mid-October 2022; with the heads already bagged in June, turn-on is taken as July 2022, so the construction period is carried through 7/31/2022 and the after period (8/1/2022-8/31/2026, 4 yr 1 mo) represents the realigned, signalized intersection.
+SIGNAL (CONFOUNDER): In 2022 a traffic signal (05-1723, 2-phase fully actuated; plan sealed 2/25/2022; not part of W-5601HP) replaced the flashers, and the VEWF signs and beacons came out. Imagery brackets the turn-on between late June and mid-October 2022; with the heads already bagged in June, turn-on is taken as October 2022, so the construction period is carried through 10/31/2022 and the after period (11/1/2022-8/31/2026, 3 yr 10 mo) represents the realigned, signalized intersection.
 
-PRIOR PROJECT: W-5205W / 05-13-6035 (sight distance improvements here) was never evaluated because this project began in 2021. Nearmap imagery shows the wooded southwest quadrant of the old SR 1390 T-intersection cleared between 9/5/2016 and 2/19/2017, so that work was complete by February 2017. The before period therefore runs 4/1/2017-4/30/2021 as an equal 4 yr 1 mo period ('Evaluation Set-up' B14 unchecked), with the sight distance improvement in place throughout.
+PRIOR PROJECT: W-5205W/05-13-6035 (sight distance improvements here) was never evaluated because this project began in 2021. Nearmap imagery appears to show the sight distance work at the old SR 1390 T-intersection was completed between 9/5/2016 and 2/19/2017, so that work was complete by February 2017. The before period therefore runs 7/1/2017-4/30/2021 as an equal 3 yr 10 mo period, with the sight distance improvement in place throughout.
 
-Y-LINE: 150 ft on the south, east and west legs, extended to 350 ft on the north leg (the southbound SR 1375 approach) so the former SR 1390 junction (MP 4.66, about 200 ft north) is covered with the usual 150 ft beyond it. Per the extended-Y-line guidance for realignments; the same leg limits apply in both periods. Pull the fiche wide (SR 1375 MP 4.55-4.85 plus SR 1390, SR 1503, SR 1392), bin by leg and distance in the Fiche Prep Tool, and edit the One Pager criteria sentence for the north-leg extension; curve-exit crashes farther up the north approach can go in the additional-information table.
+Y-LINE: 150 ft on the south, east and west legs, extended to 350 ft on the north leg (the southbound SR 1375 approach) so the former SR 1390 junction (MP 4.66, about 200 ft north) is covered with the usual 150 ft beyond it.
 
 OTHER CHANGES: Complete 540 (NC 540; built from 2019) opened 9/24/2024 and crosses SR 1375 about 0.3 mi north with no interchange there, changing travel patterns in the after period's last two years.""", 's')
 for ref, (val, kind) in A.items():
@@ -227,11 +228,11 @@ for r, (leg, road, spd, yr, f, aadt, est) in LEGS.items():
     s3.set(f'O{r}', (f, aadt), 'f'); s3.set(f'P{r}', est, 'b')
     s3.set_cached(f'Q{r}', f'{leg} leg: {road}, {spd} mph, {yr} AADT: {aadt}' + (' (est)' if est else ''))
 # time period echo
-for ref, v in {'M19': BEFORE_START, 'N19': BEFORE_END, 'O19': 4, 'P19': 1, 'M20': CON_START, 'N20': CON_END, 'O20': 1, 'P20': 3,
-               'M21': AFTER_START, 'N21': AFTER_END, 'O21': 4, 'P21': 1}.items():
+for ref, v in {'M19': BEFORE_START, 'N19': BEFORE_END, 'O19': 3, 'P19': 10, 'M20': CON_START, 'N20': CON_END, 'O20': 1, 'P20': 6,
+               'M21': AFTER_START, 'N21': AFTER_END, 'O21': 3, 'P21': 10}.items():
     s3.set_cached(ref, v)
 s3.set_row_height(24, 409)
-for _r, _h in ((14, 33), (18, 150), (20, 33), (23, 33)): s3.set_row_height(_r, _h)
+for _r, _h in ((14, 33), (18, 115), (20, 33), (23, 33)): s3.set_row_height(_r, _h)
 s3.xml = s3.xml.replace('<selection activeCell="D10" sqref="D10"/>', '<selection activeCell="D6" sqref="D6"/>')
 
 # ================================================================== drawings

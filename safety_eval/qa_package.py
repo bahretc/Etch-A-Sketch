@@ -54,9 +54,19 @@ ONEPAGER_PLACEHOLDERS = ("1X", "2X", "3A", "3X", "4X", "5X", "6X", "7X", "8X", "
 _PLACEHOLDER_RE = re.compile(r"(?<![\w-])(" + "|".join(re.escape(p) for p in ONEPAGER_PLACEHOLDERS) + r")(?![\w-])")
 
 #: Words a public one pager never carries (CLAUDE.md rule 11, docs/05).
-INTERNAL_WORDS = ("TEAAS", "workbook", "fiche", "severity code")
+INTERNAL_WORDS = ("TEAAS", "workbook", "fiche", "severity code", "KABCO", "PDO")
+_INTERNAL_RE = re.compile(r"\b(TEAAS|workbooks?|fiches?|severity codes?|KABCO|PDO)\b", re.I)
 
-_TIME_RE = re.compile(r"\b(?:[01]?\d|2[0-3]):[0-5]\d\b")
+#: CLAUDE.md rule 6: a roundabout is never a circle (street names such as
+#: "Oak Circle" pass: only "the/a/traffic ... circle" is caught)
+_CIRCLE_RE = re.compile(r"\b(?:traffic|the|a|this|that)\s+circle\b", re.I)
+
+#: Crash-type acronyms the target crash text must spell out (rule 11)
+CRASH_ACRONYMS = ("LTSR", "LTDR", "RTSR", "RTDR", "SSSD", "SSOD", "SSDD", "RORR", "RORL", "RORS", "ROR", "RE", "FI")
+
+_TIME_RE = re.compile(r"\b(?:[01]?\d|2[0-3]):[0-5]\d\b"
+                      r"|\b(?:1[0-2]|0?[1-9])(?::[0-5]\d)?\s*[AP]\.?M\b(?!\.?\s*(?:hour|peak))")
+_SPACED_HYPHEN_RE = re.compile(r"\w\)? - \(?\w")
 
 #: Review markers an analyst leaves on a crash row while working ("; verify").
 DRAFT_RE = re.compile(r"\bverify\b|\bTBD\b|\bTODO\b|\?\?", re.I)
@@ -119,6 +129,9 @@ class TeaasReport:
     adt: int | None = None
 
 
+_PDF_ROW_RE = re.compile(r"^[ \t]*\d+[ \t]+(1\d{8})[ \t]+(?:\d+\.\d+[ \t]+)?(\d{2}/\d{2}/\d{4})\b", re.M)
+
+
 def parse_teaas_pdf_text(text: str, source: str = "") -> TeaasReport:
     """Intersection or strip analysis report text (``pdftotext -layout``)."""
     rep = TeaasReport(source=source)
@@ -128,10 +141,13 @@ def parse_teaas_pdf_text(text: str, source: str = "") -> TeaasReport:
     m = re.search(r"Study:\s+(\S+)", text)
     if m:
         rep.study = m.group(1)
-    m = re.search(r"^\s*Total Crashes\s+(\d+)\b", text, re.M)
+    m = re.search(r"^[ \t]*Total Crashes[ \t]+(\d+)\b", text, re.M)
     if m:
         rep.total = int(m.group(1))
-    for m in re.finditer(r"^\s*\d+\s+(1\d{8})\s+(\d{2}/\d{2}/\d{4})\b", text, re.M):
+    # one line only (\s would run on into the next line and pair an appendix
+    # crash ID with the page footer's run date); a strip report has a
+    # Milepost column between the crash ID and the date
+    for m in _PDF_ROW_RE.finditer(text):
         rep.listed[m.group(1)] = _parse_slash_date(m.group(2))
     mode = None
     for line in text.splitlines():
@@ -145,7 +161,7 @@ def parse_teaas_pdf_text(text: str, source: str = "") -> TeaasReport:
         if mode and re.fullmatch(r"1\d{8}", s):
             (rep.included if mode == "inc" else rep.excluded).add(s)
     if rep.study:
-        m = re.search(rf"^\s*{re.escape(rep.study)}\s+(.*)$", text, re.M | re.I)
+        m = re.search(rf"^[ \t]*{re.escape(rep.study)}[ \t]+(.*)$", text, re.M | re.I)
         if m:
             nums = [int(n) for n in re.findall(r"(?<![\d.])(\d{3,6})(?![\d.])", m.group(1))]
             if nums:
@@ -154,11 +170,20 @@ def parse_teaas_pdf_text(text: str, source: str = "") -> TeaasReport:
 
 
 def parse_teaas_csv_text(text: str, source: str = "") -> TeaasReport:
-    """The CSV export of the same report (quoted fields, multi-line cells)."""
+    """The CSV export of the same report (quoted fields, multi-line cells).
+    A strip report carries a Milepost column between Crash ID and Date."""
     rep = TeaasReport(source=source)
+    mode = None
     for row in csv.reader(io.StringIO(text)):
         cells = [c.strip() for c in row]
         if not cells:
+            continue
+        filled = [c for c in cells if c]
+        if filled and filled[0].startswith("Included Accidents"):
+            mode = "inc"
+            continue
+        if filled and filled[0].startswith("Excluded Accidents"):
+            mode = "exc"
             continue
         if cells[0] == "Date:" and len(cells) >= 4:
             rep.start, rep.end = _parse_slash_date(cells[1]), _parse_slash_date(cells[3])
@@ -166,10 +191,14 @@ def parse_teaas_csv_text(text: str, source: str = "") -> TeaasReport:
                 i = cells.index("Study:")
                 if i + 1 < len(cells):
                     rep.study = cells[i + 1]
-        elif len(cells) >= 3 and cells[0].isdigit() and CRASH_ID_RE.fullmatch(cells[1]) and _parse_slash_date(cells[2]):
-            rep.listed[cells[1]] = _parse_slash_date(cells[2])
-        elif len([c for c in cells if c]) == 1 and CRASH_ID_RE.fullmatch(next(c for c in cells if c)):
-            rep.included.add(next(c for c in cells if c))
+        elif len(cells) >= 3 and cells[0].isdigit() and CRASH_ID_RE.fullmatch(cells[1]):
+            when = _parse_slash_date(cells[2]) if _SLASH_DATE_RE.fullmatch(cells[2].split(" ")[0]) else None
+            if when is None and len(cells) >= 4 and re.fullmatch(r"\d+(?:\.\d+)?", cells[2]):
+                when = _parse_slash_date(cells[3])          # strip report: Milepost, then Date
+            if when:
+                rep.listed[cells[1]] = when
+        elif len(filled) == 1 and CRASH_ID_RE.fullmatch(filled[0]) and mode:
+            (rep.included if mode == "inc" else rep.excluded).add(filled[0])
         elif cells[0] == "Total Crashes" and len(cells) > 1 and cells[1].isdigit() and rep.total is None:
             rep.total = int(cells[1])
     return rep
@@ -241,6 +270,8 @@ class WorkbookFacts:
     alt_rows: list = field(default_factory=list)       # Assumptions alt text rows, sheet order
     labels: dict = field(default_factory=dict)         # One Pager label -> [(v1, v2, v3)]
     template_path: str = ""                            # One Pager I26, read by the one pager macro
+    completion: date | None = None                     # One Pager I14
+    grid: dict = field(default_factory=dict)           # One Pager (row, col) -> value, non-empty cells
     draft_notes: list = field(default_factory=list)    # (sheet, crash id, note) still marked as draft
 
 
@@ -276,10 +307,12 @@ def read_workbook_facts(path: str) -> WorkbookFacts:
                 facts.period_dates[key] = (_parse_slash_date(m.group(1)), _parse_slash_date(m.group(2)))
         if header_row is None:
             continue
-        target_cols = [(h, c) for h, c in cols.items() if re.fullmatch(r"target-\d\??", h)]
+        # the flag columns are "Target-1?"; "Target-1" without the ? is the
+        # severity summary block beside the first rows
+        target_cols = [(h, c) for h, c in cols.items() if re.fullmatch(r"target-\d\?", h)]
         rows = {}
-        note_cols = [c for c in range(8, 15) if c not in (cols.get("t"), cols.get("s"))
-                     and c not in {tc for _, tc in target_cols}]
+        note_cols = [c for c in range(1, min(ws.max_column, 30) + 1)
+                     if re.search(r"note|crash type|vehicle|at fault", str(ws.cell(header_row, c).value or ""), re.I)]
         for r in range(header_row + 1, ws.max_row + 1):
             v = ws.cell(r, 1).value
             if v is None or not str(v).strip().isdigit():
@@ -301,6 +334,7 @@ def read_workbook_facts(path: str) -> WorkbookFacts:
         facts.order_id = _norm(ws["I3"].value)
         facts.project_id = _norm(ws["I4"].value)
         facts.template_path = _norm(ws["I26"].value)
+        facts.completion = _as_date(ws["I14"].value)
         v = ws["I24"].value
         facts.onepager_date = _as_date(v)
         facts.onepager_date_text = v.strftime("%m/%d/%Y") if isinstance(v, (datetime, date)) else _norm(v)
@@ -308,6 +342,10 @@ def read_workbook_facts(path: str) -> WorkbookFacts:
             a, b = _as_date(ws[f"L{row}"].value), _as_date(ws[f"M{row}"].value)
             if a and b:
                 facts.period_dates.setdefault(key, (a, b))
+        for row in ws.iter_rows():
+            for c in row:
+                if c.value not in (None, ""):
+                    facts.grid[(c.row, c.column)] = c.value
         for row in ws.iter_rows():
             for c in row:
                 if not isinstance(c.value, str) or not c.value.strip():
@@ -447,6 +485,77 @@ def same_value(shown: str, value) -> bool:
     return shown.lower() == _norm(value).lower()
 
 
+def check_public_text(paragraphs: list[str], where: str, rep: QaReport, discussion: list[str] = (),
+                      skip_dates: tuple = (), dashes: bool = True) -> None:
+    """The public-document rules (CLAUDE.md rules 6 and 11, docs/05) over the
+    text of a one pager or a results page."""
+    text = "\n".join(paragraphs)
+    if dashes:
+        for ch, label in DASHES.items():
+            if ch in text:
+                rep.add("Medium", where, f"{label} in report text (docs/05)")
+    for w in sorted({m.group(1) for m in _INTERNAL_RE.finditer(text)}, key=str.lower):
+        rep.add("Medium", where, f"report text names '{w}'; one pagers are public documents (CLAUDE.md rule 11)")
+    for m in sorted({m.group(0) for m in _CIRCLE_RE.finditer(text)}):
+        rep.add("Medium", where, f"'{m}': a roundabout is never called a circle (CLAUDE.md rule 6)")
+    for p in paragraphs:
+        if _TIME_RE.search(p):
+            rep.add("Low", where, "time of day in the text; keep it only for a time-of-day pattern (CLAUDE.md rule 11)",
+                    _norm(p)[:90])
+        if re.match(r"\s*Target Crash(?:es)?(?: \d)?:", p):
+            for a in CRASH_ACRONYMS:
+                if re.search(rf"\b{a}\b", p) and f"({a})" not in p:
+                    rep.add("Medium", where, f"'{a}' in the target crash text is not spelled out (CLAUDE.md rule 11)",
+                            _norm(p)[:120])
+    dates = []
+    for p in discussion:
+        for m in _SLASH_DATE_RE.finditer(p):
+            d = _parse_slash_date(m.group(0))
+            if d and d not in skip_dates:
+                dates.append(m.group(0))
+        if _SPACED_HYPHEN_RE.search(p):
+            rep.add("Low", where, "a spaced hyphen stands in for a dash (docs/05: no dashes in report text)",
+                    _norm(p)[:90])
+    if dates:
+        rep.add("Info", where, f"{len(dates)} date(s) in Items for Discussion; keep a date only where it matters "
+                "(CLAUDE.md rule 11)", ", ".join(dates[:8]))
+
+
+def _discussion(paragraphs: list[str]) -> list[str]:
+    """Paragraphs of the Items for Discussion section of a one pager."""
+    out, on = [], False
+    for p in paragraphs:
+        t = _norm(p)
+        if t.startswith("Items for Discussion"):
+            on = True
+            continue
+        if on and (t.startswith("Data Prepared For") or t.startswith("The Traffic Safety Unit")):
+            break
+        if on and t:
+            out.append(t)
+    return out
+
+
+def check_workbook_map(f: WorkbookFacts, rep: QaReport, docx_images: list | None = None) -> None:
+    """The map picture on the Assumptions sheet and its alt text (docs/05,
+    rule 11); with the one pager's images, that the one pager has a map."""
+    wbname = os.path.basename(f.path)
+    alts = workbook_picture_alts(f.path)
+    if not alts:
+        rep.add("Medium", f"{wbname} Assumptions", "no picture on the Assumptions sheet (Map/Satellite Views, rule 10)")
+    elif any(not a.strip() for a in alts):
+        rep.add("High", f"{wbname} Assumptions picture", "a picture on the Assumptions sheet has no alt text "
+                "(CLAUDE.md rule 11)", fix="set its alt text to the Assumptions alt text rows")
+    elif f.alt_rows:
+        want = [_norm(x) for x in f.alt_rows]
+        if all([_norm(x) for x in a.splitlines() if x.strip()] != want for a in alts):
+            rep.add("Medium", f"{wbname} Assumptions picture",
+                    "workbook map alt text is not the alt text rows verbatim (docs/05)",
+                    f"alt text: {alts[0][:120]!r}", "set it to the Assumptions alt text rows, one per line")
+    if docx_images is not None and f.alt_rows and not docx_images:
+        rep.add("High", wbname, "the one pager has no Map/Satellite View image")
+
+
 def check_onepager_docx(docx: str, workbook: str | None = None, pdf: str | None = None,
                         report: QaReport | None = None, wb_facts: WorkbookFacts | None = None) -> QaReport:
     rep = report or QaReport()
@@ -461,22 +570,16 @@ def check_onepager_docx(docx: str, workbook: str | None = None, pdf: str | None 
         if not descr.strip():
             rep.add("High", f"{where} image '{name}'", "image has no alt text (CLAUDE.md rule 11)",
                     fix="right click > View Alt Text, paste the Assumptions alt text rows")
-    for ch, label in DASHES.items():
-        if ch in text:
-            rep.add("Medium", where, f"{label} in one pager text (docs/05)")
-    low = text.lower()
-    for w in INTERNAL_WORDS:
-        if re.search(rf"\b{re.escape(w.lower())}\b", low):
-            rep.add("Medium", where, f"one pager names '{w}'; it is a public document (CLAUDE.md rule 11)")
-    for p in d.paragraphs:
-        if _TIME_RE.search(p):
-            rep.add("Low", where, "exact time of day in the text; keep it only for a time-of-day pattern",
-                    _norm(p)[:90])
+    f0 = wb_facts or (read_workbook_facts(workbook) if workbook else None)
+    skip = tuple(x for pair in (f0.period_dates.values() if f0 else ()) for x in pair)
+    if f0 and f0.completion:
+        skip += (f0.completion,)
+    check_public_text(d.paragraphs, where, rep, discussion=_discussion(d.paragraphs), skip_dates=skip)
     rep.verified.append(f"{where}: {len(d.paragraphs)} paragraphs, {len(d.tables)} tables, "
                         f"{len(d.images)} image(s) scanned for placeholders, alt text and wording")
 
-    if workbook or wb_facts:
-        f = wb_facts or read_workbook_facts(workbook)
+    if f0:
+        f = f0
         wbname = os.path.basename(f.path)
         shown = None
         for p in d.paragraphs:
@@ -500,16 +603,33 @@ def check_onepager_docx(docx: str, workbook: str | None = None, pdf: str | None 
                     rep.add("High", where, f"volume row shows {row[1:3]}, workbook has {vb}, {va}")
         n_rows = n_bad = 0
         for t in d.tables:
-            for r in t:
-                if len(r) < 2 or r[0] not in f.labels or r[0].startswith("Volume ("):
-                    continue                # the Volume row has its own check above
-                n_rows += 1
-                cells = r[1:4]
-                if not any(all(same_value(c, v) for c, v in zip(cells, triple)) for triple in f.labels[r[0]]):
-                    n_bad += 1
-                    rep.add("High", where, f"row '{r[0]}' shows {cells}, workbook One Pager has "
-                            f"{[_short(v) for v in f.labels[r[0]][0][:len(cells)]]}",
-                            fix="regenerate the one pager or correct the cell")
+            rows = [r for r in t if len(r) >= 2 and r[0] and not r[0].startswith("Volume (")]
+            # the volume row has its own check above. A table is compared with
+            # the block under its own header on the sheet (several tables
+            # share row labels: Class C Injury Crashes, Property Damage Only)
+            blocks = _blocks_for(f.grid, t[0][0] if t and t[0] else "")
+            if not blocks:
+                # no header on the sheet (the periods table): a row passes when
+                # it equals the cells beside any occurrence of its label
+                n = sum(1 for r in rows if r[0] in f.labels)
+                bad = [(r, f.labels[r[0]][0]) for r in rows if r[0] in f.labels and not any(
+                    all(same_value(c, v) for c, v in zip(r[1:4], triple)) for triple in f.labels[r[0]])]
+                blocks_best = ((len(bad), -n), bad, n)
+            else:
+                blocks_best = None
+                for blk in blocks:
+                    bad = [(r, blk[r[0]]) for r in rows if r[0] in blk
+                           and not all(same_value(c, v) for c, v in zip(r[1:4], blk[r[0]]))]
+                    n = sum(1 for r in rows if r[0] in blk)
+                    if blocks_best is None or (len(bad), -n) < blocks_best[0]:
+                        blocks_best = ((len(bad), -n), bad, n)
+            best = blocks_best
+            n_rows += best[2]
+            for r, vals in best[1]:
+                n_bad += 1
+                rep.add("High", where, f"row '{r[0]}' shows {r[1:4]}, workbook One Pager has "
+                        f"{[_short(v) for v in vals[:len(r[1:4])]]}",
+                        fix="regenerate the one pager or correct the cell")
         rep.verified.append(f"{where}: {n_rows} table rows compared with {wbname} One Pager, {n_bad} differ")
         if f.alt_rows and d.images:
             mp = max(d.images, key=lambda i: i[2])
@@ -521,21 +641,25 @@ def check_onepager_docx(docx: str, workbook: str | None = None, pdf: str | None 
                 else:
                     rep.add("Medium", f"{where} image '{mp[0]}'", "map alt text is not the Assumptions alt text rows verbatim (docs/05)",
                             f"alt text: {mp[1][:120]!r}; rows: {' / '.join(f.alt_rows)[:160]}")
-            wb_alts = [a for a in workbook_picture_alts(f.path) if a.strip()]
-            if wb_alts and all([_norm(x) for x in a.splitlines() if x.strip()] != want for a in wb_alts):
-                rep.add("Medium", f"{wbname} Assumptions picture", "workbook map alt text is not the alt text rows verbatim (docs/05)")
-            elif not workbook_picture_alts(f.path):
-                rep.add("Low", f"{wbname} Assumptions", "no picture on the Assumptions sheet (Map/Satellite Views)")
+        if f.alt_rows and not d.images:
+            rep.add("High", where, "the one pager has no Map/Satellite View image")
 
     if pdf:
-        flat = _squash(_pdf_reading_text(pdf))
+        raw = _pdf_reading_text(pdf)
+        flat = _squash(raw)
         missing = [p for p in d.paragraphs if len(_norm(p)) >= 12 and _squash(p) not in flat]
-        if missing:
-            rep.add("Medium", os.path.basename(pdf), f"{len(missing)} paragraph(s) of {where} are not in the PDF; "
-                    "the PDF is from another version of the docx", "; ".join(_norm(m)[:60] for m in missing[:3]),
-                    "Save As PDF from the current docx")
+        # short paragraphs are table values; compare every number token too
+        # (a 57.14% corrected to 100+% in the docx only)
+        want, have = _number_tokens("\n".join(d.paragraphs)), _number_tokens(raw)
+        lost = [t for t, n in (want - have).items() if flat.count(t) < want[t]]
+        if missing or lost:
+            ev = "; ".join(_norm(m)[:60] for m in missing[:3])
+            if lost:
+                ev += ("; " if ev else "") + f"numbers not in the PDF: {lost[:8]}"
+            rep.add("Medium", os.path.basename(pdf), f"the PDF does not match {where}: {len(missing)} paragraph(s) "
+                    f"and {len(lost)} number(s) of the docx are not in it", ev, "Save As PDF from the current docx")
         else:
-            rep.verified.append(f"{os.path.basename(pdf)}: every docx paragraph found in the PDF text")
+            rep.verified.append(f"{os.path.basename(pdf)}: every docx paragraph and number found in the PDF text")
     return rep
 
 
@@ -549,6 +673,14 @@ def _squash(text: str) -> str:
     return re.sub(r"\s+", "", t)
 
 
+def _number_tokens(text: str):
+    """Multiset of number tokens (with their %, $ or +): 52.17%, 36,700, 100+%."""
+    from collections import Counter
+
+    t = text.translate(_HYPHENS).replace("-", "")
+    return Counter(re.findall(r"\$?\d[\d,./:]*\d%?\+?%?|\$?\d%?\+?%?", t))
+
+
 def _pdf_reading_text(pdf: str) -> str:
     """PDF text in reading order (no -layout), so a two-column page reads
     column by column and a paragraph stays contiguous."""
@@ -559,6 +691,28 @@ def _pdf_reading_text(pdf: str) -> str:
     if not exe:
         raise RuntimeError("pdftotext (poppler-utils) is required")
     return subprocess.run([exe, pdf, "-"], capture_output=True, text=True, timeout=120).stdout
+
+
+def _blocks_for(grid: dict, header: str) -> list[dict]:
+    """{label: (v1, v2, v3)} for every block on the One Pager sheet headed
+    ``header``: the rows under the header cell, to the next table header."""
+    header = _norm(header)
+    if not header:
+        return []
+    out = []
+    for (r0, c0), v in grid.items():
+        if not (isinstance(v, str) and _norm(v) == header):
+            continue
+        blk = {}
+        for r in range(r0 + 1, r0 + 16):
+            lab = grid.get((r, c0))
+            if isinstance(lab, str) and re.search(r"(Summary|Information|Time Period)$", _norm(lab)):
+                break
+            if isinstance(lab, str) and lab.strip():
+                blk.setdefault(_norm(lab), tuple(grid.get((r, c0 + k)) for k in (1, 2, 3)))
+        if blk:
+            out.append(blk)
+    return out
 
 
 def _short(v):
@@ -582,6 +736,7 @@ def pdf_tags(pdf: str) -> dict:
         out["lang"] = str(root.get("/Lang", "") or "")
         st = root.get("/StructTreeRoot")
         if st is None:
+            out["tagged"] = False                      # MarkInfo without a structure tree tags nothing
             return out
         rolemap = {str(k): str(v) for k, v in dict(st.get("/RoleMap", {}) or {}).items()}
         stack, seen = [st.get("/K")], set()
@@ -620,8 +775,11 @@ def check_pdf_accessibility(pdf: str, report: QaReport | None = None, public: bo
         rep.verified.append(f"{name}: tagging not checked ({exc})")
         return rep
     if not t["tagged"]:
-        rep.add("Medium" if public else "Info", name, "PDF is not tagged" + ("" if public else " (compiled file)"),
-                fix="Save As PDF from Word (tagged), never Print to PDF" if public else "")
+        if public:
+            rep.add("High", name, "PDF is not tagged: printed rather than Saved As PDF, so no figure carries "
+                    "alternate text (CLAUDE.md rule 11)", fix="Save As PDF from Word (tagged), never Print to PDF")
+        else:
+            rep.add("Info", name, "PDF is not tagged (compiled file)")
     missing = sum(1 for a in t["figures"] if not a.strip())
     if missing and public:
         rep.add("High", name, f"{missing} of {len(t['figures'])} figure(s) have no alternate text in the PDF",
@@ -681,6 +839,14 @@ def check_compilation(complete_pdf: str, parts: list[str], report: QaReport | No
             if best is not None and score >= threshold:
                 claimed[best] = True
                 order.append(best)
+                if score < 1.0:
+                    # paired, but not the same page: a value or a line changed
+                    # since it was bound (a reviewer fix made in the part only)
+                    gone = sorted(s - comp[best])[:2]
+                    new = sorted(comp[best] - s)[:2]
+                    rep.add("High", name, f"page {best + 1} differs from {os.path.basename(part)} page {i + 1}",
+                            f"only in the part: {gone}; only in the compilation: {new}",
+                            "rebind with the current file")
             elif i >= app:
                 skipped_appendix.append(f"{os.path.basename(part)} p{i + 1}")
             else:
@@ -717,9 +883,17 @@ def check_study(study: TeaasStudy, rows: dict, period: str, period_dates: tuple 
         rep.add("High", where, "the study's exports disagree on its crashes", str(sizes),
                 "export PDF, CSV and CrashID list from the same run")
     for k, r in study.reports.items():
-        if r.included and set(r.listed) != r.included:
-            rep.add("High", where, f"TEAAS {k}: {len(r.listed)} crashes analysed, {len(r.included)} crash IDs "
-                    "in Included Accidents", f"not analysed: {sorted(r.included - set(r.listed))[:6]}")
+        # Included Accidents are the crashes forced into the study (all of
+        # them for an import-list run, a few for a criteria run): one that
+        # was not analysed is a defect, as is an Excluded crash still listed
+        lost = sorted(r.included - set(r.listed))
+        if lost:
+            rep.add("High", where, f"TEAAS {k}: {len(lost)} crash ID(s) in Included Accidents were not analysed",
+                    f"{lost[:8]}" + (" ..." if len(lost) > 8 else ""), "check the IDs and the study dates, re-run")
+        kept = sorted(r.excluded & set(r.listed))
+        if kept:
+            rep.add("High", where, f"TEAAS {k}: {len(kept)} crash(es) in Excluded Accidents are still analysed",
+                    f"{kept[:8]}")
         if r.total is not None and r.total != len(r.listed) and r.listed:
             rep.add("Medium", where, f"TEAAS {k}: Total Crashes {r.total} but {len(r.listed)} crashes listed")
     ids = study.ids()
@@ -775,14 +949,24 @@ def check_study(study: TeaasStudy, rows: dict, period: str, period_dates: tuple 
 # reviewer comments
 # --------------------------------------------------------------------------- #
 _DELETE_RE = re.compile(r"\b(delete|remove|exclude|drop)\b", re.I)
-_NOT_TARGET_RE = re.compile(r"\bnot (?:a )?target\b|\bno longer (?:a )?target\b|\bis not a target", re.I)
+#: "not a target", "not targets", "non-target", "remove ... from/as (a) target"
+_NOT_TARGET_RE = re.compile(r"\b(?:not|n't)\s+(?:be\s+|count(?:ed)?\s+as\s+)?(?:an?\s+)?targets?\b"
+                            r"|\bno longer (?:an? )?targets?\b|\bnon-?targets?\b"
+                            r"|\b(?:remove|exclude|drop)\b.*\b(?:from|as) (?:the |an? )?targets?\b", re.I)
+#: "do not delete", "don't remove", "keep it", "should stay", "leave it in"
+_KEEP_RE = re.compile(r"\b(?:do not|don't|not|never|shouldn't|should not)\s+(?:be\s+)?(?:delete|remove|exclude|drop)"
+                      r"|\b(?:keep|stay|stays|remain|retain|leave)\b", re.I)
+#: a line of a delete list: the crash ID comes first after the bullet
+_LIST_ITEM_RE = re.compile(r"^[\s*\u2022\-\d.)]*(1\d{8})\b")
 
 
 def reviewer_crash_requests(text: str) -> list[dict]:
     """Crashes the reviewer names, with what was asked: delete, not_target or mention.
 
-    A line that asks to delete and names no crash opens a list; the crash IDs
-    on the lines that follow belong to it until a line without one.
+    A line that asks to delete crashes and names none opens a list; the
+    lines that follow belong to it while each starts with a crash ID (as in
+    "*  106926706 - looks like it occurred fully in the PVA"). Any other line
+    ends it. "Not a target" wording wins over "remove".
     """
     out: dict[str, dict] = {}
     in_delete = False
@@ -792,14 +976,19 @@ def reviewer_crash_requests(text: str) -> list[dict]:
             continue
         ids = CRASH_ID_RE.findall(line)
         if not ids:
-            in_delete = bool(_DELETE_RE.search(line)) and "crash" in line.lower()
+            in_delete = (bool(_DELETE_RE.search(line)) and "crash" in line.lower()
+                         and not _NOT_TARGET_RE.search(line))
             continue
         if _NOT_TARGET_RE.search(line):
             action = "not_target"
-        elif _DELETE_RE.search(line) or in_delete:
+        elif _KEEP_RE.search(line):
+            action = "mention"                          # "do not delete", "keep it", "should stay"
+        elif _DELETE_RE.search(line) or (in_delete and _LIST_ITEM_RE.match(line)):
             action = "delete"
         else:
             action = "mention"
+        if not _LIST_ITEM_RE.match(line):
+            in_delete = False
         for cid in ids:
             prev = out.get(cid)
             if prev is None or prev["action"] == "mention":
@@ -828,6 +1017,9 @@ class PackageLayout:
     studies: list = field(default_factory=list)
     correspondence: list = field(default_factory=list)   # .msg / .eml paths
     workbooks: list = field(default_factory=list)        # every evaluation workbook found
+    initial: list = field(default_factory=list)          # initial studies (not compared with a period)
+    unmatched: list = field(default_factory=list)        # (study, (location, period, checked study) or None)
+    unplaced: list = field(default_factory=list)         # one pager / compilation files no location could take
     files: list = field(default_factory=list)            # every file, relative, hidden files left out
 
 
@@ -858,13 +1050,46 @@ def _first_page_text(pdf: str) -> str:
         return ""
 
 
+def _study_key(dirpath: str, stem: str) -> tuple:
+    """Exports of one study share a folder and a name; the ID list may be
+    "<name>_CrashID.txt" or, in the full-workbook layout, "Before_ID.txt"
+    beside "BEFORE.pdf". Case does not matter."""
+    name = re.sub(r"_?(crash_?)?id$", "", stem, flags=re.I) or stem
+    return os.path.normcase(os.path.normpath(dirpath)), name.lower()
+
+
+def _label_from_content(path: str) -> str:
+    """'(n of m)' as printed on a one pager (Order ID: 41000076576 (1 of 2))."""
+    try:
+        if path.lower().endswith(".docx"):
+            text = "\n".join(read_docx_facts(path).paragraphs[:60])
+        else:
+            text = _first_page_text(path)
+    except Exception:  # noqa: BLE001 - unreadable: cannot be placed
+        return ""
+    m = re.search(r"\((\d+)\s+of\s+(\d+)\)", text)
+    return f"{m.group(1)} of {m.group(2)}" if m else ""
+
+
 def discover_package(root: str) -> PackageLayout:
     lay = PackageLayout(root=root)
     locs: dict[str, Location] = {}
-    studies: dict[str, TeaasStudy] = {}
+    studies: dict[tuple, TeaasStudy] = {}
+    unlabeled: list[tuple[str, str]] = []          # (attr, path) without "n of m" in the name
 
     def loc(label: str) -> Location:
         return locs.setdefault(label, Location(label=label))
+
+    def place(attr: str, f: str, p: str) -> None:
+        label = _loc_label(f)
+        if label:
+            setattr(loc(label), attr, p)
+        else:
+            unlabeled.append((attr, p))
+
+    def study(dp: str, stem: str) -> TeaasStudy:
+        return studies.setdefault(_study_key(dp, stem),
+                                  TeaasStudy(re.sub(r"_?(crash_?)?id$", "", stem, flags=re.I) or stem))
 
     for dp, dn, fn in os.walk(root):
         dn[:] = sorted(d for d in dn if not is_hidden(d))
@@ -875,62 +1100,108 @@ def discover_package(root: str) -> PackageLayout:
             lay.files.append(os.path.relpath(p, root))
             low = f.lower()
             stem, ext = os.path.splitext(f)
-            if ext.lower() in (".xlsx", ".xlsm") and "evaluation workbook" in low:
+            ext = ext.lower()
+            if ext in (".xlsx", ".xlsm") and "evaluation workbook" in low:
                 lay.workbooks.append(p)
                 here = loc(_loc_label(f))
-                if here.workbook is None or (ext.lower() == ".xlsm" and not here.workbook.lower().endswith(".xlsm")):
+                if here.workbook is None or (ext == ".xlsm" and not here.workbook.lower().endswith(".xlsm")):
                     here.workbook = p
-            elif ext.lower() == ".docx" and re.search(r"one\s*pager", low):
-                loc(_loc_label(f)).onepager_docx = p
+            elif ext == ".docx" and re.search(r"one\s*pager", low):
+                place("onepager_docx", f, p)
             elif low.endswith("complete evaluation.pdf"):
-                loc(_loc_label(f)).complete_pdf = p
+                place("complete_pdf", f, p)
             elif re.search(r"(one\s*pager|\bweb)\.pdf$", low):
-                loc(_loc_label(f)).onepager_pdf = p
-            elif ext.lower() in (".msg", ".eml"):
+                place("onepager_pdf", f, p)
+            elif ext in (".msg", ".eml"):
                 lay.correspondence.append(p)
-            elif ext.lower() == ".txt" and _first_text(p, 200).upper().startswith("CRASH ID|"):
-                name = re.sub(r"_?crash_?id$", "", stem, flags=re.I) or stem
-                studies.setdefault(name, TeaasStudy(name)).id_list = p
-            elif ext.lower() == ".csv" and TEAAS_BANNER in _first_text(p):
-                studies.setdefault(stem, TeaasStudy(stem)).csv = p
-            elif ext.lower() == ".pdf":
+            elif ext == ".txt" and _first_text(p, 200).upper().startswith("CRASH ID|"):
+                study(dp, stem).id_list = p
+            elif ext == ".csv" and TEAAS_BANNER in (head := _first_text(p)) and "Analysis Report" in head:
+                st = study(dp, stem)
+                st.csv, st.name = p, stem
+            elif ext == ".pdf":
                 first = _first_page_text(p)
                 if TEAAS_BANNER in first and "Analysis Report" in first:
-                    studies.setdefault(stem, TeaasStudy(stem)).pdf = p
+                    st = study(dp, stem)
+                    st.pdf, st.name = p, stem
     lay.studies = [load_study(s) for s in studies.values()]
+    # the same name in two folders: the deeper copies are named by folder
+    by_name: dict[str, list] = {}
+    for (dirpath, _), s in studies.items():
+        by_name.setdefault(s.name.lower(), []).append((dirpath.count(os.sep), dirpath, s))
+    for group in by_name.values():
+        if len(group) < 2:
+            continue
+        group.sort(key=lambda g: g[0])
+        top = group[0][0]
+        for depth, dirpath, s in group:
+            if depth > top or sum(1 for g in group if g[0] == top) > 1:
+                s.name = f"{s.name} ({os.path.relpath(dirpath, os.path.normcase(os.path.normpath(root)))})"
+
+    # files without "n of m": by the "(n of m)" they print, else the only
+    # location that lacks that file, else reported as not placed
     if "" in locs and len(locs) > 1:
-        # files without "n of m" (a shared one pager PDF, say) go to the only
-        # location that lacks that file
-        stray = locs.pop("")
-        for attr in ("workbook", "onepager_docx", "onepager_pdf", "complete_pdf"):
-            v = getattr(stray, attr)
-            if v:
-                lacking = [l for l in locs.values() if getattr(l, attr) is None]
-                if len(lacking) == 1:
-                    setattr(lacking[0], attr, v)
+        locs.pop("")            # an unlabeled workbook stays in lay.workbooks and is reported there
+    multi = len(locs) > 1
+    for attr, p in unlabeled:
+        if not multi:
+            only = loc(next(iter(locs)) if locs else "")
+            if getattr(only, attr) is None:
+                setattr(only, attr, p)
+            else:
+                lay.unplaced.append(p)
+            continue
+        label = _label_from_content(p)
+        if label in locs and getattr(locs[label], attr) is None:
+            setattr(locs[label], attr, p)
+            continue
+        lacking = [l for l in locs.values() if getattr(l, attr) is None]
+        if len(lacking) == 1:
+            setattr(lacking[0], attr, p)
+        else:
+            lay.unplaced.append(p)
     lay.locations = [locs[k] for k in sorted(locs)]
     for l in lay.locations:
         if l.workbook:
             l.facts = read_workbook_facts(l.workbook)
-    # each study goes to the (location, period) whose crash list it overlaps most
+
+    # each study to the (location, period) it fits best: by name when it
+    # names a period; the initial study is not a period study; a study that
+    # names neither period gets a slot only when no study names one
+    named = any(re.search(r"before|after", s.name, re.I) for s in lay.studies)
+    slots: dict[tuple, list] = {}
     for s in lay.studies:
-        ids = s.ids()
+        if re.search(r"initial", s.name, re.I):
+            lay.initial.append(s)
+            continue
         want = "before" if re.search(r"before", s.name, re.I) else "after" if re.search(r"after", s.name, re.I) else None
-        best, score = None, 0
-        for l in lay.locations:
+        if want is None and named:
+            lay.unmatched.append((s, None))
+            continue
+        ids = s.ids()
+        best, score = None, (0.0, 0)
+        for i, l in enumerate(lay.locations):
             if not l.facts:
                 continue
             for period, rows in l.facts.periods.items():
                 if want and period != want:
                     continue
-                sc = len(ids & set(rows))
+                inter = len(ids & set(rows))
+                if not inter:
+                    continue
+                sc = (inter / len(ids | set(rows)), inter)
                 if sc > score:
-                    best, score = (l, period), sc
-        if best:
-            l, period = best
-            prev = l.studies.get(period)
-            if prev is None or len(prev.ids() & set(l.facts.periods[period])) < score:
-                l.studies[period] = s
+                    best, score = (i, period), sc
+        if best is None:
+            lay.unmatched.append((s, None))
+        else:
+            slots.setdefault(best, []).append((score, len(s.sources()), s))
+    for (i, period), cands in slots.items():
+        cands.sort(key=lambda c: (c[0], c[1], c[2].name), reverse=True)
+        winner = cands[0][2]
+        lay.locations[i].studies[period] = winner
+        for _, _, s in cands[1:]:
+            lay.unmatched.append((s, (lay.locations[i], period, winner)))
     return lay
 
 
@@ -944,7 +1215,8 @@ class PackageQa:
         """Plain text for the LLM sweep: what code already established."""
         lines = ["Locations:"]
         for l in self.layout.locations:
-            lines.append(f"- {l.label or 'single'}: workbook={_b(l.workbook)}, one pager docx={_b(l.onepager_docx)}, "
+            docx = _b(l.onepager_docx) if (l.facts is None or l.facts.accessible) else "n/a (full workbook)"
+            lines.append(f"- {l.label or 'single'}: workbook={_b(l.workbook)}, one pager docx={docx}, "
                          f"one pager pdf={_b(l.onepager_pdf)}, complete={_b(l.complete_pdf)}, "
                          + ", ".join(f"{k} study={s.name} ({len(s.ids())} crashes)" for k, s in sorted(l.studies.items())))
             if l.facts:
@@ -961,7 +1233,26 @@ def _b(p):
     return os.path.basename(p) if p else "MISSING"
 
 
-def _where_is(cid: str, layout: PackageLayout) -> list[str]:
+def _published_ids(layout: PackageLayout) -> dict[str, set]:
+    """Crash IDs printed in each location's Complete Evaluation, one pager PDF
+    and docx: a deleted crash must be gone from what NCDOT reads too."""
+    from .print_results import pdf_page_texts
+
+    out: dict[str, set] = {}
+    for l in layout.locations:
+        for p in (l.complete_pdf, l.onepager_pdf):
+            if p:
+                try:
+                    out[os.path.basename(p)] = set(CRASH_ID_RE.findall("\n".join(pdf_page_texts(p))))
+                except Exception:  # noqa: BLE001 - unreadable PDFs are reported by the other checks
+                    pass
+        if l.onepager_docx:
+            out[os.path.basename(l.onepager_docx)] = set(CRASH_ID_RE.findall(
+                "\n".join(read_docx_facts(l.onepager_docx).paragraphs)))
+    return out
+
+
+def _where_is(cid: str, layout: PackageLayout, published: dict | None = None) -> list[str]:
     out = []
     for l in layout.locations:
         for period, rows in (l.facts.periods.items() if l.facts else ()):
@@ -971,6 +1262,9 @@ def _where_is(cid: str, layout: PackageLayout) -> list[str]:
     for s in layout.studies:
         if cid in s.ids():
             out.append(f"TEAAS {s.name}")
+    for name, ids in (published or {}).items():
+        if cid in ids:
+            out.append(name)
     return out
 
 
@@ -987,9 +1281,14 @@ def run_package_qa(root: str, comments: str | None = None, recalc: bool = False,
         if progress:
             progress(m)
 
+    if not os.path.isdir(root):
+        raise FileNotFoundError(f"package folder not found: {root}")
     rep = QaReport()
     lay = discover_package(root)
     pq = PackageQa(rep, lay)
+    if not any(l.workbook for l in lay.locations):
+        rep.add("High", os.path.basename(os.path.normpath(root)), "no evaluation workbook found in the package",
+                fix="the workbook file name must contain 'Evaluation Workbook'")
     _p(f"{len(lay.locations)} location(s), {len(lay.studies)} TEAAS stud(ies), {len(lay.files)} files")
     accessible = any(l.facts and l.facts.accessible for l in lay.locations)
     for wbp in lay.workbooks:
@@ -1024,6 +1323,8 @@ def run_package_qa(root: str, comments: str | None = None, recalc: bool = False,
         if l.onepager_docx:
             _p(f"{tag}: one pager docx")
             check_onepager_docx(l.onepager_docx, pdf=l.onepager_pdf, report=rep, wb_facts=l.facts)
+        if l.facts and l.facts.accessible:
+            check_workbook_map(l.facts, rep, read_docx_facts(l.onepager_docx).images if l.onepager_docx else None)
         if l.onepager_pdf and accessible:
             check_pdf_accessibility(l.onepager_pdf, rep)
         if l.complete_pdf and accessible:
@@ -1034,14 +1335,40 @@ def run_package_qa(root: str, comments: str | None = None, recalc: bool = False,
             if parts:
                 _p(f"{tag}: compilation")
                 check_compilation(l.complete_pdf, parts, rep)
+        if l.facts and not l.facts.accessible and l.workbook:
+            # the full workbook's results page: text, Type column, and the
+            # Web / Complete Evaluation page 1 against the workbook
+            from .qa_checks import check_pdfs, check_results_text, check_type_column
+            try:
+                check_results_text(l.workbook, report=rep)
+                check_public_text(*_results_sheet_text(l.workbook), rep, dashes=False)
+            except KeyError:
+                pass
+            check_type_column(l.workbook, report=rep)
+            if l.complete_pdf or l.onepager_pdf:
+                try:
+                    check_pdfs(l.workbook, l.complete_pdf, l.onepager_pdf, None, report=rep)
+                except Exception as exc:  # noqa: BLE001
+                    rep.add("Low", tag, f"results page PDF check could not run: {exc}")
         if l.facts:
             _check_identity(l, lay.root, rep)
             _check_workbook_hygiene(l, rep)
-    matched = {id(s) for l in lay.locations for s in l.studies.values()}
-    for s in lay.studies:
-        if id(s) not in matched:
+    for s in lay.initial:
+        rep.verified.append(f"{s.name}: initial study ({len(s.ids())} crashes), not compared with a period")
+    for s, slot in lay.unmatched:
+        if slot:
+            l, period, winner = slot
+            rows = set(l.facts.periods.get(period, {}))
+            rep.add("Low", s.name, f"a second study for {l.label or 'the'} {period} period; {winner.name} was checked",
+                    f"{len(s.ids() & rows)} of its {len(s.ids())} crashes are on the sheet, "
+                    f"{len(winner.ids() & rows)} of {len(winner.ids())} for {winner.name}",
+                    "remove the superseded export from the package")
+        else:
             rep.add("Low", s.name, "TEAAS study matches no workbook period (left over from an earlier run?)",
                     f"{len(s.ids())} crashes")
+    for p in lay.unplaced:
+        rep.add("Low", os.path.relpath(p, root), "could not tell which location this file belongs to",
+                fix="put '<n> of <m>' in the file name")
 
     text = comments
     if text is None and lay.correspondence:
@@ -1054,8 +1381,10 @@ def run_package_qa(root: str, comments: str | None = None, recalc: bool = False,
                 rep.add("Low", os.path.relpath(p, root), f"could not read: {exc}")
         text = "\n".join(chunks)
     if text:
-        for req in reviewer_crash_requests(text):
-            where = _where_is(req["crash_id"], lay)
+        reqs = reviewer_crash_requests(text)
+        published = _published_ids(lay) if reqs else {}
+        for req in reqs:
+            where = _where_is(req["crash_id"], lay, published)
             pq.trace.append({**req, "where": "; ".join(where)})
             cid = req["crash_id"]
             if req["action"] == "delete":
@@ -1072,7 +1401,29 @@ def run_package_qa(root: str, comments: str | None = None, recalc: bool = False,
                             + ", ".join(marked), req["line"])
                 else:
                     rep.verified.append(f"crash {cid}: not a target, as the reviewer asked")
+    # paths relative to the package: the report is shared and goes to a model
+    prefix = os.path.normpath(root) + os.sep
+    for f in rep.findings:
+        f.where, f.claim, f.evidence = (x.replace(prefix, "") for x in (f.where, f.claim, f.evidence))
+    rep.verified = [v.replace(prefix, "") for v in rep.verified]
     return pq
+
+
+def _results_sheet_text(workbook: str, sheet: str = "1 page results - 1 Target") -> tuple:
+    """(paragraphs, where) of the full workbook's results page; the target
+    crash text is given as "Target Crashes: ..." so the acronym rule applies."""
+    import openpyxl
+
+    wb = openpyxl.load_workbook(workbook, data_only=True)
+    ws = wb[sheet]
+    paras = []
+    for row in ws.iter_rows(min_row=1, max_row=80, max_col=12):
+        cells = [c for c in row if isinstance(c.value, str) and c.value.strip()]
+        for i, c in enumerate(cells):
+            if re.match(r"\s*Target Crash", c.value) and i + 1 < len(cells) and not c.value.strip().endswith(")"):
+                paras.append(f"Target Crashes: {cells[i + 1].value}")
+            paras.extend(x for x in c.value.splitlines() if x.strip())
+    return paras, f"{os.path.basename(workbook)} {sheet}"
 
 
 def _check_workbook_hygiene(l: Location, rep: QaReport) -> None:
@@ -1080,9 +1431,10 @@ def _check_workbook_hygiene(l: Location, rep: QaReport) -> None:
     f = l.facts
     tag = l.label or "package"
     if f.accessible and f.template_path and f.template_path.startswith("\\\\"):
-        rep.add("Medium", f"{tag} One Pager!I26", "Template Path is a network share NCDOT cannot reach; the one "
-                "pager button fails with 'Template file not found' on NCDOT's machines",
-                f.template_path[:90], f"set it back to NCDOT's path: {NCDOT_TEMPLATE_PATH}")
+        rep.add("Low", f"{tag} One Pager!I26", "Template Path is a consultant network share; the one pager button "
+                "fails with 'Template file not found' on NCDOT's machines",
+                f.template_path[:90], f"NCDOT's copies use {NCDOT_TEMPLATE_PATH}; reset it before submitting "
+                "if the team agrees")
     if f.draft_notes:
         rep.add("Low", f"{tag} Before/After notes", f"{len(f.draft_notes)} crash row note(s) still carry a draft "
                 "marker ('verify', 'TBD', '??')",
@@ -1118,7 +1470,9 @@ def _shared_strings(z: zipfile.ZipFile) -> list[str]:
     if "xl/sharedStrings.xml" not in z.namelist():
         return []
     xml = z.read("xl/sharedStrings.xml").decode("utf-8")
-    return [unescape("".join(re.findall(r"<t\b[^>]*>(.*?)</t>", si, re.S)), {"&quot;": '"', "&apos;": "'"})
+    import html
+
+    return [html.unescape("".join(re.findall(r"<t\b[^>]*>(.*?)</t>", si, re.S)))
             for si in re.findall(r"<si>(.*?)</si>", xml, re.S)]
 
 
@@ -1131,7 +1485,8 @@ def _cached(t, v, sst):
         except (ValueError, IndexError):
             return v
     if t in ("str", "inlineStr", "e"):
-        return unescape(v)
+        import html
+        return html.unescape(v)
     if t == "b":
         return v == "1"
     try:

@@ -2443,6 +2443,8 @@ def _package_loader(st, ws: str) -> str | None:
                 if os.path.isdir(os.path.join(dest, d))]
         st.session_state["package_dir"] = (
             os.path.join(dest, tops[0]) if len(tops) == 1 else dest)
+        for stale in ("pqa_text", "sweep_md", "sweep_summary"):
+            st.session_state.pop(stale, None)     # results of the previous package
     pkg_dir = st.session_state.get("package_dir")
     if pkg_dir:
         pkg = discover(pkg_dir)
@@ -2846,7 +2848,6 @@ def _qa_tab(st) -> None:
                                     recalc=recalc)
             text = format_package_report(pq)
             st.session_state["pqa_text"] = text
-            st.session_state["pqa_comments_text"] = comments.strip()
             n = len(pq.report.findings)
             hm = sum(1 for f in pq.report.findings
                      if f.severity in ("High", "Medium"))

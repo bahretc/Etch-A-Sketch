@@ -28,7 +28,7 @@ Six rows of focused before/after counts that explain the story behind the totals
 Bulleted narrative covering, in rough order:
 
 1. Construction period rationale and any construction-period crash (state date, type, severity, and whether the pre/post configuration applied, e.g. a diagram showing TWSC dates it before AWSC installation). When a companion project overlaps the location, note any period adjustment made to isolate the evaluated treatment (e.g. extending construction so the before period ends ahead of the companion work, with the companion project ID).
-2. Notable severe crashes with date, time, movement, severity class, including relevant project-development-period crashes.
+2. Notable severe crashes by movement and severity class, including relevant project-development-period crashes; give the date only where it matters and the time only for a time-of-day pattern (CLAUDE.md rule 11).
 3. Severity narrative when frequency and severity move in opposite directions (e.g. Class A eliminated, Class B reduced, while totals rose: the known AWSC trade-off).
 4. The most severe after-period target crash, described specifically.
 5. Non-pattern explanations (e.g. the single before rear-end occurred downstream due to traffic ahead, not intersection operations).

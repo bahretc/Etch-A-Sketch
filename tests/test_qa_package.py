@@ -13,7 +13,7 @@ import openpyxl
 import pytest
 
 from safety_eval import qa_package as qp
-from safety_eval.qa_checks import volume_row
+from safety_eval.qa_checks import QaReport, volume_row
 from safety_eval.teaas import parse_crash_id_list
 
 # --------------------------------------------------------------------------- #
@@ -61,7 +61,7 @@ def test_parse_teaas_csv_text():
             '"1","104955337","11/25/2016 10:57","SIDESWIPE, SAME DIRECTION","$","1550"\n'
             '"Unit","1",":","1","Alchl/Drgs:","0"\n'
             '"2","104954667","11/26/2016 19:11","RIGHT TURN, DIFFERENT ROADWAYS","$","1100"\n'
-            '"104955337"\n"104954667"\n')
+            '"Included Accidents"\n"104955337"\n"104954667"\n')
     rep = qp.parse_teaas_csv_text(text)
     assert rep.study == "41000076576BEFORE2" and rep.start == date(2016, 11, 1)
     assert set(rep.listed) == {"104955337", "104954667"} == rep.included
@@ -210,7 +210,9 @@ def _accessible_workbook(path, before, after, target=(), onepager_date="10/7/202
         ws = wb.create_sheet(name)
         ws["A2"] = period
         ws.append([])
-        for c, h in enumerate(["Crash ID", "Date", "T", "C", "F", "L", "S", "Notes", "", "", "", "Target-1?"], 1):
+        for c, h in enumerate(["Crash ID", "Date", "T", "C", "F", "L", "S", "Analyst Notes Column 1",
+                               "Analyst Notes Column 2", "Analyst Notes Column 3", "Analyst Notes Column 4",
+                               "Target-1?", "Target-2?", "Target-3?", "", "Crash #", "Total", "Target-1"], 1):
             ws.cell(3, c, h)
         for i, (cid, d) in enumerate(rows, 4):
             ws.cell(i, 1, int(cid))
@@ -223,7 +225,9 @@ def _accessible_workbook(path, before, after, target=(), onepager_date="10/7/202
     op["H3"], op["I3"] = "Order ID:", "41000076576 (2 of 2)"
     op["H4"], op["I4"] = "Project ID:", "08-18-51363 (TIP #W-5708K)"
     op["H24"], op["I24"] = "Date:", onepager_date
+    op["K13"], op["L13"], op["M13"] = "Additional Information", "Before", "After"
     op["K15"], op["L15"], op["M15"], op["N15"] = "Rear End Crashes", "3.64 cpy (17)", "7.07 cpy (33)", 0.941176470588235
+    op["AF4"], op["AG4"], op["AH4"] = "Treatment Information", "Before", "After"
     op["AF6"], op["AG6"], op["AH6"], op["AI6"] = "Total Crashes", 46, 70, 0.521739130434783
     op["AF7"], op["AG7"], op["AH7"], op["AI7"] = "Total Severity Index", 3.73, 3.35, -0.101876675603217
     op["AF12"], op["AG12"], op["AH12"], op["AI12"] = "Volume (2018, 2023)", 36700, 36200, -0.0136239782
@@ -247,9 +251,11 @@ def _onepager_docx(path, *, date_text="10/7/2026", volume=("36,700", "36,200", "
     body = (_p("Order ID: 41000076576 (2 of 2)") + _p("Completion Date: 8/19/2021")
             + "<w:tbl>" + _row("", "Project Development", "Before Period", "After Period")
             + _row("Start Date", "11/1/2012", "11/1/2016", "10/1/2021") + "</w:tbl>"
-            + "<w:tbl>" + _row("Total Crashes", *total) + _row("Total Severity Index", "3.73", "3.35", "-10.19%")
+            + "<w:tbl>" + _row("Treatment Information", "Before", "After", "Percent")
+            + _row("Total Crashes", *total) + _row("Total Severity Index", "3.73", "3.35", "-10.19%")
             + _row("Volume (2018, 2023)", *volume) + "</w:tbl>"
-            + "<w:tbl>" + _row("Rear End Crashes", "3.64 cpy (17)", "7.07 cpy (33)", "94.12%") + "</w:tbl>"
+            + "<w:tbl>" + _row("Additional Information", "Before", "After", "Percent")
+            + _row("Rear End Crashes", "3.64 cpy (17)", "7.07 cpy (33)", "94.12%") + "</w:tbl>"
             + "".join(_p(t) for t in extra_paragraphs)
             + _p(f"North Carolina Department of Transportation Date: {date_text}")
             + '<w:p><w:r><w:drawing><wp:inline><wp:extent cx="5000000" cy="3000000"/>'
@@ -273,8 +279,8 @@ def test_same_value():
 def test_onepager_docx_clean(tmp_path):
     wb = _accessible_workbook(str(tmp_path / "w.xlsx"), ROWS[:3], ROWS[3:])
     rep = qp.check_onepager_docx(_onepager_docx(str(tmp_path / "op.docx")), wb)
-    # the synthetic workbook has no Assumptions picture; nothing else is wrong
-    assert [f.claim for f in rep.findings] == ["no picture on the Assumptions sheet (Map/Satellite Views)"]
+    # the map picture is a package check (check_workbook_map); nothing is wrong here
+    assert [f.claim for f in rep.findings] == []
     assert any("4 table rows compared" in v and "0 differ" in v for v in rep.verified)
 
 
@@ -290,8 +296,8 @@ def test_onepager_docx_defects(tmp_path):
     assert "date 09/24/2026 differs from the workbook One Pager date 10/07/2026" in text
     assert "volume row shows" in text and "row 'Total Crashes' shows" in text
     assert "map alt text is not the Assumptions alt text rows verbatim" in text
-    assert "em dash" in text and "'TEAAS'" in text and "'workbook'" in text
-    assert "[Low] exact time of day" in text
+    assert "em dash" in text and "names 'TEAAS'" in text and "names 'workbook'" in text
+    assert "[Low] time of day in the text" in text
 
 
 def test_onepager_docx_missing_alt_text_and_stale_pdf(tmp_path, monkeypatch):
@@ -300,7 +306,7 @@ def test_onepager_docx_missing_alt_text_and_stale_pdf(tmp_path, monkeypatch):
     rep = qp.check_onepager_docx(docx, pdf="op.pdf")
     claims = [f.claim for f in rep.findings]
     assert any("no alt text" in c for c in claims)
-    assert any("not in the PDF" in c for c in claims)
+    assert any(c.startswith("the PDF does not match") for c in claims)
 
 
 def test_volume_row_reads_the_accessible_one_pager(tmp_path):
@@ -452,7 +458,7 @@ def test_pdf_figure_without_alt_text(tmp_path):
     rep = qp.check_pdf_accessibility(_tagged_pdf(str(tmp_path / "r.pdf"), alt="", role="/InlineShape"))
     assert any("no alternate text" in f.claim for f in rep.findings)        # role-mapped to Figure
     rep = qp.check_pdf_accessibility(_tagged_pdf(str(tmp_path / "u.pdf"), alt="x", tagged=False))
-    assert [f.claim for f in rep.findings] == ["PDF is not tagged"]
+    assert [f.severity for f in rep.findings] == ["High"] and "not tagged" in rep.findings[0].claim
     rep = qp.check_pdf_accessibility(_tagged_pdf(str(tmp_path / "c.pdf"), alt="", tagged=False), public=False)
     assert [f.severity for f in rep.findings] == ["Info"]
 
@@ -475,3 +481,249 @@ def test_template_path_and_draft_markers(tmp_path):
     wb["One Pager"]["I26"] = qp.NCDOT_TEMPLATE_PATH
     wb.save(wbp)
     assert "2 of 2 One Pager!I26" not in {f.where for f in qp.run_package_qa(root).report.findings}
+
+
+
+# --------------------------------------------------------------------------- #
+# regressions from the adversarial review of this module (October 2026)
+# --------------------------------------------------------------------------- #
+def test_pdf_rows_stay_on_one_line_and_allow_a_milepost():
+    appendix = ("  Included Accidents\n    108494396\n\n    108153584\n"
+                "07/31/2026     All data presented in this report comes explicitly from the\n")
+    rep = qp.parse_teaas_pdf_text(appendix)
+    assert rep.listed == {} and rep.included == {"108494396", "108153584"}
+    strip = "   1    107822778    1.413    08/18/2024     OVERTURN/ROLLOVER    $  9500\n"
+    assert qp.parse_teaas_pdf_text(strip).listed == {"107822778": date(2024, 8, 18)}
+
+
+def test_strip_csv_has_a_milepost_column():
+    text = ('"Date:","7/1/2021","to","6/30/2026","Study:","41000079307"\n'
+            '"1","107822778","1.413","08/18/2024 05:08","OVERTURN/ROLLOVER","$","9500","0"\n'
+            '"2","107900001","1.52","09/01/2024 11:00","REAR END, SLOW OR STOP","$","1200","0"\n')
+    rep = qp.parse_teaas_csv_text(text)
+    assert rep.listed == {"107822778": date(2024, 8, 18), "107900001": date(2024, 9, 1)}
+
+
+def test_included_and_excluded_accidents():
+    """Included Accidents are the crashes forced in (all for an import-list
+    run, a few for a criteria run); Excluded ones must not be analysed."""
+    csv_text = ('"1","104955337","11/25/2016 10:57","ANGLE"\n"2","104954667","11/26/2016 19:11","ANGLE"\n'
+                '"Included Accidents"\n"104955337"\n"Excluded Accidents"\n"106926706"\n')
+    r = qp.parse_teaas_csv_text(csv_text)
+    assert r.included == {"104955337"} and r.excluded == {"106926706"}
+    st = qp.TeaasStudy("S")
+    st.reports["csv"] = r
+    rows = _rows([("104955337", "11/25/2016"), ("104954667", "11/26/2016")])
+    assert not qp.check_study(st, rows, "before", None).findings          # a criteria run is fine
+    r.included.add("105000001")
+    r.listed["106926706"] = date(2020, 3, 3)
+    rows["106926706"] = qp.PeriodRow("106926706", date(2020, 3, 3), 21, "O")
+    claims = [f.claim for f in qp.check_study(st, rows, "before", None).findings]
+    assert any("Included Accidents were not analysed" in c for c in claims)
+    assert any("Excluded Accidents are still analysed" in c for c in claims)
+
+
+def test_summary_column_is_not_a_target_flag(tmp_path):
+    p = _accessible_workbook(str(tmp_path / "w.xlsx"), ROWS[:3], ROWS[3:])
+    wb = openpyxl.load_workbook(p)
+    wb["Before"]["R4"] = 1                       # "Target-1" summary block, not the "Target-1?" flag
+    wb.save(p)
+    assert qp.read_workbook_facts(p).periods["before"][ROWS[0][0]].targets == ()
+
+
+def test_full_workbook_naming_groups_id_lists_with_reports(tmp_path, fake_pdfs, monkeypatch):
+    root = tmp_path / "WO-1 05-08-203 (W-5601HP)"
+    ca = root / "Crash Analysis"
+    (ca / "Superseded").mkdir(parents=True)
+    _accessible_workbook(str(ca / "Intersection Evaluation Workbook - 05-08-203.xlsx"), ROWS[:3], ROWS[3:])
+    (ca / "Before_ID.txt").write_text(_crash_list(ROWS[:3]))
+    (ca / "After_ID.txt").write_text(_crash_list(ROWS[3:]))
+    (ca / "InitialID.txt").write_text(_crash_list(ROWS))
+    (ca / "Superseded" / "After_ID.txt").write_text(_crash_list(ROWS[3:4]))
+    lay = qp.discover_package(str(root))
+    (loc,) = lay.locations
+    assert {k: s.name for k, s in loc.studies.items()} == {"before": "Before", "after": "After"}
+    assert [s.name for s in lay.initial] == ["Initial"]
+    (second,) = [s for s, slot in lay.unmatched]
+    assert second.name.startswith("After (") and "Superseded" in second.name
+    pq = qp.run_package_qa(str(root))
+    assert any("a second study for the after period; After was checked" in f.claim for f in pq.report.findings)
+    assert any("initial study" in v for v in pq.report.verified)
+
+
+def test_compilation_page_that_changed_after_binding(fake_pdfs):
+    op_now = _onepager_pages()
+    op_bound = [op_now[0].replace("52.17%", "57.14%")] + op_now[1:]
+    fake_pdfs.update({"op.pdf": op_now, "ce.pdf": op_bound})
+    rep = qp.check_compilation("ce.pdf", ["op.pdf"], threshold=0.5)
+    hit = next(f for f in rep.findings if "differs from op.pdf page 1" in f.claim)
+    assert "57.14%" in hit.evidence and "52.17%" in hit.evidence
+
+
+def _workbook_with_injury_tables(path):
+    p = _accessible_workbook(path, ROWS[:3], ROWS[3:])
+    wb = openpyxl.load_workbook(p)
+    op = wb["One Pager"]
+    for r0, title, vals in ((14, "Injury Crash Summary", (12, 7, -0.416666666666667, 29, 57, 0.96551724137931)),
+                            (22, "Target Injury Crash Summary", (3, 2, -0.333333333333333, 3, 11, "100+%"))):
+        op.cell(r0, 32, title)
+        op.cell(r0 + 2, 32, "Class C Injury Crashes")
+        op.cell(r0 + 3, 32, "Property Damage Only")
+        for k in range(3):
+            op.cell(r0 + 2, 33 + k, vals[k])
+            op.cell(r0 + 3, 33 + k, vals[3 + k])
+    wb.save(p)
+    return p
+
+
+def test_docx_tables_are_compared_with_their_own_block(tmp_path):
+    wb = _workbook_with_injury_tables(str(tmp_path / "w.xlsx"))
+    good = ("<w:tbl>" + _row("Target Injury Crash Summary", "Before", "After", "Pct")
+            + _row("Class C Injury Crashes", "3", "2", "-33.33%") + _row("Property Damage Only", "3", "11", "100+%")
+            + "</w:tbl>")
+    swapped = ("<w:tbl>" + _row("Target Injury Crash Summary", "Before", "After", "Pct")
+               + _row("Class C Injury Crashes", "12", "7", "-41.67%") + _row("Property Damage Only", "29", "57", "96.55%")
+               + "</w:tbl>")
+    for body, expect in ((good, 0), (swapped, 2)):
+        path = str(tmp_path / f"op{expect}.docx")
+        with zipfile.ZipFile(path, "w") as z:
+            z.writestr("word/document.xml", '<w:document xmlns:w="w"><w:body>' + body + "</w:body></w:document>")
+        rep = qp.check_onepager_docx(path, wb)
+        assert len([f for f in rep.findings if f.claim.startswith("row ")]) == expect
+
+
+REPO_WB = "deliverables/05-20-62123/Accessible Intersection Evaluation Workbook - 05-20-62123 (HS-2005A).xlsm"
+REPO_DOCX = "deliverables/05-20-62123/41000076579_OnePager.docx"
+
+
+@pytest.mark.skipif(not os.path.exists(REPO_WB), reason="05-20-62123 deliverable not present")
+def test_workbook_picture_without_alt_text(tmp_path):
+    import re
+
+    out = str(tmp_path / "wb.xlsm")
+    with zipfile.ZipFile(REPO_WB) as zin, zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zout:
+        for info in zin.infolist():
+            data = zin.read(info.filename)
+            if info.filename.startswith("xl/drawings/drawing") and info.filename.endswith(".xml"):
+                data = re.sub(rb'(<xdr:cNvPr\b[^>]*?)\s+descr="[^"]*"', rb"\1", data)
+            zout.writestr(info, data)
+    rep = QaReport()
+    qp.check_workbook_map(qp.read_workbook_facts(out), rep)
+    assert any(f.severity == "High" and "has no alt text" in f.claim for f in rep.findings)
+    clean = QaReport()
+    qp.check_workbook_map(qp.read_workbook_facts(REPO_WB), clean, qp.read_docx_facts(REPO_DOCX).images)
+    assert not clean.findings
+    assert not any(f.severity in ("High", "Medium") for f in qp.check_onepager_docx(REPO_DOCX, REPO_WB).findings)
+
+
+def test_pdf_numbers_must_match_the_docx(tmp_path, monkeypatch):
+    docx = _onepager_docx(str(tmp_path / "op.docx"), total=("46", "70", "100+%"))
+    pdf_text = "\n".join(qp.read_docx_facts(docx).paragraphs).replace("100+%", "52.17%")
+    monkeypatch.setattr(qp, "_pdf_reading_text", lambda p: pdf_text)
+    rep = qp.check_onepager_docx(docx, pdf="op.pdf")
+    hit = next(f for f in rep.findings if "does not match" in f.claim)
+    assert "100+%" in hit.evidence and "0 paragraph(s)" in hit.claim
+    monkeypatch.setattr(qp, "_pdf_reading_text", lambda p: "\n".join(qp.read_docx_facts(docx).paragraphs))
+    assert not any("does not match" in f.claim for f in qp.check_onepager_docx(docx, pdf="op.pdf").findings)
+
+
+def test_deleted_crash_still_printed_in_the_complete_evaluation(tmp_path, fake_pdfs):
+    root = _package(tmp_path)
+    ce = os.path.join(root, "08-18-51363 (W-5708K) 2 of 2 Complete Evaluation.pdf")
+    open(ce, "wb").close()
+    fake_pdfs[ce] = ["Report\n  25   107259626    03/01/2023   REAR END, SLOW OR STOP\n"]
+    pq = qp.run_package_qa(root, comments="Delete Crashes\n* 107259626 - fully in the PVA\n")
+    hit = next(f for f in pq.report.findings if "107259626" in f.where)
+    assert "Complete Evaluation.pdf" in hit.claim
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("Remove crash 108167818 from the target crashes", {"108167818": "not_target"}),
+    ("Please remove 108167818 as a target crash", {"108167818": "not_target"}),
+    ("Crashes 105509762 and 105034665 are not targets", {"105509762": "not_target", "105034665": "not_target"}),
+    ("Delete crashes:\n105509762 - at stop sign\n\n* Please add a comment on crash 108494396 (A injury)",
+     {"105509762": "delete", "108494396": "mention"}),
+])
+def test_reviewer_phrasings(text, expected):
+    assert {r["crash_id"]: r["action"] for r in qp.reviewer_crash_requests(text)} == expected
+
+
+def test_cached_strings_decode_every_entity():
+    assert qp._cached("str", "a&#10;b &quot;48&quot; &amp; c", []) == 'a\nb "48" & c'
+
+
+def test_cli_exit_status_includes_the_package_report(tmp_path):
+    from safety_eval.cli import main as cli_main
+
+    root = _package(tmp_path)
+    wbp = os.path.join(root, "Crash Analysis",
+                       "Accessible Intersection Evaluation Workbook - 08-18-51363 (W-5708K) 2 of 2.xlsx")
+    assert cli_main(["qa", "--package", root, "--workbook", wbp]) == 1
+
+
+def test_missing_or_empty_package_is_not_a_clean_bill(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        qp.run_package_qa(str(tmp_path / "no such folder"))
+    (tmp_path / "WO-1 empty").mkdir()
+    rep = qp.run_package_qa(str(tmp_path / "WO-1 empty")).report
+    assert not rep.ok and "no evaluation workbook" in rep.findings[0].claim
+
+
+
+# --------------------------------------------------------------------------- #
+# rules review (CLAUDE.md rules 6, 10, 11; docs/05)
+# --------------------------------------------------------------------------- #
+def test_public_text_rules():
+    rep = QaReport()
+    paras = ["Target Crashes: Frontal Impact Crashes: Angle, Left Turn Same Roadway (LTSR), LTDR and RTSR crashes",
+             "Both crashes occurred in the traffic circle; Oak Circle is the side street.",
+             "Two crashes had no severity codes and three were PDO; the fiches agree.",
+             "The crash occurred at about 3 PM.", "The 4-5 PM hour went from 0 to 15 crashes.",
+             "Signal updated in the Plans of Record - no phasing changes (8/19/2021, 9/8/2023)."]
+    qp.check_public_text(paras, "op", rep, discussion=paras[3:], skip_dates=(date(2021, 8, 19),))
+    text = " | ".join(f"[{f.severity}] {f.claim} {f.evidence}" for f in rep.findings)
+    assert "'LTDR' in the target crash text is not spelled out" in text and "'RTSR'" in text
+    assert "'LTSR'" not in text
+    assert "'traffic circle': a roundabout is never called a circle" in text and "Oak Circle'" not in text
+    assert "names 'severity codes'" in text and "names 'PDO'" in text and "names 'fiches'" in text
+    assert text.count("time of day in the text") == 1 and "about 3 PM" in text
+    assert "spaced hyphen" in text and "[Info] 1 date(s) in Items for Discussion" in text and "9/8/2023" in text
+
+
+def test_untagged_one_pager_pdf_is_high(tmp_path):
+    rep = qp.check_pdf_accessibility(_tagged_pdf(str(tmp_path / "p.pdf"), alt="x", tagged=False))
+    assert rep.findings[0].severity == "High" and "Saved As PDF" in rep.findings[0].claim
+
+
+def test_workbook_map_checks(tmp_path):
+    f = qp.read_workbook_facts(_accessible_workbook(str(tmp_path / "w.xlsx"), ROWS[:1], ROWS[1:2]))
+    rep = QaReport()
+    qp.check_workbook_map(f, rep, docx_images=[])
+    claims = [(x.severity, x.claim) for x in rep.findings]
+    assert ("Medium", "no picture on the Assumptions sheet (Map/Satellite Views, rule 10)") in claims
+    assert ("High", "the one pager has no Map/Satellite View image") in claims
+
+
+def test_template_path_is_low(tmp_path):
+    root = _package(tmp_path)
+    wbp = os.path.join(root, "Crash Analysis",
+                       "Accessible Intersection Evaluation Workbook - 08-18-51363 (W-5708K) 2 of 2.xlsx")
+    wb = openpyxl.load_workbook(wbp)
+    wb["One Pager"]["I26"] = "\\\\consultant.com\\share"
+    wb.save(wbp)
+    f = next(x for x in qp.run_package_qa(root).report.findings if x.where.endswith("I26"))
+    assert f.severity == "Low"
+
+
+def test_reviewer_negations():
+    got = {r["crash_id"]: r["action"] for r in qp.reviewer_crash_requests(
+        "* Do not delete crash 106754327, it is within 150 ft.\n* Delete Crashes\n\t* 123456780 - in the PVA\n\n"
+        "\t* 106758298 should stay a target crash; keep it.\nCrash 123456789 should not be a target.\n")}
+    assert got == {"106754327": "mention", "123456780": "delete", "106758298": "mention", "123456789": "not_target"}
+
+
+def test_package_report_paths_are_relative(tmp_path):
+    root = _package(tmp_path)
+    pq = qp.run_package_qa(root)
+    assert not any(root in v for v in pq.report.verified)
+    assert not any(root in (f.where + f.claim + f.evidence) for f in pq.report.findings)

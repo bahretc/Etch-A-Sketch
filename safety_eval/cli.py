@@ -915,6 +915,7 @@ def _read_comments(path: str | None) -> str | None:
 
 def _cmd_qa(args) -> int:
     from .qa_checks import diff_cached_values, format_report, run_package_checks
+    pq = None
     if args.package:
         from .qa_package import format_package_report, run_package_qa
         pq = run_package_qa(args.package, comments=_read_comments(args.comments), recalc=args.recalc,
@@ -929,7 +930,7 @@ def _cmd_qa(args) -> int:
             return 0 if pq.report.ok else 1
     if not args.workbook:
         raise SystemExit("qa: give --workbook, --package, or both")
-    rep = run_package_checks(args.workbook, args.reference, args.complete, args.web, args.appendix or [])
+    rep = run_package_checks(args.workbook, args.reference, args.complete, args.web, args.appendix)
     if args.onepager:
         from .qa_package import check_onepager_docx
         check_onepager_docx(args.onepager, args.workbook, args.web, report=rep)
@@ -939,7 +940,7 @@ def _cmd_qa(args) -> int:
             print(f"{sheet}: {len(d)} cached value(s) differ")
             for ref, a, b in d[:40]:
                 print(f"  {ref}: {a!r} -> {b!r}")
-    return 0 if rep.ok else 1
+    return 0 if rep.ok and (pq is None or pq.report.ok) else 1
 
 
 def _cmd_chat(args) -> int:
@@ -970,14 +971,14 @@ def _cmd_collision_diagram(args) -> int:
 
 
 def _cmd_qa_sweep(args) -> int:
-    from .qa_sweep import DIMENSIONS, gather_context, page_images, read_accepted, run_sweep, sweep_to_markdown
+    from .qa_sweep import DIMENSIONS, gather_context, page_images, read_accepted_file, run_sweep, sweep_to_markdown
     ctx = gather_context(args.package, args.workbook, comments=_read_comments(args.comments),
                          deterministic=not args.no_deterministic, progress=lambda m: print("  " + m))
     print(f"context: {len(ctx)} parts, {sum(len(v) for v in ctx.values())} chars")
     dims = args.dimension or list(DIMENSIONS)
     images = [] if args.no_images else page_images(args.package)
     rep = run_sweep(ctx, model=args.model, dimensions=dims, n_refuters=args.refuters, effort=args.effort,
-                    progress=lambda m: print("  " + m), accepted=read_accepted(args.accepted), images=images)
+                    progress=lambda m: print("  " + m), accepted=read_accepted_file(args.accepted), images=images)
     md = sweep_to_markdown(rep, title=f"QA sweep, {os.path.basename(os.path.normpath(args.package))}")
     if args.output:
         with open(args.output, "w", encoding="utf-8") as fh:
@@ -1978,11 +1979,12 @@ def build_parser() -> argparse.ArgumentParser:
     qs = sub.add_parser("qa-sweep", help="Multi-agent QA sweep: up to seven reviewers plus three refuters over a "
                         "package folder (needs ANTHROPIC_API_KEY).")
     qs.add_argument("--package", required=True, help="Package folder")
-    qs.add_argument("--workbook", help="Which workbook to read when the folder has several")
+    qs.add_argument("--workbook", action="append",
+                    help="Workbook(s) to read (repeatable); default: each location's deliverable workbook")
     qs.add_argument("--dimension", action="append",
                     help="Subset of dimensions (workbook, fiche, calculations, text, teaas, pdf, comments)")
     qs.add_argument("--comments", help="Reviewer comments (.msg, .eml or .txt) for the REVIEWER COMMENTS reviewer")
-    qs.add_argument("--accepted", help="Known and accepted items, one per line; not re-reported")
+    qs.add_argument("--accepted", help="File of known and accepted items, one per line; not re-reported")
     qs.add_argument("--no-deterministic", dest="no_deterministic", action="store_true",
                     help="Do not run the package checks first")
     qs.add_argument("--no-images", dest="no_images", action="store_true",

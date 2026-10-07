@@ -73,63 +73,87 @@ CLI command and an app tab, all tested:
 
 ## QA layers (October 2026)
 
-Rebuilt from the 08-18-51363 (W-5708K) resubmittal, where a multi-agent audit
-with tool access (recompute, compare page text, render pages) found what the
-QA then in the app could not, and the app's rules in turn found two things the
-audit missed (exact crash times in a public one pager, workbook map alt text
-not verbatim). The division of labour:
+Rebuilt from the 08-18-51363 (W-5708K) resubmittal. A multi-agent audit with
+tool access (recompute, compare page text, render pages) found what the QA
+then in the app could not, and the app's own rules found things the audit
+missed (crash times in a public one pager, workbook map alt text not
+verbatim). An adversarial review of the new code then found its own defects
+(TEAAS rows read across lines, strip reports, criteria-based studies, the
+Target summary column, nested crash report folders); each has a regression
+test. The division of labour:
 
 1. **Deterministic package checks** (`qa_package.run_package_qa`, CLI
    `safety-eval qa --package DIR [--comments FILE] [--recalc]`, app: QA
-   Checks > Package checks). Discovery is by content: evaluation workbooks
-   (.xlsx or .xlsm; the accessible one is preferred when a location has two,
-   and the other is reported), Word one pagers, One Pager or Web PDFs,
-   Complete Evaluations, TEAAS studies grouped by name from their PDF
-   (banner on page 1), CSV and CrashID list, and correspondence (.msg/.eml).
-   Hidden Office owner files (`~$...`) are skipped and never reported. Per
-   location:
+   Checks > Package checks). Discovery is by file name, TEAAS studies by
+   content: evaluation workbooks ("Evaluation Workbook" in the name, .xlsx
+   or .xlsm; the .xlsm is preferred when a location has two and the other is
+   reported), Word one pagers, One Pager or Web PDFs and Complete Evaluations
+   by name ("n of m" places them; a file without it is placed by the
+   "(n of m)" it prints, else reported), TEAAS studies by the Analysis Report
+   banner, grouped by folder and name across PDF, CSV and ID list
+   ("41000076576BEFORE2_CrashID.txt", or "Before_ID.txt" beside
+   "BEFORE.pdf"), and correspondence (.msg/.eml). Each study goes to the
+   location and period it overlaps best (by name when it names a period; a
+   second study for a period is reported; the initial study is listed, not
+   compared). Hidden Office owner files (`~$...`) are skipped and never
+   reported. A missing folder raises; a package with no workbook is High.
+   Per location:
    - every TEAAS export compared with the workbook Before or After sheet,
      crash by crash, each export on its own (a PDF run on 20 of 46 crash IDs
      is named with the crashes it lacks and the last date it reached), then
-     dates, T codes and severities from the CrashID list, study dates against
-     the period, Included Accidents against the crashes analysed;
-   - the Complete Evaluation compared with its parts page by page by text
-     (lines in common both ways, 95%). A superseded report with the same
-     page count fails here; a page count never catches it. The TEAAS Study
+     dates, T codes and severities from the ID list, study dates against
+     the period, Included Accidents not analysed and Excluded Accidents still
+     analysed (intersection and strip reports; a strip row has a milepost);
+   - the Complete Evaluation compared with its parts page by page by text:
+     pages are paired at 95% of lines in common both ways, and a paired page
+     that is not identical is reported with the lines that differ (a reviewer
+     fix made in the one pager but not rebound). A superseded report with the
+     same page count fails; a page count never catches it. The TEAAS Study
      Criteria appendix (from the last page headed "Study Criteria" to the
-     end) left unbound is an Info, not a defect;
-   - the Word one pager: macro placeholders left behind (1X ... Date1), every
-     image with alt text, the map's alt text equal to the Assumptions rows
-     (docs/05), the date and every table row equal to the One Pager sheet
-     (numbers compared at the precision shown), em/en dashes, internal words
-     (TEAAS, workbook, fiche, severity code), exact times of day, and the PDF
-     carrying every docx paragraph (reading-order text, hyphens normalised);
-   - the One Pager PDF tagged, with alternate text on every figure (Word's
-     alt text can be lost on export: Acrobat PDFMaker dropped the map's on
-     08-18-51363); the Complete Evaluation's tagging is reported as Info;
-   - Order ID and Project ID against the WO folder name; the One Pager
-     Template Path (I26, which the macro opens) not left on a consultant
-     network share; crash row notes still carrying a draft marker
-     ("verify", "TBD", "??");
+     end) left unbound is an Info;
+   - accessible workbooks: the Word one pager (macro placeholders left
+     behind, every image with alt text, a map present, the date and each table
+     compared with the block under the same header on the One Pager sheet, to
+     two decimals; the PDF carrying every docx paragraph of 12 characters or
+     more and every number token); the public-document rules on its text
+     (dashes; TEAAS, workbook(s), fiche(s), severity code(s), KABCO, PDO;
+     "traffic/the circle"; crash-type acronyms in the target crash text not
+     spelled out; times of day; spaced hyphens and the dates in Items for
+     Discussion as Low/Info); the Assumptions map picture and its alt text
+     (rows verbatim, one per line); the One Pager PDF tagged with alt text
+     on every figure (untagged means printed: High); Order ID and Project ID
+     against the WO folder name; the Template Path (I26) on a consultant
+     share (Low); crash notes with a draft marker ("verify", "TBD", "??");
+   - full workbooks: the single-workbook checks (results text, Type column,
+     Web / Complete Evaluation page 1 against the Volume row) and the same
+     public-document rules on the results page;
    - with `--recalc`, formula caches against a LibreOffice recalculation on
-     the One Pager, Evaluation Set-up, Assumptions and tracking sheets
-     (Excel-only functions and their dependents skipped; a blank severity is
-     taken as O, as the workbook counts it).
+     the One Pager, Evaluation Set-up, Assumptions, tracking and results
+     sheets (Excel-only functions and their dependents skipped; a blank
+     severity is taken as O, as the workbook counts it).
    Reviewer comments (passed in, or read from the package's emails) are
-   traced crash by crash: a crash the reviewer asked to delete must be in no
-   period sheet and no TEAAS export, a crash that is "not a target" must not
-   carry a Target flag.
+   traced crash by crash, through the period sheets, every TEAAS export and
+   the bound and published files: a crash the reviewer asked to delete must
+   be in none of them; a crash that is "not a target" must not carry a
+   Target flag. "Do not delete" and "keep" read as no request.
 2. **LLM sweep** (`qa_sweep`, CLI `safety-eval qa-sweep --package DIR
-   [--comments FILE] [--accepted FILE]`). Reviewers read the package as text
-   (accessible workbook ranges, the docx with its tables and alt text, the
-   correspondence, PDF pages once each) plus the deterministic results, and
-   judge what code cannot: whether each discussion sentence is supported,
-   whether each reviewer comment is addressed (the REVIEWER COMMENTS
-   reviewer runs only when there are comments), wording and consistency. The
-   PDF ASSEMBLY and REPORT TEXT reviewers also see the one pager pages as
-   images. Items the engineer lists as known and accepted go to every
-   reviewer and refuter and are not re-reported. Crash report folders are
-   never read (docs/11).
+   [--comments FILE] [--accepted FILE] [--workbook W ...]`). Reviewers read
+   the package as text (each location's deliverable workbook, the docx with
+   its tables and alt text, the correspondence, PDF pages once each, whole
+   pages within a size budget that keeps a TEAAS report's Study Criteria
+   pages; Background Info PDFs capped at two pages) plus the deterministic
+   results with paths relative to the package, and judge what code cannot:
+   whether each discussion sentence is supported, whether each reviewer
+   comment is addressed, wording and consistency. The REVIEWER COMMENTS
+   reviewer runs only when comments are supplied or an email reads as review
+   comments (crashes to delete or that are not targets, or bulleted
+   requests); an assignment or assumptions thread is not enough. The PDF
+   ASSEMBLY and REPORT TEXT reviewers, and the refuters judging their
+   findings, see the one pager pages at 150 dpi. The first reviewer runs
+   alone so the others read the package text from the prompt cache. Items
+   the engineer lists as known and accepted go to every reviewer and refuter
+   and are not re-reported. Crash report folders, at any depth, are never
+   read or listed (docs/11).
 3. **Refuters** (three, majority vote) as before. The audit that prompted
    this used one skeptic per dimension; three independent refuters with a
    vote are the stronger design and stay.

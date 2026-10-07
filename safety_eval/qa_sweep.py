@@ -65,8 +65,9 @@ DIMENSIONS = {
              "Every sentence in Items for Discussion (the results sheet, or the Word one pager of an accessible "
              "workbook) supported by the crash rows: counts, crash types, directions, fault, severities, periods; counts "
              "in the at-fault breakdown match the Additional Information rows; no em or en dashes; consistent route "
-             "naming, county, division, dates, PE and firm; countermeasure and target text match the assumptions email, "
-             "and anything the assumptions email promised to note in Items for Discussion is there; placeholders; "
+             "naming, county, division, dates, PE and firm; countermeasure and target text match the Assumptions sheet "
+             "(D14 countermeasure, D20 target crashes, D24 notes; the assumptions email for an older package), and "
+             "anything the assumptions promised to note in Items for Discussion is there; placeholders; "
              "unexplained route numbers; text that relied on a volume trend that no longer holds; the public-document "
              "rule (no TEAAS, workbook or fiche, no exact crash times unless a time-of-day pattern); image alt text."),
     "teaas": ("TEAAS CROSS-CHECK",
@@ -91,6 +92,7 @@ DIMENSIONS = {
 #: Dimensions that only make sense with something to read.
 NEEDS_COMMENTS = ("comments",)
 CORRESPONDENCE_HEADER = "# Correspondence"
+REVIEW_TAG = " (review comments)"
 COMMENTS_KEY = "_reviewer_comments"
 DETERMINISTIC_KEY = "_deterministic"
 
@@ -126,7 +128,8 @@ RULES = """Hard rules of the methodology (NCDOT HSIP, docs in the repo):
 - AADT: black font = NCDOT published value, red = interpolated, carried forward or assumed; minor road estimates round to the nearest hundred; 2020 never a representative year; representative year = last year in the period with a published value on any leg; the printed volume is ROUND(major average + minor average, -2).
 - Report text: plain, understated, no em or en dashes anywhere, no flourishes.
 - Templated workbooks are edited by XML patching only; drawings and media must stay byte identical apart from the Map/Satellite Views picture.
-- One pagers are public documents: never TEAAS, the workbook, the fiche or severity codes; no exact crash times or dates unless they matter (a time-of-day pattern); every crash-type acronym in the target crash text spelled out; every image has alt text, the map's being the Assumptions alt text rows verbatim, one per line.
+- One pagers are public documents: never TEAAS, the workbook, the fiche or severity codes; no exact crash times or dates unless they matter (a time-of-day pattern); every crash-type acronym in the target crash text spelled out; the countermeasure names its specific components; every image has alt text, the map's being the Assumptions alt text rows verbatim, one per line; the PDF is Saved As PDF (tagged) with that alt text on the map, never printed to PDF.
+- A roundabout or mini-roundabout is never called a circle or a traffic circle.
 - Hidden Office owner files (names starting ~$) are never findings.
 - Facts under "Deterministic checks" were established by code over the actual files. Build on them; do not report them again as new findings, and do not contradict them without quoting the material that shows they are wrong.
 Report only what you verify in the material provided. Quote cell addresses, crash ids, page numbers and exact values as evidence. Never invent a check you did not perform."""
@@ -226,27 +229,46 @@ def workbook_text(path: str, sheets: dict | None = None) -> str:
     return _clip("\n\n".join(out), MAX_CHARS_PER_PART * 2)
 
 
-def pdf_text(path: str, max_pages: int = 80, seen: dict | None = None) -> str:
-    """Page texts; a page whose text was already given (``seen``: text hash
-    -> "file page n") is replaced by a pointer to it."""
+def pdf_text(path: str, max_pages: int = 80, seen: dict | None = None, budget: int = MAX_CHARS_PER_PART) -> str:
+    """Page texts, whole pages only, within ``budget`` characters.
+
+    Runs of spaces from the layout are collapsed (columns stay apart). A page
+    already given in another file (``seen``: text hash -> "file page n") is a
+    pointer to it; only pages actually shown are recorded there. When the
+    budget runs out, interior pages go first and a TEAAS report's Study
+    Criteria pages at the end are kept, since the TEAAS reviewer needs them.
+    """
     import hashlib
 
     from .print_results import pdf_page_texts
+    from .qa_package import _appendix_start
 
-    pages = pdf_page_texts(path)
-    parts = []
-    for i, p in enumerate(pages[:max_pages]):
-        body = re.sub(r"\s+", " ", p).strip()
+    every = pdf_page_texts(path)
+    pages, total = every[:max_pages], len(every)
+    keep_tail = set(range(_appendix_start(pages), len(pages)))
+    texts = [re.sub(r"[ \t]{3,}", "  ", p.strip()) for p in pages]
+    tail_cost = sum(len(texts[i]) + 20 for i in keep_tail)
+    used, parts, dropped = 0, [], []
+    for i, t in enumerate(texts):
+        body = re.sub(r"\s+", " ", t).strip()
         key = hashlib.sha1(body.encode("utf-8")).hexdigest()
         if seen is not None and body and key in seen:
             parts.append(f"--- page {i + 1} --- [same text as {seen[key]}]")
             continue
+        room = budget - used - (0 if i in keep_tail else tail_cost)
+        if len(t) + 20 > room:
+            dropped.append(i + 1)
+            continue
+        used += len(t) + 20
         if seen is not None and body:
             seen[key] = f"{os.path.basename(path)} page {i + 1}"
-        parts.append(f"--- page {i + 1} ---\n{p.strip()}")
-    if len(pages) > max_pages:
-        parts.append(f"... [{len(pages) - max_pages} more pages not shown]")
-    return _clip(f"# PDF {os.path.basename(path)} ({len(pages)} pages)\n" + "\n".join(parts))
+        parts.append(f"--- page {i + 1} ---\n{t}")
+    if dropped:
+        parts.append(f"... [pages {dropped[0]}-{dropped[-1]} not shown: over the size budget]"
+                     if len(dropped) > 1 else f"... [page {dropped[0]} not shown: over the size budget]")
+    if total > len(pages):
+        parts.append(f"... [{total - len(pages)} more pages not shown]")
+    return f"# PDF {os.path.basename(path)} ({total} pages)\n" + "\n".join(parts)
 
 
 def docx_text(path: str) -> str:
@@ -264,12 +286,29 @@ def docx_text(path: str) -> str:
     return _clip("\n".join(out))
 
 
+#: A line that reads as a review request ("* Remove comma ...", "- Add a comment ...").
+_REQUEST_RE = re.compile(r"^[ \t]*[*\u2022\-][ \t]*(remove|add|include|delete|update|change|revise|correct|fill|"
+                         r"move|replace|check|make sure|please)\b", re.I | re.M)
+
+
+def looks_like_review(text: str) -> bool:
+    """Review comments, as opposed to an assignment or assumptions thread:
+    crashes named for deletion or as not targets, or at least two bulleted
+    requests."""
+    from .qa_package import reviewer_crash_requests
+
+    if any(r["action"] != "mention" for r in reviewer_crash_requests(text)):
+        return True
+    return len(_REQUEST_RE.findall(text)) >= 2
+
+
 def email_text(path: str) -> str:
     from .assignment_email import read_email
 
     subject, body = read_email(path)
     body = re.sub(r"\n[ \t]*\n+", "\n", body)
-    return _clip(f"{CORRESPONDENCE_HEADER} {os.path.basename(path)}\nSubject: {subject}\n{body}")
+    kind = REVIEW_TAG if looks_like_review(body) else ""
+    return _clip(f"{CORRESPONDENCE_HEADER}{kind} {os.path.basename(path)}\nSubject: {subject}\n{body}")
 
 
 #: Folders of DMV-349 crash reports (package.discover); never sent to a model.
@@ -284,14 +323,24 @@ def gather_context(package_dir: str, workbook: str | None = None, comments: str 
     in the package's Notes. ``deterministic`` runs qa_package first and puts
     its findings and facts in the context.
     """
-    from .qa_package import is_hidden
+    from .qa_package import discover_package, is_hidden
 
+    wanted = None
+    if workbook:
+        wanted = [workbook] if isinstance(workbook, str) else list(workbook)
+        for w in wanted:
+            if not os.path.exists(w):
+                raise FileNotFoundError(f"workbook not found: {w}")
+    else:
+        # the deliverable workbook of each location, as the package checks see it
+        wanted = [l.workbook for l in discover_package(package_dir).locations if l.workbook] or None
     ctx: dict[str, str] = {}
     inventory = []
     seen: dict = {}
     pdfs = []
     for dp, dn, fn in os.walk(package_dir):
-        dn[:] = sorted(d for d in dn if not is_hidden(d))
+        # crash report folders (and everything under them) are never read or listed (docs/11)
+        dn[:] = sorted(d for d in dn if not is_hidden(d) and d.lower() not in CRASH_REPORT_DIRS)
         for f in sorted(fn):
             if is_hidden(f):
                 continue
@@ -299,11 +348,12 @@ def gather_context(package_dir: str, workbook: str | None = None, comments: str 
             inventory.append(f"{os.path.relpath(p, package_dir)} ({os.path.getsize(p)} bytes)")
             low = f.lower()
             rel = os.path.relpath(p, package_dir)
-            if os.path.basename(dp).lower() in CRASH_REPORT_DIRS:
-                continue
             try:
-                if low.endswith((".xlsx", ".xlsm")) and (workbook is None or os.path.samefile(p, workbook)):
-                    ctx[rel] = workbook_text(p)
+                if low.endswith((".xlsx", ".xlsm")):
+                    if wanted is None or any(os.path.samefile(p, w) for w in wanted):
+                        ctx[rel] = workbook_text(p)
+                    else:
+                        inventory[-1] += " [not read: not the deliverable workbook]"
                 elif low.endswith(".pdf") and "redact" not in low:
                     pdfs.append((p, rel))
                 elif low.endswith(".docx"):
@@ -318,30 +368,38 @@ def gather_context(package_dir: str, workbook: str | None = None, comments: str 
     # standalone reports first, so a compilation points back at them
     for p, rel in sorted(pdfs, key=lambda x: ("complete evaluation" in x[1].lower(), x[1])):
         try:
-            ctx[rel] = pdf_text(p, seen=seen)
+            background = rel.lower().startswith("background info")
+            ctx[rel] = pdf_text(p, seen=seen, max_pages=2 if background else 80,
+                                budget=MAX_CHARS_PER_PART // 6 if background else 2 * MAX_CHARS_PER_PART)
         except Exception as exc:  # noqa: BLE001
             ctx[rel] = f"# {rel}\n[could not read: {exc}]"
     ctx["_inventory"] = "# Package inventory (hidden Office owner files left out)\n" + "\n".join(inventory)
     if comments:
-        ctx[COMMENTS_KEY] = f"{CORRESPONDENCE_HEADER}: reviewer comments supplied by the engineer\n{comments}"
+        ctx[COMMENTS_KEY] = f"{CORRESPONDENCE_HEADER}{REVIEW_TAG}: supplied by the engineer\n{comments}"
     if deterministic:
         try:
             from .qa_package import format_package_report, run_package_qa
             pq = run_package_qa(package_dir, comments=comments, progress=progress)
-            ctx[DETERMINISTIC_KEY] = ("# Deterministic checks (run by code over the files; established facts)\n"
-                                      + format_package_report(pq) + "\n\n" + pq.facts_text())
+            det = format_package_report(pq) + "\n\n" + pq.facts_text()
+            det = det.replace(os.path.normpath(package_dir) + os.sep, "")
+            ctx[DETERMINISTIC_KEY] = "# Deterministic checks (run by code over the files; established facts)\n" + det
         except Exception as exc:  # noqa: BLE001
             ctx[DETERMINISTIC_KEY] = f"# Deterministic checks\n[could not run: {exc}]"
     return ctx
 
 
 def has_correspondence(ctx: dict[str, str]) -> bool:
-    return any(v.startswith(CORRESPONDENCE_HEADER) for v in ctx.values())
+    """Is there anything for the REVIEWER COMMENTS reviewer? Comments the
+    engineer supplied, or an email that reads as review comments; an
+    assignment or assumptions thread in Notes is not enough."""
+    return any(v.startswith(CORRESPONDENCE_HEADER + REVIEW_TAG) for v in ctx.values())
 
 
-def page_images(package_dir: str, dpi: int = 60, max_images: int = 8) -> list[dict]:
+def page_images(package_dir: str, dpi: int = 150, max_images: int = 8) -> list[dict]:
     """The one pager (or Web) PDF pages as image blocks for the PDF and text
-    reviewers. Public documents only; never crash reports."""
+    reviewers and their refuters. Public documents only; never crash
+    reports. 150 dpi keeps the map legend and body text legible (a legal page
+    is 1275 x 2100 px, under the 2576 px limit)."""
     import base64
     import shutil
     import subprocess
@@ -353,24 +411,29 @@ def page_images(package_dir: str, dpi: int = 60, max_images: int = 8) -> list[di
     if not exe:
         return []
     out: list[dict] = []
+    left_out: list[str] = []
     for dp, dn, fn in os.walk(package_dir):
-        dn[:] = sorted(d for d in dn if not is_hidden(d))
+        dn[:] = sorted(d for d in dn if not is_hidden(d) and d.lower() not in CRASH_REPORT_DIRS)
         for f in sorted(fn):
             if is_hidden(f) or not re.search(r"(one\s*pager|\bweb)\.pdf$", f.lower()):
                 continue
             with tempfile.TemporaryDirectory() as td:
                 try:
                     subprocess.run([exe, "-r", str(dpi), "-png", os.path.join(dp, f), os.path.join(td, "p")],
-                                   check=True, capture_output=True, timeout=120)
+                                   check=True, capture_output=True, timeout=180)
                 except (subprocess.SubprocessError, OSError):
                     continue
                 for png in sorted(os.listdir(td)):
-                    if len(out) >= max_images:
-                        return out
+                    page = png.rsplit("-", 1)[-1].split(".")[0].lstrip("0") or "1"
+                    if sum(1 for b in out if b["type"] == "image") >= max_images:
+                        left_out.append(f"{f} page {page}")
+                        continue
                     with open(os.path.join(td, png), "rb") as fh:
                         data = base64.standard_b64encode(fh.read()).decode("ascii")
-                    out.append({"type": "text", "text": f"Image: {f}, {png.split('-')[-1].split('.')[0].lstrip('0')}"})
+                    out.append({"type": "text", "text": f"Image: {f}, page {page}"})
                     out.append({"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": data}})
+    if left_out:
+        out.append({"type": "text", "text": "Not shown as images (cap reached): " + ", ".join(left_out)})
     return out
 
 
@@ -388,16 +451,25 @@ def context_blocks(ctx: dict[str, str], accepted: list[str] | None = None) -> li
     return blocks
 
 
-def read_accepted(path_or_text: str | None) -> list[str]:
-    """Accepted items, one per line (markdown bullets fine), from a file or text."""
-    if not path_or_text:
+def read_accepted(text: str | None) -> list[str]:
+    """Accepted items, one per line. Only a real list marker is stripped
+    ("- ", "* ", "2. ", "3) "), so an item that starts with a crash ID or a
+    year keeps it."""
+    if not text:
         return []
-    text = path_or_text
-    if "\n" not in path_or_text and os.path.exists(path_or_text):
-        with open(path_or_text, encoding="utf-8", errors="replace") as fh:
-            text = fh.read()
-    return [ln.strip().lstrip("-*0123456789.) ").strip() for ln in text.splitlines()
-            if ln.strip() and not ln.strip().startswith("#")]
+    out = []
+    for ln in text.splitlines():
+        if not ln.strip() or ln.strip().startswith("#"):
+            continue
+        out.append(re.sub(r"^\s*(?:[-*\u2022]|\d{1,3}[.)])\s+", "", ln).strip())
+    return [x for x in out if x]
+
+
+def read_accepted_file(path: str | None) -> list[str]:
+    if not path:
+        return []
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        return read_accepted(fh.read())
 
 
 # --------------------------------------------------------------------------- #
@@ -414,6 +486,9 @@ def _json_call(client, model: str, system: list, user: str, schema: dict, effort
             usage[k] = usage.get(k, 0) + (getattr(u, k, 0) or 0)
     if getattr(resp, "stop_reason", None) == "refusal":
         raise RuntimeError("model declined the request")
+    if getattr(resp, "stop_reason", None) == "max_tokens":
+        raise RuntimeError("the answer ran out of output tokens before the JSON was complete; "
+                           "run this dimension alone or at a lower effort")
     text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
     return json.loads(text)
 
@@ -437,7 +512,8 @@ def review_dimension(client, key: str, system: list, model: str, effort: str, us
     return findings, data.get("verified", [])
 
 
-def refute(client, index: int, findings: list, system: list, model: str, effort: str, usage: dict) -> list[dict]:
+def refute(client, index: int, findings: list, system: list, model: str, effort: str, usage: dict,
+           images: list | None = None) -> list[dict]:
     listing = "\n".join(f"[{f.id}] ({f.severity}) {f.where}: {f.claim}\n   evidence: {f.evidence}\n   proposed fix: {f.fix}"
                         for f in findings)
     user = (f"You are independent verifier {index + 1} of 3. For EACH finding below, try to disprove it against the "
@@ -446,13 +522,16 @@ def refute(client, index: int, findings: list, system: list, model: str, effort:
             "engineer listed as known and accepted, PARTIAL when the facts hold but the severity or fix is wrong. "
             "Say whether the proposed fix is safe and give a better one if not.\n\n"
             + listing)
+    if images and any(f.dimension in SEES_PAGES for f in findings):
+        user = [{"type": "text", "text": user + "\nThe one pager pages follow as images."}] + images
     data = _json_call(client, model, system, user, VERDICTS_SCHEMA, effort, usage)
     return data["verdicts"]
 
 
 def run_sweep(ctx: dict[str, str], client=None, model: str = DEFAULT_MODEL, dimensions: list | None = None,
               n_refuters: int = 3, effort: str = "high", progress=None, max_workers: int = 7,
-              accepted: list[str] | None = None, images: list | None = None) -> SweepReport:
+              accepted: list[str] | None = None, images: list | None = None,
+              warm_first: bool = True) -> SweepReport:
     """Reviewers in parallel, then refuters in parallel over the merged findings."""
     if client is None:
         import anthropic
@@ -470,26 +549,36 @@ def run_sweep(ctx: dict[str, str], client=None, model: str = DEFAULT_MODEL, dime
     if not has_correspondence(ctx):
         for d in [d for d in dims if d in NEEDS_COMMENTS]:
             dims.remove(d)
-            report.skipped.append(f"{DIMENSIONS[d][0]}: no reviewer comments in the package or supplied")
+            report.skipped.append(f"{DIMENSIONS[d][0]}: no review comments supplied or found in the package's emails")
             _p(f"{d} skipped: no reviewer comments")
 
     _p(f"reviewing {len(dims)} dimensions")
+
+    def _review(d):
+        try:
+            findings, verified = review_dimension(client, d, system, model, effort, usage, images)
+            report.findings.extend(findings)
+            report.verified[d] = verified
+            _p(f"{DIMENSIONS[d][0]}: {len(findings)} finding(s)")
+        except Exception as exc:  # noqa: BLE001
+            report.errors.append(f"{d}: {exc}")
+            _p(f"{d} failed: {exc}")
+
+    # The first reviewer runs alone: a cache entry is readable only once a
+    # response has started, so parallel requests would each pay the full
+    # cache write on the package text. The rest then read it from the cache.
+    if dims and warm_first:
+        _review(dims[0])
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
-        futs = {ex.submit(review_dimension, client, d, system, model, effort, usage, images): d for d in dims}
-        for fut, d in futs.items():
-            try:
-                findings, verified = fut.result()
-                report.findings.extend(findings)
-                report.verified[d] = verified
-                _p(f"{DIMENSIONS[d][0]}: {len(findings)} finding(s)")
-            except Exception as exc:  # noqa: BLE001
-                report.errors.append(f"{d}: {exc}")
-                _p(f"{d} failed: {exc}")
+        list(ex.map(_review, dims[1:] if warm_first else dims))
+    order = {d: i for i, d in enumerate(dims)}
+    report.findings.sort(key=lambda f: (order.get(f.dimension, 99), f.id))
     if report.findings and n_refuters > 0:
         _p(f"refuting {len(report.findings)} finding(s) with {n_refuters} verifiers")
         by_id = {f.id: f for f in report.findings}
         with ThreadPoolExecutor(max_workers=max_workers) as ex:
-            futs = [ex.submit(refute, client, i, report.findings, system, model, effort, usage) for i in range(n_refuters)]
+            futs = [ex.submit(refute, client, i, report.findings, system, model, effort, usage, images)
+                    for i in range(n_refuters)]
             for i, fut in enumerate(futs):
                 try:
                     for v in fut.result():

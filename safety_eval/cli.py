@@ -906,9 +906,33 @@ def _cmd_print_results(args) -> int:
     return 0
 
 
+def _read_comments(path: str | None) -> str | None:
+    if not path:
+        return None
+    from .assignment_email import read_email
+    return read_email(path)[1]
+
+
 def _cmd_qa(args) -> int:
     from .qa_checks import diff_cached_values, format_report, run_package_checks
+    if args.package:
+        from .qa_package import format_package_report, run_package_qa
+        pq = run_package_qa(args.package, comments=_read_comments(args.comments), recalc=args.recalc,
+                            progress=lambda m: print("  " + m))
+        text = format_package_report(pq)
+        print(text)
+        if args.output:
+            with open(args.output, "w", encoding="utf-8") as fh:
+                fh.write(f"# Package QA checks, {os.path.basename(os.path.normpath(args.package))}\n\n{text}\n")
+            print(f"wrote {args.output}")
+        if not args.workbook:
+            return 0 if pq.report.ok else 1
+    if not args.workbook:
+        raise SystemExit("qa: give --workbook, --package, or both")
     rep = run_package_checks(args.workbook, args.reference, args.complete, args.web, args.appendix or [])
+    if args.onepager:
+        from .qa_package import check_onepager_docx
+        check_onepager_docx(args.onepager, args.workbook, args.web, report=rep)
     print(format_report(rep))
     if args.reference and args.diff:
         for sheet, d in diff_cached_values(args.workbook, args.reference).items():
@@ -946,12 +970,14 @@ def _cmd_collision_diagram(args) -> int:
 
 
 def _cmd_qa_sweep(args) -> int:
-    from .qa_sweep import DIMENSIONS, gather_context, run_sweep, sweep_to_markdown
-    ctx = gather_context(args.package, args.workbook)
+    from .qa_sweep import DIMENSIONS, gather_context, page_images, read_accepted, run_sweep, sweep_to_markdown
+    ctx = gather_context(args.package, args.workbook, comments=_read_comments(args.comments),
+                         deterministic=not args.no_deterministic, progress=lambda m: print("  " + m))
     print(f"context: {len(ctx)} parts, {sum(len(v) for v in ctx.values())} chars")
     dims = args.dimension or list(DIMENSIONS)
+    images = [] if args.no_images else page_images(args.package)
     rep = run_sweep(ctx, model=args.model, dimensions=dims, n_refuters=args.refuters, effort=args.effort,
-                    progress=lambda m: print("  " + m))
+                    progress=lambda m: print("  " + m), accepted=read_accepted(args.accepted), images=images)
     md = sweep_to_markdown(rep, title=f"QA sweep, {os.path.basename(os.path.normpath(args.package))}")
     if args.output:
         with open(args.output, "w", encoding="utf-8") as fh:
@@ -1917,8 +1943,16 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("--title", default="Safety Project Evaluation")
     pr.set_defaults(func=_cmd_print_results)
 
-    qa = sub.add_parser("qa", help="Deterministic QA checks on a workbook and its PDFs.")
-    qa.add_argument("--workbook", required=True)
+    qa = sub.add_parser("qa", help="Deterministic QA checks on a workbook and its PDFs, or on a whole package.")
+    qa.add_argument("--package", help="Package folder: every location, TEAAS study, one pager and "
+                    "compilation (accessible or full workbook)")
+    qa.add_argument("--comments", help="Reviewer comments (.msg, .eml or .txt) to trace crash by crash; "
+                    "default: the emails in the package")
+    qa.add_argument("--recalc", action="store_true", help="Also compare cached values with a LibreOffice "
+                    "recalculation (slow)")
+    qa.add_argument("--onepager", help="Word one pager to check against --workbook (and --web as its PDF)")
+    qa.add_argument("--output", help="Write the package report as markdown")
+    qa.add_argument("--workbook")
     qa.add_argument("--reference", help="Template or original workbook (drawings gate, cached diff)")
     qa.add_argument("--complete")
     qa.add_argument("--web")
@@ -1941,11 +1975,18 @@ def build_parser() -> argparse.ArgumentParser:
     cd.add_argument("--output", required=True, help="Output stem (.pdf and .png are written)")
     cd.set_defaults(func=_cmd_collision_diagram)
 
-    qs = sub.add_parser("qa-sweep", help="Multi-agent QA sweep: six reviewers plus three refuters over a "
+    qs = sub.add_parser("qa-sweep", help="Multi-agent QA sweep: up to seven reviewers plus three refuters over a "
                         "package folder (needs ANTHROPIC_API_KEY).")
     qs.add_argument("--package", required=True, help="Package folder")
     qs.add_argument("--workbook", help="Which workbook to read when the folder has several")
-    qs.add_argument("--dimension", action="append", help="Subset of dimensions (workbook, fiche, calculations, text, teaas, pdf)")
+    qs.add_argument("--dimension", action="append",
+                    help="Subset of dimensions (workbook, fiche, calculations, text, teaas, pdf, comments)")
+    qs.add_argument("--comments", help="Reviewer comments (.msg, .eml or .txt) for the REVIEWER COMMENTS reviewer")
+    qs.add_argument("--accepted", help="Known and accepted items, one per line; not re-reported")
+    qs.add_argument("--no-deterministic", dest="no_deterministic", action="store_true",
+                    help="Do not run the package checks first")
+    qs.add_argument("--no-images", dest="no_images", action="store_true",
+                    help="Do not show the one pager pages to the PDF and text reviewers")
     qs.add_argument("--refuters", type=int, default=3)
     qs.add_argument("--model", default="claude-opus-5")
     qs.add_argument("--effort", default="high", choices=["low", "medium", "high", "xhigh", "max"])

@@ -317,6 +317,25 @@ def check_type_column(path: str, sheet: str = "Filtered Fiche", report: QaReport
 # --------------------------------------------------------------------------- #
 # deliverable PDFs
 # --------------------------------------------------------------------------- #
+def volume_row(wb, results_sheet: str = "1 page results - 1 Target") -> tuple:
+    """(label, before, after) of the Volume row: H14:J14 on the full workbook's
+    results sheet, or the first "Volume (...)" row on the accessible
+    workbook's One Pager sheet. (None, None, None) when neither exists."""
+    if results_sheet in wb.sheetnames:
+        ws = wb[results_sheet]
+        label = ws["H14"].value if isinstance(ws["H14"].value, str) else None
+        return label, ws["I14"].value, ws["J14"].value
+    if "One Pager" in wb.sheetnames:
+        ws = wb["One Pager"]
+        for row in ws.iter_rows():
+            for c in row:
+                if isinstance(c.value, str) and c.value.strip().startswith("Volume (") \
+                        and isinstance(ws.cell(c.row, c.column + 1).value, (int, float)):
+                    return (c.value.strip(), ws.cell(c.row, c.column + 1).value,
+                            ws.cell(c.row, c.column + 2).value)
+    return None, None, None
+
+
 def check_pdfs(workbook: str, complete_pdf: str | None, web_pdf: str | None,
                appendix_pdfs: list[str] | None = None, results_sheet: str = "1 page results - 1 Target",
                report: QaReport | None = None) -> QaReport:
@@ -326,9 +345,7 @@ def check_pdfs(workbook: str, complete_pdf: str | None, web_pdf: str | None,
 
     rep = report or QaReport()
     wb = openpyxl.load_workbook(workbook, data_only=True)
-    ws = wb[results_sheet]
-    vol_label = ws["H14"].value if isinstance(ws["H14"].value, str) else None
-    vol_before, vol_after = ws["I14"].value, ws["J14"].value
+    vol_label, vol_before, vol_after = volume_row(wb, results_sheet)
     appendix_pages = 0
     for p in appendix_pdfs or []:
         appendix_pages += len(pdf_page_texts(p))
@@ -369,7 +386,8 @@ def run_package_checks(workbook: str, reference: str | None = None, complete_pdf
     try:
         check_results_text(workbook, report=rep)
     except KeyError:
-        rep.verified.append("no results sheet found, text check skipped")
+        rep.verified.append("no results sheet found, text check skipped (an accessible workbook's "
+                            "report text is in the Word one pager: qa_package.check_onepager_docx)")
     check_type_column(workbook, report=rep)
     if published_years and years:
         check_aadt_colours(workbook, published_years, years, report=rep)

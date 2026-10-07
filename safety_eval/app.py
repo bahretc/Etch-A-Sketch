@@ -2415,13 +2415,14 @@ def _download(st, label: str, path: str, name: str | None = None) -> None:
 
 
 def _workbook_input(st, key: str, tmp: str,
-                    label: str = "Workbook (.xlsx)") -> str | None:
+                    label: str = "Workbook (.xlsx)",
+                    types: tuple = ("xlsx",)) -> str | None:
     """A workbook upload, defaulting to the open study's Evaluation Workbook."""
     ws = _active_ws()
     study_wb = ws.path("evaluation_workbook") if ws else None
     if study_wb:
         label += " (leave empty to use the study's Evaluation Workbook)"
-    wb_up = st.file_uploader(label, type=["xlsx"], key=key)
+    wb_up = st.file_uploader(label, type=list(types), key=key)
     return _stage_wb(study_wb, wb_up, tmp)
 
 
@@ -2821,15 +2822,62 @@ def _qa_tab(st) -> None:
                                        run_package_checks)
 
     ws = _session_dir(st)
+    st.markdown("**Package checks** (every location in the WO folder)")
+    st.caption("TEAAS studies (PDF, CSV and CrashID list) against the "
+               "workbook Before and After sheets crash by crash; Complete "
+               "Evaluation against its parts page by page; the Word one pager "
+               "against the One Pager sheet (placeholders, alt text, date, "
+               "table values, PDF in step); crashes named in the reviewer's "
+               "comments traced through the package. Accessible (.xlsm) and "
+               "full workbooks. Hidden Office owner files (~$) are ignored.")
+    pkg_dir = _package_loader(st, ws)
+    if pkg_dir:
+        comments = st.text_area("Reviewer comments (optional; paste the "
+                                "review email)", "", key="pqa_comments",
+                                help="Left empty, the emails in the package "
+                                "are read.")
+        recalc = st.checkbox("Also compare cached values with a LibreOffice "
+                             "recalculation (slow)", False, key="pqa_recalc")
+        if st.button("Run package checks", type="primary", key="pqa_run"):
+            from safety_eval.qa_package import (format_package_report,
+                                                run_package_qa)
+            with st.spinner("Checking the package"):
+                pq = run_package_qa(pkg_dir, comments=comments.strip() or None,
+                                    recalc=recalc)
+            text = format_package_report(pq)
+            st.session_state["pqa_text"] = text
+            st.session_state["pqa_comments_text"] = comments.strip()
+            n = len(pq.report.findings)
+            hm = sum(1 for f in pq.report.findings
+                     if f.severity in ("High", "Medium"))
+            (st.success if pq.report.ok else st.error)(
+                f"{n} finding(s), {hm} High/Medium")
+            if pq.trace:
+                st.dataframe([{"crash": t["crash_id"], "asked": t["action"],
+                               "found in": t["where"] or "nowhere"}
+                              for t in pq.trace])
+        if st.session_state.get("pqa_text"):
+            st.code(st.session_state["pqa_text"])
+            st.download_button("Download package checks (.md)",
+                               st.session_state["pqa_text"],
+                               file_name="Package QA checks.md")
+
+    st.markdown("---")
+    st.markdown("**Single workbook checks**")
     st.caption("Deterministic checks: workbook structure and the docs/06 "
                "drawings gate, results text style, fiche Type versus T code, "
-               "AADT colour convention, PDF assembly.")
-    wb = _workbook_input(st, "qa_wb", ws)
+               "AADT colour convention, PDF assembly, and the Word one pager "
+               "when one is given.")
+    wb = _workbook_input(st, "qa_wb", ws, label="Workbook (.xlsx or .xlsm)",
+                         types=("xlsx", "xlsm"))
     ref_up = st.file_uploader("Reference workbook (template or original, "
-                              "optional)", type=["xlsx"], key="qa_ref")
+                              "optional)", type=["xlsx", "xlsm"], key="qa_ref")
     ce_up = st.file_uploader("Complete Evaluation PDF (optional)", type=["pdf"],
                              key="qa_ce")
-    web_up = st.file_uploader("Web PDF (optional)", type=["pdf"], key="qa_web")
+    web_up = st.file_uploader("Web or One Pager PDF (optional)", type=["pdf"],
+                              key="qa_web")
+    op_up = st.file_uploader("One pager .docx (optional, accessible workbook)",
+                             type=["docx"], key="qa_onepager")
     pub = st.text_area("Published AADT years per leg (optional)", "",
                        key="qa_pub", help="One leg per line: leg1: 2017, 2019, 2021")
     if wb and st.button("Run QA checks", type="primary", key="qa_run"):
@@ -2845,10 +2893,14 @@ def _qa_tab(st) -> None:
                  if published else None)
         if years:
             years = list(range(min(years) - 1, max(years) + 2))
-        rep = run_package_checks(wb, ref, _save_upload(ce_up, ws),
-                                 _save_upload(web_up, ws),
+        web = _save_upload(web_up, ws)
+        rep = run_package_checks(wb, ref, _save_upload(ce_up, ws), web,
                                  published_years=published or None,
                                  years=years)
+        onepager = _save_upload(op_up, ws)
+        if onepager:
+            from safety_eval.qa_package import check_onepager_docx
+            check_onepager_docx(onepager, wb, web, report=rep)
         st.code(format_report(rep))
         if ref:
             diffs = diff_cached_values(wb, ref)
@@ -2860,13 +2912,14 @@ def _qa_tab(st) -> None:
                                    "value": str(b)} for c, a, b in d[:400]])
 
     st.markdown("---")
-    st.markdown("**Multi-agent QA sweep** (six reviewers, three refuters)")
+    st.markdown("**Multi-agent QA sweep** (up to seven reviewers, three "
+                "refuters; the package checks above run first and are given "
+                "to every reviewer)")
     from safety_eval.chat import Assistant
     from safety_eval.qa_sweep import DIMENSIONS
-    pkg_dir = st.session_state.get("package_dir")
     if not pkg_dir:
-        st.info("Load a package zip on the Finish Package page first; the "
-                "sweep reads the whole folder.")
+        st.info("Load a package zip above first; the sweep reads the whole "
+                "folder.")
         return
     if not Assistant.available():
         st.info("Set ANTHROPIC_API_KEY to run the sweep.")
@@ -2875,12 +2928,18 @@ def _qa_tab(st) -> None:
                           default=list(DIMENSIONS),
                           format_func=lambda k: DIMENSIONS[k][0],
                           key="sweep_dims")
-    c1, c2 = st.columns(2)
+    accepted = st.text_area("Known and accepted items (optional, one per "
+                            "line; reviewers will not re-report them)", "",
+                            key="sweep_accepted")
+    c1, c2, c3 = st.columns(3)
     refuters = c1.number_input("Refuters per finding", 0, 5, 3, key="sweep_ref")
     effort = c2.selectbox("Effort", ["medium", "high", "xhigh", "max"], index=1,
                           key="sweep_effort")
+    show_pages = c3.checkbox("Show the one pager pages to the PDF and text "
+                             "reviewers", True, key="sweep_pages")
     if st.button("Run sweep", type="primary", key="sweep_run"):
-        from safety_eval.qa_sweep import (gather_context, run_sweep,
+        from safety_eval.qa_sweep import (gather_context, page_images,
+                                          read_accepted, run_sweep,
                                           sweep_to_markdown)
         log = st.empty()
         lines = []
@@ -2889,12 +2948,16 @@ def _qa_tab(st) -> None:
             lines.append(m)
             log.code("\n".join(lines))
 
+        comments = st.session_state.get("pqa_comments") or None
         with st.spinner("Reading the package"):
-            ctx = gather_context(pkg_dir)
+            ctx = gather_context(pkg_dir, comments=(comments or "").strip() or None,
+                                 progress=_progress)
         _progress(f"context: {len(ctx)} parts, "
                   f"{sum(len(v) for v in ctx.values())} chars")
         rep = run_sweep(ctx, dimensions=dims, n_refuters=int(refuters),
-                        effort=effort, progress=_progress)
+                        effort=effort, progress=_progress,
+                        accepted=read_accepted(accepted),
+                        images=page_images(pkg_dir) if show_pages else None)
         md = sweep_to_markdown(rep, title=f"QA sweep, {os.path.basename(pkg_dir)}")
         st.session_state["sweep_md"] = md
         c = len(rep.by_status("CONFIRMED"))

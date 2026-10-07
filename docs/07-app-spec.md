@@ -62,13 +62,71 @@ CLI command and an app tab, all tested:
 - `aadt_table` + `aadt_arcgis` (NCDOT 2025 AADT Stations layer): leg table with the black/red convention, representative years, colours written by `workbook_cells`.
 - `map_block`: team-format Map/Satellite Views composition and oneCellAnchor embedding; Esri World Imagery fallback.
 - `print_results`: LibreOffice print matched to the Excel print (Carlito, column padding), pikepdf binding with metadata.
-- `qa_checks`: deterministic QA (structure, docs/06 drawings gate, cached diff, AADT colours, text style, Type vs T code, PDF assembly).
-- `qa_sweep`: six LLM reviewers plus three refuters over the package folder (Claude Opus 5, structured output, cached context); CONFIRMED / PARTIAL / REFUTED by verifier agreement.
+- `qa_checks`: deterministic QA of one workbook (structure, docs/06 drawings gate, cached diff, AADT colours, text style, Type vs T code, PDF assembly); reads the Volume row from either the full workbook's results sheet or the accessible One Pager.
+- `qa_package`: deterministic QA of a whole package, every location ("1 of 2", "2 of 2"), accessible or full workbook. See "QA layers" below.
+- `qa_sweep`: up to seven LLM reviewers plus three refuters over the package folder (Claude Opus 5, structured output, cached context); CONFIRMED / PARTIAL / REFUTED by verifier agreement. The `qa_package` results go in first as established facts.
 - `redact` + `redact_verify`: PII redaction before review, then an OCR oracle check of the output (names, DOB, phone, licence, addresses), masked reporting.
 - `strip_diagram`: strip diagram with fan-out callouts (CLI `collision-diagram`). `collision_diagram` is the TSU-sheet diagram of the HSIP Warrants page and the `tsu-diagram` subcommand.
 - `junction_diagram`: the intersection sheet on a measured junction (CLI `junction-diagram`, app: Collision diagram expander, "Junction (measured spec)"). A junction spec JSON carries the legs (bearing, road name and codes, curbs, lane centres, medians, lines), the curb loop (edges in order round the junction, with `fillet` and `smooth` items), islands, crosswalks, labels and keep-outs; `studies/41000079549/junction_spec.json` is the reference. Cells are segment and disc primitives in page pixels; a cell is placed at the first candidate where nothing comes within a clearance of another cell, a crosswalk, stop bar, arrow, island, curb or sheet text (a crosswalk or stop bar may be crossed once clean spots run out, as the office sheets do). Rear ends stack across the approach at the stop bar, turning and angle cells nest back from their conflict point, run-off-road cells sit on the shoulder, pedestrian cells on the crosswalk; overflow goes to lettered insets with a matching circled letter and leader at the spot. Writes `<stem>_index.csv` (sheet number to crash) and `<stem>_review.csv` (approach, anchor, candidate, placement) beside the HTML.
 - `package`: discover a WO folder, finish it in one pass (redact, map, print, bind, QA log, zip with clean names).
 - `chat`: assistant with strict tools over the loaded package (drafts and checks only).
+
+## QA layers (October 2026)
+
+Rebuilt from the 08-18-51363 (W-5708K) resubmittal, where a multi-agent audit
+with tool access (recompute, compare page text, render pages) found what the
+QA then in the app could not, and the app's rules in turn found two things the
+audit missed (exact crash times in a public one pager, workbook map alt text
+not verbatim). The division of labour:
+
+1. **Deterministic package checks** (`qa_package.run_package_qa`, CLI
+   `safety-eval qa --package DIR [--comments FILE] [--recalc]`, app: QA
+   Checks > Package checks). Discovery is by content: evaluation workbooks
+   (.xlsx or .xlsm; the accessible one is preferred when a location has two,
+   and the other is reported), Word one pagers, One Pager or Web PDFs,
+   Complete Evaluations, TEAAS studies grouped by name from their PDF
+   (banner on page 1), CSV and CrashID list, and correspondence (.msg/.eml).
+   Hidden Office owner files (`~$...`) are skipped and never reported. Per
+   location:
+   - every TEAAS export compared with the workbook Before or After sheet,
+     crash by crash, each export on its own (a PDF run on 20 of 46 crash IDs
+     is named with the crashes it lacks and the last date it reached), then
+     dates, T codes and severities from the CrashID list, study dates against
+     the period, Included Accidents against the crashes analysed;
+   - the Complete Evaluation compared with its parts page by page by text
+     (lines in common both ways, 95%). A superseded report with the same
+     page count fails here; a page count never catches it. The TEAAS Study
+     Criteria appendix (from the last page headed "Study Criteria" to the
+     end) left unbound is an Info, not a defect;
+   - the Word one pager: macro placeholders left behind (1X ... Date1), every
+     image with alt text, the map's alt text equal to the Assumptions rows
+     (docs/05), the date and every table row equal to the One Pager sheet
+     (numbers compared at the precision shown), em/en dashes, internal words
+     (TEAAS, workbook, fiche, severity code), exact times of day, and the PDF
+     carrying every docx paragraph (reading-order text, hyphens normalised);
+   - Order ID and Project ID against the WO folder name;
+   - with `--recalc`, formula caches against a LibreOffice recalculation on
+     the One Pager, Evaluation Set-up, Assumptions and tracking sheets
+     (Excel-only functions and their dependents skipped; a blank severity is
+     taken as O, as the workbook counts it).
+   Reviewer comments (passed in, or read from the package's emails) are
+   traced crash by crash: a crash the reviewer asked to delete must be in no
+   period sheet and no TEAAS export, a crash that is "not a target" must not
+   carry a Target flag.
+2. **LLM sweep** (`qa_sweep`, CLI `safety-eval qa-sweep --package DIR
+   [--comments FILE] [--accepted FILE]`). Reviewers read the package as text
+   (accessible workbook ranges, the docx with its tables and alt text, the
+   correspondence, PDF pages once each) plus the deterministic results, and
+   judge what code cannot: whether each discussion sentence is supported,
+   whether each reviewer comment is addressed (the REVIEWER COMMENTS
+   reviewer runs only when there are comments), wording and consistency. The
+   PDF ASSEMBLY and REPORT TEXT reviewers also see the one pager pages as
+   images. Items the engineer lists as known and accepted go to every
+   reviewer and refuter and are not re-reported. Crash report folders are
+   never read (docs/11).
+3. **Refuters** (three, majority vote) as before. The audit that prompted
+   this used one skeptic per dimension; three independent refuters with a
+   vote are the stronger design and stay.
 
 ## Consolidation notes (September 2026)
 

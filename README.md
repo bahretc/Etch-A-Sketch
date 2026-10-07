@@ -181,11 +181,21 @@ safety-eval qa --workbook Evaluation.xlsx --reference original.xlsx \
 # Assistant (drafts and checks only; needs ANTHROPIC_API_KEY)
 safety-eval chat "Run the QA checks on Evaluation.xlsx and summarize"
 
-# Multi-agent QA sweep: six reviewers (workbook, fiche chain, calculations,
-# report text, TEAAS cross-check, PDF assembly) and three refuters over the
-# whole package folder, findings CONFIRMED / PARTIAL / REFUTED by verifier
-# agreement. Claude Opus 5, structured output, cached package context.
+# Deterministic QA of a whole package (every "n of m" location, accessible
+# .xlsm or full workbook): each TEAAS export vs the Before/After sheets crash
+# by crash, Complete Evaluation vs its parts page by page, the Word one pager
+# vs the One Pager sheet, crashes named in the reviewer's comments traced.
+safety-eval qa --package "WO-41000076576 08-18-51363 (W-5708K)" --comments review.msg --output qa.md
+
+# Multi-agent QA sweep: up to seven reviewers (workbook, fiche chain,
+# calculations, report text, TEAAS cross-check, PDF assembly, and reviewer
+# comments when there are any) and three refuters over the whole package
+# folder, with the deterministic package checks given first. Findings
+# CONFIRMED / PARTIAL / REFUTED by verifier agreement; items in --accepted are
+# not re-reported. Claude Opus 5, structured output, cached package context.
 safety-eval qa-sweep --package "WO-41000076160 10-18-223 (TIP #W-5710AM)" --output "Notes/QA sweep.md"
+safety-eval qa-sweep --package "WO-41000076576 08-18-51363 (W-5708K)" --comments review.msg \
+  --accepted accepted.txt --output "Notes/QA sweep.md"
 
 # Crash report redaction with independent verification: the output is OCRed
 # and searched for the original's names, DOB, phone, licence numbers and

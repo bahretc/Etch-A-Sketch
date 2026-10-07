@@ -418,3 +418,60 @@ def test_blank_severity_assumptions(tmp_path):
 
 def test_hidden_files():
     assert qp.is_hidden("~$Book.xlsx") and qp.is_hidden("/a/b/.DS_Store") and not qp.is_hidden("Book.xlsx")
+
+
+# --------------------------------------------------------------------------- #
+# what the 08-18-51363 package audit found after the first pass: the map's alt
+# text lost in the PDF export, the macro's template path on a consultant
+# share, draft markers left in crash notes
+# --------------------------------------------------------------------------- #
+def _tagged_pdf(path, alt=None, tagged=True, role="/Figure"):
+    pikepdf = pytest.importorskip("pikepdf")
+    pdf = pikepdf.new()
+    pdf.add_blank_page()
+    fig = pikepdf.Dictionary(Type=pikepdf.Name("/StructElem"), S=pikepdf.Name(role))
+    if alt is not None:
+        fig.Alt = pikepdf.String(alt)
+    fig = pdf.make_indirect(fig)
+    doc = pdf.make_indirect(pikepdf.Dictionary(Type=pikepdf.Name("/StructElem"), S=pikepdf.Name("/Document"),
+                                               K=pikepdf.Array([fig])))
+    st = pikepdf.Dictionary(Type=pikepdf.Name("/StructTreeRoot"), K=doc,
+                            RoleMap=pikepdf.Dictionary(InlineShape=pikepdf.Name("/Figure")))
+    pdf.Root.StructTreeRoot = pdf.make_indirect(st)
+    if tagged:
+        pdf.Root.MarkInfo = pikepdf.Dictionary(Marked=True)
+    pdf.save(path)
+    return path
+
+
+def test_pdf_figure_without_alt_text(tmp_path):
+    rep = qp.check_pdf_accessibility(_tagged_pdf(str(tmp_path / "op.pdf"), alt=None))
+    assert [f.severity for f in rep.findings] == ["High"] and "no alternate text" in rep.findings[0].claim
+    rep = qp.check_pdf_accessibility(_tagged_pdf(str(tmp_path / "ok.pdf"), alt="East leg: US 64 Business"))
+    assert not rep.findings
+    rep = qp.check_pdf_accessibility(_tagged_pdf(str(tmp_path / "r.pdf"), alt="", role="/InlineShape"))
+    assert any("no alternate text" in f.claim for f in rep.findings)        # role-mapped to Figure
+    rep = qp.check_pdf_accessibility(_tagged_pdf(str(tmp_path / "u.pdf"), alt="x", tagged=False))
+    assert [f.claim for f in rep.findings] == ["PDF is not tagged"]
+    rep = qp.check_pdf_accessibility(_tagged_pdf(str(tmp_path / "c.pdf"), alt="", tagged=False), public=False)
+    assert [f.severity for f in rep.findings] == ["Info"]
+
+
+def test_template_path_and_draft_markers(tmp_path):
+    root = _package(tmp_path)
+    wbp = os.path.join(root, "Crash Analysis",
+                       "Accessible Intersection Evaluation Workbook - 08-18-51363 (W-5708K) 2 of 2.xlsx")
+    wb = openpyxl.load_workbook(wbp)
+    wb["One Pager"]["I26"] = "\\\\consultant.com\\gbl\\Client\\Accessible Worksheets"
+    wb["Before"]["J5"] = "failed to yield from driveway; verify"
+    wb.save(wbp)
+    pq = qp.run_package_qa(root)
+    by_where = {f.where: f for f in pq.report.findings}
+    assert "Template Path" in by_where["2 of 2 One Pager!I26"].claim
+    assert qp.NCDOT_TEMPLATE_PATH in by_where["2 of 2 One Pager!I26"].fix
+    notes = by_where["2 of 2 Before/After notes"]
+    assert notes.severity == "Low" and "Before 104954667" in notes.evidence
+    wb = openpyxl.load_workbook(wbp)
+    wb["One Pager"]["I26"] = qp.NCDOT_TEMPLATE_PATH
+    wb.save(wbp)
+    assert "2 of 2 One Pager!I26" not in {f.where for f in qp.run_package_qa(root).report.findings}

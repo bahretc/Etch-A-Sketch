@@ -57,6 +57,15 @@ _PLACEHOLDER_RE = re.compile(r"(?<![\w-])(" + "|".join(re.escape(p) for p in ONE
 INTERNAL_WORDS = ("TEAAS", "workbook", "fiche", "severity code")
 
 _TIME_RE = re.compile(r"\b(?:[01]?\d|2[0-3]):[0-5]\d\b")
+
+#: Review markers an analyst leaves on a crash row while working ("; verify").
+DRAFT_RE = re.compile(r"\bverify\b|\bTBD\b|\bTODO\b|\?\?", re.I)
+
+#: Where NCDOT keeps the one pager Word templates (One Pager!I26 in the
+#: reviewer's copies, 08-18-51363, August 2026). The macro opens the template
+#: from I26; a consultant's network share there fails on NCDOT's machines.
+NCDOT_TEMPLATE_PATH = ("S:\\TSU\\SES\\Projects\\Safety Project Evaluations\\Automatic Evaluation Workbooks"
+                       "\\Work in Progress\\Accessible Worksheets")
 _SLASH_DATE_RE = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{2}|\d{4})\b")
 
 
@@ -231,6 +240,8 @@ class WorkbookFacts:
     volume: tuple | None = None                        # (label, before, after)
     alt_rows: list = field(default_factory=list)       # Assumptions alt text rows, sheet order
     labels: dict = field(default_factory=dict)         # One Pager label -> [(v1, v2, v3)]
+    template_path: str = ""                            # One Pager I26, read by the one pager macro
+    draft_notes: list = field(default_factory=list)    # (sheet, crash id, note) still marked as draft
 
 
 def _marked(v) -> bool:
@@ -267,11 +278,17 @@ def read_workbook_facts(path: str) -> WorkbookFacts:
             continue
         target_cols = [(h, c) for h, c in cols.items() if re.fullmatch(r"target-\d\??", h)]
         rows = {}
+        note_cols = [c for c in range(8, 15) if c not in (cols.get("t"), cols.get("s"))
+                     and c not in {tc for _, tc in target_cols}]
         for r in range(header_row + 1, ws.max_row + 1):
             v = ws.cell(r, 1).value
             if v is None or not str(v).strip().isdigit():
                 continue
             cid = str(v).strip()
+            for c in note_cols:
+                note = ws.cell(r, c).value
+                if isinstance(note, str) and DRAFT_RE.search(note):
+                    facts.draft_notes.append((sheet, cid, _norm(note)))
             t = ws.cell(r, cols.get("t", 3)).value
             s = ws.cell(r, cols.get("s", 7)).value
             marked = tuple(h for h, c in target_cols if _marked(ws.cell(r, c).value))
@@ -283,6 +300,7 @@ def read_workbook_facts(path: str) -> WorkbookFacts:
         ws = wb["One Pager"]
         facts.order_id = _norm(ws["I3"].value)
         facts.project_id = _norm(ws["I4"].value)
+        facts.template_path = _norm(ws["I26"].value)
         v = ws["I24"].value
         facts.onepager_date = _as_date(v)
         facts.onepager_date_text = v.strftime("%m/%d/%Y") if isinstance(v, (datetime, date)) else _norm(v)
@@ -549,6 +567,69 @@ def _short(v):
     if isinstance(v, datetime):
         return v.strftime("%m/%d/%Y")
     return v
+
+
+def pdf_tags(pdf: str) -> dict:
+    """Tagging facts of a PDF: tagged (MarkInfo/Marked), language, and the
+    alt text of every structure element that is (or role-maps to) Figure."""
+    import pikepdf
+
+    out = {"tagged": False, "lang": "", "figures": []}
+    with pikepdf.open(pdf) as doc:
+        root = doc.Root
+        mi = root.get("/MarkInfo")
+        out["tagged"] = bool(mi.get("/Marked", False)) if mi is not None else False
+        out["lang"] = str(root.get("/Lang", "") or "")
+        st = root.get("/StructTreeRoot")
+        if st is None:
+            return out
+        rolemap = {str(k): str(v) for k, v in dict(st.get("/RoleMap", {}) or {}).items()}
+        stack, seen = [st.get("/K")], set()
+        while stack:
+            node = stack.pop()
+            if node is None:
+                continue
+            if isinstance(node, pikepdf.Array):
+                stack.extend(list(node))
+                continue
+            if not isinstance(node, pikepdf.Dictionary):
+                continue
+            if node.is_indirect:
+                if node.objgen in seen:
+                    continue
+                seen.add(node.objgen)
+            tag = str(node.get("/S", ""))
+            if tag == "/Figure" or rolemap.get(tag) == "/Figure":
+                out["figures"].append(str(node.get("/Alt", "") or ""))
+            stack.append(node.get("/K"))
+    return out
+
+
+def check_pdf_accessibility(pdf: str, report: QaReport | None = None, public: bool = True) -> QaReport:
+    """A one pager PDF is published: tagged, with alt text on every figure
+    (CLAUDE.md rule 11). Word's alt text survives Save As PDF; it can be lost
+    by other exporters (Acrobat PDFMaker dropped it on 08-18-51363)."""
+    rep = report or QaReport()
+    name = os.path.basename(pdf)
+    try:
+        t = pdf_tags(pdf)
+    except ImportError:
+        rep.verified.append(f"{name}: tagging not checked (pikepdf not installed)")
+        return rep
+    except Exception as exc:  # noqa: BLE001 - an unreadable PDF is a finding elsewhere
+        rep.verified.append(f"{name}: tagging not checked ({exc})")
+        return rep
+    if not t["tagged"]:
+        rep.add("Medium" if public else "Info", name, "PDF is not tagged" + ("" if public else " (compiled file)"),
+                fix="Save As PDF from Word (tagged), never Print to PDF" if public else "")
+    missing = sum(1 for a in t["figures"] if not a.strip())
+    if missing and public:
+        rep.add("High", name, f"{missing} of {len(t['figures'])} figure(s) have no alternate text in the PDF",
+                "the docx alt text did not survive the export",
+                "Acrobat: Accessibility > Set Alternate Text on the map, or re-export with Save As PDF")
+    rep.verified.append(f"{name}: tagged={t['tagged']}, lang={t['lang'] or 'none'}, "
+                        f"{len(t['figures'])} figure(s), {missing} without alt text")
+    return rep
 
 
 # --------------------------------------------------------------------------- #
@@ -943,6 +1024,10 @@ def run_package_qa(root: str, comments: str | None = None, recalc: bool = False,
         if l.onepager_docx:
             _p(f"{tag}: one pager docx")
             check_onepager_docx(l.onepager_docx, pdf=l.onepager_pdf, report=rep, wb_facts=l.facts)
+        if l.onepager_pdf and accessible:
+            check_pdf_accessibility(l.onepager_pdf, rep)
+        if l.complete_pdf and accessible:
+            check_pdf_accessibility(l.complete_pdf, rep, public=False)
         if l.complete_pdf:
             parts = [p for p in (l.onepager_pdf, getattr(l.studies.get("before"), "pdf", None),
                                  getattr(l.studies.get("after"), "pdf", None)) if p]
@@ -951,6 +1036,7 @@ def run_package_qa(root: str, comments: str | None = None, recalc: bool = False,
                 check_compilation(l.complete_pdf, parts, rep)
         if l.facts:
             _check_identity(l, lay.root, rep)
+            _check_workbook_hygiene(l, rep)
     matched = {id(s) for l in lay.locations for s in l.studies.values()}
     for s in lay.studies:
         if id(s) not in matched:
@@ -987,6 +1073,21 @@ def run_package_qa(root: str, comments: str | None = None, recalc: bool = False,
                 else:
                     rep.verified.append(f"crash {cid}: not a target, as the reviewer asked")
     return pq
+
+
+def _check_workbook_hygiene(l: Location, rep: QaReport) -> None:
+    """What a reviewer opening the workbook would trip over."""
+    f = l.facts
+    tag = l.label or "package"
+    if f.accessible and f.template_path and f.template_path.startswith("\\\\"):
+        rep.add("Medium", f"{tag} One Pager!I26", "Template Path is a network share NCDOT cannot reach; the one "
+                "pager button fails with 'Template file not found' on NCDOT's machines",
+                f.template_path[:90], f"set it back to NCDOT's path: {NCDOT_TEMPLATE_PATH}")
+    if f.draft_notes:
+        rep.add("Low", f"{tag} Before/After notes", f"{len(f.draft_notes)} crash row note(s) still carry a draft "
+                "marker ('verify', 'TBD', '??')",
+                "; ".join(f"{sh} {cid}" for sh, cid, _ in f.draft_notes[:8]) + (" ..." if len(f.draft_notes) > 8 else ""),
+                "resolve the note or drop the marker before resubmitting")
 
 
 def _check_identity(l: Location, root: str, rep: QaReport) -> None:

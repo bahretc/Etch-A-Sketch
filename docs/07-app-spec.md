@@ -104,7 +104,13 @@ not verbatim). The division of labour:
      (numbers compared at the precision shown), em/en dashes, internal words
      (TEAAS, workbook, fiche, severity code), exact times of day, and the PDF
      carrying every docx paragraph (reading-order text, hyphens normalised);
-   - Order ID and Project ID against the WO folder name;
+   - the One Pager PDF tagged, with alternate text on every figure (Word's
+     alt text can be lost on export: Acrobat PDFMaker dropped the map's on
+     08-18-51363); the Complete Evaluation's tagging is reported as Info;
+   - Order ID and Project ID against the WO folder name; the One Pager
+     Template Path (I26, which the macro opens) not left on a consultant
+     network share; crash row notes still carrying a draft marker
+     ("verify", "TBD", "??");
    - with `--recalc`, formula caches against a LibreOffice recalculation on
      the One Pager, Evaluation Set-up, Assumptions and tracking sheets
      (Excel-only functions and their dependents skipped; a blank severity is

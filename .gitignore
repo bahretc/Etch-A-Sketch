@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.cache/
+# documents with personal information stay out of the repository
+*.msg
+*_CrashReport.pdf
+*_FatalSlip.pdf
+*CrashReport*.tif*

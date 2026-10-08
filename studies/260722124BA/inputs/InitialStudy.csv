@@ -1,0 +1,280 @@
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Strip Analysis Report"
+"Study Criteria Summary"
+"County:","BRUNSWICK","City:","All and Rural"
+"Date:","9/1/2021","to","8/31/2026","Study:","260722124BA"
+"Location:","NC 179BUS (Beach Dr SW) from the Calabash NAPA Auto Care Center Driveway [MP 0.025] to Hidden Valley Pl [MP 0.205]"
+"Report Details"
+"Acc
+No","Crash ID","Milepost","Date","Accident Type","Total
+Damage","Injuries","F","A","B","C","R","Condition","L","W","Ch","Road","Ci","Trfc Ctl","Dv","Op"
+"1","108569891","0.070","07/22/2026 17:31","LEFT TURN, SAME ROADWAY","$","15000","1","0","2","0","1","1","1","1","0","0",""
+"Unit","1",":","4","Alchl/Drgs:","0","Speed:","10","MPH","Dir:","S","Veh Mnvr/Ped Actn:","8","Obj Strk:",""
+"Unit","2",":","20","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","N","Veh Mnvr/Ped Actn:","4","Obj Strk:",""
+"2","108457510","0.083","04/02/2026 12:52","LEFT TURN, SAME ROADWAY","$","9000","0","0","0","0","1","1","1","1","0","13","1"
+"Unit","1",":","2","Alchl/Drgs:","0","Speed:","10","MPH","Dir:","E","Veh Mnvr/Ped Actn:","8","Obj Strk:",""
+"Unit","2",":","2","Alchl/Drgs:","0","Speed:","25","MPH","Dir:","W","Veh Mnvr/Ped Actn:","4","Obj Strk:",""
+"3","107392672","0.100","07/05/2023 10:08","LEFT TURN, SAME ROADWAY","$","4000","0","0","0","0","1","1","1","1","0","13","1"
+"Unit","1",":","1","Alchl/Drgs:","0","Speed:","5","MPH","Dir:","S","Veh Mnvr/Ped Actn:","8","Obj Strk:",""
+"Unit","2",":","2","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","N","Veh Mnvr/Ped Actn:","4","Obj Strk:",""
+"4","108192988","0.200","08/04/2025 17:34","RIGHT TURN, DIFFERENT ROADWAYS","$","11000","0","0","0","0","1","1","1","1","0","0",""
+"Unit","1",":","1","Alchl/Drgs:","0","Speed:","5","MPH","Dir:","N","Veh Mnvr/Ped Actn:","7","Obj Strk:",""
+"Unit","2",":","2","Alchl/Drgs:","0","Speed:","35","MPH","Dir:","E","Veh Mnvr/Ped Actn:","4","Obj Strk:",""
+"Legend for Report Details:","Acc No - Accident Number
+Injuries: F - Fatal, A - Class A, B - Class B, C - Class C
+Condition: R - Road Surface, L - Ambient Light, W - Weather
+Rd Ch - Road Character
+Rd Ci - Roadway Contributing Circumstances
+Trfc Ctl - Traffic Control: Dv - Device, Op - Operating
+Alchl/Drgs - Alcohol Drugs Suspected
+Veh Mnvr/Ped Actn - Vehicle Maneuver/Pedestrian Action
+Obj Strk - Object Struck"
+"10/07/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-1-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Strip Analysis Report"
+"Summary Statistics"
+"High Level Crash Summary"
+"Crash Type","Number of
+Crashes","Percent
+of Total"
+"Total Crashes","4","100.00"
+"Fatal Crashes","1","25.00"
+"Non-Fatal Injury Crashes","0","0.00"
+"Total Injury Crashes","1","25.00"
+"Property Damage Only Crashes","3","75.00"
+"Night Crashes","0","0.00"
+"Wet Crashes","0","0.00"
+"Alcohol/Drugs Involvement Crashes","0","0.00"
+"Crash Severity Summary"
+"Crash Type","Number of
+Crashes","Percent 
+of Total"
+"Total Crashes","4","100.00"
+"Fatal Crashes","1","25.00"
+"Class A Crashes","0","0.00"
+"Class B Crashes","0","0.00"
+"Class C Crashes","0","0.00"
+"Property Damage Only Crashes","3","75.00"
+"Vehicle Exposure Statistics"
+"Annual ADT =","9000",""
+"Total Length =","0.18 (Miles)","0.29 (Kilometers)"
+"Total Vehicle Exposure =","2.96 (MVMT)","4.76 (MVKMT)"
+"Crash Rate","Crashes Per 100 Million
+Vehicle Miles","Crashes Per 100 Million
+Vehicle Kilometers"
+"Total Crash Rate","135.22","84.02"
+"Fatal Crash Rate","33.81","21.01"
+"Non Fatal Crash Rate","0.00","0.00"
+"Night Crash Rate","0.00","0.00"
+"Wet Crash Rate","0.00","0.00"
+"EPDO Rate","2697.66","1676.25"
+"10/07/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-2-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Strip Analysis Report"
+"Miscellaneous Statistics"
+"Severity Index =","19.95"
+"EPDO Crash Index =","79.80"
+"Estimated Property Damage Total = $","39000.00"
+"Accident Type Summary"
+"Accident Type","Number of
+Crashes","Percent
+of Total"
+"LEFT TURN, SAME ROADWAY","3","75.00"
+"RIGHT TURN, DIFFERENT ROADWAYS","1","25.00"
+"Injury Summary"
+"Injury Type","Number of
+Injuries","Percent
+of Total"
+"Fatal Injuries","1","33.33"
+"Class A Injuries","0","0.00"
+"Class B Injuries","2","66.67"
+"Class C Injuries","0","0.00"
+"Total Non-Fatal Injuries","2","66.67"
+"Total Injuries","3","100.00"
+"10/07/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-3-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Strip Analysis Report"
+"Monthly Summary"
+"Month","Number of
+Crashes","Percent
+of Total"
+"Jan","0","0.00"
+"Feb","0","0.00"
+"Mar","0","0.00"
+"Apr","1","25.00"
+"May","0","0.00"
+"Jun","0","0.00"
+"Jul","2","50.00"
+"Aug","1","25.00"
+"Sep","0","0.00"
+"Oct","0","0.00"
+"Nov","0","0.00"
+"Dec","0","0.00"
+"Daily Summary"
+"Day","Number of
+Crashes","Percent
+of Total"
+"Mon","1","25.00"
+"Tue","0","0.00"
+"Wed","2","50.00"
+"Thu","1","25.00"
+"Fri","0","0.00"
+"Sat","0","0.00"
+"Sun","0","0.00"
+"10/07/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-4-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Strip Analysis Report"
+"Hourly Summary"
+"Hour","Number of
+Crashes","Percent
+of Total"
+"0000-0059","0","0.00"
+"0100-0159","0","0.00"
+"0200-0259","0","0.00"
+"0300-0359","0","0.00"
+"0400-0459","0","0.00"
+"0500-0559","0","0.00"
+"0600-0659","0","0.00"
+"0700-0759","0","0.00"
+"0800-0859","0","0.00"
+"0900-0959","0","0.00"
+"1000-1059","1","25.00"
+"1100-1159","0","0.00"
+"1200-1259","1","25.00"
+"1300-1359","0","0.00"
+"1400-1459","0","0.00"
+"1500-1559","0","0.00"
+"1600-1659","0","0.00"
+"1700-1759","2","50.00"
+"1800-1859","0","0.00"
+"1900-1959","0","0.00"
+"2000-2059","0","0.00"
+"2100-2159","0","0.00"
+"2200-2259","0","0.00"
+"2300-2359","0","0.00"
+"10/07/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-5-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Strip Analysis Report"
+"Light and Road Conditions Summary"
+"Condition","Dry","Wet","Other","Total"
+"Day","4","0","0","4"
+"Dark","0","0","0","0"
+"Other","0","0","0","0"
+"Total","4","0","0","4"
+"Vehicle Type Summary"
+"Vehicle Type","Number
+Involved","Percent
+of Total"
+"MOTORCYCLE","1","12.50"
+"PASSENGER CAR","2","25.00"
+"PICKUP","4","50.00"
+"SPORT UTILITY","1","12.50"
+"10/07/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-6-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Strip Analysis Report"
+"Yearly Totals Summary"
+"Accident Totals"
+"Year","Total
+Accidents","Fatal
+Accidents","Injury
+Accidents","Property Damage
+Only Accidents"
+"2021","0","0","0","0"
+"2022","0","0","0","0"
+"2023","1","0","0","1"
+"2024","0","0","0","0"
+"2025","1","0","0","1"
+"2026","2","1","0","1"
+"Total","4","1","0","3"
+"Injury Totals"
+"Year","Fatal Injuries","Class A, B,
+or C Injuries"
+"2021","0","0"
+"2022","0","0"
+"2023","0","0"
+"2024","0","0"
+"2025","0","0"
+"2026","1","2"
+"Total","1","2"
+"Miscellaneous Totals"
+"Year","Property Damage","EPDO Index"
+"2021","$","0","0.00"
+"2022","$","0","0.00"
+"2023","$","4000","1.00"
+"2024","$","0","0.00"
+"2025","$","11000","1.00"
+"2026","$","24000","77.80"
+"Total","$","39000","79.80"
+"Type of Accident Totals"
+,"Year","Left Turn","Right Turn","Rear End","Run Off Road &
+Fixed Object","Angle","Side Swipe","Other"
+"2021","0","0","0","0","0","0","0"
+"2022","0","0","0","0","0","0","0"
+"10/07/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-7-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Strip Analysis Report"
+,"Year","Left Turn","Right Turn","Rear End","Run Off Road &
+Fixed Object","Angle","Side Swipe","Other"
+"2023","1","0","0","0","0","0","0"
+"2024","0","0","0","0","0","0","0"
+"2025","0","1","0","0","0","0","0"
+"2026","2","0","0","0","0","0","0"
+"Total","3","1","0","0","0","0","0"
+"10/07/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-8-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Strip Analysis Report"
+"Strip Diagram"
+"Features","Milepost","Crash IDs"
+"NAPA AUTO CARE CENTER DRIVEWAY","0.03",""
+"","0.04",""
+"","0.05",""
+"","0.06",""
+"","0.07","108569891"
+"LITTLE (REVISED MP)","0.08","108457510"
+"INCORRECT MP | CROCKER (REVISED MP) |","0.09",""
+"LITTLE","",""
+"INCORRECT MP | CROCKER","0.10","107392672"
+"","0.11",""
+"","0.12",""
+"","0.13",""
+"","0.14",""
+"","0.15",""
+"","0.16",""
+"","0.17",""
+"","0.18",""
+"","0.19",""
+"HIDDEN VALLEY (REVISED MP)","0.20","108192988"
+"10/07/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-9-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Strip Analysis Report"
+"Study Criteria"
+"Study Name","Log No.","PH No.","TIP No.","K/A Cf.","B/C Cf.","ADT","ADT Route"
+"260722124BA","260722124BA","","","76.8","8.4","9000","39000179"
+"Request Date","Courier Service","Phone No.","Ext.","Fax No."
+"","","","",""
+"County","Municipality"
+"Name","Code","Div.","Name","Code","Y-Line Ft.","Begin Date","End Date","Years"
+"BRUNSWICK","10","3","All and Rural","","0","9/1/2021","8/31/2026","5.00"
+"Location Text","Requestor"
+"NC 179BUS (Beach Dr SW) from the Calabash NAPA Auto Care Center Driveway [MP 0.025] to Hidden Valley Pl [MP 0.205]",""
+"Fiche Roads"
+"Name","Code"
+"NC 179BUS","39000179"
+"BEACH","50002126"
+"SR 1164","40001164"
+"CLARIDAY","50035785"
+"NC 179","30000179"
+"Strip Road"
+"Name","Code","Begin MP","End MP","Miles","Kilometers"
+"NC 179BUS","39000179","0.025","0.205","0.180","0.290"
+"10/07/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-10-"

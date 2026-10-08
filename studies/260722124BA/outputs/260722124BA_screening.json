@@ -1,0 +1,380 @@
+[
+ {
+  "crash_id": 108481478,
+  "flag": "?",
+  "triggers": [
+   "Between",
+   "Combo"
+  ],
+  "priority": 1,
+  "reason": "Likely ADD - locates inside the section; description (BEACH 0.019 mi S from CROCKER toward OLD GEORGETOWN) implies MP 0.071, inside the section; MP 999.999; MP 999.999 crash coded with a section road (CROCKER)",
+  "implied_mp": 0.071,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": null
+ },
+ {
+  "crash_id": 108109880,
+  "flag": "?",
+  "triggers": [
+   "DMV"
+  ],
+  "priority": 1,
+  "reason": "Likely ADD - locates inside the section; DMV349CLEANED coordinates (33.898680, -78.552140) project onto NC 179BUS at MP 0.028 (30 ft off the centerline), inside the section - crash is coded on NC 179",
+  "implied_mp": null,
+  "dmv_mp": 0.027969713128354612,
+  "dmv_offset_ft": 29.740628971427913,
+  "latlon": [
+   33.89868,
+   -78.55214
+  ]
+ },
+ {
+  "crash_id": 108175794,
+  "flag": "?",
+  "triggers": [
+   "DMV"
+  ],
+  "priority": 1,
+  "reason": "Likely ADD - locates inside the section; DMV349CLEANED coordinates (33.898450, -78.552270) project onto NC 179BUS at MP 0.037 (51 ft off the centerline), inside the section - crash is coded on NC 179",
+  "implied_mp": null,
+  "dmv_mp": 0.03650010346488765,
+  "dmv_offset_ft": 51.18978967709632,
+  "latlon": [
+   33.89845,
+   -78.55227
+  ]
+ },
+ {
+  "crash_id": 108175124,
+  "flag": "?",
+  "triggers": [
+   "DMV"
+  ],
+  "priority": 1,
+  "reason": "Likely ADD - locates inside the section; DMV349CLEANED coordinates (33.898308, -78.551960) project onto NC 179BUS at MP 0.055 (5 ft off the centerline), inside the section - crash is coded on NC 179",
+  "implied_mp": null,
+  "dmv_mp": 0.05484028877793036,
+  "dmv_offset_ft": 5.337531213148295,
+  "latlon": [
+   33.898308,
+   -78.55196
+  ]
+ },
+ {
+  "crash_id": 108595754,
+  "flag": "?",
+  "triggers": [
+   "DMV"
+  ],
+  "priority": 3,
+  "reason": "Window - just outside the limits; DMV349 coordinates (33.898720, -78.552470) project onto NC 179BUS at MP 0.015 (43 ft off the centerline), 55 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - crash is coded on NC 179",
+  "implied_mp": null,
+  "dmv_mp": 0.014675496660895824,
+  "dmv_offset_ft": 42.76492732870095,
+  "latlon": [
+   33.89872,
+   -78.55247
+  ]
+ },
+ {
+  "crash_id": 107421425,
+  "flag": "?",
+  "triggers": [
+   "Between"
+  ],
+  "priority": 4,
+  "reason": "At the NC 179 intersection - likely NIS; description (NC 179 0.004 mi N from SR 1164 toward SR 1810) implies MP 0.004, 111 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway); MP 999.999 - crash is coded on NC 179; SR 1810 meets both NC 179 and NC 179BUS, so the description fits either route",
+  "implied_mp": 0.004,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": null
+ },
+ {
+  "crash_id": 108581555,
+  "flag": "?",
+  "triggers": [
+   "Between",
+   "DMV"
+  ],
+  "priority": 2,
+  "reason": "Possible ADD - at a limit or by description only; review the report; description (NC 179 0.031 mi E from SR 1164 toward SR 1810) implies MP 0.031, inside the section; MP 999.999 - crash is coded on NC 179; SR 1810 meets both NC 179 and NC 179BUS, so the description fits either route; DMV349 coordinates (33.898720, -78.552240) project onto NC 179BUS at MP 0.022 (14 ft off the centerline), at the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - crash is coded on NC 179",
+  "implied_mp": 0.031,
+  "dmv_mp": 0.02237886028064418,
+  "dmv_offset_ft": 13.712257964515679,
+  "latlon": [
+   33.89872,
+   -78.55224
+  ]
+ },
+ {
+  "crash_id": 108280240,
+  "flag": "?",
+  "triggers": [
+   "Between"
+  ],
+  "priority": 5,
+  "reason": "Check - description and coordinates disagree; description (NC 179 1 mi N from SR 1810 toward SR 1164) implies MP 0.134, inside the section; MP 999.999 - crash is coded on NC 179; SR 1810 meets both NC 179 and NC 179BUS, so the description fits either route; DMV349CLEANED coordinates (33.885400, -78.548510) are 4,107 ft from the section",
+  "implied_mp": 0.1339999999999999,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": [
+   33.8854,
+   -78.54851
+  ]
+ },
+ {
+  "crash_id": 107422740,
+  "flag": "?",
+  "triggers": [
+   "Between"
+  ],
+  "priority": 1,
+  "reason": "Likely ADD - locates inside the section; description (NC 179BUS 0.057 mi W from NC 179 toward SR 1810) implies MP 0.057, inside the section; coded MP 0.000",
+  "implied_mp": 0.057,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": null
+ },
+ {
+  "crash_id": 108186124,
+  "flag": "?",
+  "triggers": [
+   "Window"
+  ],
+  "priority": 4,
+  "reason": "At the NC 179 intersection - likely NIS; NC 179BUS MP 0.000 is the NC 179 / SR 1164 (Old Georgetown Rd) / Clariday Rd intersection, 132 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - an intersection crash unless the report puts it past the driveway",
+  "implied_mp": 0.0,
+  "dmv_mp": 0.0,
+  "dmv_offset_ft": 57.43489975352986,
+  "latlon": [
+   33.8989,
+   -78.55268
+  ]
+ },
+ {
+  "crash_id": 107407446,
+  "flag": "?",
+  "triggers": [
+   "Window"
+  ],
+  "priority": 3,
+  "reason": "Window - just outside the limits; NC 179BUS MP 0.014 is 58 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - within 0.1 mi",
+  "implied_mp": 0.014,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": null
+ },
+ {
+  "crash_id": 106989320,
+  "flag": "?",
+  "triggers": [
+   "Window"
+  ],
+  "priority": 3,
+  "reason": "Window - just outside the limits; NC 179BUS MP 0.019 is 32 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - within 0.1 mi",
+  "implied_mp": 0.019,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": null
+ },
+ {
+  "crash_id": 107361667,
+  "flag": "?",
+  "triggers": [
+   "Window"
+  ],
+  "priority": 3,
+  "reason": "Window - just outside the limits; NC 179BUS MP 0.019 is 32 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - within 0.1 mi",
+  "implied_mp": 0.019,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": null
+ },
+ {
+  "crash_id": 108438531,
+  "flag": "?",
+  "triggers": [
+   "DMV",
+   "Window"
+  ],
+  "priority": 2,
+  "reason": "Possible ADD - at a limit or by description only; review the report; DMV349CLEANED coordinates (33.898720, -78.552230) project onto NC 179BUS at MP 0.023 (16 ft off the centerline), at the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway); NC 179BUS MP 0.023 is at the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - within 0.1 mi",
+  "implied_mp": 0.023,
+  "dmv_mp": 0.022713853380577537,
+  "dmv_offset_ft": 16.16748565226873,
+  "latlon": [
+   33.89872,
+   -78.55223
+  ]
+ },
+ {
+  "crash_id": 106921434,
+  "flag": "?",
+  "triggers": [
+   "Window"
+  ],
+  "priority": 3,
+  "reason": "Window - just outside the limits; NC 179BUS MP 0.024 is at the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - within 0.1 mi",
+  "implied_mp": 0.024,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": null
+ },
+ {
+  "crash_id": 106894323,
+  "flag": "?",
+  "triggers": [
+   "Window"
+  ],
+  "priority": 3,
+  "reason": "Window - just outside the limits; NC 179BUS MP 0.024 is at the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - within 0.1 mi",
+  "implied_mp": 0.024,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": [
+   33.941238,
+   -78.411575
+  ]
+ },
+ {
+  "crash_id": 108569891,
+  "flag": "IS",
+  "triggers": [
+   "In study"
+  ],
+  "priority": 0,
+  "reason": "In initial study - at study MP",
+  "implied_mp": 0.07,
+  "dmv_mp": 0.07592848511180998,
+  "dmv_offset_ft": 18.883140755650604,
+  "latlon": [
+   33.898099,
+   -78.55168
+  ]
+ },
+ {
+  "crash_id": 108457510,
+  "flag": "IS",
+  "triggers": [
+   "In study"
+  ],
+  "priority": 0,
+  "reason": "In initial study - at study MP",
+  "implied_mp": 0.083,
+  "dmv_mp": 0.07553751091904307,
+  "dmv_offset_ft": 16.640788384603677,
+  "latlon": [
+   33.8981,
+   -78.55169
+  ]
+ },
+ {
+  "crash_id": 107392672,
+  "flag": "IS",
+  "triggers": [
+   "In study"
+  ],
+  "priority": 0,
+  "reason": "In initial study - at study MP",
+  "implied_mp": 0.1,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": null
+ },
+ {
+  "crash_id": 108192988,
+  "flag": "IS?",
+  "triggers": [
+   "In study",
+   "IS-verify"
+  ],
+  "priority": 0,
+  "reason": "In initial study - at study MP; DMV349CLEANED coordinates project to MP 0.105 (504 ft from coded MP 0.200); confirm location in report, in the section either way",
+  "implied_mp": 0.2,
+  "dmv_mp": 0.10452807902849988,
+  "dmv_offset_ft": 8.272395229127381,
+  "latlon": [
+   33.89772,
+   -78.55146
+  ]
+ },
+ {
+  "crash_id": 108196690,
+  "flag": "?",
+  "triggers": [
+   "DMV"
+  ],
+  "priority": 1,
+  "reason": "Likely ADD - locates inside the section; DMV349CLEANED coordinates (33.896610, -78.550530) project onto NC 179BUS at MP 0.198 (18 ft off the centerline), inside the section",
+  "implied_mp": 0.5,
+  "dmv_mp": 0.19786310355206624,
+  "dmv_offset_ft": 18.143578235793537,
+  "latlon": [
+   33.89661,
+   -78.55053
+  ]
+ },
+ {
+  "crash_id": 107449205,
+  "flag": "?",
+  "triggers": [
+   "Between",
+   "Combo"
+  ],
+  "priority": 2,
+  "reason": "Possible ADD - at a limit or by description only; review the report; description (NC 179BUS 0 mi from NC 179 toward *LCL LITTLE LN SW) implies MP 0.000, 132 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway); MP 999.999; MP 999.999 crash coded with a section road (*LCL LITTLE LN SW)",
+  "implied_mp": 0.0,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": null
+ },
+ {
+  "crash_id": 108347203,
+  "flag": "?",
+  "triggers": [
+   "Between",
+   "DMV",
+   "Combo"
+  ],
+  "priority": 2,
+  "reason": "Possible ADD - at a limit or by description only; review the report; description (NC 179BUS 0.013 mi E from NC 179 toward SR 1288) implies MP 0.013, 63 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway); MP 999.999; DMV349CLEANED coordinates (33.898700, -78.552220) project onto NC 179BUS at MP 0.024 (14 ft off the centerline), at the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway); MP 999.999 crash on NC 179BUS coded from NC 179 toward SR 1288 (study route roads)",
+  "implied_mp": 0.013,
+  "dmv_mp": 0.024169307404699317,
+  "dmv_offset_ft": 14.360760404712643,
+  "latlon": [
+   33.8987,
+   -78.55222
+  ]
+ },
+ {
+  "crash_id": 108512267,
+  "flag": "?",
+  "triggers": [
+   "DMV",
+   "Combo"
+  ],
+  "priority": 2,
+  "reason": "Possible ADD - at a limit or by description only; review the report; DMV349 coordinates (33.896540, -78.550390) project onto NC 179BUS at MP 0.206 (1 ft off the centerline), at the end limit (MP 0.205, Hidden Valley Pl SW); MP 999.999 crash on NC 179BUS coded from SR 1163 toward SR 1810 (study route roads)",
+  "implied_mp": null,
+  "dmv_mp": 0.2064868516286594,
+  "dmv_offset_ft": 1.162973297045677,
+  "latlon": [
+   33.89654,
+   -78.55039
+  ]
+ },
+ {
+  "crash_id": 107102711,
+  "flag": "?",
+  "triggers": [
+   "Between"
+  ],
+  "priority": 2,
+  "reason": "Possible ADD - at a limit or by description only; review the report; description (SR 1164 0.2 mi S from NC 179 toward SR 1810) implies MP 0.200, inside the section; coded MP 0.510 - crash is coded on SR 1164; SR 1810 meets both SR 1164 and NC 179BUS, so the description fits either route",
+  "implied_mp": 0.2,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": null
+ }
+]

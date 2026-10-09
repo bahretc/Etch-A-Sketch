@@ -99,6 +99,26 @@ The TEAAS analysis was run with ADT 15,200, which no nearby station supports.
 4. `4_crash_location_map.png` - aerial close-up with the 12 geocoded crashes plotted by severity
 5. `41000079736_maps.pdf` - all four as one PDF
 
+## Intersection collision diagram (`maps/5_collision_diagram_NCDOT.pdf` / `.png`)
+
+`collision_diagram.py` draws the 29-crash, 10-year diagram from the TEAAS collision diagram export
+(`data/41000079736_CollisionDiagramData.csv`, parsed to `data/collision_diagram_crashes.json`) in the NCDOT Traffic
+Safety Unit style used in the Training/Checking example packages and the TSU "Collision Diagrams" instructions:
+
+- 17 x 11 in sheet, legend top right, NCDOT/TSU title block bottom right, PH#/Order#/County/location/period text, north needle.
+- Base map traced at the true 49-degree skew (NC 180/NC 226 bearing 22 deg, SR 1103 bearing 333/153 deg), STOP bars and
+  octagons on the SR 1103 approaches, leg labels with AADT and posted speed.
+- Each crash: numbered circle (TEAAS report order, by date) at the tail of the at-fault vehicle's path, magenta asterisk
+  (driver at fault = unit with a contributing circumstance, unit 1 if several), green D/W/I/O road-surface letter, blue
+  dots = impact speed in tens (SPD_AT_IMPCT_NBR; estimated speed only when impact is blank), hollow arrowhead = day/dusk/dawn,
+  filled = dark, red circle at the impact point for injury crashes (hollow B/C, half-filled A, filled K), red number
+  circle = target (frontal impact) crash. Rear ends show the bar at the rear of the stopped vehicle; fixed-object crashes
+  use the ran-off-road zigzag with a note of the object struck; crashes with identical details are stacked on one glyph.
+- Glyphs sit on the approach the at-fault vehicle came from, stacked back from the intersection in the driver's lane and
+  then in columns beside it (`review/collision_diagram_placement.txt` lists the assignment).
+
+Fill in `PH_NO` and `PREPARED_BY` at the top of the script before issuing.
+
 ## Fiche setup finding
 
 The NC 180 Features Report names the side street at MP 4.601 **PLEASANT HILL, road code 50024407**.
@@ -130,6 +150,7 @@ review/    review_ids.txt            the list above, plain text
            41000079736_FicheReview.xlsx   workbook: Summary, Review List, Initial Study (23), Fiche (all)
 fiche_review.py   reproducible screen (python3, openpyxl optional for the workbook)
 make_maps.py      builds the maps (python3, matplotlib, pillow; fetches basemap tiles)
+collision_diagram.py   NCDOT TSU-style collision diagram from the unit-level export
 ```
 
 ## Method

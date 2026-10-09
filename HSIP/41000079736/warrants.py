@@ -76,6 +76,7 @@ def main():
     check(sub, "A. As submitted (29 crashes)")
     check(sub + dele, "B. All deleted crashes added back")
     check(sub + [c for c in dele if c["type"] in (19, 21)], "C. Only deleted rear-end / fixed-object crashes added back")
+    check(sub + [c for c in dele if c["type"] not in FRONTAL], "D. Deleted non-frontal crashes added back (3 animal, 2 fixed object, 1 sideswipe)")
 
 
 if __name__ == "__main__":

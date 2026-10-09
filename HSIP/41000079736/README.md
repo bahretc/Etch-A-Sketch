@@ -63,6 +63,7 @@ and I-3r (20+ crashes, SI 9.0, 30% in last 3 yr) are also satisfied; a rural sub
 | A. As submitted | 29 | 22 (76%) | 8.01 | **MET** | no (21% last yr) | no (SI < 9.0) | no (2 K/A) | no (9 night, 31%) |
 | B. All 7 deleted crashes added back | 36 | 23 (64%) | 6.65 | **MET** | no | no | no | no (15 night, 42%) |
 | C. Only deleted fixed-object crashes added back (no rear ends were deleted) | 31 | 22 (71%) | 7.56 | **MET** | no | no | no | no (11 night, 35%) |
+| D. Deleted non-frontal crashes added back (3 animal, 2 fixed object, 1 sideswipe) | 35 | 22 (63%) | 6.81 | **MET** | no | no | no | no (14 night, 40%) |
 
 All seven deleted crashes are PDO (3 animal, 2 fixed object, 1 sideswipe, 1 left turn), so adding any of them back
 only lowers the severity index and the frontal share; I-1r holds in every case.

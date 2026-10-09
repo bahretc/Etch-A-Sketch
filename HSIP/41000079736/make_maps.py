@@ -357,11 +357,12 @@ def aadt_map(pdf, aadt):
     rows = [f"{'Leg':<42}{'Station':<12}{'AADT ' + str(yr):>10}  Basis"]
     for key, leg in zip(LEG_KEYS, aadt["legs"]):
         rows.append(f"{SHORT[key]:<42}{leg['station']:<12}{mid['legs'][key]:>10,}  {'estimate' if key in mid['estimated'] else 'count'}")
-    rows += [f"{'Sum of the four legs':<54}{mid['sum']:>10,}", f"{'Entering AADT = sum / 2':<54}{mid['entering']:>10,} vpd",
+    rows += [f"{'Sum of the four legs':<54}{mid['sum']:>10,}", f"{'Entering AADT = sum / 2':<54}{mid['entering_unrounded']:>10,} vpd",
+             f"{'rounded to the nearest hundred (TEAAS Chapter 8)':<54}{mid['entering']:>10,} vpd",
              f"{'10-yr exposure = AADT x 365 x 10 / 1,000,000':<54}{mid['mev_10yr']:>10.2f} MEV", "",
              f"AADT for the middle year of the study (9/1/2016 - 8/31/2026 -> {yr}).",
              f"SR 1103 NW leg has no {yr} count: straight-line estimate between the 2018 (1,600)",
-             "and 2022 (1,300) counts, rounded to the nearest 100. See 41000079736_AADT.xlsx."]
+             "and 2022 (1,300) counts, rounded per the NCDOT/AASHTO chart. See 41000079736_AADT.xlsx."]
     ax.text(0.42, 0.015, "\n".join(rows), transform=ax.transAxes, fontsize=7.4, family="DejaVu Sans Mono", va="bottom", ha="left",
             bbox=dict(fc="w", ec="k", lw=0.8, alpha=0.95), zorder=12)
     scalebar(ax, mpp, 40, 60, 0.5, "0.5 mi"); north(ax, im.width - 50, 150)
@@ -376,8 +377,10 @@ def aadt_calc(aadt):
     ea = aadt["entering_aadt"]; m10, m5 = ea["study_10yr_middle_year"], ea["study_5yr_middle_year"]
     lines = ["Intersection entering AADT = (sum of the AADT on every leg) / 2",
              "AADT per leg = the NCDOT station count for the MIDDLE YEAR of the study period; a leg with no count for that year",
-             "gets a straight-line estimate between its nearest earlier and later counts, rounded as NCDOT publishes (nearest 100",
-             "at 1,000 vpd and over) and is labelled \"(estimate)\" on the collision diagram. Workbook: 41000079736_AADT.xlsx.", ""]
+             "gets a straight-line estimate between its nearest earlier and later counts, rounded per the NCDOT/AASHTO AADT rounding",
+             "chart (10 below 100, 50 for 100-999, 100 for 1,000-9,999, 500 for 10,000-99,999, 1,000 above), and is labelled",
+             "\"(estimate)\" on the collision diagram. Entering AADT = sum of the legs / 2, rounded to the nearest hundred (TEAAS",
+             "Chapter 8). Workbook: 41000079736_AADT.xlsx.", ""]
     for key, leg in zip(LEG_KEYS, aadt["legs"]):
         hist = "  ".join(f"{y}:{v:,}" for y, v in sorted(leg["aadt"].items()))
         lines.append(f"  {leg['leg']:50} sta {leg['station']}  {hist}")
@@ -386,7 +389,8 @@ def aadt_calc(aadt):
         for key, leg in zip(LEG_KEYS, aadt["legs"]):
             lines.append(f"      {leg['leg']:48} {m['legs'][key]:>7,}  {'estimate' if key in m['estimated'] else 'count'}")
         mev = m.get("mev_10yr", m.get("mev_5yr"))
-        lines.append(f"      sum {m['sum']:,}  ->  entering AADT {m['entering']:,} vpd  ->  {yrs}-yr exposure {m['entering']:,} x 365 x {yrs} / 1,000,000 = {mev:.2f} MEV")
+        lines.append(f"      sum {m['sum']:,}  ->  sum / 2 = {m['entering_unrounded']:,}  ->  rounded to the nearest hundred (TEAAS) {m['entering']:,} vpd"
+                     f"  ->  {yrs}-yr exposure {m['entering']:,} x 365 x {yrs} / 1,000,000 = {mev:.2f} MEV")
     sup = ea["superseded"]
     lines += ["", f"  Superseded (mean-of-counts method, no longer used): latest {sup['latest']:,}; 5-yr mean {sup['study_5yr_mean']:,}; 10-yr mean {sup['study_10yr_mean']:,} vpd"]
     return "\n".join(lines), m10["entering"]

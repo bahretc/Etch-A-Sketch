@@ -26,7 +26,7 @@ for pos, (name, key) in legs.items():
     c_name, c_adt, c_year = cells[pos]
     ws[c_name] = name; ws[c_adt] = mid["legs"][key]; ws[c_year] = mid["year"]
 ws["A49"] = ("2 SR 1103 (Pleasant Dr) has no 2021 count: 1,400 is a straight-line estimate between the 2018 (1,600) and 2022 (1,300) "
-             "NCDOT counts, rounded to the nearest 100. Other legs are the published 2021 counts (stations 0230000187, 0230000152, 0230000531).")
+             "NCDOT counts, rounded per the NCDOT/AASHTO AADT rounding chart (nearest 100 for 1,000-9,999). Other legs are the published 2021 counts (stations 0230000187, 0230000152, 0230000531).")
 ws["A50"] = "3 ADT Used in Study = Annual ADT on the TEAAS 10-yr Intersection Analysis Report (12,300)."
 wb.save(OUT)
 subprocess.run(["soffice", "--headless", "--convert-to", "xls", "--outdir", str(HERE), str(OUT)], check=True, capture_output=True)

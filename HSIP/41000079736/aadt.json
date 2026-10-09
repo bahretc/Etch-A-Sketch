@@ -64,7 +64,7 @@
     }
   ],
   "entering_aadt": {
-    "method_used": "middle year of the study period: each station's published count for that year, or a straight-line estimate between the nearest earlier and later counts (rounded to the nearest 100 at 1,000 vpd and over); entering AADT = sum of the four legs / 2. Calculation in 41000079736_AADT.xlsx.",
+    "method_used": "middle year of the study period: each station's published count for that year, or a straight-line estimate between the nearest earlier and later counts rounded per the NCDOT/AASHTO AADT rounding chart (nearest 10 below 100, 50 for 100-999, 100 for 1,000-9,999, 500 for 10,000-99,999, 1,000 above); entering AADT = sum of the four legs / 2, rounded to the nearest hundred (TEAAS Chapter 8). Calculation in 41000079736_AADT.xlsx.",
     "study_10yr_middle_year": {
       "year": 2021,
       "legs": {
@@ -77,8 +77,9 @@
         "NW"
       ],
       "sum": 24100,
-      "entering": 12050,
-      "mev_10yr": 43.98
+      "entering": 12100,
+      "mev_10yr": 44.17,
+      "entering_unrounded": 12050
     },
     "study_5yr_middle_year": {
       "year": 2024,
@@ -93,7 +94,8 @@
       ],
       "sum": 24200,
       "entering": 12100,
-      "mev_5yr": 22.08
+      "mev_5yr": 22.08,
+      "entering_unrounded": 12100
     },
     "superseded": {
       "latest": 11600,

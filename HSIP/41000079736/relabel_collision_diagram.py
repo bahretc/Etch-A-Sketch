@@ -52,11 +52,11 @@ LEG_LABELS = {                              # the author's lettering, values = A
     "NC 180/NC 226 south":                ([(560.0, 684.0, 687.0, 737.0)], (622.0, 690.0)),
     "SR 1103 (Pleasant Hill Church Rd)":  ([(820.0, 607.0, 941.0, 640.0), (845.0, 640.0, 941.0, 674.0)], (845.0, 597.0)),
 }   # clip boxes are shaped so that no road line next to a label in the source comes along with it
-LANDUSE = {
-    "M&D Quick Stop": ([(620.0, 66.0, 724.0, 106.0)], (568.0, 171.0)),   # in its lot, below the frontage curve
-    "Dollar General": ([(290.0, 398.0, 394.0, 438.0)], (180.0, 432.0)),
-    "Undeveloped":    ([(923.0, 363.0, 1027.0, 403.0)], (930.0, 392.0)),
-    "Empty Lot":      ([(708.0, 714.0, 812.0, 754.0)], (852.0, 696.0)),
+LANDUSE = {                                 # (clip boxes, top-left target, scale): the M&D label is drawn at 0.9 so it sits
+    "M&D Quick Stop": ([(620.0, 66.0, 724.0, 106.0)], (572.0, 179.0), 0.9),   # between the frontage arc and the lane line
+    "Dollar General": ([(290.0, 398.0, 394.0, 438.0)], (180.0, 432.0), 1.0),
+    "Undeveloped":    ([(923.0, 363.0, 1027.0, 403.0)], (930.0, 392.0), 1.0),
+    "Empty Lot":      ([(708.0, 714.0, 812.0, 754.0)], (852.0, 696.0), 1.0),
 }
 
 
@@ -78,15 +78,16 @@ def main():
     # 2. the drawing, enlarged: clip = CORE minus the notches (even-odd), in source coordinates under the matrix
     c.append("q\n" + matrix(S, TX, TY) + "".join(rect_path(*r) for r in CORE + NOTCHES) + "W* n\n/Fm0 Do\nQ\n")
     # 3. leg labels and land-use labels at their original size, each at its own spot
-    for name, (boxes, target) in list(LEG_LABELS.items()) + list(LANDUSE.items()):
-        tx, ty = target[0] - boxes[0][0], target[1] - boxes[0][1]
-        c.append("q\n" + matrix(1.0, tx, ty) + "".join(rect_path(*b) for b in boxes) + "W n\n/Fm0 Do\nQ\n")
+    for name, entry in list(LEG_LABELS.items()) + list(LANDUSE.items()):
+        boxes, target = entry[0], entry[1]; sc = entry[2] if len(entry) > 2 else 1.0
+        tx, ty = target[0] - sc * boxes[0][0], target[1] - sc * boxes[0][1]
+        c.append("q\n" + matrix(sc, tx, ty) + "".join(rect_path(*b) for b in boxes) + "W n\n/Fm0 Do\nQ\n")
     page.Contents = out.make_stream("".join(c).encode("latin-1"))
     out.docinfo["/Title"] = "Collision Diagram - Order# 41000079736"
     out.save(OUT)
     print(f"scale {S:.3f}, drawing bbox -> ({T(453, 101)[0]:.0f}, {T(453, 101)[1]:.0f})-({T(901, 672)[0]:.0f}, {T(901, 672)[1]:.0f}); wrote {OUT}")
-    for name, (boxes, target) in list(LEG_LABELS.items()) + list(LANDUSE.items()):
-        print(f"  {name:34} at ({target[0]:.0f}, {target[1]:.0f})")
+    for name, entry in list(LEG_LABELS.items()) + list(LANDUSE.items()):
+        print(f"  {name:34} at ({entry[1][0]:.0f}, {entry[1][1]:.0f})" + (f" scale {entry[2]}" if len(entry) > 2 else ""))
 
 
 if __name__ == "__main__":

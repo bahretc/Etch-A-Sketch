@@ -2,7 +2,8 @@
 
 **Location:** NC 180/NC 226 (Post Rd) at SR 1103 (Pleasant Dr / Pleasant Hill Church Rd), Cleveland County, Division 12
 **Intersection:** 35.246324, -81.509409 (NC 180 MP 4.601; SR 1103 MP 3.644, per the Features Reports)
-**Study period:** 9/1/2021 - 8/31/2026 (5.00 yr), Y-line 150 ft, ADT 15,200
+**Study period:** 9/1/2021 - 8/31/2026 (5.00 yr), Y-line 150 ft, ADT 15,200 as entered in TEAAS for that run (the study's own
+5-yr middle-year entering AADT is 12,100; the 10-yr study below is the one in use)
 
 The Intersection Analysis Report (initial study) captured **23 crashes** inside the 150 ft Y-line.
 The fiche pulled **1,783 crashes** on the fiche roads for the same period. This folder screens the
@@ -72,8 +73,7 @@ only lowers the severity index and the frontal share; I-1r holds in every case.
 
 Intersection entering AADT = (sum of the AADT on every leg) / 2, using each NCDOT Traffic Survey Group station's count
 for the **middle year of the study period** (10-yr study 9/1/2016-8/31/2026 -> 2021). A leg with no count for that
-year gets a straight-line estimate between its nearest earlier and later counts, rounded as NCDOT publishes, and is
-labelled "(estimate)" on the collision diagram. Station histories are in `aadt.json`; the calculation, with live
+year gets a straight-line estimate between its nearest earlier and later counts, rounded per the NCDOT/AASHTO AADT rounding chart (nearest 10 below 100, 50 for 100-999, 100 for 1,000-9,999, 500 for 10,000-99,999, 1,000 above), and is labelled "(estimate)" on the collision diagram. Station histories are in `aadt.json`; the calculation, with live
 formulas, is `41000079736_AADT.xlsx` (sheet "10-yr study"; "5-yr study" is a check; "Stations" holds the counts).
 
 | Leg | Station | 2021 AADT | Basis |
@@ -83,14 +83,15 @@ formulas, is `41000079736_AADT.xlsx` (sheet "10-yr study"; "5-yr study" is a che
 | SR 1103 (Pleasant Dr) northwest | 0230000045 | 1,400 | estimate (2018: 1,600, 2022: 1,300 -> 1,375 -> 1,400) |
 | SR 1103 (Pleasant Hill Church Rd) southeast | 0230000531 | 1,200 | count |
 
-Sum 24,100 / 2 = **12,050 vpd entering**; 10-yr exposure 12,050 x 365 x 10 / 1,000,000 = **43.98 MEV**;
-29 crashes / 43.98 = 0.66 crashes per MEV. The 5-yr check (middle year 2024) gives 12,100 vpd and 22.08 MEV.
+Sum 24,100 / 2 = 12,050, rounded to the nearest hundred as TEAAS Chapter 8 directs = **12,100 vpd entering**; 10-yr
+exposure 12,100 x 365 x 10 / 1,000,000 = **44.17 MEV**; 29 crashes / 44.17 = 0.66 crashes per MEV. The 5-yr check
+(middle year 2024) gives 12,100 vpd and 22.08 MEV.
 The earlier mean-of-counts figures (11,600 latest; 12,000 5-yr; 12,300 10-yr) are superseded and kept only in
 `maps/aadt_calculation.txt` for the record.
 
 `41000079736_CalculatedAADT.xls` / `.xlsx` (`make_calculated_aadt.py`) is the package "CalculatedAADT" template
 (4-LEG INTERSECTION ADT sheet, copied from the 41000077748 package) filled with the four 2021 leg ADTs: total ADT
-12,050 against the 12,300 "Annual ADT" on the TEAAS 10-yr report is a 2.0 % difference, so the template's rule
+12,050 (its rounding rows show 12,100) against the 12,300 "Annual ADT" on the TEAAS 10-yr report is a 2.0 % difference, so the template's rule
 ("keep ADT used in the study" unless the difference exceeds 5 %) keeps 12,300 as the study ADT.
 
 ## Maps (`maps/`)

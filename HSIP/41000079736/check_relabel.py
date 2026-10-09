@@ -35,8 +35,9 @@ LEGEND_CORNER = pymupdf.Rect(R.CORE[1][0], CORE_BBOX[1], CORE_BBOX[2], R.CORE[1]
 def piece(r):
     """which drawn piece a point belongs to: (scale, tx, ty), or None when it lies under no clip"""
     if in_any(r, R.FURNITURE): return (1.0, 0.0, 0.0)
-    for name, (boxes, target) in list(R.LEG_LABELS.items()) + list(R.LANDUSE.items()):
-        if in_any(r, boxes): return (1.0, target[0] - boxes[0][0], target[1] - boxes[0][1])
+    for name, entry in list(R.LEG_LABELS.items()) + list(R.LANDUSE.items()):
+        boxes, target = entry[0], entry[1]; sc = entry[2] if len(entry) > 2 else 1.0
+        if in_any(r, boxes): return (sc, target[0] - sc * boxes[0][0], target[1] - sc * boxes[0][1])
     if inside(r, CORE_BBOX) and not r.intersects(LEGEND_CORNER) and not any(r.intersects(pymupdf.Rect(n)) for n in R.NOTCHES):
         return (R.S, R.TX, R.TY)
     return None
@@ -50,18 +51,30 @@ def key(d, s, tx, ty):
     r = d["rect"]
     return (round(s * r.x0 + tx, 1), round(s * r.y0 + ty, 1), round(s * r.x1 + tx, 1), round(s * r.y1 + ty, 1), d.get("color"), d.get("fill"))
 
-out_keys = {}
+# index the output items by colour/fill and a coarse position bucket; match within a 0.25 pt tolerance
+from collections import defaultdict
+out_idx = defaultdict(list)
 for d in out.get_drawings():
-    k = key(d, 1, 0, 0); out_keys[k] = out_keys.get(k, 0) + 1
-missing, straddle, matched = [], [], 0
+    r = d["rect"]; out_idx[(d.get("color"), d.get("fill"), round(r.x0), round(r.y0))].append([r.x0, r.y0, r.x1, r.y1, False])
+def take(d, s, tx, ty, tol):
+    r = d["rect"]; want = (s * r.x0 + tx, s * r.y0 + ty, s * r.x1 + tx, s * r.y1 + ty)
+    for bx in (round(want[0]) - 1, round(want[0]), round(want[0]) + 1):
+        for by in (round(want[1]) - 1, round(want[1]), round(want[1]) + 1):
+            for cand in out_idx.get((d.get("color"), d.get("fill"), bx, by), []):
+                if not cand[4] and all(abs(cand[i] - want[i]) <= tol for i in range(4)):
+                    cand[4] = True; return True
+    return False
+missing, straddle, matched = [], [], 0; pending = []
 for d in src.get_drawings():
     e = expected(d)
     if e is None:
         r = d["rect"]
         if r.width > 3 or r.height > 3: straddle.append(tuple(round(v) for v in (r.x0, r.y0, r.x1, r.y1)))
         continue
-    k = key(d, *e)
-    if out_keys.get(k, 0) > 0: out_keys[k] -= 1; matched += 1
+    if take(d, *e, 0.02): matched += 1          # exact matches first, so near-duplicate hatch lines are not claimed by a neighbour
+    else: pending.append((d, e))
+for d, e in pending:
+    if take(d, *e, 0.3): matched += 1
     else: missing.append((tuple(round(v) for v in d["rect"]), e))
 # PyMuPDF lists every path of the embedded page once per placement, clipped or not, so the output count is a multiple of
 # the source count; the meaningful checks are "every source item lands where expected" and "nothing straddles a clip edge".

@@ -95,6 +95,11 @@ def footer(fig, source):
     fig.text(R / PW, 1.22 / PH_IN, "Lat, Long", fontsize=11, fontweight="bold", va="center", ha="right")
     fig.text(R / PW, 0.92 / PH_IN, f"{LAT:.6f}, {LON:.6f}", fontsize=11, va="center", ha="right")
     fig.text(0.1 / PW, 0.09 / PH_IN, f"Data Source: {source}", fontsize=7.5, style="italic", ha="left", va="center", color="#333")
+    logo = HERE / "data" / "vhb_logo.png"                      # firm logo as it appears on the package maps (0.95 x 0.5 in, bottom right)
+    if logo.exists():
+        lim = Image.open(logo); lw_in, lh_in = 0.95, 0.95 * lim.height / lim.width
+        lax = fig.add_axes([(PW - 0.15 - lw_in) / PW, 0.15 / PH_IN, lw_in / PW, lh_in / PH_IN], zorder=30)
+        lax.imshow(lim); lax.set_axis_off()
 
 
 def halo_text(ax, x, y, s, rot=0, size=8, color="k", weight="normal"):

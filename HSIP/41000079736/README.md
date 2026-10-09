@@ -98,7 +98,7 @@ The earlier mean-of-counts figures (11,600 latest; 12,000 5-yr; 12,300 10-yr) ar
 Package-format maps (`make_vhb_maps.py`), laid out like the Location Map / Area Map PDFs in the Training/Checking
 packages (41000077748, 41000077751): letter landscape, NC county inset with Cleveland County in red, north arrow and
 scale box, red ring at the study intersection, footer with WO Number, PH Number, NCDOT Division, Study Area, Lat/Long
-and the data-source line (the VHB logo is not reproduced).
+the data-source line and the VHB logo (taken from the package maps, `data/vhb_logo.png`).
 
 1. `41000079736_LocationMap.pdf` / `.png` - county-scale street map in grey (OpenStreetMap)
 2. `41000079736_AreaMap.pdf` / `.png` - aerial (Esri World Imagery) with the crash-location callout, NC 180/NC 226

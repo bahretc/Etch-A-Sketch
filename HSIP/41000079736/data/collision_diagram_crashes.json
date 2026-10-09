@@ -1,0 +1,1133 @@
+[
+ {
+  "crash_id": "104908181",
+  "datetime": "2016-11-08T19:02:00",
+  "date": "11/08/2016",
+  "time": "19:02",
+  "severity_cd": 5,
+  "acc_typ": 30,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 4,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "E",
+    "maneuver": 8,
+    "violation": 20,
+    "speed_limit": 45,
+    "speed_est": 10,
+    "speed_impact": 10
+   },
+   {
+    "unit": 2,
+    "direction": "S",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 40
+   }
+  ],
+  "no": 1
+ },
+ {
+  "crash_id": "105162557",
+  "datetime": "2017-07-16T13:53:00",
+  "date": "07/16/2017",
+  "time": "13:53",
+  "severity_cd": 5,
+  "acc_typ": 21,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "3.644",
+  "on_rd": "40001103",
+  "from_rd": "30000180",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "E",
+    "maneuver": 4,
+    "violation": 8,
+    "speed_limit": 45,
+    "speed_est": 5,
+    "speed_impact": 5
+   },
+   {
+    "unit": 2,
+    "direction": "E",
+    "maneuver": 1,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 0,
+    "speed_impact": 0
+   }
+  ],
+  "no": 2
+ },
+ {
+  "crash_id": "106032499",
+  "datetime": "2019-10-14T07:59:00",
+  "date": "10/14/2019",
+  "time": "07:59",
+  "severity_cd": 5,
+  "acc_typ": 24,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "N",
+    "maneuver": 8,
+    "violation": 19,
+    "speed_limit": 35,
+    "speed_est": 10,
+    "speed_impact": 10
+   },
+   {
+    "unit": 2,
+    "direction": "S",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 35,
+    "speed_est": 35,
+    "speed_impact": 35
+   }
+  ],
+  "no": 3
+ },
+ {
+  "crash_id": "106234219",
+  "datetime": "2020-05-23T21:31:00",
+  "date": "05/23/2020",
+  "time": "21:31",
+  "severity_cd": 3,
+  "acc_typ": 26,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 5,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "E",
+    "maneuver": 7,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 10,
+    "speed_impact": 10
+   },
+   {
+    "unit": 2,
+    "direction": "S",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 35
+   }
+  ],
+  "no": 4
+ },
+ {
+  "crash_id": "106423994",
+  "datetime": "2020-12-01T17:41:00",
+  "date": "12/01/2020",
+  "time": "17:41",
+  "severity_cd": 3,
+  "acc_typ": 30,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 2,
+  "trfc_ctrl": 13,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 3,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "W",
+    "maneuver": 4,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 0,
+    "speed_impact": 20
+   },
+   {
+    "unit": 2,
+    "direction": "S",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 45
+   },
+   {
+    "unit": 3,
+    "direction": "E",
+    "maneuver": 1,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 0,
+    "speed_impact": 0
+   }
+  ],
+  "no": 5
+ },
+ {
+  "crash_id": "106442060",
+  "datetime": "2020-12-19T17:44:00",
+  "date": "12/19/2020",
+  "time": "17:44",
+  "severity_cd": 5,
+  "acc_typ": 24,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 5,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "E",
+    "maneuver": 8,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 15,
+    "speed_impact": 15
+   },
+   {
+    "unit": 2,
+    "direction": "S",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 35
+   }
+  ],
+  "no": 6
+ },
+ {
+  "crash_id": "106691473",
+  "datetime": "2021-08-24T15:45:00",
+  "date": "08/24/2021",
+  "time": "15:45",
+  "severity_cd": 5,
+  "acc_typ": 26,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "SE",
+    "maneuver": 7,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 10,
+    "speed_impact": 10
+   },
+   {
+    "unit": 2,
+    "direction": "S",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 45
+   }
+  ],
+  "no": 7
+ },
+ {
+  "crash_id": "106808749",
+  "datetime": "2021-12-17T15:17:00",
+  "date": "12/17/2021",
+  "time": "15:17",
+  "severity_cd": 5,
+  "acc_typ": 21,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "3.019",
+  "on_rd": "40001103",
+  "from_rd": "40002205",
+  "dist_from": ".1",
+  "dir_from": "W",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "W",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 10,
+    "speed_impact": 10
+   },
+   {
+    "unit": 2,
+    "direction": "W",
+    "maneuver": 1,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 0,
+    "speed_impact": 0
+   }
+  ],
+  "no": 8
+ },
+ {
+  "crash_id": "106839126",
+  "datetime": "2022-01-20T07:57:00",
+  "date": "01/20/2022",
+  "time": "07:57",
+  "severity_cd": 5,
+  "acc_typ": 24,
+  "rd_config": 2,
+  "rd_cond": 2,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "E",
+    "maneuver": 8,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 0,
+    "speed_impact": 15
+   },
+   {
+    "unit": 2,
+    "direction": "N",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 45
+   }
+  ],
+  "no": 9
+ },
+ {
+  "crash_id": "106893683",
+  "datetime": "2022-03-15T11:33:00",
+  "date": "03/15/2022",
+  "time": "11:33",
+  "severity_cd": 5,
+  "acc_typ": 24,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "E",
+    "maneuver": 8,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 35,
+    "speed_impact": 25
+   },
+   {
+    "unit": 2,
+    "direction": "S",
+    "maneuver": 11,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 10
+   }
+  ],
+  "no": 10
+ },
+ {
+  "crash_id": "107037107",
+  "datetime": "2022-08-03T22:43:00",
+  "date": "08/03/2022",
+  "time": "22:43",
+  "severity_cd": 5,
+  "acc_typ": 19,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 5,
+  "trfc_ctrl": 13,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 1,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "N",
+    "maneuver": 7,
+    "violation": 20,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 45
+   }
+  ],
+  "no": 11
+ },
+ {
+  "crash_id": "107067627",
+  "datetime": "2022-08-28T00:08:00",
+  "date": "08/28/2022",
+  "time": "00:08",
+  "severity_cd": 5,
+  "acc_typ": 19,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 5,
+  "trfc_ctrl": 13,
+  "milepost": "4.592",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": ".009",
+  "dir_from": "S",
+  "n_units": 1,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "S",
+    "maneuver": 4,
+    "violation": 14,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 45
+   }
+  ],
+  "no": 12
+ },
+ {
+  "crash_id": "107086689",
+  "datetime": "2022-09-13T17:28:00",
+  "date": "09/13/2022",
+  "time": "17:28",
+  "severity_cd": 3,
+  "acc_typ": 24,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "N",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "N",
+    "maneuver": 8,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 10,
+    "speed_impact": 10
+   },
+   {
+    "unit": 2,
+    "direction": "S",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 35
+   }
+  ],
+  "no": 13
+ },
+ {
+  "crash_id": "107127945",
+  "datetime": "2022-10-24T20:40:00",
+  "date": "10/24/2022",
+  "time": "20:40",
+  "severity_cd": 5,
+  "acc_typ": 24,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 5,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "S",
+    "maneuver": 8,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 25,
+    "speed_impact": 25
+   },
+   {
+    "unit": 2,
+    "direction": "N",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 55,
+    "speed_impact": 55
+   }
+  ],
+  "no": 14
+ },
+ {
+  "crash_id": "107162484",
+  "datetime": "2022-11-28T16:16:00",
+  "date": "11/28/2022",
+  "time": "16:16",
+  "severity_cd": 5,
+  "acc_typ": 21,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 1,
+  "trfc_ctrl": 13,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "N",
+    "maneuver": 4,
+    "violation": 8,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 40
+   },
+   {
+    "unit": 2,
+    "direction": "N",
+    "maneuver": 1,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 0,
+    "speed_impact": 0
+   }
+  ],
+  "no": 15
+ },
+ {
+  "crash_id": "107171393",
+  "datetime": "2022-12-05T15:11:00",
+  "date": "12/05/2022",
+  "time": "15:11",
+  "severity_cd": 5,
+  "acc_typ": 24,
+  "rd_config": 2,
+  "rd_cond": 2,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000226",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "W",
+    "maneuver": 8,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 5,
+    "speed_impact": 10
+   },
+   {
+    "unit": 2,
+    "direction": "N",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 45
+   }
+  ],
+  "no": 16
+ },
+ {
+  "crash_id": "107473530",
+  "datetime": "2023-09-26T17:58:00",
+  "date": "09/26/2023",
+  "time": "17:58",
+  "severity_cd": 5,
+  "acc_typ": 25,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "NW",
+    "maneuver": 7,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 10,
+    "speed_impact": 5
+   },
+   {
+    "unit": 2,
+    "direction": "N",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 40
+   }
+  ],
+  "no": 17
+ },
+ {
+  "crash_id": "107503115",
+  "datetime": "2023-10-24T17:25:00",
+  "date": "10/24/2023",
+  "time": "17:25",
+  "severity_cd": 5,
+  "acc_typ": 21,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "3.644",
+  "on_rd": "40001103",
+  "from_rd": "30000180",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "SE",
+    "maneuver": 4,
+    "violation": 8,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 10
+   },
+   {
+    "unit": 2,
+    "direction": "SE",
+    "maneuver": 1,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 0,
+    "speed_impact": 0
+   }
+  ],
+  "no": 18
+ },
+ {
+  "crash_id": "107790631",
+  "datetime": "2024-07-16T17:09:00",
+  "date": "07/16/2024",
+  "time": "17:09",
+  "severity_cd": 4,
+  "acc_typ": 24,
+  "rd_config": 2,
+  "rd_cond": 2,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 3,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "S",
+    "maneuver": 8,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 0,
+    "speed_impact": 15
+   },
+   {
+    "unit": 2,
+    "direction": "S",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 45
+   },
+   {
+    "unit": 3,
+    "direction": "N",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 35
+   }
+  ],
+  "no": 19
+ },
+ {
+  "crash_id": "107915535",
+  "datetime": "2024-11-08T16:26:00",
+  "date": "11/08/2024",
+  "time": "16:26",
+  "severity_cd": 5,
+  "acc_typ": 21,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "3.644",
+  "on_rd": "40001103",
+  "from_rd": "30000180",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "W",
+    "maneuver": 4,
+    "violation": 8,
+    "speed_limit": 35,
+    "speed_est": 5,
+    "speed_impact": 5
+   },
+   {
+    "unit": 2,
+    "direction": "W",
+    "maneuver": 1,
+    "violation": 0,
+    "speed_limit": 35,
+    "speed_est": 0,
+    "speed_impact": 0
+   }
+  ],
+  "no": 20
+ },
+ {
+  "crash_id": "107960640",
+  "datetime": "2024-12-15T17:52:00",
+  "date": "12/15/2024",
+  "time": "17:52",
+  "severity_cd": 5,
+  "acc_typ": 24,
+  "rd_config": 2,
+  "rd_cond": 2,
+  "lt_cond": 5,
+  "trfc_ctrl": 1,
+  "milepost": "999.999",
+  "on_rd": "40001103",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "E",
+    "maneuver": 8,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 10,
+    "speed_impact": 10
+   },
+   {
+    "unit": 2,
+    "direction": "S",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 45
+   }
+  ],
+  "no": 21
+ },
+ {
+  "crash_id": "108045557",
+  "datetime": "2025-03-07T14:25:00",
+  "date": "03/07/2025",
+  "time": "14:25",
+  "severity_cd": 4,
+  "acc_typ": 30,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "E",
+    "maneuver": 4,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 15,
+    "speed_impact": 10
+   },
+   {
+    "unit": 2,
+    "direction": "S",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 30
+   }
+  ],
+  "no": 22
+ },
+ {
+  "crash_id": "108120512",
+  "datetime": "2025-05-19T18:55:00",
+  "date": "05/19/2025",
+  "time": "18:55",
+  "severity_cd": 2,
+  "acc_typ": 30,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "E",
+    "maneuver": 4,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 15,
+    "speed_impact": 15
+   },
+   {
+    "unit": 2,
+    "direction": "N",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 45
+   }
+  ],
+  "no": 23
+ },
+ {
+  "crash_id": "108353439",
+  "datetime": "2025-12-16T21:12:00",
+  "date": "12/16/2025",
+  "time": "21:12",
+  "severity_cd": 2,
+  "acc_typ": 23,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 5,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "N",
+    "maneuver": 8,
+    "violation": 19,
+    "speed_limit": 15,
+    "speed_est": 45,
+    "speed_impact": 15
+   },
+   {
+    "unit": 2,
+    "direction": "S",
+    "maneuver": 8,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 25,
+    "speed_impact": 25
+   }
+  ],
+  "no": 24
+ },
+ {
+  "crash_id": "108387988",
+  "datetime": "2026-01-22T15:02:00",
+  "date": "01/22/2026",
+  "time": "15:02",
+  "severity_cd": 4,
+  "acc_typ": 30,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "S",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "E",
+    "maneuver": 4,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 10,
+    "speed_impact": 10
+   },
+   {
+    "unit": 2,
+    "direction": "S",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 35
+   }
+  ],
+  "no": 25
+ },
+ {
+  "crash_id": "108431889",
+  "datetime": "2026-03-14T21:30:00",
+  "date": "03/14/2026",
+  "time": "21:30",
+  "severity_cd": 5,
+  "acc_typ": 30,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 5,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "W",
+    "maneuver": 4,
+    "violation": 2,
+    "speed_limit": 35,
+    "speed_est": 35,
+    "speed_impact": 25
+   },
+   {
+    "unit": 2,
+    "direction": "S",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 35
+   }
+  ],
+  "no": 26
+ },
+ {
+  "crash_id": "108453977",
+  "datetime": "2026-03-23T07:38:00",
+  "date": "03/23/2026",
+  "time": "07:38",
+  "severity_cd": 5,
+  "acc_typ": 23,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "3.644",
+  "on_rd": "40001103",
+  "from_rd": "30000180",
+  "dist_from": "0",
+  "dir_from": "",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "E",
+    "maneuver": 8,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 15,
+    "speed_impact": 10
+   },
+   {
+    "unit": 2,
+    "direction": "W",
+    "maneuver": 7,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 5,
+    "speed_impact": 10
+   }
+  ],
+  "no": 27
+ },
+ {
+  "crash_id": "108502945",
+  "datetime": "2026-05-15T15:00:00",
+  "date": "05/15/2026",
+  "time": "15:00",
+  "severity_cd": 5,
+  "acc_typ": 30,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "S",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "S",
+    "maneuver": 4,
+    "violation": 26,
+    "speed_limit": 45,
+    "speed_est": 35,
+    "speed_impact": 35
+   },
+   {
+    "unit": 2,
+    "direction": "E",
+    "maneuver": 4,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 10,
+    "speed_impact": 10
+   }
+  ],
+  "no": 28
+ },
+ {
+  "crash_id": "108564225",
+  "datetime": "2026-07-08T08:58:00",
+  "date": "07/08/2026",
+  "time": "08:58",
+  "severity_cd": 3,
+  "acc_typ": 30,
+  "rd_config": 2,
+  "rd_cond": 1,
+  "lt_cond": 1,
+  "trfc_ctrl": 1,
+  "milepost": "4.601",
+  "on_rd": "30000180",
+  "from_rd": "40001103",
+  "dist_from": "0",
+  "dir_from": "N",
+  "n_units": 2,
+  "units": [
+   {
+    "unit": 1,
+    "direction": "N",
+    "maneuver": 4,
+    "violation": 0,
+    "speed_limit": 45,
+    "speed_est": 45,
+    "speed_impact": 45
+   },
+   {
+    "unit": 2,
+    "direction": "E",
+    "maneuver": 4,
+    "violation": 19,
+    "speed_limit": 45,
+    "speed_est": 15,
+    "speed_impact": 15
+   }
+  ],
+  "no": 29
+ }
+]

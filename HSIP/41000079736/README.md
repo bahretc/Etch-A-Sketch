@@ -114,10 +114,16 @@ Safety Unit style used in the Training/Checking example packages and the TSU "Co
   filled = dark, red circle at the impact point for injury crashes (hollow B/C, half-filled A, filled K), red number
   circle = target (frontal impact) crash. Rear ends show the bar at the rear of the stopped vehicle; fixed-object crashes
   use the ran-off-road zigzag with a note of the object struck; crashes with identical details are stacked on one glyph.
-- Glyphs sit on the approach the at-fault vehicle came from, stacked back from the intersection in the driver's lane and
-  then in columns beside it (`review/collision_diagram_placement.txt` lists the assignment).
+- Glyphs sit beside the approach the at-fault vehicle came from (single-vehicle run-off-road crashes referenced past the
+  intersection sit on the departure leg), stacked back from the intersection in columns off the pavement
+  (`review/collision_diagram_placement.txt` lists the assignment and a clearance check). Short notes beside a glyph are
+  placed automatically where they touch nothing; the full wording is in the sheet notes box.
+- Page 2 of the PDF is the crash listing (number, ID, date, type, severity, light, road, units) that the numbers refer to;
+  the same table is `review/collision_diagram_listing.csv`. `review/collision_diagram_spec.md` records the symbology
+  taken from the example packages.
 
-Fill in `PH_NO` and `PREPARED_BY` at the top of the script before issuing.
+Fill in `PH_NO` and `PREPARED_BY` at the top of the script before issuing. The posted speed on SR 1103 (shown as 45 mph)
+and the station-year AADT values on the leg labels should be confirmed against the field review.
 
 ## Fiche setup finding
 
@@ -142,12 +148,14 @@ Other checks that came back clean:
 data/      raw inputs as exported from TEAAS (fiche report, detailed fiche + parameters,
            initial study report + ID list, Features Reports for NC 180 and SR 1103,
            final 22-crash analysis PDF and its parsed CSV)
-maps/      location map, area map, collision diagram, crash location map, combined PDF
+maps/      location map, area map, collision diagram, crash location map, combined PDF,
+           5_collision_diagram_NCDOT.pdf/.png (TSU-style sheet + listing), 5b_collision_diagram_listing.png
 aadt.json  NCDOT AADT station values used for the entering-volume calculation
 review/    review_ids.txt            the list above, plain text
            review_candidates.csv     candidates with reasons, tier, coordinates
            fiche_screened.csv        all 1,783 fiche crashes with distance, MP offset, initial-study flag
            41000079736_FicheReview.xlsx   workbook: Summary, Review List, Initial Study (23), Fiche (all)
+           collision_diagram_spec.md / _placement.txt / _listing.csv   collision diagram symbology, layout QA, listing
 fiche_review.py   reproducible screen (python3, openpyxl optional for the workbook)
 make_maps.py      builds the maps (python3, matplotlib, pillow; fetches basemap tiles)
 collision_diagram.py   NCDOT TSU-style collision diagram from the unit-level export

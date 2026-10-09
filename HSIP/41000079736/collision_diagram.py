@@ -34,17 +34,17 @@ CR = json.loads((HERE / "data" / "collision_diagram_crashes.json").read_text())
 STUDY = "41000079736"
 PH_NO = "________"                 # fill in when the PH number is assigned
 COUNTY = "Cleveland County"
-LOCATION = "NC 180/NC 226 (S Post Rd) at\nSR 1103 (Pleasant Dr/Pleasant Hill Church Rd)"
+LOCATION = "NC 180/NC 226 (S Post Rd) at\nSR 1103 (Pleasant Dr /\nPleasant Hill Church Rd)"
 PERIOD = "9/1/2016 - 8/31/2026"
 PREPARED_BY = ""                   # fill in
 DATE = "10/09/2026"
 BEAR_MAIN = 22.0                   # NC 180/NC 226 axis, bearing toward the north leg
 BEAR_SIDE = 333.0                  # SR 1103 axis, bearing toward the Pleasant Dr (northwest) leg
 LEGS = {  # leg name -> (bearing from the intersection, label lines)
-    "N":  (BEAR_MAIN,        ["NC 180/NC 226", "(S Post Rd)", "AADT (Year)", "10,500 (2025)", "45 mph"]),
-    "S":  (BEAR_MAIN + 180,  ["NC 180/NC 226", "(S Post Rd)", "AADT (Year)", "10,000 (2025)", "45 mph"]),
-    "NW": (BEAR_SIDE,        ["SR 1103", "(Pleasant Dr)", "AADT (Year)", "1,500 (2024)", "45 mph"]),
-    "SE": (BEAR_SIDE + 180,  ["SR 1103", "(Pleasant Hill Church Rd)", "AADT (Year)", "1,200 (2025)", "45 mph"]),
+    "N":  (BEAR_MAIN,        ["NC 180/NC 226", "(South Post Road)", "AADT (Year)", "10,500 (2025)", "45 mph"]),
+    "S":  (BEAR_MAIN + 180,  ["NC 180/NC 226", "(South Post Road)", "AADT (Year)", "10,000 (2025)", "45 mph"]),
+    "NW": (BEAR_SIDE,        ["SR 1103", "(Pleasant Drive)", "AADT (Year)", "1,500 (2024)", "45 mph"]),
+    "SE": (BEAR_SIDE + 180,  ["SR 1103", "(Pleasant Hill Church Road)", "AADT (Year)", "1,200 (2025)", "45 mph"]),
 }
 W_MAIN, W_SIDE, RADIUS = 24.0, 22.0, 40.0   # pavement widths and corner radii, feet (traced from aerial)
 
@@ -55,13 +55,25 @@ TYPE = {17: "Animal", 19: "Fixed object", 21: "Rear end, slow or stop", 23: "Lef
 ROADCOND = {1: "D", 2: "W", 3: "O", 4: "I", 5: "I", 6: "I", 7: "O", 8: "O", 9: "O"}  # 1 dry 2 wet 3 water 4 ice 5 snow 6 slush 7 sand/mud 8 fuel/oil 9 other
 NIGHT = {4, 5, 6}                     # LT_COND dark (lighted, not lighted, unknown lighting)
 SEV = {1: "K", 2: "A", 3: "B", 4: "C", 5: "O", 6: "U"}
-OBJECT_NOTE = {"107037107": "struck embankment", "107067627": "struck ditch"}
+NOTES = {   # terse notes beside the glyph, as on the TSU sheets; the long form is in the sheet notes box and the listing
+    "107037107": "ran off road R\nturning right;\nhit embankment",
+    "107067627": "ran off road R\n0.009 mi S of\nSR 1103; ditch",
+    "106423994": "3 units; unit 3\nstopped at stop",
+    "107790631": "3 units",
+    "106808749": "0.6 mi E of int.\n(not to scale)",
+    "108502945": "both drivers\ncharged",
+    "107960640": "unmileposted;\nlocated by\nDMV-349 coords",
+}
+PATH_F, PATH_O, STOP_ARROW, R_CIRC, TURN_R, TURN_S = 44.0, 40.0, 18.0, 6.5, 20.0, 22.0   # feet
 TARGET = {23, 24, 25, 26, 27, 30}            # frontal impact crashes = HSIP warrant I-1r pattern -> red number circle
 MAG, GRN, BLU, RED = "#ff00ff", "#008000", "#0000ff", "#ff0000"
 
 # ------------------------------------------------------------------ geometry helpers (feet, x east, y north)
 def unit(b):
     r = math.radians(b); return (math.sin(r), math.cos(r))
+def num(v):
+    try: return float(v)
+    except (TypeError, ValueError): return None
 def add(a, b, s=1.0): return (a[0] + b[0] * s, a[1] + b[1] * s)
 def rot(v, deg):
     r = math.radians(deg); return (v[0] * math.cos(r) - v[1] * math.sin(r), v[0] * math.sin(r) + v[1] * math.cos(r))
@@ -102,78 +114,82 @@ def resample(pts, step):
 
 # ------------------------------------------------------------------ glyph primitives (drawn in the feet axes)
 class G:
-    def __init__(self, ax, lw=1.1):
+    def __init__(self, ax, lw=0.75):
         self.ax, self.lw = ax, lw
 
-    def arrowhead(self, p, d, night, size=9.0):
+    def arrowhead(self, p, d, night, size=8.0):
+        """notched (swallow-tail) TSU arrowhead; hollow = day, filled = night"""
         d = norm(d); n = right(d)
-        tip = p; a = add(add(p, d, -size), n, size * 0.42); b = add(add(p, d, -size), n, -size * 0.42)
-        self.ax.add_patch(Polygon([tip, a, b], closed=True, fc="black" if night else "white", ec="black", lw=self.lw, zorder=6))
+        a = add(add(p, d, -size), n, size * 0.4); b = add(add(p, d, -size), n, -size * 0.4); notch = add(p, d, -size * 0.55)
+        self.ax.add_patch(Polygon([p, a, notch, b], closed=True, fc="black" if night else "white", ec="black", lw=self.lw, zorder=6))
 
     def speed_marks(self, pts, speed):
-        """blue dots along the first part of the path: impact speed in tens; 70+ triple line; None -> X"""
+        """blue dots on the shaft from the tail: impact speed in tens; 70+ triple line; None -> blue X"""
         if speed is None:
-            (x, y), = resample(pts, 14)[0][:1] if resample(pts, 14)[0] else [pts[0]]
-            self.ax.plot(x, y, marker="x", ms=4.5, mew=1.2, color=BLU, zorder=7); return
+            d = norm((pts[1][0] - pts[0][0], pts[1][1] - pts[0][1])); q = add(pts[0], d, 12)
+            self.ax.plot(q[0], q[1], marker="x", ms=4, mew=1.0, color=BLU, zorder=7); return
         if speed >= 70:
             d = norm((pts[1][0] - pts[0][0], pts[1][1] - pts[0][1])); n = right(d)
             for k in (-1, 1):
-                a, b = add(add(pts[0], d, 4), n, 1.8 * k), add(add(pts[0], d, 34), n, 1.8 * k)
-                self.ax.plot([a[0], b[0]], [a[1], b[1]], color=BLU, lw=0.9, zorder=7)
+                a, b = add(add(pts[0], d, 3), n, 1.6 * k), add(add(pts[0], d, 30), n, 1.6 * k)
+                self.ax.plot([a[0], b[0]], [a[1], b[1]], color=BLU, lw=0.7, zorder=7)
             return
         n = min(int(speed // 10), 6)
         if n:
-            dots, _ = resample(pts, 6.0)
-            for x, y in dots[1:1 + n]:
-                self.ax.plot(x, y, "o", ms=3.0, color=BLU, zorder=7)
+            dots, _ = resample(pts, 5.5)
+            for x, y in dots[0:n]:
+                self.ax.plot(x, y, "o", ms=2.2, color=BLU, zorder=7)
 
-    def path(self, pts, night, speed, head=True, lw=None):
+    def path(self, pts, night, speed, head=True):
         xs, ys = zip(*pts)
-        self.ax.plot(xs, ys, color="black", lw=lw or self.lw, solid_capstyle="round", zorder=5)
+        self.ax.plot(xs, ys, color="black", lw=self.lw, solid_capstyle="round", zorder=5)
         if head:
             self.arrowhead(pts[-1], (pts[-1][0] - pts[-2][0], pts[-1][1] - pts[-2][1]), night)
         self.speed_marks(pts, speed)
 
-    def bar(self, p, d, half=6.0):
+    def bar(self, p, d, half=5.5):
         n = right(norm(d)); a, b = add(p, n, half), add(p, n, -half)
         self.ax.plot([a[0], b[0]], [a[1], b[1]], color="black", lw=self.lw, zorder=6)
 
     def injury(self, p, sev):
+        r = 3.6
         if sev in ("B", "C", "U"):
-            self.ax.add_patch(Circle(p, 3.2, fc="white", ec=RED, lw=1.1, zorder=8))
+            self.ax.add_patch(Circle(p, r, fc="white", ec=RED, lw=1.0, zorder=8))
         elif sev == "A":
-            self.ax.add_patch(Circle(p, 3.2, fc="white", ec=RED, lw=1.1, zorder=8))
-            self.ax.add_patch(Wedge(p, 3.2, 0, 180, fc=RED, ec=RED, lw=0, zorder=8))
+            self.ax.add_patch(Circle(p, r, fc="white", ec=RED, lw=1.0, zorder=8))
+            self.ax.add_patch(Wedge(p, r, 0, 180, fc=RED, ec=RED, lw=0, zorder=8))
         elif sev == "K":
-            self.ax.add_patch(Circle(p, 3.2, fc=RED, ec=RED, lw=1.1, zorder=8))
+            self.ax.add_patch(Circle(p, r, fc=RED, ec=RED, lw=1.0, zorder=8))
 
-    def number_circle(self, p, text, r=7.0, target=False):
+    def number_circle(self, p, text, target=False):
         col = RED if target else "black"
-        self.ax.add_patch(Circle(p, r, fc="white", ec=col, lw=1.0, zorder=9))
-        self.ax.text(p[0], p[1], text, ha="center", va="center", fontsize=7.5 if len(text) < 3 else 6.5, zorder=10, family="DejaVu Sans", color=col)
+        self.ax.add_patch(Circle(p, R_CIRC, fc="white", ec=col, lw=0.8, zorder=9))
+        self.ax.text(p[0], p[1], text, ha="center", va="center", fontsize=7 if len(text) < 3 else 6, zorder=10, family="DejaVu Sans", color=col)
 
-    def fault(self, p):
-        self.ax.text(p[0], p[1], "∗", ha="center", va="center", fontsize=13, color=MAG, zorder=10, fontweight="bold")
+    def fault(self, p, h=3.2):
+        """thin 8-spoke star, magenta (driver at fault)"""
+        for a in (0, 45, 90, 135):
+            d = (math.cos(math.radians(a)), math.sin(math.radians(a)))
+            self.ax.plot([p[0] - d[0] * h, p[0] + d[0] * h], [p[1] - d[1] * h, p[1] + d[1] * h], color=MAG, lw=0.7, zorder=10)
 
     def roadcond(self, p, letter):
-        self.ax.text(p[0], p[1], letter, ha="center", va="center", fontsize=8.5, color=GRN, zorder=10, family="DejaVu Sans")
+        self.ax.text(p[0], p[1], letter, ha="center", va="center", fontsize=8, color=GRN, zorder=10, family="DejaVu Sans")
 
-    def zigzag_path(self, tail, d, side, L1=28.0, L2=30.0, amp=9.0):
+    def zigzag_path(self, tail, d, side, L1=20.0, L2=26.0, amp=8.0):
         """ran-off-road: straight L1, zigzag, then straight L2 angled off to `side` (+1 right, -1 left)"""
         d = norm(d); n = right(d)
         a = add(tail, d, L1)
-        z = [a, add(add(a, d, 6), n, amp * side), add(add(a, d, 14), n, -amp * side), add(add(a, d, 20), n, amp * side * 0.6), add(a, d, 24)]
-        off = norm(rot(d, -35 * side))   # veer to the side
-        end = add(z[-1], off, L2)
-        return [tail] + z + [end]
+        z = [a, add(add(a, d, 5), n, amp * side), add(add(a, d, 12), n, -amp * side), add(add(a, d, 17), n, amp * side * 0.6), add(a, d, 21)]
+        off = norm(rot(d, -35 * side))
+        return [tail] + z + [add(z[-1], off, L2)]
 
 
 # ------------------------------------------------------------------ crash -> glyph description
 def speed_of(u):
-    for k in ("speed_impact", "speed_est"):
-        v = u.get(k)
-        if v not in (None, "", 0) or (v == 0 and k == "speed_impact" and u.get("speed_est") in (None, "", 0)):
-            return float(v)
+    v = u.get("speed_impact")
+    if v not in (None, ""): return float(v)
+    v = u.get("speed_est")
+    if v not in (None, ""): return float(v)
     return 0.0 if u.get("maneuver") == 1 else None
 
 
@@ -183,76 +199,191 @@ def at_fault_index(c):
     return cands[0] if cands else 0
 
 
+def charged(c):
+    return [i for i, u in enumerate(c["units"]) if u["violation"] not in (0, None)]
+
+
 def signature(c):
     us = c["units"]; f = at_fault_index(c)
     bins = tuple((u["direction"], u["maneuver"], None if speed_of(u) is None else min(int(speed_of(u) // 10), 7)) for u in us)
     return (c["acc_typ"], f, bins, c["lt_cond"] in NIGHT, ROADCOND.get(c["rd_cond"], "O"), SEV.get(c["severity_cd"], "U"))
 
 
-def draw_crash(g, P, c, numbers):
-    """Draw one glyph with impact point P for crash c (and stacked crash numbers)."""
+def receiving_dir(t, left):
+    """outward direction of the leg a vehicle travelling along t turns onto (left or right), on this skewed intersection"""
+    best = None
+    for leg, (bearing, _) in LEGS.items():
+        u = unit(bearing); cross = t[0] * u[1] - t[1] * u[0]
+        score = cross if left else -cross
+        if best is None or score > best[0]: best = (score, u)
+    return best[1]
+
+
+def turn_path(P, t, left, R=TURN_R):
+    """straight approach then a circular arc that ends at P heading along the receiving leg (49 or 131 deg sweep)"""
+    u_r = receiving_dir(t, left)
+    theta = math.degrees(math.atan2(t[0] * u_r[1] - t[1] * u_r[0], t[0] * u_r[0] + t[1] * u_r[1]))  # signed, CCW +
+    nl = rot(t, 90 if theta > 0 else -90); v0 = (-nl[0] * R, -nl[1] * R)
+    centre = add(P, rot(v0, theta), -1); start = add(centre, v0)
+    steps = max(4, int(abs(theta) / 8))
+    arc = [add(centre, rot(v0, theta * i / steps)) for i in range(steps + 1)]
+    tail = add(start, t, -TURN_S)
+    return [tail] + arc, tail, u_r
+
+
+def draw_crash(g, P, c, numbers, key_pts, pending_notes=None):
+    """Draw one glyph with impact point P for crash c (numbers = stacked crash numbers). Appends key points for the clearance check."""
     us = c["units"]; f = at_fault_index(c); night = c["lt_cond"] in NIGHT
     sev = SEV.get(c["severity_cd"], "U"); rc = ROADCOND.get(c["rd_cond"], "O"); typ = c["acc_typ"]
-    tails = {}
-    # paths per unit
+    tails = {}; pts_all = []; extra = []
     for i, u in enumerate(us):
-        t = DIRV[u["direction"]]; sp = speed_of(u); m = u["maneuver"]
-        if typ == 19:                                            # fixed object -> ran off road
-            tail = add(P, t, -62); pts = g.zigzag_path(tail, t, +1)
-            g.path(pts, night, sp); tails[i] = tail
-            end = pts[-1]; d = norm((end[0] - pts[-2][0], end[1] - pts[-2][1])); nn = right(d)
-            g.ax.text(end[0] + d[0] * 10 + nn[0] * 16, end[1] + d[1] * 10 + nn[1] * 16, OBJECT_NOTE.get(c["crash_id"], ""), fontsize=5.5, ha="center", va="center", zorder=9,
-                      bbox=dict(fc="white", ec="none", pad=0.5))
-            continue
-        if m == 1:                                               # stopped in travel lane: bar at the rear, short arrow forward
-            g.bar(P, t); pts = [P, add(P, t, 26)]; g.path(pts, night, sp); tails[i] = P; continue
-        if m == 8 or m == 7:                                     # turning: straight approach then a quarter-circle ending at P on the turned heading
-            left = (m == 8); out = norm(rot(t, 90 if left else -90)); R, Ls = 22.0, 32.0
-            start = add(add(P, t, -R), out, -R); tail = add(start, t, -Ls); centre = add(start, out, R)
-            arc = [add(add(centre, out, -R * math.cos(math.radians(a))), t, R * math.sin(math.radians(a))) for a in range(0, 91, 6)]
-            pts = [tail] + arc
-            g.path(pts, night, sp); tails[i] = tail; continue
-        if typ == 21 and i != f and m in (4, 11):                # rear end lead vehicle (moving/slowing)
-            g.bar(P, t); pts = [P, add(P, t, 30)]; g.path(pts, night, sp); tails[i] = P; continue
-        # straight path ending at the impact point
-        tail = add(P, t, -56); pts = [tail, P]
-        if typ == 21 and i == f:
-            pts = [tail, add(P, t, -2)]
-        g.path(pts, night, sp); tails[i] = tail
-    # impact / injury marker
+        t = DIRV[u["direction"]]; sp = speed_of(u); m = u["maneuver"]; L = PATH_F if i == f else PATH_O
+        if typ == 19:                                            # fixed object -> ran off road (after a turn if the unit was turning)
+            if m in (7, 8):                                      # compact hook: tight turn, short zigzag off to the driver's right
+                pts, tail, out = turn_path(P, t, m == 8, R=14.0); zz = g.zigzag_path(P, out, +1, L1=10.0, L2=14.0, amp=6.0)
+                pts = pts + zz[1:]
+            else:
+                tail = add(P, t, -L); pts = g.zigzag_path(tail, t, +1)
+            g.path(pts, night, sp); tails[i] = tail; pts_all += pts; continue
+        if m == 1:                                               # stopped in travel lane: bar at the rear, short arrow ahead
+            if typ == 21:
+                q = P
+            else:                                                # in an angle/turn crash the stopped unit sits in its own lane, short of the impact
+                q = add(add(P, right(t), 8), t, -28)
+            g.bar(q, t); pts = [q, add(q, t, STOP_ARROW)]; g.path(pts, night, sp); tails[i] = q; pts_all += pts
+            extra += [add(q, right(t), 5.5), add(q, right(t), -5.5)]; continue
+        if m in (7, 8):                                          # turning
+            pts, tail, _ = turn_path(P, t, m == 8)
+            g.path(pts, night, sp); tails[i] = tail; pts_all += pts; continue
+        if typ == 21 and i != f and m in (4, 11):                # rear end lead vehicle (moving/slowing): bar at its rear
+            g.bar(P, t); pts = [P, add(P, t, STOP_ARROW + 6)]; g.path(pts, night, sp); tails[i] = P; pts_all += pts; continue
+        tail = add(P, t, -L)
+        end = P if (i == f or typ == 21) else add(P, t, 12)       # struck unit continues a little past the impact point
+        pts = [tail, add(end, t, -2) if (typ == 21 and i == f) else end]
+        g.path(pts, night, sp); tails[i] = tail; pts_all += pts
     if sev in ("A", "B", "C", "K", "U"):
-        g.injury(P if typ != 21 else add(P, DIRV[us[f]["direction"]], 8), sev)
-    # numbered circle(s) at the tail of the at-fault vehicle, asterisk + road condition beside
-    tf = DIRV[us[f]["direction"]]; tail = tails.get(f, add(P, tf, -56)); n = right(tf)
-    base = add(tail, tf, -8)
+        g.injury(P if typ != 21 else add(P, DIRV[us[f]["direction"]], 6), sev)
+    # number circle(s) side by side at the tail of the at-fault path; asterisk and road letter beside the first circle
+    tf = DIRV[us[f]["direction"]]; tail = tails.get(f, add(P, tf, -PATH_F)); n = right(tf)
+    base = add(tail, tf, -(R_CIRC + 1))
+    circles = []
     for k, num in enumerate(numbers):
-        g.number_circle(add(base, tf, -k * 15), str(num), target=(typ in TARGET))
-    g.fault(add(add(base, n, 11), tf, 5))
-    g.roadcond(add(add(base, n, -11), tf, 5), rc)
+        cp = add(base, n, -k * (2 * R_CIRC + 2)); circles.append(cp)
+        g.number_circle(cp, str(num), target=(typ in TARGET))
+    if charged(c):
+        q = add(add(base, n, R_CIRC + 4), tf, 2); g.fault(q); extra += [add(q, (1, 0), 3), add(q, (-1, 0), 3), add(q, (0, 1), 3), add(q, (0, -1), 3)]
+    q = add(add(base, n, -(R_CIRC + 4) - (len(numbers) - 1) * (2 * R_CIRC + 2)), tf, 2); g.roadcond(q, rc)
+    extra += [add(q, (1, 0), 3), add(q, (-1, 0), 3), add(q, (0, 1), 3), add(q, (0, -1), 3)]
+    for i in charged(c):
+        if i != f and i in tails:
+            ti = DIRV[us[i]["direction"]]; q = add(add(tails[i], right(ti), 8), ti, -5); g.fault(q)
+            extra += [add(q, (1, 0), 3), add(q, (-1, 0), 3), add(q, (0, 1), 3), add(q, (0, -1), 3)]
+    for cp in circles:
+        extra += [add(cp, unit(a), R_CIRC + 1) for a in range(0, 360, 45)]
+    note = NOTES.get(c["crash_id"])
+    if note and pending_notes is not None:
+        pending_notes.append((c, note))
+    key_pts.extend([P] + list(tails.values()) + circles + pts_all + extra)
+
+
+def rect_dist(box, p):
+    """distance from point p to the axis-aligned box (x0, y0, x1, y1); 0 inside"""
+    dx = max(box[0] - p[0], 0.0, p[0] - box[2]); dy = max(box[1] - p[1], 0.0, p[1] - box[3])
+    return math.hypot(dx, dy)
+
+
+def seg_dist(p, a, b):
+    ab = (b[0] - a[0], b[1] - a[1]); ap = (p[0] - a[0], p[1] - a[1])
+    t = max(0.0, min(1.0, (ap[0] * ab[0] + ap[1] * ab[1]) / (ab[0] ** 2 + ab[1] ** 2)))
+    return math.hypot(ap[0] - t * ab[0], ap[1] - t * ab[1])
+
+
+def box_pts(box, k=3):
+    (x0, y0, x1, y1) = box
+    return [(x0 + (x1 - x0) * i / k, y0 + (y1 - y0) * j / k) for i in range(k + 1) for j in range(k + 1) if i in (0, k) or j in (0, k)]
+
+
+def place_notes(fig, ax, pending, glyph_pts, fontsize=6.0):
+    """Put each crash note beside its glyph where it touches nothing: try outward / inward along the leg and laterally away
+    from the road, with every text alignment, and keep the position with the largest clearance from the other glyphs,
+    the pavement and the notes already placed. Returns [(name, corner points)] for the clearance report."""
+    fig.canvas.draw(); rend = fig.canvas.get_renderer(); inv = ax.transData.inverted()
+    pts_by_name = dict(glyph_pts); placed = []
+    roads = [((0.0, 0.0), add((0.0, 0.0), unit(b), 700.0), (W_MAIN if leg in ("N", "S") else W_SIDE) / 2) for leg, (b, _) in LEGS.items()]
+    for c, text in pending:
+        name = next(nm for nm, _ in glyph_pts if nm.split(",")[0] == str(c["no"]) or str(c["no"]) in nm.split(","))
+        own = pts_by_name[name]; leg = leg_of(c)
+        ov = unit(LEGS[leg][0]); n = right((-ov[0], -ov[1])); lv = (n[0] * SIDE[leg], n[1] * SIDE[leg])
+        probe = ax.text(0, 0, text, fontsize=fontsize, ha="left", va="bottom", linespacing=1.2, family="DejaVu Sans")
+        bb = probe.get_window_extent(rend); (x0, y0), (x1, y1) = inv.transform([[bb.x0, bb.y0], [bb.x1, bb.y1]]); probe.remove()
+        w, h = x1 - x0, y1 - y0
+        others = [p for nm, pts in glyph_pts if nm != name for p in pts] + [p for _, pts in placed for p in pts]
+        anchors = [add(max(own, key=lambda p: p[0] * ov[0] + p[1] * ov[1]), ov, 9.0),
+                   add(min(own, key=lambda p: p[0] * ov[0] + p[1] * ov[1]), ov, -9.0),
+                   add(max(own, key=lambda p: p[0] * lv[0] + p[1] * lv[1]), lv, 9.0)]
+        best = None
+        for a in anchors:
+            for fx in (0.0, 0.5, 1.0):
+                for fy in (0.0, 0.5, 1.0):
+                    box = (a[0] - fx * w, a[1] - fy * h, a[0] + (1 - fx) * w, a[1] + (1 - fy) * h)
+                    corners = box_pts(box)
+                    d_other = min(rect_dist(box, p) for p in others)
+                    d_own = min(rect_dist(box, p) for p in own)
+                    d_road = min(seg_dist(q, s0, s1) - hw for q in corners for s0, s1, hw in roads)
+                    score = min(d_other, d_road, d_own + 6.0)                      # own glyph may sit closer than the others
+                    if best is None or score > best[0]: best = (score, box)
+        score, box = best
+        ax.text(box[0], box[1], text, fontsize=fontsize, ha="left", va="bottom", linespacing=1.2, family="DejaVu Sans", zorder=9,
+                bbox=dict(fc="white", ec="none", pad=0.4))
+        placed.append((f"note{c['no']}", box_pts(box)))
+        if score < 6.0: print(f"  note for crash #{c['no']} placed with only {score:.0f} ft clearance")
+    return placed
 
 
 # ------------------------------------------------------------------ layout
+SIDE = {"NW": +1, "SE": +1, "N": -1, "S": -1}     # +1 = driver's right of the approach; chosen so glyphs fall in the open (obtuse) wedges
+ROW0, PITCH, COLS, ROWS = 95.0, 105.0, (32.0, 114.0, 196.0, 278.0), 4
+
+
+def opposite(leg):
+    return {"N": "S", "S": "N", "NW": "SE", "SE": "NW"}[leg]
+
+
+def leg_of(c):
+    u = c["units"][at_fault_index(c)]; leg = APPROACH[u["direction"]]
+    if c["acc_typ"] == 19 and num(c.get("dist_from")) and num(c["dist_from"]) > 0 and c.get("dir_from"):
+        return opposite(leg)                                    # single-vehicle run-off-road referenced past the intersection: departure leg
+    return leg
+
+
 def layout(crashes):
-    """Group identical crashes, assign each glyph to a slot on its approach leg. Returns [(P, crash, numbers)]."""
+    """Group identical crashes, then stack each leg's glyphs back from the intersection in columns beside the approach lane."""
     groups = {}
     for c in crashes:
         groups.setdefault(signature(c), []).append(c)
     per_leg = {}
     for sig, cs in sorted(groups.items(), key=lambda kv: kv[1][0]["no"]):
-        c0 = cs[0]; leg = APPROACH[c0["units"][at_fault_index(c0)]["direction"]]
-        per_leg.setdefault(leg, []).append((cs, c0))
+        per_leg.setdefault(leg_of(cs[0]), []).append((cs, cs[0]))
     placed = []
     for leg, items in per_leg.items():
-        bearing = LEGS[leg][0]; u = unit(bearing); t = (-u[0], -u[1]); n = right(t)   # t: travel toward intersection
+        u = unit(LEGS[leg][0]); t = (-u[0], -u[1]); n = right(t)
         half_w = W_MAIN / 2 if leg in ("N", "S") else W_SIDE / 2
-        cols = [half_w / 2 + 2, half_w + 68, -(half_w + 68), half_w + 136, half_w + 204]      # lane, right, left, far right, farther right
-        rows_per_col = 3
         for k, (cs, c0) in enumerate(items):
-            col, row = k // rows_per_col, k % rows_per_col
-            dist = 115 + 92 * row
-            P = add(add((0, 0), u, dist), n, cols[col % len(cols)])
+            col, row = k // ROWS, k % ROWS
+            P = add(add((0, 0), u, ROW0 + PITCH * row), n, SIDE[leg] * (half_w + COLS[col % len(COLS)]))
             placed.append((P, c0, [c["no"] for c in cs]))
     return placed
+
+
+def clearance_report(glyph_pts, min_ft=22.0):
+    """pairs of glyphs with any key points closer than min_ft (printed for QA)"""
+    bad = []
+    for i in range(len(glyph_pts)):
+        for j in range(i + 1, len(glyph_pts)):
+            a, pa = glyph_pts[i]; b, pb = glyph_pts[j]
+            d = min(math.hypot(x[0] - y[0], x[1] - y[1]) for x in pa for y in pb)
+            if d < min_ft: bad.append((a, b, round(d)))
+    return bad
 
 
 # ------------------------------------------------------------------ base map
@@ -289,18 +420,20 @@ def base_map(ax):
         arc = [add(centre, (math.cos(math.radians(a0 + d * i / 16)), math.sin(math.radians(a0 + d * i / 16))), R) for i in range(17)]
         ax.plot([p[0] for p in arc], [p[1] for p in arc], color="black", lw=1.0, zorder=2)
     # centerlines (dashed) stopping at the mainline edge for the side street
-    for leg, half in (("N", W_SIDE / 2 + 12), ("S", W_SIDE / 2 + 12)):
-        u = legs[leg]; a = add((0, 0), u, half); b = add((0, 0), u, L)
-        ax.plot([a[0], b[0]], [a[1], b[1]], color="black", lw=0.6, ls=(0, (8, 6)), zorder=2)
+    for leg, half in (("N", W_SIDE / 2 + 12), ("S", W_SIDE / 2 + 12)):   # NC 180: double solid centreline (no-passing zone)
+        u = legs[leg]; nn = right(u)
+        for k in (-1, 1):
+            a = add(add((0, 0), u, half), nn, 0.9 * k); b = add(add((0, 0), u, L), nn, 0.9 * k)
+            ax.plot([a[0], b[0]], [a[1], b[1]], color="black", lw=0.5, zorder=2)
     for leg in ("NW", "SE"):
         u = legs[leg]; a = add((0, 0), u, W_MAIN / 2 + 2); b = add((0, 0), u, L)
         ax.plot([a[0], b[0]], [a[1], b[1]], color="black", lw=0.6, ls=(0, (8, 6)), zorder=2)
         # stop bar across the approach lane and STOP sign on the right of the approach
         t = (-u[0], -u[1]); n = right(t); sb = add((0, 0), u, W_MAIN / 2 + 6)
         ax.plot([sb[0], add(sb, n, W_SIDE / 2)[0]], [sb[1], add(sb, n, W_SIDE / 2)[1]], color="black", lw=2.6, zorder=3)
-        sp = add(add((0, 0), u, W_MAIN / 2 + 34), n, W_SIDE / 2 + 30)
-        ax.add_patch(RegularPolygon(sp, 8, radius=11, orientation=math.radians(22.5), fc=RED, ec="black", lw=0.6, zorder=4))
-        ax.text(sp[0], sp[1], "STOP", ha="center", va="center", fontsize=4.5, color="white", fontweight="bold", zorder=5)
+        sp = add(add((0, 0), u, W_MAIN / 2 + 14), n, W_SIDE / 2 + 12)
+        ax.add_patch(RegularPolygon(sp, 8, radius=9, orientation=math.radians(22.5), fc=RED, ec="black", lw=0.6, zorder=4))
+        ax.text(sp[0], sp[1], "STOP", ha="center", va="center", fontsize=3.8, color="white", fontweight="bold", zorder=5)
 
 
 # ------------------------------------------------------------------ sheet furniture (page axes, inches)
@@ -311,16 +444,20 @@ def legend(px, x0, y0, w=6.6, h=2.55):
     def arrow(x, y, L=0.42, night=False, dots=0, tri=False, unk=False, head=True):
         px.plot([x, x + L], [y, y], color="black", lw=0.8, zorder=4)
         if head:
-            px.add_patch(Polygon([(x + L, y), (x + L - 0.11, y + 0.045), (x + L - 0.11, y - 0.045)], fc="black" if night else "white", ec="black", lw=0.7, zorder=5))
+            px.add_patch(Polygon([(x + L, y), (x + L - 0.11, y + 0.045), (x + L - 0.06, y), (x + L - 0.11, y - 0.045)], fc="black" if night else "white", ec="black", lw=0.6, zorder=5))
         for i in range(dots):
             px.plot(x + 0.06 + i * 0.05, y, "o", ms=2.2, color=BLU, zorder=5)
         if tri:
             for dy in (-0.02, 0, 0.02): px.plot([x, x + L - 0.11], [y + dy, y + dy], color=BLU, lw=0.7, zorder=5)
         if unk: px.plot(x + 0.15, y, marker="x", ms=4, color=BLU, mew=1, zorder=5)
-    fs = 5.6; cx = x0 + 0.15; cy = y0 + h - 0.62; dy = 0.235
+    fs = 5.6; cx = x0 + 0.15; cy = y0 + h - 0.6; dy = 0.212
     rows = [("MOVING VEHICLE", lambda x, y: arrow(x, y)),
             ("PARKED VEHICLE", lambda x, y: (px.add_patch(Rectangle((x, y - 0.07), 0.3, 0.14, fc="white", ec="black", lw=0.7, zorder=5)),
                                             px.plot([x, x + 0.3], [y - 0.07, y + 0.07], color="black", lw=0.6, zorder=5), px.plot([x, x + 0.3], [y + 0.07, y - 0.07], color="black", lw=0.6, zorder=5))),
+            ("PARKING VEHICLE", lambda x, y: (px.add_patch(Rectangle((x, y - 0.07), 0.3, 0.14, fc="white", ec="black", lw=0.7, zorder=5)),
+                                             px.plot([x, x + 0.3], [y - 0.07, y + 0.07], color="black", lw=0.6, zorder=5), px.plot([x, x + 0.3], [y + 0.07, y - 0.07], color="black", lw=0.6, zorder=5),
+                                             px.plot([x + 0.3, x + 0.42], [y + 0.07, y + 0.17], color="black", lw=0.7, zorder=5),
+                                             px.add_patch(Polygon([(x + 0.44, y + 0.19), (x + 0.36, y + 0.18), (x + 0.42, y + 0.11)], fc="white", ec="black", lw=0.6, zorder=5)))),
             ("MOVABLE OBJECT", lambda x, y: (arrow(x, y, 0.36), px.plot([x + 0.4, x + 0.48, x + 0.48], [y + 0.08, y + 0.08, y - 0.08], color="black", lw=0.7, zorder=5))),
             ("HEAD ON", lambda x, y: (arrow(x, y, 0.22), px.plot([x + 0.44, x + 0.22], [y, y], color="black", lw=0.8, zorder=4),
                                      px.add_patch(Polygon([(x + 0.22, y), (x + 0.33, y + 0.045), (x + 0.33, y - 0.045)], fc="white", ec="black", lw=0.7, zorder=5)),
@@ -388,8 +525,7 @@ def north_arrow(px, x, y, bearing_up=0.0, L=1.3):
     tip = (x + d[0] * L / 2, y + d[1] * L / 2); base = (x - d[0] * L / 2, y - d[1] * L / 2)
     px.add_patch(Polygon([tip, add(base, n, 0.07), base], fc="black", ec="black", lw=0.6, zorder=5))
     px.add_patch(Polygon([tip, add(base, n, -0.07), base], fc="white", ec="black", lw=0.6, zorder=5))
-    px.text(x - d[0] * 0.05 - n[0] * 0.0, y + 0.02, "N", ha="center", va="center", fontsize=7, zorder=6,
-            bbox=dict(boxstyle="circle,pad=0.15", fc="white", ec="black", lw=0.5))
+    px.text(base[0] - d[0] * 0.14, base[1] - d[1] * 0.14, "N", ha="center", va="center", fontsize=8, zorder=6)
 
 
 # ------------------------------------------------------------------ main
@@ -404,29 +540,69 @@ def main():
     ax.set_xlim(-(CXI - 0.3) * FPI, (16.7 - CXI) * FPI); ax.set_ylim(-(CYI - 0.3) * FPI, (10.7 - CYI) * FPI)
     ax.patch.set_alpha(0)
     base_map(ax)
-    for leg, (xi, yi) in {"N": (9.55, 7.7), "S": (3.3, 1.15), "NW": (1.9, 8.75), "SE": (10.4, 1.2)}.items():
+    for leg, (xi, yi) in {"N": (9.55, 6.5), "S": (2.0, 0.95), "NW": (1.25, 9.85), "SE": (10.3, 1.15)}.items():
         px.text(xi, yi, "\n".join(LEGS[leg][1]), ha="center", va="center", fontsize=8, linespacing=1.25, zorder=4, family="DejaVu Sans")
     g = G(ax)
-    placed = layout(CR)
+    placed = layout(CR); glyph_pts = []; pending = []
     for P, c, nums in placed:
-        draw_crash(g, P, c, nums)
+        kp = []; draw_crash(g, P, c, nums, kp, pending); glyph_pts.append((",".join(map(str, nums)), kp))
+    glyph_pts += place_notes(fig, ax, pending, glyph_pts)
     # furniture
     legend(px, 16.65 - 6.6, 10.65 - 2.55)
     px.add_patch(Rectangle((12.3, 7.45), 2.3, 0.42, fc="white", ec="black", lw=0.7, zorder=3))
     px.add_patch(Circle((12.55, 7.66), 0.11, fc="white", ec=RED, lw=0.9, zorder=4)); px.text(12.55, 7.66, "#", ha="center", va="center", fontsize=7, color=RED, zorder=5)
     px.text(12.75, 7.66, "Target Crashes (frontal impact)", va="center", fontsize=7, color=RED, zorder=5)
     title_block(px, 16.65 - 3.3, 0.3)
-    north_arrow(px, 15.6, 5.9)
-    px.text(2.0, 5.3, f"PH# {PH_NO}\nOrder# {STUDY}\n{COUNTY}\n{LOCATION}\n{PERIOD}", ha="center", va="center", fontsize=9, linespacing=1.35, zorder=5, family="DejaVu Sans")
-    # crash summary note (stacking key)
+    north_arrow(px, 15.8, 5.0)
+    px.text(2.0, 3.0, f"PH# {PH_NO}\nOrder# {STUDY}\n{COUNTY}\n{LOCATION}\n{PERIOD}", ha="center", va="center", fontsize=11, linespacing=1.3, zorder=5, family="DejaVu Sans")
+    # notes box
     n_stack = sum(1 for _, _, nums in placed if len(nums) > 1)
+    sev = [SEV[c["severity_cd"]] for c in CR]; night = sum(c["lt_cond"] in NIGHT for c in CR); wet = sum(c["rd_cond"] == 2 for c in CR)
+    front = sum(c["acc_typ"] in TARGET for c in CR)
+    notes = [f"NOTES: {len(CR)} crashes 9/1/2016-8/31/2026: {sev.count('K')} K, {sev.count('A')} A, {sev.count('B')} B, {sev.count('C')} C, {sev.count('O')} PDO; "
+             f"{front} frontal impact (target), {night} dark, {wet} wet.",
+             "Crash numbers follow the TEAAS Intersection Analysis Report (by date). Speed dots = impact speed. Red circle = frontal impact target crash.",
+             "Crash 8 (106808749) is referenced on SR 1103 at MP 3.019, 0.1 mi W of SR 2205; included after fiche review. Crash 21 (107960640) is",
+             "unmileposted (SR 1103 at SR 1103) and was located by DMV-349 coordinates 170 ft from the intersection. Crash 28: both drivers charged.",
+             "Diagram not to scale. Fiche review excluded 7 crashes (3 animal, 2 fixed object, 1 sideswipe, 1 left turn) as not intersection related."]
+    import textwrap
+    wrapped = "\n".join(textwrap.fill(n, 96) for n in notes)
+    px.text(10.1, 7.3, wrapped, fontsize=6.2, va="top", ha="left", zorder=5, family="DejaVu Sans", linespacing=1.3,
+            bbox=dict(fc="white", ec="black", lw=0.6, pad=4))
     fig.savefig(OUT / "5_collision_diagram_NCDOT.png", dpi=150)
     fig.savefig(OUT / ".review_300dpi.png", dpi=300)
-    fig.savefig(OUT / "5_collision_diagram_NCDOT.pdf")
-    plt.close(fig)
+    # page 2: crash listing
+    fig2 = plt.figure(figsize=(17, 11)); p2 = fig2.add_axes([0, 0, 1, 1]); p2.set_xlim(0, 17); p2.set_ylim(0, 11); p2.set_axis_off()
+    p2.add_patch(Rectangle((0.25, 0.25), 16.5, 10.5, fc="white", ec="black", lw=1.2, zorder=1))
+    p2.text(8.5, 10.3, f"Crash listing - Order# {STUDY}, {LOCATION.replace(chr(10), ' ')}, {PERIOD}", ha="center", va="center", fontsize=12, fontweight="bold")
+    LIGHT = {1: "Daylight", 2: "Dusk", 3: "Dawn", 4: "Dark-lighted", 5: "Dark-not lighted", 6: "Dark-unknown"}
+    ROAD = {1: "Dry", 2: "Wet", 3: "Water", 4: "Ice", 5: "Snow"}
+    MAN = {1: "stopped", 4: "straight", 7: "right turn", 8: "left turn", 11: "slowing"}
+    VIOL = {0: "", 2: "disregarded stop sign", 8: "failure to reduce speed", 14: "overcorrected", 19: "failed to yield ROW", 20: "inattention", 26: "erratic/reckless"}
+    rows = [["No", "Crash ID", "Date", "Time", "Crash type", "Sev", "Light", "Road", "Units (dir / maneuver / impact mph / contributing circumstance)", "Target"]]
+    import csv as _csv
+    for c in CR:
+        units = "; ".join(f"U{u['unit']} {u['direction']} {MAN.get(u['maneuver'], u['maneuver'])} {u['speed_impact']} mph{(' - ' + VIOL[u['violation']]) if u['violation'] else ''}" for u in c["units"])
+        rows.append([str(c["no"]), c["crash_id"], c["date"], c["time"], TYPE[c["acc_typ"]], {"O": "PDO"}.get(SEV[c["severity_cd"]], SEV[c["severity_cd"]]),
+                     LIGHT.get(c["lt_cond"], c["lt_cond"]), ROAD.get(c["rd_cond"], c["rd_cond"]), units, "yes" if c["acc_typ"] in TARGET else ""])
+    with open(HERE / "review" / "collision_diagram_listing.csv", "w", newline="") as f:
+        _csv.writer(f).writerows(rows)
+    tbl = p2.table(cellText=rows[1:], colLabels=rows[0], loc="center", bbox=[0.03, 0.04, 0.94, 0.88],
+                   colWidths=[0.03, 0.07, 0.07, 0.045, 0.16, 0.035, 0.08, 0.045, 0.42, 0.045], cellLoc="left")
+    tbl.auto_set_font_size(False); tbl.set_fontsize(7); tbl.set_zorder(3)
+    for (r, cidx), cell in tbl.get_celld().items():
+        cell.set_edgecolor("#999"); cell.set_linewidth(0.4)
+        if r == 0: cell.set_text_props(fontweight="bold"); cell.set_facecolor("#eeeeee")
+    from matplotlib.backends.backend_pdf import PdfPages
+    with PdfPages(OUT / "5_collision_diagram_NCDOT.pdf") as pdf:
+        pdf.savefig(fig); pdf.savefig(fig2)
+    fig2.savefig(OUT / "5b_collision_diagram_listing.png", dpi=150)
+    plt.close(fig); plt.close(fig2)
     print(f"{len(CR)} crashes, {len(placed)} glyphs ({n_stack} stacked)")
+    bad = clearance_report(glyph_pts)
+    print("clearance (<22 ft between glyph key points):", bad if bad else "none")
     for P, c, nums in placed:
-        print(f"  #{','.join(map(str, nums)):10} {TYPE.get(c['acc_typ'], c['acc_typ']):32} leg {APPROACH[c['units'][at_fault_index(c)]['direction']]:2} P=({P[0]:.0f},{P[1]:.0f})")
+        print(f"  #{','.join(map(str, nums)):10} {TYPE.get(c['acc_typ'], c['acc_typ']):32} leg {leg_of(c):2} P=({P[0]:.0f},{P[1]:.0f})")
 
 
 if __name__ == "__main__":

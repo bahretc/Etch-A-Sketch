@@ -1,89 +1,102 @@
 #!/usr/bin/env python3
-"""Combine the two TEAAS fiche workbooks (9/1/2016-8/31/2021 and 9/1/2021-8/31/2026) into one 10-year fiche workbook laid
-out like the package FicheReport workbooks (41000077748/77751): labelled sections IN STUDY, IN STUDY - ADDED, NOT IN STUDY -
-DELETED, NOT IN STUDY - REVIEWED (IS? = NIS-R, with a comment), NOT IN STUDY - NOT REVIEWED; a Comments column; the ID and
-Index sheets merged."""
-import copy, csv, datetime
+"""Combine the two reviewed TEAAS fiche workbooks (9/1/2016-8/31/2021 and 9/1/2021-8/31/2026) into one 10-year fiche
+workbook laid out like the package FicheReport workbooks (41000077748 / 41000077751):
+
+  * blue header row (Muni. Code ... S, Comments), grey merged section labels IN STUDY, IN STUDY - ADDED,
+    NOT IN STUDY - DELETED, NOT IN STUDY - REVIEWED, NOT IN STUDY - NOT REVIEWED;
+  * IS? keeps the reviewer's IS / ADD / DEL; the NIS rows the reviewer placed above their "REPORT NOT REVIEWED" label
+    become NIS-R (report reviewed), the rest stay NIS;
+  * the reviewer's own comments (column R of the source workbooks) are carried over unchanged - text as text, the
+    =IF(T=17,"animal","") flag re-pointed to its new row - nothing is added or reworded;
+  * rows keep the reviewer's order, 2016-2021 workbook first; the ID and Index sheets are merged.
+"""
+import copy, datetime, re
 from pathlib import Path
 from openpyxl import load_workbook, Workbook
-from openpyxl.styles import PatternFill, Font
+from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.styles.colors import Color
 
 HERE = Path(__file__).resolve().parent
-A = HERE / "data" / "41000079736_FicheFirst5.xlsx"     # 9/1/2016 - 8/31/2021
-B = HERE / "data" / "41000079736_Fiche.xlsx"           # 9/1/2021 - 8/31/2026
+SOURCES = [HERE / "data" / "41000079736_FicheFirst5.xlsx",       # 9/1/2016 - 8/31/2021
+           HERE / "data" / "41000079736_Fiche.xlsx"]             # 9/1/2021 - 8/31/2026
 OUT = HERE / "41000079736_Fiche10yr.xlsx"
-LABEL_FILL = PatternFill("solid", fgColor=Color(theme=3, tint=0.749992370372631))   # the grey label rows of the package workbooks
-TYPE = {17: "Animal collision", 19: "Object collision", 21: "Rear end", 22: "Rear end", 23: "Left turn (same roadway)",
-        24: "Left turn (different roadways)", 25: "Right turn (same roadway)", 26: "Right turn (different roadways)", 27: "Head on",
-        28: "Sideswipe (same direction)", 29: "Sideswipe (opposite direction)", 30: "Angle", 31: "Backing"}
-# report-review outcomes recorded in the fiche workbooks (ADD / DEL) and the review list (review/review_ids.txt)
-ADD_NOTE = {"106808749": "Referenced SR 1103 MP 3.019 (0.1 mi W of SR 2205); added after report review",
-            "107960640": "Unmileposted (On Road = From Road = SR 1103); DMV-349 coordinates 170 ft from the intersection; added after report review"}
+FONT = "Aptos Narrow"
+HEADERS = ["Muni.\nCode", "On Road", "Miles", "Direction From", "From Road", "Toward Road", "Milepost Road", "MP", "IS?", "MA",
+           "Crash ID", "Date", "T", "C", "F", "L", "S", "Comments"]
+HEADER_FILL = PatternFill("solid", fgColor=Color(theme=4, tint=0.0))                      # accent 1 (blue) as in the examples
+LABEL_FILL = PatternFill("solid", fgColor=Color(theme=3, tint=0.749992370372631))        # grey section labels of the examples
+THIN = Side(style="thin")
+ANIMAL = re.compile(r'^=IF\(M\d+=17,"animal",""\)$')
+SECTIONS = ["IN STUDY", "IN STUDY - REMILEPOSTED", "IN STUDY - ADDED", "NOT IN STUDY - DELETED", "NOT IN STUDY - REVIEWED",
+            "NOT IN STUDY - NOT REVIEWED"]
+STATUS_SECTION = {"IS": "IN STUDY", "RE": "IN STUDY - REMILEPOSTED", "ADD": "IN STUDY - ADDED", "DEL": "NOT IN STUDY - DELETED"}
 
-def copy_style(src, dst):
-    dst.font = copy.copy(src.font); dst.fill = copy.copy(src.fill); dst.border = copy.copy(src.border)
-    dst.alignment = copy.copy(src.alignment); dst.number_format = src.number_format
 
-wa, wb = load_workbook(A), load_workbook(B)
-ma, mb = wa.worksheets[0], wb.worksheets[0]
-assert [c.value for c in ma[1]][:17] == [c.value for c in mb[1]][:17], "fiche headers differ"
-cands = {r["Crash ID"]: r for r in csv.DictReader(open(HERE / "review" / "review_candidates.csv"))}
-reviewed = [l.split()[0] for l in open(HERE / "review" / "review_ids.txt") if l.strip() and l.split()[0].isdigit()]
+def read_source(path):
+    """Yield (section, row cells) for every crash row, in the reviewer's order."""
+    ws = load_workbook(path).worksheets[0]
+    hdr = [c.value for c in ws[1]]
+    assert hdr[:17] == ["Muni.\nCode", "On Road", "Miles", "Dir\nFrom", "From Road", "Toward Road", "Milepost Road", "MP", "IS?",
+                        "MA", "Crash ID", "Date", "T", "C", "F", "L", "S"], f"{path.name}: unexpected fiche columns {hdr[:17]}"
+    reviewed = True                                   # NIS rows above the reviewer's "REPORT NOT REVIEWED" label were reviewed
+    for r in ws.iter_rows(min_row=2):
+        a = r[0].value
+        if isinstance(a, str) and "NOT REVIEWED" in a.upper():
+            reviewed = False; continue
+        if r[10].value is None:                       # blank or label row
+            continue
+        st = (r[8].value or "NIS").strip().upper()
+        if st in STATUS_SECTION:
+            yield STATUS_SECTION[st], r
+        else:
+            yield ("NOT IN STUDY - REVIEWED" if reviewed else "NOT IN STUDY - NOT REVIEWED"), r
 
-out = Workbook(); ws = out.active; ws.title = "41000079736_Fiche10yr"
-for c in mb[1]:
-    d = ws.cell(1, c.column, c.value); copy_style(c, d); d.font = Font(name=c.font.name, sz=c.font.sz, bold=True)
-ws.cell(1, 18, "Comments").font = Font(name=mb["A1"].font.name, sz=11, bold=True)
-ws.row_dimensions[1].height = mb.row_dimensions[1].height
-for col, dim in mb.column_dimensions.items():
-    if dim.width: ws.column_dimensions[col].width = dim.width
-ws.column_dimensions["R"].width = 60
 
-rows = []                                              # (crash id, period, source row)
-for sheet, period in ((mb, "2021-2026"), (ma, "2016-2021")):
-    for r in sheet.iter_rows(min_row=2):
-        if r[10].value is not None: rows.append((str(r[10].value).strip(), period, r))
-seen = set(); uniq = []
-for cid, period, r in rows:
-    if cid not in seen: seen.add(cid); uniq.append((cid, period, r))
-def status(r): return (r[8].value or "").strip().upper()
-def date(r): return r[11].value if isinstance(r[11].value, datetime.datetime) else datetime.datetime.max
-def comment(cid, r):
-    st = status(r); t = r[12].value
-    if st == "ADD": return ADD_NOTE.get(cid, "Added after report review")
-    if st == "DEL": return f"{TYPE.get(t, 'Type ' + str(t))}; not intersection related (deleted after report review)"
-    if cid in reviewed:
-        c = cands.get(cid, {}); where = ""
-        if c.get("Dist_ft"): where = f"; DMV-349 coordinates {c['Dist_ft']} ft from the intersection"
-        elif c.get("MP_offset_ft"): where = f"; milepost {int(float(c['MP_offset_ft'])):+d} ft from the intersection"
-        return f"{TYPE.get(t, c.get('Type_desc', ''))}{where}; report reviewed, not intersection related"
-    return None
-sections = [("IN STUDY", [x for x in uniq if status(x[2]) == "IS"], None),
-            ("IN STUDY - REMILEPOSTED", [x for x in uniq if status(x[2]) == "RE"], None),
-            ("IN STUDY - ADDED", [x for x in uniq if status(x[2]) == "ADD"], None),
-            ("NOT IN STUDY - DELETED", [x for x in uniq if status(x[2]) == "DEL"], None),
-            ("NOT IN STUDY - REVIEWED", [x for x in uniq if status(x[2]) not in ("IS", "RE", "ADD", "DEL") and x[0] in reviewed], "NIS-R"),
-            ("NOT IN STUDY - NOT REVIEWED", [x for x in uniq if status(x[2]) not in ("IS", "RE", "ADD", "DEL") and x[0] not in reviewed], None)]
-n = 1; counts = {}
-for label, items, override in sections:
-    if not items and label == "IN STUDY - REMILEPOSTED": continue
-    n += 1; c = ws.cell(n, 1, label); c.fill = LABEL_FILL; c.font = Font(name=mb["A1"].font.name, sz=11)
-    if label != "NOT IN STUDY - NOT REVIEWED": items = sorted(items, key=lambda x: date(x[2]))   # the unreviewed rows keep the fiche order
-    for cid, period, r in items:
+books = [load_workbook(p) for p in SOURCES]
+rows = {s: [] for s in SECTIONS}; seen = set(); dupes = 0
+for path in SOURCES:
+    for section, r in read_source(path):
+        cid = str(r[10].value).strip()
+        if cid in seen: dupes += 1; continue
+        seen.add(cid); rows[section].append(r)
+
+out = Workbook(); out.loaded_theme = books[1].loaded_theme          # same Office theme (Aptos, accent 1 = 156082) as the examples
+ws = out.active; ws.title = "41000079736_Fiche10yr"
+for i, h in enumerate(HEADERS, start=1):
+    c = ws.cell(1, i, h); c.font = Font(name=FONT, sz=11, bold=True, color=Color(theme=0)); c.fill = copy.copy(HEADER_FILL)
+    c.alignment = Alignment(wrap_text=True); c.border = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
+ws.row_dimensions[1].height = 28.8
+ws.column_dimensions["K"].width = 10.0; ws.column_dimensions["L"].width = 10.33203125; ws.column_dimensions["R"].width = 46.33203125
+
+n = 1; counts = {}; kept_text = []
+for section in SECTIONS:
+    items = rows[section]
+    if not items and section == "IN STUDY - REMILEPOSTED":
+        continue
+    n += 1; c = ws.cell(n, 1, section); c.fill = copy.copy(LABEL_FILL); c.font = Font(name=FONT, sz=11)
+    ws.merge_cells(start_row=n, start_column=1, end_row=n, end_column=len(HEADERS))
+    for r in items:
         n += 1
-        for cc in r[:17]:
-            d = ws.cell(n, cc.column, cc.value); copy_style(cc, d)
-        if override: ws.cell(n, 9, override)
-        ws.cell(n, 18, comment(cid, r))
-    counts[label] = len(items)
-print("sections:", counts, "| total", sum(counts.values()))
+        for src in r[:17]:
+            d = ws.cell(n, src.column, src.value); d.font = Font(name=FONT, sz=11); d.number_format = src.number_format
+            if src.fill is not None and src.fill.fill_type == "solid": d.fill = copy.copy(src.fill)
+        if section == "NOT IN STUDY - REVIEWED": ws.cell(n, 9, "NIS-R")
+        com = r[17].value if len(r) > 17 else None                  # the reviewer's comment column
+        if isinstance(com, str) and ANIMAL.match(com.replace(" ", "")):
+            com = f'=IF(M{n}=17,"animal","")'
+        elif com not in (None, ""):
+            kept_text.append((str(r[10].value), com))
+        if com not in (None, ""):
+            d = ws.cell(n, 18, com); d.font = Font(name=FONT, sz=11)
+    counts[section] = len(items)
+print("sections:", counts, "| total", sum(counts.values()), "| duplicate IDs skipped:", dupes)
+print("reviewer comments kept:", kept_text)
 
-# ID sheet (union) and Index sheet
-ia, ib = wa["ID"], wb["ID"]; ids = out.create_sheet("ID")
+# ID sheet (union of both) and Index sheet
+ids = out.create_sheet("ID"); ib, ia = books[1]["ID"], books[0]["ID"]
 for c in ib[1]: ids.cell(1, c.column, c.value)
 colA, colB, crash = [], [], {}
-for sh in (ib, ia):
+for sh in (ia, ib):
     for r in sh.iter_rows(min_row=2, values_only=True):
         if r[0] is not None and r[0] not in colA: colA.append(r[0])
         if r[1] is not None and r[1] not in colB: colB.append(r[1])
@@ -97,6 +110,6 @@ for i, (k, vals) in enumerate(crash.items(), start=2):
 for col, dim in ib.column_dimensions.items():
     if dim.width: ids.column_dimensions[col].width = dim.width
 idx = out.create_sheet("Index")
-for r in wb["Index"].iter_rows():
+for r in books[1]["Index"].iter_rows():
     for c in r: idx.cell(c.row, c.column, c.value)
 out.save(OUT); print("wrote", OUT)

@@ -189,11 +189,12 @@ review/    review_ids.txt            the list above, plain text
            fiche_screened.csv        all 1,783 fiche crashes with distance, MP offset, initial-study flag
            41000079736_FicheReview.xlsx   workbook: Summary, Review List, Initial Study (23), Fiche (all)
            collision_diagram_spec.md / _placement.txt / _listing.csv   collision diagram symbology, layout QA, listing
-41000079736_Fiche10yr.xlsx   both TEAAS fiche workbooks (9/2016-8/2021 and 9/2021-8/2026) combined: 3,423 crashes
-           in the package FicheReport layout, grey section labels per the past examples: IN STUDY (27),
-           IN STUDY - ADDED (2), NOT IN STUDY - DELETED (7), NOT IN STUDY - REVIEWED (13, IS? = NIS-R,
-           the review-list crashes whose DMV-349s were read), NOT IN STUDY - NOT REVIEWED (3,374);
-           Comments column explains every ADD, DEL and NIS-R row; ID and Index sheets merged (make_fiche10yr.py)
+41000079736_Fiche10yr.xlsx   both reviewed TEAAS fiche workbooks (9/2016-8/2021 and 9/2021-8/2026) combined, 3,423 crashes,
+           in the package FicheReport layout (blue header, grey merged section labels): IN STUDY (27), IN STUDY - ADDED (2),
+           NOT IN STUDY - DELETED (7), NOT IN STUDY - REVIEWED (130: the NIS rows the reviewer placed above their
+           "REPORT NOT REVIEWED" label, IS? = NIS-R), NOT IN STUDY - NOT REVIEWED (3,257). The Comments column carries
+           the reviewer's own comments unchanged (text, and the =IF(T=17,"animal","") flag re-pointed to its row);
+           rows keep the reviewer's order; ID and Index sheets merged (make_fiche10yr.py)
 41000079736_CalculatedAADT.xls/.xlsx   package AADT template filled for this study (make_calculated_aadt.py)
 fiche_review.py   reproducible screen (python3, openpyxl optional for the workbook)
 make_vhb_maps.py  package-format Location Map and Area Map

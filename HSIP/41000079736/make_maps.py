@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Location map, area map and collision diagram for TEAAS study 41000079736.
+"""Location map, area map and AADT map for TEAAS study 41000079736.
 
 Outputs in ./maps/:
   1_location_map.png   county-scale street map with the study intersection marked
-  2_area_map.png       aerial area map with the 150 ft Y-line and the NCDOT AADT stations
-  3_collision_diagram.png   schematic collision diagram of the 22 analyzed crashes
-  4_crash_location_map.png  aerial close-up with the geocoded analyzed crashes plotted
-  41000079736_maps.pdf      all figures as one PDF
-Basemap tiles: OpenStreetMap (location) and Esri World Imagery (area). Tiles are cached in ./maps/.tiles/.
+  2_area_map.png       aerial area map with the 150 ft Y-line and the NCDOT AADT stations (2021 middle-year AADT)
+  6_aadt_map.png       street map with the four NCDOT AADT stations, their 2021 AADT and the entering-AADT calculation
+  41000079736_maps.pdf      the three maps as one PDF
+  aadt_calculation.txt      the entering-AADT calculation written out (from aadt.json)
+The earlier schematic collision diagram (3_) and crash location map (4_) are no longer produced; the NCDOT-style
+collision diagram is collision_diagram.py. Basemap tiles: OpenStreetMap, Esri World Imagery and Esri World Street
+Map, cached in ./maps/.tiles/.
 """
 import csv, io, json, math, os, urllib.request
 from pathlib import Path
@@ -24,7 +26,8 @@ HERE = Path(__file__).resolve().parent
 OUT = HERE / "maps"; CACHE = OUT / ".tiles"
 STUDY = "41000079736"
 TITLE = "NC 180/NC 226 (S Post Rd) at SR 1103 (Pleasant Dr / Pleasant Hill Church Rd)"
-SUB = "Cleveland County, Division 12  |  TEAAS Study 41000079736  |  9/1/2021 - 8/31/2026 (5 yr), Y-line 150 ft"
+SUB = "Cleveland County, Division 12  |  TEAAS Study 41000079736  |  9/1/2016 - 8/31/2026 (10 yr), Y-line 150 ft"
+LEG_KEYS = ["N", "S", "NW", "SE"]   # order of aadt.json "legs"
 LAT, LON = 35.246324, -81.509409
 BEAR_MAIN = 22.0     # NC 180/NC 226 axis, degrees clockwise from north (toward the north leg)
 BEAR_SIDE = 333.0    # SR 1103 axis, toward the Pleasant Dr (northwest) leg
@@ -50,10 +53,10 @@ def tile(url, z, x, y):
     return Image.open(key).convert("RGB")
 
 
-def basemap(url, z, half_w_m, half_h_m):
-    """Stitched image centred on the study point. Returns image, and a lat/lon -> image px function."""
+def basemap(url, z, half_w_m, half_h_m, lat=LAT, lon=LON):
+    """Stitched image centred on (lat, lon) (default: the study point). Returns image, a lat/lon -> image px function, m/px."""
     mpp = 156543.03392 * math.cos(math.radians(LAT)) / 2 ** z
-    cx, cy = px(LAT, LON, z)
+    cx, cy = px(lat, lon, z)
     x0, x1 = cx - half_w_m / mpp, cx + half_w_m / mpp
     y0, y1 = cy - half_h_m / mpp, cy + half_h_m / mpp
     tx0, tx1, ty0, ty1 = int(x0 // 256), int(x1 // 256), int(y0 // 256), int(y1 // 256)
@@ -121,20 +124,21 @@ def area_map(pdf, aadt):
         lx, ly = along(bearing, 330)
         ax.text(lx, ly, text, rotation=rot, ha="center", va="center", fontsize=8.5, color="w", fontweight="bold",
                 bbox=dict(fc="k", ec="none", alpha=0.5, pad=1.5), zorder=8)
-    # AADT stations
-    for leg in aadt["legs"]:
-        yr = max(leg["aadt"]); val = leg["aadt"][yr]
+    # AADT stations, labelled with the middle-year (2021) AADT used in the study
+    mid = aadt["entering_aadt"]["study_10yr_middle_year"]
+    for key, leg in zip(LEG_KEYS, aadt["legs"]):
+        yr = mid["year"]; val = f"{mid['legs'][key]:,}" + (" (estimate)" if key in mid["estimated"] else "")
         sx, sy = to_px(leg["lat"], leg["lon"])
         inside = 0 <= sx < im.width and 0 <= sy < im.height
         if inside:
             ax.plot(sx, sy, "o", ms=9, color="#00b0ff", mec="k", zorder=10)
-            ax.annotate(f"Sta. {leg['station']}\nAADT {yr}: {val:,}", xy=(sx, sy), xytext=(sx + 30, sy + (40 if sy > y else -40)), fontsize=8,
+            ax.annotate(f"Sta. {leg['station']}\nAADT {yr}: {val}", xy=(sx, sy), xytext=(sx + 30, sy + (40 if sy > y else -40)), fontsize=8,
                         bbox=dict(fc="w", ec="#00b0ff", lw=1.2), arrowprops=dict(arrowstyle="-", color="#00b0ff"), zorder=11)
         else:  # station off the map: note it at the edge of the leg
             bearing = math.degrees(math.atan2((leg["lon"] - LON) * math.cos(math.radians(LAT)), leg["lat"] - LAT)) % 360
             ex, ey = along(bearing, 520)
             dist_ft = math.hypot((leg["lat"] - LAT) * 364000, (leg["lon"] - LON) * math.cos(math.radians(LAT)) * 364000)
-            ax.text(ex, ey, f"Sta. {leg['station']} ({dist_ft/5280:.1f} mi off map)\nAADT {yr}: {val:,}", fontsize=8, ha="center",
+            ax.text(ex, ey, f"Sta. {leg['station']} ({dist_ft/5280:.1f} mi off map)\nAADT {yr}: {val}", fontsize=8, ha="center",
                     bbox=dict(fc="w", ec="#00b0ff", lw=1.2), zorder=11)
     scalebar(ax, mpp, 40, im.height - 40, 0.1, "0.1 mi"); north(ax, im.width - 50, 70)
     fig.suptitle("Area Map", fontsize=15, fontweight="bold", y=0.985)
@@ -330,30 +334,69 @@ def crash_location_map(pdf, crashes):
     fig.savefig(OUT / "4_crash_location_map.png", dpi=150); pdf.savefig(fig); plt.close(fig)
 
 
-# ----------------------------------------------------------------------------- AADT
+# ----------------------------------------------------------------------------- 6. AADT map
+def aadt_map(pdf, aadt):
+    """Street map with the four NCDOT AADT stations, their middle-year (2021) AADT and the entering-AADT calculation."""
+    mid = aadt["entering_aadt"]["study_10yr_middle_year"]; yr = mid["year"]
+    im, to_px, mpp = basemap(ESRI_STREET, 16, 1800, 1277, lat=LAT - 0.0032)   # centred between the N and S stations, 1.41:1
+    fig = plt.figure(figsize=(11, 8.5)); ax = fig.add_axes([0.01, 0.015, 0.98, 0.895])
+    ax.imshow(im); ax.set_axis_off()
+    x, y = to_px(LAT, LON); marker(ax, x, y, 16)
+    ax.annotate("Study intersection", xy=(x, y), xytext=(x + 150, y - 60), fontsize=9, fontweight="bold",
+                bbox=dict(fc="w", ec="#d00000", lw=1.2), arrowprops=dict(arrowstyle="->", color="#d00000", lw=1.2), zorder=11)
+    offsets = {"N": (170, -30), "S": (-120, 60), "NW": (-350, -130), "SE": (160, 150)}
+    SHORT = {"N": "NC 180/NC 226 (S Post Rd) north leg", "S": "NC 180/NC 226 (S Post Rd) south leg",
+             "NW": "SR 1103 (Pleasant Dr) NW leg", "SE": "SR 1103 (Pleasant Hill Church Rd) SE leg"}
+    for key, leg in zip(LEG_KEYS, aadt["legs"]):
+        sx, sy = to_px(leg["lat"], leg["lon"])
+        val = f"{mid['legs'][key]:,}" + (" (estimate)" if key in mid["estimated"] else "")
+        ax.plot(sx, sy, "o", ms=10, color="#00b0ff", mec="k", zorder=10)
+        dx, dy = offsets[key]
+        ax.annotate(f"Sta. {leg['station']}\n{SHORT[key]}\nAADT {yr}: {val}", xy=(sx, sy), xytext=(sx + dx, sy + dy), fontsize=8.5,
+                    ha="left" if dx > 0 else "right", bbox=dict(fc="w", ec="#00b0ff", lw=1.2), arrowprops=dict(arrowstyle="-", color="#00b0ff", lw=1.2), zorder=11)
+    rows = [f"{'Leg':<42}{'Station':<12}{'AADT ' + str(yr):>10}  Basis"]
+    for key, leg in zip(LEG_KEYS, aadt["legs"]):
+        rows.append(f"{SHORT[key]:<42}{leg['station']:<12}{mid['legs'][key]:>10,}  {'estimate' if key in mid['estimated'] else 'count'}")
+    rows += [f"{'Sum of the four legs':<54}{mid['sum']:>10,}", f"{'Entering AADT = sum / 2':<54}{mid['entering']:>10,} vpd",
+             f"{'10-yr exposure = AADT x 365 x 10 / 1,000,000':<54}{mid['mev_10yr']:>10.2f} MEV", "",
+             f"AADT for the middle year of the study (9/1/2016 - 8/31/2026 -> {yr}).",
+             f"SR 1103 NW leg has no {yr} count: straight-line estimate between the 2018 (1,600)",
+             "and 2022 (1,300) counts, rounded to the nearest 100. See 41000079736_AADT.xlsx."]
+    ax.text(0.42, 0.015, "\n".join(rows), transform=ax.transAxes, fontsize=7.4, family="DejaVu Sans Mono", va="bottom", ha="left",
+            bbox=dict(fc="w", ec="k", lw=0.8, alpha=0.95), zorder=12)
+    scalebar(ax, mpp, 40, 60, 0.5, "0.5 mi"); north(ax, im.width - 50, 150)
+    fig.suptitle("AADT Map", fontsize=15, fontweight="bold", y=0.985)
+    fig.text(0.5, 0.937, f"{TITLE}\n{SUB}", ha="center", va="center", fontsize=9.5)
+    fig.text(0.99, 0.004, "Basemap: Esri World Street Map  |  AADT: NCDOT Traffic Survey Group stations", ha="right", fontsize=7, color="#444")
+    fig.savefig(OUT / "6_aadt_map.png", dpi=150); pdf.savefig(fig); plt.close(fig)
+
+
+# ----------------------------------------------------------------------------- AADT calculation text
 def aadt_calc(aadt):
-    lines = ["Intersection entering AADT = (sum of the AADT on every leg) / 2", ""]
-    latest, y2024 = 0, 0
-    for leg in aadt["legs"]:
-        yr = max(leg["aadt"]); latest += leg["aadt"][yr]
-        y2024 += leg["aadt"].get("2024", leg["aadt"][yr])
-        lines.append(f"  {leg['leg']:50} station {leg['station']}  AADT {yr}: {leg['aadt'][yr]:>6,}")
-    lines += ["", f"  Sum of legs (latest year per station) = {latest:,}  ->  entering AADT = {latest/2:,.0f} vpd",
-              f"  Sum of legs (2024 where published)    = {y2024:,}  ->  entering AADT = {y2024/2:,.0f} vpd"]
-    return "\n".join(lines), latest / 2
+    ea = aadt["entering_aadt"]; m10, m5 = ea["study_10yr_middle_year"], ea["study_5yr_middle_year"]
+    lines = ["Intersection entering AADT = (sum of the AADT on every leg) / 2",
+             "AADT per leg = the NCDOT station count for the MIDDLE YEAR of the study period; a leg with no count for that year",
+             "gets a straight-line estimate between its nearest earlier and later counts, rounded as NCDOT publishes (nearest 100",
+             "at 1,000 vpd and over) and is labelled \"(estimate)\" on the collision diagram. Workbook: 41000079736_AADT.xlsx.", ""]
+    for key, leg in zip(LEG_KEYS, aadt["legs"]):
+        hist = "  ".join(f"{y}:{v:,}" for y, v in sorted(leg["aadt"].items()))
+        lines.append(f"  {leg['leg']:50} sta {leg['station']}  {hist}")
+    for name, m, yrs in (("10-yr study 9/1/2016-8/31/2026", m10, 10), ("5-yr check 9/1/2021-8/31/2026", m5, 5)):
+        lines += ["", f"  {name} -> middle year {m['year']}:"]
+        for key, leg in zip(LEG_KEYS, aadt["legs"]):
+            lines.append(f"      {leg['leg']:48} {m['legs'][key]:>7,}  {'estimate' if key in m['estimated'] else 'count'}")
+        mev = m.get("mev_10yr", m.get("mev_5yr"))
+        lines.append(f"      sum {m['sum']:,}  ->  entering AADT {m['entering']:,} vpd  ->  {yrs}-yr exposure {m['entering']:,} x 365 x {yrs} / 1,000,000 = {mev:.2f} MEV")
+    sup = ea["superseded"]
+    lines += ["", f"  Superseded (mean-of-counts method, no longer used): latest {sup['latest']:,}; 5-yr mean {sup['study_5yr_mean']:,}; 10-yr mean {sup['study_10yr_mean']:,} vpd"]
+    return "\n".join(lines), m10["entering"]
 
 
 def main():
     OUT.mkdir(exist_ok=True)
     aadt = json.loads((HERE / "aadt.json").read_text())
-    crashes = []
-    with open(HERE / "data" / f"{STUDY}_CrashAnalysis_22crashes.csv", newline="") as f:
-        for r in csv.DictReader(f):
-            r["units"] = [{"dir": r[f"U{i}_dir"], "mnvr": r[f"U{i}_mnvr"], "speed": r[f"U{i}_speed"], "obj": r.get(f"U{i}_obj", "")}
-                          for i in (1, 2, 3) if r[f"U{i}_dir"]]
-            crashes.append(r)
     with PdfPages(OUT / f"{STUDY}_maps.pdf") as pdf:
-        location_map(pdf); area_map(pdf, aadt); collision_diagram(pdf, crashes); crash_location_map(pdf, crashes)
+        location_map(pdf); area_map(pdf, aadt); aadt_map(pdf, aadt)
     text, ent = aadt_calc(aadt)
     (OUT / "aadt_calculation.txt").write_text(text + "\n")
     print(text)

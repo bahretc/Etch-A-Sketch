@@ -1,33 +1,25 @@
 Intersection entering AADT = (sum of the AADT on every leg) / 2
-Study-period average: mean of each station's AADT over the study years (published counts; linear interpolation for unpublished years shown as a check)
+AADT per leg = the NCDOT station count for the MIDDLE YEAR of the study period; a leg with no count for that year
+gets a straight-line estimate between its nearest earlier and later counts, rounded as NCDOT publishes (nearest 100
+at 1,000 vpd and over) and is labelled "(estimate)" on the collision diagram. Workbook: 41000079736_AADT.xlsx.
 
   NC 180/NC 226 (S Post Rd) north leg                sta 0230000187  2016:12,000  2017:11,000  2018:11,500  2021:11,000  2023:11,500  2024:11,000  2025:10,500
-      mean 2021-2025: published 11,000  interpolated 11,050   |   mean 2016-2025: published 11,214  interpolated 11,225
   NC 180/NC 226 (S Post Rd) south leg                sta 0230000152  2016:12,000  2017:11,000  2018:11,000  2020:10,000  2021:10,500  2023:10,500  2024:10,500  2025:10,000
-      mean 2021-2025: published 10,375  interpolated 10,400   |   mean 2016-2025: published 10,688  interpolated 10,650
   SR 1103 (Pleasant Dr) northwest leg                sta 0230000045  2016:1,600  2018:1,600  2022:1,300  2024:1,500
-      mean 2021-2025: published 1,400  interpolated 1,415   |   mean 2016-2025: published 1,500  interpolated 1,485
   SR 1103 (Pleasant Hill Church Rd) southeast leg    sta 0230000531  2017:1,200  2019:1,100  2020:1,100  2021:1,200  2023:1,200  2025:1,200
-      mean 2021-2025: published 1,200  interpolated 1,200   |   mean 2016-2025: published 1,167  interpolated 1,175
 
-  Latest count per leg (10,500 + 10,000 + 1,500 + 1,200)      = 23,200  ->  entering AADT 11,600 vpd
-  5-yr study  9/2021-8/2026, mean of published counts   = 23,975  ->  entering AADT 11,988 vpd  (interpolated: 12,032)
-  10-yr study 9/2016-8/2026, mean of published counts   = 24,568  ->  entering AADT 12,284 vpd  (interpolated: 12,268)
+  10-yr study 9/1/2016-8/31/2026 -> middle year 2021:
+      NC 180/NC 226 (S Post Rd) north leg               11,000  count
+      NC 180/NC 226 (S Post Rd) south leg               10,500  count
+      SR 1103 (Pleasant Dr) northwest leg                1,400  estimate
+      SR 1103 (Pleasant Hill Church Rd) southeast leg    1,200  count
+      sum 24,100  ->  entering AADT 12,050 vpd  ->  10-yr exposure 12,050 x 365 x 10 / 1,000,000 = 43.98 MEV
 
-  10-yr exposure at 12,300 vpd = 44.90 MEV
+  5-yr check 9/1/2021-8/31/2026 -> middle year 2024:
+      NC 180/NC 226 (S Post Rd) north leg               11,000  count
+      NC 180/NC 226 (S Post Rd) south leg               10,500  count
+      SR 1103 (Pleasant Dr) northwest leg                1,500  count
+      SR 1103 (Pleasant Hill Church Rd) southeast leg    1,200  estimate
+      sum 24,200  ->  entering AADT 12,100 vpd  ->  5-yr exposure 12,100 x 365 x 5 / 1,000,000 = 22.08 MEV
 
-----------------------------------------------------------------------------------------------------
-REVISED METHOD (used on the collision diagram and in the study): AADT for the MIDDLE YEAR of the study period,
-not the mean of the counts. 10-yr study 9/1/2016-8/31/2026 -> midpoint 9/1/2021 -> 2021. A leg with no 2021 count
-gets a straight-line estimate between its nearest earlier and later counts, rounded the way NCDOT publishes
-(nearest 100 at 1,000 vpd and over), and is labelled "(estimate)" on the diagram. Workbook: 41000079736_AADT.xlsx.
-
-  NC 180/NC 226 N leg   sta 0230000187   2021 count            11,000
-  NC 180/NC 226 S leg   sta 0230000152   2021 count            10,500
-  SR 1103 NW leg        sta 0230000045   no 2021 count: 2018 1,600 -> 2022 1,300, 2021 = 1,600 - 300 x 3/4 = 1,375 -> 1,400 (estimate)
-  SR 1103 SE leg        sta 0230000531   2021 count             1,200
-  Sum 24,100 -> entering AADT 12,050 vpd -> 10-yr exposure 12,050 x 365 x 10 / 1,000,000 = 43.98 MEV
-  29 crashes / 43.98 MEV = 0.66 crashes per MEV
-
-  5-yr check (9/1/2021-8/31/2026 -> 2024): 11,000 + 10,500 + 1,500 + 1,200 (estimate; 2023 and 2025 both 1,200) = 24,200
-  -> entering 12,100 vpd -> 22.08 MEV; 22 crashes -> 1.00 per MEV
+  Superseded (mean-of-counts method, no longer used): latest 11,600; 5-yr mean 11,988; 10-yr mean 12,284 vpd

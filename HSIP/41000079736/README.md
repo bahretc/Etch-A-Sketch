@@ -90,11 +90,13 @@ The earlier mean-of-counts figures (11,600 latest; 12,000 5-yr; 12,300 10-yr) ar
 
 ## Maps (`maps/`, built by `make_maps.py`)
 
-1. `1_location_map.png` - county-scale location map (OpenStreetMap)
-2. `2_area_map.png` - aerial area map with the 150 ft Y-line, route labels and the four AADT stations
-3. `3_collision_diagram.png` - schematic collision diagram of the 22 crashes with crash table
-4. `4_crash_location_map.png` - aerial close-up with the 12 geocoded crashes plotted by severity
-5. `41000079736_maps.pdf` - all four as one PDF
+1. `1_location_map.png` - county-scale street map (OpenStreetMap) with the study intersection marked
+2. `2_area_map.png` - aerial area map with the 150 ft Y-line, route labels and the four AADT stations (2021 AADT)
+3. `6_aadt_map.png` - street map with the four NCDOT AADT stations, their 2021 AADT and the entering-AADT calculation
+4. `41000079736_maps.pdf` - the three maps as one PDF
+
+`3_collision_diagram.png` (early schematic) and `4_crash_location_map.png` (5-yr crashes) are earlier drafts kept for
+reference; the collision diagram now in use is below.
 
 ## Intersection collision diagram (`maps/5_collision_diagram_NCDOT.pdf` / `.png`)
 

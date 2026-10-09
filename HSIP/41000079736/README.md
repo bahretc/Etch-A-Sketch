@@ -52,6 +52,21 @@ added; 108204170, 107468199 and 107921860 excluded). Against the NCDOT HSIP inte
 TEAAS lists the location as rural. On this 5-yr data the rural 10-yr warrants I-1r (9+ frontal, 60%, 20% in last 3 yr)
 and I-3r (20+ crashes, SI 9.0, 30% in last 3 yr) are also satisfied; a rural submission would use a 10-yr study.
 
+### 10-year rural study (9/1/2016 - 8/31/2026, 29 crashes)
+
+`data/41000079736_CrashAnalysis10yr.pdf` with the reviewed fiche workbooks `data/41000079736_FicheFirst5.xlsx`
+(2016-2021) and `data/41000079736_Fiche.xlsx` (2021-2026). `warrants.py` checks the rural warrants three ways
+(output in `review/warrant_check_10yr.txt`):
+
+| Scenario | Crashes | Frontal | SI | I-1r | I-2r | I-3r | I-3 | I-4r |
+|---|---|---|---|---|---|---|---|---|
+| A. As submitted | 29 | 22 (76%) | 8.01 | **MET** | no (21% last yr) | no (SI < 9.0) | no (2 K/A) | no (9 night, 31%) |
+| B. All 7 deleted crashes added back | 36 | 23 (64%) | 6.65 | **MET** | no | no | no | no (15 night, 42%) |
+| C. Only deleted fixed-object crashes added back (no rear ends were deleted) | 31 | 22 (71%) | 7.56 | **MET** | no | no | no | no (11 night, 35%) |
+
+All seven deleted crashes are PDO (3 animal, 2 fixed object, 1 sideswipe, 1 left turn), so adding any of them back
+only lowers the severity index and the frontal share; I-1r holds in every case.
+
 ## AADT
 
 Intersection entering AADT = (sum of the AADT on every leg) / 2, NCDOT Traffic Survey Group stations (`aadt.json`):

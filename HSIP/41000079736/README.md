@@ -88,15 +88,25 @@ Sum 24,100 / 2 = **12,050 vpd entering**; 10-yr exposure 12,050 x 365 x 10 / 1,0
 The earlier mean-of-counts figures (11,600 latest; 12,000 5-yr; 12,300 10-yr) are superseded and kept only in
 `maps/aadt_calculation.txt` for the record.
 
-## Maps (`maps/`, built by `make_maps.py`)
+`41000079736_CalculatedAADT.xls` / `.xlsx` (`make_calculated_aadt.py`) is the package "CalculatedAADT" template
+(4-LEG INTERSECTION ADT sheet, copied from the 41000077748 package) filled with the four 2021 leg ADTs: total ADT
+12,050 against the 12,300 "Annual ADT" on the TEAAS 10-yr report is a 2.0 % difference, so the template's rule
+("keep ADT used in the study" unless the difference exceeds 5 %) keeps 12,300 as the study ADT.
 
-1. `1_location_map.png` - county-scale street map (OpenStreetMap) with the study intersection marked
-2. `2_area_map.png` - aerial area map with the 150 ft Y-line, route labels and the four AADT stations (2021 AADT)
-3. `6_aadt_map.png` - street map with the four NCDOT AADT stations, their 2021 AADT and the entering-AADT calculation
-4. `41000079736_maps.pdf` - the three maps as one PDF
+## Maps (`maps/`)
 
-`3_collision_diagram.png` (early schematic) and `4_crash_location_map.png` (5-yr crashes) are earlier drafts kept for
-reference; the collision diagram now in use is below.
+Package-format maps (`make_vhb_maps.py`), laid out like the Location Map / Area Map PDFs in the Training/Checking
+packages (41000077748, 41000077751): letter landscape, NC county inset with Cleveland County in red, north arrow and
+scale box, red ring at the study intersection, footer with WO Number, PH Number, NCDOT Division, Study Area, Lat/Long
+and the data-source line (the VHB logo is not reproduced).
+
+1. `41000079736_LocationMap.pdf` / `.png` - county-scale street map in grey (OpenStreetMap)
+2. `41000079736_AreaMap.pdf` / `.png` - aerial (Esri World Imagery) with the crash-location callout, NC 180/NC 226
+   shields and street names
+
+Working maps (`make_maps.py`): `1_location_map.png`, `2_area_map.png` (150 ft Y-line and the AADT stations),
+`6_aadt_map.png` (stations with the 2021 AADT and the entering-AADT calculation) and `41000079736_maps.pdf`.
+`3_collision_diagram.png` and `4_crash_location_map.png` are earlier drafts kept for reference.
 
 ## Intersection collision diagram (`maps/5_collision_diagram_NCDOT.pdf` / `.png`)
 
@@ -157,7 +167,8 @@ Other checks that came back clean:
 data/      raw inputs as exported from TEAAS (fiche report, detailed fiche + parameters,
            initial study report + ID list, Features Reports for NC 180 and SR 1103,
            final 22-crash analysis PDF and its parsed CSV, 10-yr analysis, collision diagram export,
-           41000079736_CollisionDiagram_VHB.pdf = the MicroStation sheet as exported)
+           41000079736_CollisionDiagram_VHB.pdf = the MicroStation sheet as exported, the author's own layout,
+           both TEAAS fiche workbooks, CalculatedAADT_template_41000077748.xls from the package examples)
 maps/      location map, area map, collision diagram, crash location map, combined PDF,
            5_collision_diagram_NCDOT.pdf/.png (TSU-style sheet + listing), 5b_collision_diagram_listing.png
 aadt.json  NCDOT AADT station values used for the entering-volume calculation
@@ -168,7 +179,11 @@ review/    review_ids.txt            the list above, plain text
            fiche_screened.csv        all 1,783 fiche crashes with distance, MP offset, initial-study flag
            41000079736_FicheReview.xlsx   workbook: Summary, Review List, Initial Study (23), Fiche (all)
            collision_diagram_spec.md / _placement.txt / _listing.csv   collision diagram symbology, layout QA, listing
+41000079736_Fiche10yr.xlsx   both TEAAS fiche workbooks (9/2016-8/2021 and 9/2021-8/2026) combined: 3,423 crashes,
+           in-study rows first (27 IS, 2 ADD, 7 DEL), ID and Index sheets merged (make_fiche10yr.py)
+41000079736_CalculatedAADT.xls/.xlsx   package AADT template filled for this study (make_calculated_aadt.py)
 fiche_review.py   reproducible screen (python3, openpyxl optional for the workbook)
+make_vhb_maps.py  package-format Location Map and Area Map
 make_maps.py      builds the maps (python3, matplotlib, pillow; fetches basemap tiles)
 collision_diagram.py   NCDOT TSU-style collision diagram from the unit-level export
 relabel_collision_diagram.py   enlarges and centres the MicroStation sheet, re-places its labels (pikepdf)

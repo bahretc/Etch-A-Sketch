@@ -36,6 +36,44 @@ Tier 2 - referenced about 0.1 mi (~530 ft) from the intersection, outside the Y-
 
 All IDs: `107960640, 108465156, 107608647, 108314990, 107967581, 108561772, 107563341, 107786994, 106781021, 107363522, 107101290, 107921837, 107110946, 106966564`
 
+## Crash analysis (22 crashes) and HSIP warrant check
+
+`data/41000079736_CrashAnalysis.pdf` is the TEAAS analysis after the fiche review (crashes 106808749 and 107960640
+added; 108204170, 107468199 and 107921860 excluded). Against the NCDOT HSIP intersection warrants (2024 and 2026):
+
+| Warrant | Threshold | This study | Result |
+|---|---|---|---|
+| **I-1u Frontal Impact Urban, 5 yr** | 25% of crashes in last 2 yr; and 12+ frontal impact crashes with 60% (2026) / 55% (2024) frontal share | 10 of 22 (45%) in 9/2024-8/2026; 16 frontal (73%) | **MET** |
+| I-2u Last Year Increase Urban | 25+ crashes, 40% in last year | 22 crashes | not met |
+| I-3u Frequency with Severity Index Urban | 25+ crashes, SI 6.5, 40% in last 2 yr | 22 crashes (SI 9.57) | not met |
+| I-3 Fatal and Severe Injury | 3+ K or A frontal impact crashes | 2 (both A, both frontal) | not met |
+| I-4u Night Location Urban | 12+ night crashes and 45% | 6 (27%) | not met |
+
+TEAAS lists the location as rural. On this 5-yr data the rural 10-yr warrants I-1r (9+ frontal, 60%, 20% in last 3 yr)
+and I-3r (20+ crashes, SI 9.0, 30% in last 3 yr) are also satisfied; a rural submission would use a 10-yr study.
+
+## AADT
+
+Intersection entering AADT = (sum of the AADT on every leg) / 2, NCDOT Traffic Survey Group stations (`aadt.json`):
+
+| Leg | Station | Latest AADT |
+|---|---|---|
+| NC 180/NC 226 (S Post Rd) north leg | 0230000187 | 10,500 (2025) |
+| NC 180/NC 226 (S Post Rd) south leg | 0230000152 | 10,000 (2025) |
+| SR 1103 (Pleasant Dr) northwest leg | 0230000045 | 1,500 (2024) |
+| SR 1103 (Pleasant Hill Church Rd) southeast leg | 0230000531 | 1,200 (2025) |
+
+Sum 23,200 / 2 = **11,600 vpd entering** (12,100 vpd using the 2024 counts for all legs). The TEAAS analysis was run
+with ADT 15,200; at 11,600 the 5-yr exposure is 21.2 MEV and the total crash rate is 104 per 100 MEV (vs 79.3 reported).
+
+## Maps (`maps/`, built by `make_maps.py`)
+
+1. `1_location_map.png` - county-scale location map (OpenStreetMap)
+2. `2_area_map.png` - aerial area map with the 150 ft Y-line, route labels and the four AADT stations
+3. `3_collision_diagram.png` - schematic collision diagram of the 22 crashes with crash table
+4. `4_crash_location_map.png` - aerial close-up with the 12 geocoded crashes plotted by severity
+5. `41000079736_maps.pdf` - all four as one PDF
+
 ## Fiche setup finding
 
 The NC 180 Features Report names the side street at MP 4.601 **PLEASANT HILL, road code 50024407**.
@@ -57,12 +95,16 @@ Other checks that came back clean:
 
 ```
 data/      raw inputs as exported from TEAAS (fiche report, detailed fiche + parameters,
-           initial study report + ID list, Features Reports for NC 180 and SR 1103)
+           initial study report + ID list, Features Reports for NC 180 and SR 1103,
+           final 22-crash analysis PDF and its parsed CSV)
+maps/      location map, area map, collision diagram, crash location map, combined PDF
+aadt.json  NCDOT AADT station values used for the entering-volume calculation
 review/    review_ids.txt            the list above, plain text
            review_candidates.csv     candidates with reasons, tier, coordinates
            fiche_screened.csv        all 1,783 fiche crashes with distance, MP offset, initial-study flag
            41000079736_FicheReview.xlsx   workbook: Summary, Review List, Initial Study (23), Fiche (all)
 fiche_review.py   reproducible screen (python3, openpyxl optional for the workbook)
+make_maps.py      builds the maps (python3, matplotlib, pillow; fetches basemap tiles)
 ```
 
 ## Method

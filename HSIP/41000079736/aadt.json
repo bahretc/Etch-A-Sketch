@@ -1,0 +1,13 @@
+{
+  "source": "NCDOT Traffic Survey Group AADT stations (ArcGIS: NCDOT_2025_AADTandTrafficSegments_gdb layer 1, and NCDOT 2024 AADT Stations published Sept 2025)",
+  "legs": [
+    {"leg": "NC 180/NC 226 (S Post Rd) north leg", "station": "0230000187", "location": "NC 180 south of NC 226 (Earl Rd)", "lat": 35.25194, "lon": -81.50661,
+     "aadt": {"2021": 11000, "2023": 11500, "2024": 11000, "2025": 10500}},
+    {"leg": "NC 180/NC 226 (S Post Rd) south leg", "station": "0230000152", "location": "NC 180 north of NC 226 (Cleveland Ave)", "lat": 35.23435, "lon": -81.51519,
+     "aadt": {"2020": 10000, "2021": 10500, "2023": 10500, "2024": 10500, "2025": 10000}},
+    {"leg": "SR 1103 (Pleasant Dr) northwest leg", "station": "0230000045", "location": "SR 1103 (Pleasant Dr) west of NC 180-226", "lat": 35.24692, "lon": -81.50978,
+     "aadt": {"2016": 1600, "2018": 1600, "2022": 1300, "2024": 1500}},
+    {"leg": "SR 1103 (Pleasant Hill Church Rd) southeast leg", "station": "0230000531", "location": "SR 1103 (Pleasant Hill Church Rd) south of NC 180-226", "lat": 35.24582, "lon": -81.50905,
+     "aadt": {"2020": 1100, "2021": 1200, "2023": 1200, "2025": 1200}}
+  ]
+}

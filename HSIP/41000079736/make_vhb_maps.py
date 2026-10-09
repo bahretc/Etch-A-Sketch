@@ -150,72 +150,81 @@ def area_map():
     fig.savefig(OUT / "41000079736_AreaMap.pdf"); fig.savefig(OUT / "41000079736_AreaMap.png", dpi=150); plt.close(fig)
 
 
-# ---------------------------------------------------------------- AADT Map (station annual AADTs, relevant years boxed in red)
-def aadt_map():
+# ---------------------------------------------------------------- ADT Map (package format: NCDOT AADT Mapping Application view)
+ESRI_TOPO = "https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+CLASS_COLOR = {"Interstates": "#1f6fe0", "US Routes": "#e01010", "NC Hwys": "#b020e0", "Secondary Routes": "#2faa2f"}
+CLASS_TX = {"I": "Interstates", "US": "US Routes", "NC": "NC Hwys", "SR": "Secondary Routes"}
+
+
+def adt_map():
+    """Stations from the NCDOT AADT Mapping Application data (data/ncdot_aadt_stations.json, fetch_ncdot_stations.py), each
+    study station with its popup (LocationID, COUNTY, RTE_CLS, ROUTE, LOCATION, AADT_2002..AADT_2025) and the year used
+    boxed in red, like the 4100007xxxx_ADTMap.pdf examples."""
     import json as _json
-    A = _json.loads((HERE / "aadt.json").read_text()); mid = A["entering_aadt"]["study_10yr_middle_year"]; yr = mid["year"]
-    fig, ax, fw, fh = page((0.22, 1.52, 10.78, 8.02))
-    half_h = 1100.0; half_w = half_h * fw / fh
-    im, to_px, mpp = M.basemap(M.OSM, 16, half_w, half_h, lat=LAT - 0.0032)           # centred between the N and S stations
-    g = ImageOps.grayscale(im); im = Image.blend(g.convert("RGB"), Image.new("RGB", g.size, "white"), 0.30)
+    A = _json.loads((HERE / "aadt.json").read_text()); mid = A["entering_aadt"]["study_10yr_middle_year"]; yr = str(mid["year"])
+    ST = {s["LocationID"]: s for s in _json.loads((HERE / "data" / "ncdot_aadt_stations.json").read_text())["stations"]}
+    STUDY = {"N": "0230000187", "S": "0230000152", "NW": "0230000045", "SE": "0230000531"}
+    fig, ax, fw, fh = page()
+    half_h = 1150.0; half_w = half_h * fw / fh
+    im, to_px, mpp = M.basemap(ESRI_TOPO, 16, half_w, half_h, lat=LAT - 0.0034)
     ax.imshow(im); ax.set_xlim(0, im.width); ax.set_ylim(im.height, 0)
     ppi = im.width / fw
-    fig.text(FRAME[0] / PW, (FRAME[3] + 0.08) / PH_IN, f"Order {WO} PH {PH} AADT Map ({LAT:.6f}, {LON:.6f})", fontsize=12, fontweight="bold", ha="left", va="bottom")
-    x, y = to_px(LAT, LON)
-    ax.add_patch(Circle((x, y), 0.12 * ppi, fill=False, ec="#1f5fd0", lw=2.8, zorder=14))
-    YEL, BLU = "#ffffc0", "#cfe6ff"
-    def callout(px_xy, text_lines, anchor_in, fc, boxed=(), size=7.2, bold_first=False):
-        """lines of text in a box (fc) whose top-left is anchor_in inches from the station point; red box around `boxed` lines;
-        thin blue leader from the box edge to the point"""
-        sx, sy = px_xy; bx, by = sx + anchor_in[0] * ppi, sy + anchor_in[1] * ppi
-        lead = size * 1.55 / 72 * ppi                                               # line pitch in image px
-        arts = []
-        for i, line in enumerate(text_lines):
-            kw = dict(fontsize=size, ha="left", va="top", zorder=16, fontweight=("bold" if bold_first and i == 0 else "normal"))
-            if i in boxed: kw["bbox"] = dict(boxstyle="square,pad=0.15", fc="none", ec="#e00000", lw=1.1)
-            arts.append(ax.text(bx, by + i * lead, line, **kw))
-        fig.canvas.draw(); r = fig.canvas.get_renderer()
-        bb = None
-        for t in arts:
-            e = t.get_window_extent(r).transformed(ax.transData.inverted()); bb = e if bb is None else Bbox.union([bb, e])
-        pad = 0.05 * ppi
-        x0, x1 = min(bb.x0, bb.x1) - pad, max(bb.x0, bb.x1) + pad; y0, y1 = min(bb.y0, bb.y1) - pad, max(bb.y0, bb.y1) + pad   # y grows downward
-        ax.add_patch(Rectangle((x0, y0), x1 - x0, y1 - y0, fc=fc, ec="k", lw=0.7, zorder=15))
-        cands = [(x0, y0), (x1, y0), (x0, y1), (x1, y1), ((x0 + x1) / 2, y0), ((x0 + x1) / 2, y1), (x0, (y0 + y1) / 2), (x1, (y0 + y1) / 2)]
-        c = min(cands, key=lambda q: (q[0] - sx) ** 2 + (q[1] - sy) ** 2)
-        ax.plot([c[0], sx], [c[1], sy], color="#1f5fd0", lw=1.0, zorder=14)
-    # stations: annual AADTs, newest first; the middle-year count boxed, or the two counts an estimate was interpolated from
-    offsets = {"N": (0.9, 0.1), "S": (0.6, -1.7), "NW": (-2.75, -1.45), "SE": (1.5, 0.6)}
-    for key, leg in zip(M.LEG_KEYS, A["legs"]):
-        sx, sy = to_px(leg["lat"], leg["lon"])
-        ax.plot(sx, sy, "o", ms=6, color="#1f5fd0", mec="white", mew=0.8, zorder=13)
-        years = sorted(leg["aadt"], reverse=True)
-        lines = [f"Station {leg['station']}"] + [f"{y_} AADT = {leg['aadt'][y_]:,}" for y_ in years]
-        if key in mid["estimated"]:
-            lo = max(y_ for y_ in years if int(y_) < yr); hi = min(y_ for y_ in years if int(y_) > yr)
-            boxed = {1 + years.index(lo), 1 + years.index(hi)}
-        else:
-            boxed = {1 + years.index(str(yr))}
-        callout((sx, sy), lines, offsets[key], YEL, boxed=boxed, bold_first=True)
-    # study callouts (blue)
-    nw = A["legs"][2]; swx, swy = to_px(nw["lat"], nw["lon"])
-    callout((swx, swy), [f"Interpolated between the 2018 and 2022 AADT", f"{yr} AADT = {mid['legs']['NW']:,} (estimate)"], (-2.75, -0.55), BLU, size=7.5)
-    legs = mid["legs"]
-    callout((x, y), ["Location of Intersection Study", "NC 180/NC 226 (S Post Road) at", "SR 1103 (Pleasant Drive/Pleasant Hill Church Road)", "",
-                     f"{yr} Intersection ADT = ({legs['N']:,} + {legs['S']:,} + {legs['NW']:,} + {legs['SE']:,}) / 2 = {mid['entering']:,}",
-                     "TEAAS study ADT 12,300 is within 5 % of this, so 12,300 is kept"], (1.5, -0.3), BLU, size=7.8, bold_first=True)
-    # road names
+    def page_to_px(xin, yin): return (xin - FRAME[0]) * ppi, (FRAME[3] - yin) * ppi
+    # every station in view, coloured by route class
+    for sid, st in ST.items():
+        sx, sy = to_px(st["lat"], st["lon"])
+        if 0 <= sx <= im.width and 0 <= sy <= im.height:
+            ax.plot(sx, sy, "o", ms=6.5, color=CLASS_COLOR.get(CLASS_TX.get(st["RTE_CLS_TX"], st["RTE_CLS_TX"]), "k"), mec="none", zorder=13)
+    # study intersection
+    x, y = to_px(LAT, LON); ax.add_patch(Circle((x, y), 0.11 * ppi, fill=False, ec="#e00000", lw=3.6, zorder=14))
+    def popup(sid, box_in, boxed_years):
+        """popup pasted from the Mapping Application: white box at box_in=(x, y_top) inches, 1.45 in wide; leader arrow to the station"""
+        st = ST[sid]; sx, sy = to_px(st["lat"], st["lon"])
+        rows = [("LocationID", sid), ("COUNTY", st["COUNTY"]), ("RTE_CLS", CLASS_TX.get(st["RTE_CLS_TX"], st["RTE_CLS_TX"])), ("ROUTE", st["ROUTE"]), ("LOCATION", st["LOCATION"])]
+        rows += [(f"AADT_{y_}", ("" if st["AADT"].get(y_) in (None, "", " ") else f"{int(st['AADT'][y_])}")) for y_ in sorted(st["AADT"])]
+        w, lead, top = 1.45, 0.086, 0.17
+        h = top + lead * len(rows) + 0.06
+        bx = fig.add_axes([box_in[0] / PW, (box_in[1] - h) / PH_IN, w / PW, h / PH_IN], zorder=26)
+        bx.set_xlim(0, w); bx.set_ylim(h, 0); bx.set_xticks([]); bx.set_yticks([]); bx.set_facecolor("white")
+        for sp in bx.spines.values(): sp.set_linewidth(0.7)
+        bx.text(0.05, 0.085, f"NCDOT AADT Stations: {sid}", fontsize=5.6, fontweight="bold", va="center", ha="left")
+        bx.plot([0.03, w - 0.03], [0.15, 0.15], color="#444", lw=0.4)
+        for i, (k, v) in enumerate(rows):
+            yy = top + lead * (i + 0.5)
+            bx.text(0.06, yy, k, fontsize=5.2, color="#8a8a8a", va="center", ha="left")
+            bx.text(0.62, yy, v, fontsize=5.2, color="#222", va="center", ha="left")
+            if k[-4:] in boxed_years:
+                bx.add_patch(Rectangle((0.03, yy - lead * 0.46), w - 0.06, lead * 0.92, fill=False, ec="#e00000", lw=1.6, zorder=5))
+        # leader arrow: from the box edge nearest the station to the station
+        corners = [(box_in[0], box_in[1]), (box_in[0] + w, box_in[1]), (box_in[0], box_in[1] - h), (box_in[0] + w, box_in[1] - h),
+                   (box_in[0] + w / 2, box_in[1]), (box_in[0] + w / 2, box_in[1] - h), (box_in[0], box_in[1] - h / 2), (box_in[0] + w, box_in[1] - h / 2)]
+        cx, cy = min((page_to_px(*c) for c in corners), key=lambda q: (q[0] - sx) ** 2 + (q[1] - sy) ** 2)
+        ax.annotate("", xy=(sx, sy), xytext=(cx, cy), arrowprops=dict(arrowstyle="-|>", color="k", lw=0.8, shrinkA=0, shrinkB=4, mutation_scale=8), zorder=15)
+    popup(STUDY["NW"], (0.36, 7.22), {"2018", "2022"})
+    popup(STUDY["N"], (9.22, 8.12), {yr})
+    popup(STUDY["S"], (4.35, 4.35), {yr})
+    popup(STUDY["SE"], (6.95, 4.35), {yr})
+    # callouts
+    def callout(text, xy_in, target_px, fs=9):
+        tx, ty = page_to_px(*xy_in)
+        ax.annotate(text, xy=target_px, xytext=(tx, ty), fontsize=fs, ha="center", va="center", zorder=16,
+                    bbox=dict(boxstyle="square,pad=0.45", fc="white", ec="k", lw=0.8),
+                    arrowprops=dict(arrowstyle="-|>", color="k", lw=0.8, shrinkA=0, shrinkB=6, mutation_scale=9))
+    callout("Crash Location: NC 180/NC 226 at SR 1103", (7.6, 6.3), (x + 0.1 * ppi, y - 0.06 * ppi))
     def along(bearing, d_m):
         return to_px(LAT + d_m * math.cos(math.radians(bearing)) / 111320, LON + d_m * math.sin(math.radians(bearing)) / (111320 * math.cos(math.radians(LAT))))
-    for bearing, name, d in ((M.BEAR_MAIN, "S POST RD\n(NC 180/NC 226)", 420), (M.BEAR_MAIN + 180, "S POST RD\n(NC 180/NC 226)", 700),
-                             (M.BEAR_SIDE, "PLEASANT DR\n(SR 1103)", 620), (M.BEAR_SIDE + 180, "PLEASANT HILL CHURCH RD\n(SR 1103)", 650)):
-        lx, ly = along(bearing, d)
-        ax.text(lx, ly, name, fontsize=6.5, ha="center", va="center", zorder=12, color="#5a4a00", fontweight="bold",
-                bbox=dict(boxstyle="square,pad=0.25", fc=YEL, ec="none"))
-    frame_border(fig); north_scale(fig, ax, mpp, "feet2")
-    footer(fig, "NCDOT Traffic Survey Group AADT stations, OpenStreetMap contributors, VHB")
-    fig.savefig(OUT / "41000079736_AADTMap.pdf"); fig.savefig(OUT / "41000079736_AADTMap.png", dpi=150); plt.close(fig)
+    callout(f"Estimated {yr} AADT: {mid['legs']['NW']:,} vpd\n(interpolated between the 2018 and 2022 counts)", (4.7, 7.6), along(M.BEAR_SIDE, 160), fs=8)
+    # legend (route classes, as in the Mapping Application)
+    lw_, lh = 1.95, 1.32
+    lg = fig.add_axes([(FRAME[2] - lw_ - 0.02) / PW, (FRAME[1] + 0.02) / PH_IN, lw_ / PW, lh / PH_IN], zorder=25)
+    lg.set_xlim(0, lw_); lg.set_ylim(lh, 0); lg.set_xticks([]); lg.set_yticks([]); lg.set_facecolor("white")
+    for sp in lg.spines.values(): sp.set_linewidth(0.7)
+    for i, (name, col) in enumerate(list(CLASS_COLOR.items()) + [("Non-System Routes", "k")]):
+        lg.plot(0.22, 0.2 + i * 0.235, "o", ms=6.5, color=col, mec="none"); lg.text(0.42, 0.2 + i * 0.235, name, fontsize=9, va="center", ha="left")
+    frame_border(fig); inset(fig); north_scale(fig, ax, mpp, "feet2")
+    footer(fig, "NCDOT AADT Mapping Application (station data), Esri World Topographic Map")
+    fig.savefig(OUT / "41000079736_ADTMap.pdf"); fig.savefig(OUT / "41000079736_ADTMap.png", dpi=150); plt.close(fig)
 
 
 if __name__ == "__main__":
-    location_map(); area_map(); aadt_map(); print("wrote", OUT / "41000079736_LocationMap.pdf", OUT / "41000079736_AreaMap.pdf", "font", FONT)
+    location_map(); area_map(); adt_map(); print("wrote", OUT / "41000079736_LocationMap.pdf", OUT / "41000079736_AreaMap.pdf", "font", FONT)

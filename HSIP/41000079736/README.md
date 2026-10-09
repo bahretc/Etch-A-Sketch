@@ -103,11 +103,13 @@ and the data-source line (the VHB logo is not reproduced).
 1. `41000079736_LocationMap.pdf` / `.png` - county-scale street map in grey (OpenStreetMap)
 2. `41000079736_AreaMap.pdf` / `.png` - aerial (Esri World Imagery) with the crash-location callout, NC 180/NC 226
    shields and street names
-3. `41000079736_AADTMap.pdf` / `.png` - AADT map in the format of the "Order ... PH ... AADT Map" examples on the Drive:
-   each NCDOT station with its annual AADTs in a yellow callout, the middle-year (2021) count boxed in red (the SR 1103
-   NW station has the 2018 and 2022 counts boxed, with a note that 2021 is interpolated), a blue "Location of
-   Intersection Study" callout with the entering-ADT arithmetic and the TEAAS study ADT check, title line with the
-   coordinates
+3. `41000079736_ADTMap.pdf` / `.png` - ADT map in the format of the package `_ADTMap.pdf` files: the NCDOT AADT Mapping
+   Application view (Esri topographic basemap, every station in view as a dot coloured by route class with the
+   application's legend), a popup for each of the four study stations listing LocationID, COUNTY, RTE_CLS, ROUTE,
+   LOCATION and AADT_2002 to AADT_2025 with the year used (2021) boxed in red (the SR 1103 Pleasant Dr station has the
+   2018 and 2022 counts boxed and an "Estimated 2021 AADT: 1,400 vpd" callout), the "Crash Location" callout and red
+   ring. Station records come from the NCDOT Traffic Survey Group station services (`fetch_ncdot_stations.py`,
+   cached in `data/ncdot_aadt_stations.json`).
 
 The footer of every package map shows "Lat, Long" with the coordinates on one line (one-step copy).
 

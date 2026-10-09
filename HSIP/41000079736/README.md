@@ -63,8 +63,17 @@ Intersection entering AADT = (sum of the AADT on every leg) / 2, NCDOT Traffic S
 | SR 1103 (Pleasant Dr) northwest leg | 0230000045 | 1,500 (2024) |
 | SR 1103 (Pleasant Hill Church Rd) southeast leg | 0230000531 | 1,200 (2025) |
 
-Sum 23,200 / 2 = **11,600 vpd entering** (12,100 vpd using the 2024 counts for all legs). The TEAAS analysis was run
-with ADT 15,200; at 11,600 the 5-yr exposure is 21.2 MEV and the total crash rate is 104 per 100 MEV (vs 79.3 reported).
+Sum 23,200 / 2 = **11,600 vpd entering** on the latest counts. For a study-period average (mean of each station's
+published counts over the study years, then sum / 2; full histories and the calculation are in `aadt.json` and
+`maps/aadt_calculation.txt`):
+
+| Study period | Entering AADT | Exposure |
+|---|---|---|
+| Latest count per leg | 11,600 vpd | |
+| 5-yr study, 9/2021-8/2026 mean (2021-2025 counts) | 12,000 vpd | 21.9 MEV |
+| **10-yr study, 9/2016-8/2026 mean (2016-2025 counts)** | **12,300 vpd** | **44.9 MEV** |
+
+The TEAAS analysis was run with ADT 15,200, which no nearby station supports.
 
 ## Maps (`maps/`, built by `make_maps.py`)
 

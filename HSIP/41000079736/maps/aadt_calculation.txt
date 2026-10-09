@@ -1,9 +1,17 @@
 Intersection entering AADT = (sum of the AADT on every leg) / 2
+Study-period average: mean of each station's AADT over the study years (published counts; linear interpolation for unpublished years shown as a check)
 
-  NC 180/NC 226 (S Post Rd) north leg                station 0230000187  AADT 2025: 10,500
-  NC 180/NC 226 (S Post Rd) south leg                station 0230000152  AADT 2025: 10,000
-  SR 1103 (Pleasant Dr) northwest leg                station 0230000045  AADT 2024:  1,500
-  SR 1103 (Pleasant Hill Church Rd) southeast leg    station 0230000531  AADT 2025:  1,200
+  NC 180/NC 226 (S Post Rd) north leg                sta 0230000187  2016:12,000  2017:11,000  2018:11,500  2021:11,000  2023:11,500  2024:11,000  2025:10,500
+      mean 2021-2025: published 11,000  interpolated 11,050   |   mean 2016-2025: published 11,214  interpolated 11,225
+  NC 180/NC 226 (S Post Rd) south leg                sta 0230000152  2016:12,000  2017:11,000  2018:11,000  2020:10,000  2021:10,500  2023:10,500  2024:10,500  2025:10,000
+      mean 2021-2025: published 10,375  interpolated 10,400   |   mean 2016-2025: published 10,688  interpolated 10,650
+  SR 1103 (Pleasant Dr) northwest leg                sta 0230000045  2016:1,600  2018:1,600  2022:1,300  2024:1,500
+      mean 2021-2025: published 1,400  interpolated 1,415   |   mean 2016-2025: published 1,500  interpolated 1,485
+  SR 1103 (Pleasant Hill Church Rd) southeast leg    sta 0230000531  2017:1,200  2019:1,100  2020:1,100  2021:1,200  2023:1,200  2025:1,200
+      mean 2021-2025: published 1,200  interpolated 1,200   |   mean 2016-2025: published 1,167  interpolated 1,175
 
-  Sum of legs (latest year per station) = 23,200  ->  entering AADT = 11,600 vpd
-  Sum of legs (2024 where published)    = 24,200  ->  entering AADT = 12,100 vpd
+  Latest count per leg (10,500 + 10,000 + 1,500 + 1,200)      = 23,200  ->  entering AADT 11,600 vpd
+  5-yr study  9/2021-8/2026, mean of published counts   = 23,975  ->  entering AADT 11,988 vpd  (interpolated: 12,032)
+  10-yr study 9/2016-8/2026, mean of published counts   = 24,568  ->  entering AADT 12,284 vpd  (interpolated: 12,268)
+
+  10-yr exposure at 12,300 vpd = 44.90 MEV

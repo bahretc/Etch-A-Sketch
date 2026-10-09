@@ -81,7 +81,11 @@ Stop bars (both SR 1103 approaches, NCDOT style heavy black bar): perpendicular 
 
 STOP signs: red (#ff0000) regular octagon, 0.32 in across flats, 0.5 pt black outline, white bold "STOP" 5 pt (sign faces are the one place below 7 pt, matching the examples), centred 0.45 in outside the approach lane's right edge line and 0.35 in upstream of the stop bar, i.e. on the driver's right before the bar. Legend row "STOP SIGN" uses the same octagon at 0.16 in.
 
-Leg labels (rotated to read along the leg; 9 pt; NCDOT format):
+Leg labels (rotated to read along the leg; 9 pt; NCDOT format). **Superseded 10/9/2026:** the AADT shown is now the
+middle-year (2021) value per leg - 11,000 / 10,500 / 1,400 (estimate) / 1,200 - from `41000079736_AADT.xlsx`, and the
+labels are horizontal, in the VHB sheet format (see README). The rows below record the first draft only.
+
+Original draft:
 
 | Leg | Lines | Anchor (in), rotation | Side |
 |---|---|---|---|

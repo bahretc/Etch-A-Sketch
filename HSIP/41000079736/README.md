@@ -70,26 +70,23 @@ only lowers the severity index and the frontal share; I-1r holds in every case.
 
 ## AADT
 
-Intersection entering AADT = (sum of the AADT on every leg) / 2, NCDOT Traffic Survey Group stations (`aadt.json`):
+Intersection entering AADT = (sum of the AADT on every leg) / 2, using each NCDOT Traffic Survey Group station's count
+for the **middle year of the study period** (10-yr study 9/1/2016-8/31/2026 -> 2021). A leg with no count for that
+year gets a straight-line estimate between its nearest earlier and later counts, rounded as NCDOT publishes, and is
+labelled "(estimate)" on the collision diagram. Station histories are in `aadt.json`; the calculation, with live
+formulas, is `41000079736_AADT.xlsx` (sheet "10-yr study"; "5-yr study" is a check; "Stations" holds the counts).
 
-| Leg | Station | Latest AADT |
-|---|---|---|
-| NC 180/NC 226 (S Post Rd) north leg | 0230000187 | 10,500 (2025) |
-| NC 180/NC 226 (S Post Rd) south leg | 0230000152 | 10,000 (2025) |
-| SR 1103 (Pleasant Dr) northwest leg | 0230000045 | 1,500 (2024) |
-| SR 1103 (Pleasant Hill Church Rd) southeast leg | 0230000531 | 1,200 (2025) |
+| Leg | Station | 2021 AADT | Basis |
+|---|---|---|---|
+| NC 180/NC 226 (S Post Rd) north | 0230000187 | 11,000 | count |
+| NC 180/NC 226 (S Post Rd) south | 0230000152 | 10,500 | count |
+| SR 1103 (Pleasant Dr) northwest | 0230000045 | 1,400 | estimate (2018: 1,600, 2022: 1,300 -> 1,375 -> 1,400) |
+| SR 1103 (Pleasant Hill Church Rd) southeast | 0230000531 | 1,200 | count |
 
-Sum 23,200 / 2 = **11,600 vpd entering** on the latest counts. For a study-period average (mean of each station's
-published counts over the study years, then sum / 2; full histories and the calculation are in `aadt.json` and
-`maps/aadt_calculation.txt`):
-
-| Study period | Entering AADT | Exposure |
-|---|---|---|
-| Latest count per leg | 11,600 vpd | |
-| 5-yr study, 9/2021-8/2026 mean (2021-2025 counts) | 12,000 vpd | 21.9 MEV |
-| **10-yr study, 9/2016-8/2026 mean (2016-2025 counts)** | **12,300 vpd** | **44.9 MEV** |
-
-The TEAAS analysis was run with ADT 15,200, which no nearby station supports.
+Sum 24,100 / 2 = **12,050 vpd entering**; 10-yr exposure 12,050 x 365 x 10 / 1,000,000 = **43.98 MEV**;
+29 crashes / 43.98 = 0.66 crashes per MEV. The 5-yr check (middle year 2024) gives 12,100 vpd and 22.08 MEV.
+The earlier mean-of-counts figures (11,600 latest; 12,000 5-yr; 12,300 10-yr) are superseded and kept only in
+`maps/aadt_calculation.txt` for the record.
 
 ## Maps (`maps/`, built by `make_maps.py`)
 
@@ -123,7 +120,17 @@ Safety Unit style used in the Training/Checking example packages and the TSU "Co
   taken from the example packages.
 
 Fill in `PH_NO` and `PREPARED_BY` at the top of the script before issuing. The posted speed on SR 1103 (shown as 45 mph)
-and the station-year AADT values on the leg labels should be confirmed against the field review.
+should be confirmed against the field review.
+
+### MicroStation sheet, enlarged (`maps/41000079736_CollisionDiagram_labeled.pdf`)
+
+`relabel_collision_diagram.py` takes the MicroStation collision diagram as exported with the author's leg labels
+(`data/41000079736_CollisionDiagram_VHB.pdf`: route, street, `AADT (Year)` for the middle study year 2021 - 11,000 /
+10,500 / 1,400 (2021 Estimate) / 1,200 - and posted speed), keeps the border, title text, legend and title block
+exactly where they were, enlarges the drawing (roads, crashes, insets A and B, STOP signs) uniformly by 1.20 and
+centres it between the border lines. The original page is embedded as a form XObject and drawn under clips, so no
+line or crash symbol is redrawn. The four leg labels and the four land-use labels are drawn at their original size,
+each moved to a spot beside the enlarged roads. Requires `pikepdf`.
 
 ## Fiche setup finding
 
@@ -147,10 +154,13 @@ Other checks that came back clean:
 ```
 data/      raw inputs as exported from TEAAS (fiche report, detailed fiche + parameters,
            initial study report + ID list, Features Reports for NC 180 and SR 1103,
-           final 22-crash analysis PDF and its parsed CSV)
+           final 22-crash analysis PDF and its parsed CSV, 10-yr analysis, collision diagram export,
+           41000079736_CollisionDiagram_VHB.pdf = the MicroStation sheet as exported)
 maps/      location map, area map, collision diagram, crash location map, combined PDF,
            5_collision_diagram_NCDOT.pdf/.png (TSU-style sheet + listing), 5b_collision_diagram_listing.png
 aadt.json  NCDOT AADT station values used for the entering-volume calculation
+41000079736_AADT.xlsx   AADT workbook: station counts, middle-year AADT per leg (count or estimate), entering AADT, MEV, crash rate
+make_aadt_workbook.py   builds the workbook (openpyxl); recalculate after editing inputs
 review/    review_ids.txt            the list above, plain text
            review_candidates.csv     candidates with reasons, tier, coordinates
            fiche_screened.csv        all 1,783 fiche crashes with distance, MP offset, initial-study flag
@@ -159,6 +169,7 @@ review/    review_ids.txt            the list above, plain text
 fiche_review.py   reproducible screen (python3, openpyxl optional for the workbook)
 make_maps.py      builds the maps (python3, matplotlib, pillow; fetches basemap tiles)
 collision_diagram.py   NCDOT TSU-style collision diagram from the unit-level export
+relabel_collision_diagram.py   enlarges and centres the MicroStation sheet, re-places its labels (pikepdf)
 ```
 
 ## Method

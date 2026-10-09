@@ -64,8 +64,42 @@
     }
   ],
   "entering_aadt": {
-    "latest": 11600,
-    "study_5yr_mean": 11988,
-    "study_10yr_mean": 12284
+    "method_used": "middle year of the study period: each station's published count for that year, or a straight-line estimate between the nearest earlier and later counts (rounded to the nearest 100 at 1,000 vpd and over); entering AADT = sum of the four legs / 2. Calculation in 41000079736_AADT.xlsx.",
+    "study_10yr_middle_year": {
+      "year": 2021,
+      "legs": {
+        "N": 11000,
+        "S": 10500,
+        "NW": 1400,
+        "SE": 1200
+      },
+      "estimated": [
+        "NW"
+      ],
+      "sum": 24100,
+      "entering": 12050,
+      "mev_10yr": 43.98
+    },
+    "study_5yr_middle_year": {
+      "year": 2024,
+      "legs": {
+        "N": 11000,
+        "S": 10500,
+        "NW": 1500,
+        "SE": 1200
+      },
+      "estimated": [
+        "SE"
+      ],
+      "sum": 24200,
+      "entering": 12100,
+      "mev_5yr": 22.08
+    },
+    "superseded": {
+      "latest": 11600,
+      "study_5yr_mean": 11988,
+      "study_10yr_mean": 12284,
+      "note": "earlier mean-of-counts values, no longer used"
+    }
   }
 }

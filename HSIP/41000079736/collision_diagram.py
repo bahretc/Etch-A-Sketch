@@ -41,10 +41,11 @@ DATE = "10/09/2026"
 BEAR_MAIN = 22.0                   # NC 180/NC 226 axis, bearing toward the north leg
 BEAR_SIDE = 333.0                  # SR 1103 axis, bearing toward the Pleasant Dr (northwest) leg
 LEGS = {  # leg name -> (bearing from the intersection, label lines)
-    "N":  (BEAR_MAIN,        ["NC 180/NC 226", "(South Post Road)", "AADT (Year)", "10,500 (2025)", "45 mph"]),
-    "S":  (BEAR_MAIN + 180,  ["NC 180/NC 226", "(South Post Road)", "AADT (Year)", "10,000 (2025)", "45 mph"]),
-    "NW": (BEAR_SIDE,        ["SR 1103", "(Pleasant Drive)", "AADT (Year)", "1,500 (2024)", "45 mph"]),
-    "SE": (BEAR_SIDE + 180,  ["SR 1103", "(Pleasant Hill Church Road)", "AADT (Year)", "1,200 (2025)", "45 mph"]),
+    # AADT for the middle year of the 10-yr study (2021); SR 1103 NW leg has no 2021 count -> straight-line estimate
+    "N":  (BEAR_MAIN,        ["NC 180/NC 226", "(South Post Road)", "AADT (Year)", "11,000 (2021)", "45 mph"]),
+    "S":  (BEAR_MAIN + 180,  ["NC 180/NC 226", "(South Post Road)", "AADT (Year)", "10,500 (2021)", "45 mph"]),
+    "NW": (BEAR_SIDE,        ["SR 1103", "(Pleasant Drive)", "AADT (Year)", "1,400 (2021)", "(estimate)", "45 mph"]),
+    "SE": (BEAR_SIDE + 180,  ["SR 1103", "(Pleasant Hill Church Road)", "AADT (Year)", "1,200 (2021)", "45 mph"]),
 }
 W_MAIN, W_SIDE, RADIUS = 24.0, 22.0, 40.0   # pavement widths and corner radii, feet (traced from aerial)
 

@@ -1,0 +1,260 @@
+[
+ {
+  "crash_id": 108481478,
+  "flag": "ADD",
+  "triggers": [
+   "Between",
+   "Combo"
+  ],
+  "priority": 1,
+  "reason": "report: Beach Dr (NC 179 BUS), written as 100 ft from Crocker Dr toward Old Georgetown Rd with the S box checked (Brunswick County Sheriff report; no lat/long; no business or driveway named). The toward road and the diagram put both vehicles on Beach Dr between Crocker Dr and the NC 179 / Old Georgetown Rd intersection, about 375 ft from NC 179 (MP 0.071); taken literally the S box gives 575 ft (MP 0.109). Inside the section either way; inside the section; report MP 0.071; MP 999.999 because the on road is coded BEACH; the description locates it inside the section.; confidence medium-high",
+  "implied_mp": 0.071,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": null
+ },
+ {
+  "crash_id": 108109880,
+  "flag": "ADD",
+  "triggers": [
+   "DMV"
+  ],
+  "priority": 1,
+  "reason": "report: Written as NC 179, 123 ft E of SR 1163 toward SR 1186, in Calabash (the SR numbers are wrong for this spot); lat/long 33.898680, -78.55214, which is on NC 179 BUS about 150 ft southeast of the intersection. Westbound (toward NC 179) unit 1 turned right into a PVA on the north side and dropped into the ditch - at 123 to 150 ft from the intersection on the northeast side that PVA is the Calabash NAPA Auto Care Center driveway, i.e. the begin limit itself; at the begin limit; report MP 0.025; TEAAS coded it on NC 179 at MP 5.939 from the SR 1163 / SR 1186 names; the report and coordinates put it at the NAPA driveway. PE to decide whether a crash turning into the begin-limit driveway counts; proposed ADD.; confidence medium",
+  "implied_mp": null,
+  "dmv_mp": 0.027969713128354612,
+  "dmv_offset_ft": 29.740628971427913,
+  "latlon": [
+   33.89868,
+   -78.55214
+  ]
+ },
+ {
+  "crash_id": 108175124,
+  "flag": "ADD",
+  "triggers": [
+   "DMV"
+  ],
+  "priority": 1,
+  "reason": "report: Written as NC 179, 0.10 mi E of NC 179 toward NC 904, in Calabash; lat/long 33.898308, -78.55196, which is on NC 179 BUS 290 ft southeast of the intersection (MP 0.055, 5 ft off the centerline), not on the NC 179 leg toward NC 904. The diagram shows a PVA on the north side with eastbound unit 1 turning left into it - the restaurant side of Beach Dr SW. Taken as a left turn into a PVA on NC 179 BUS between the NAPA driveway and the restaurant; inside the section; report MP 0.055; Coded on NC 179 toward NC 904 (MP 999.999) because the trooper wrote NC 179 for both roads; the coordinates put it on NC 179 BUS inside the section.; confidence medium-high",
+  "implied_mp": null,
+  "dmv_mp": 0.05484028877793036,
+  "dmv_offset_ft": 5.337531213148295,
+  "latlon": [
+   33.898308,
+   -78.55196
+  ]
+ },
+ {
+  "crash_id": 108581555,
+  "flag": "ADD",
+  "triggers": [
+   "Between",
+   "DMV"
+  ],
+  "priority": 1,
+  "reason": "report: Written as NC 179, 163 ft E of SR 1164 toward SR 1810, 0.10 mi E of Calabash; lat/long 33.898720, -78.55224 is on NC 179 BUS about 116 ft from the intersection. The diagram shows unit 1 leaving the PVA of Minuteman (the food mart on the southwest side, opposite the NAPA driveway) and turning northwest across eastbound unit 2 on a 3-lane 32-ft road. The Minuteman driveway sits opposite the begin-limit driveway, 116 to 163 ft from the intersection; at the begin limit; report MP 0.025; Coded on NC 179 (MP 999.999) from the road names; the report puts it at the Minuteman driveway at the begin limit. PE to confirm; proposed ADD.; confidence medium",
+  "implied_mp": 0.031,
+  "dmv_mp": 0.02237886028064418,
+  "dmv_offset_ft": 13.712257964515679,
+  "latlon": [
+   33.89872,
+   -78.55224
+  ]
+ },
+ {
+  "crash_id": 107422740,
+  "flag": "ADD",
+  "triggers": [
+   "Between"
+  ],
+  "priority": 1,
+  "reason": "report: NC 179 BUS, 300 ft W of NC 179 toward SR 1810, in Calabash; single vehicle westbound (toward the NC 179 intersection) ran off the road to the right into the ditch and culvert; the diagram shows the NAPA Autocenter PVA just ahead of the rest position. 300 ft from NC 179 is MP 0.057, past the NAPA driveway (132 ft) - inside the section; inside the section; report MP 0.057; TEAAS MP 0.000 (the W direction does not run with the route); the report's 300 ft puts it at MP 0.057.; confidence high",
+  "implied_mp": 0.057,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": null
+ },
+ {
+  "crash_id": 106989320,
+  "flag": "ADD",
+  "triggers": [
+   "Window"
+  ],
+  "priority": 1,
+  "reason": "report: NC 179 BUS, 100 ft S of NC 179 toward SR 1246, in Calabash; southbound unit 1 turning left into the PVA of 1001 Beach Dr SW (east side as drawn, north arrow to the left), struck by northbound unit 2. 1001 Beach Dr SW is the NAPA Auto Parts parcel (OpenStreetMap geocode 33.89915, -78.55171, the lot in the wedge between NC 179 BUS and Old Georgetown Rd) whose driveway is the begin limit; 100 ft is the trooper's round figure; at the begin limit; report MP 0.019; TEAAS MP 0.019 (100 ft), 32 ft before the limit; the driveway is the NAPA lot's (1001 Beach Dr SW). Fourth left-turn-into-NAPA crash with 106921434, 108438531 and 108347203. PE to confirm; proposed ADD.; confidence medium-low",
+  "implied_mp": 0.019,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": null
+ },
+ {
+  "crash_id": 107361667,
+  "flag": "ADD",
+  "triggers": [
+   "Window"
+  ],
+  "priority": 1,
+  "reason": "report: NC 179 BUS, written as 100 ft S of SR 1164 toward SR 1246, 0.20 mi N of Calabash outside the town; southbound unit 1 turning left into the PVA of 1021 Beach Dr (east side), struck by northbound unit 2. 1021 Beach Dr SW geocodes (OpenStreetMap) to the east side of NC 179 BUS about 70 ft past Crocker Dr, MP 0.115, between Crocker Dr and Small Way; the written 100 ft is the same round figure this trooper used on 106989320; inside the section; report MP 0.115; TEAAS MP 0.019 from the 100 ft; the 1021 Beach Dr address geocodes to MP 0.115, inside the section. Location rests on the address.; confidence medium",
+  "implied_mp": 0.019,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": null
+ },
+ {
+  "crash_id": 108438531,
+  "flag": "ADD",
+  "triggers": [
+   "DMV",
+   "Window"
+  ],
+  "priority": 1,
+  "reason": "report: NC 179 BUS, 120 ft E of NC 179 toward SR 1810, in Calabash; lat/long 33.898720, -78.55223 (about 116 ft from the intersection). Eastbound unit 1, stopped for traffic, turned left into the PVA of NAPA Auto Care Center (drawn on the diagram) and was struck by westbound unit 2 - the begin-limit driveway itself; at the begin limit; report MP 0.023; TEAAS MP 0.023 (120 ft) is 11 ft short of the 0.025 limit; the crash is the NAPA driveway left-turn conflict. PE to confirm; proposed ADD.; confidence medium",
+  "implied_mp": 0.023,
+  "dmv_mp": 0.022713853380577537,
+  "dmv_offset_ft": 16.16748565226873,
+  "latlon": [
+   33.89872,
+   -78.55223
+  ]
+ },
+ {
+  "crash_id": 106921434,
+  "flag": "ADD",
+  "triggers": [
+   "Window"
+  ],
+  "priority": 1,
+  "reason": "report: NC 179 BUS, 126 ft E of NC 179 toward SR 1810, in Calabash; eastbound unit 1 turned left into the NAPA parking lot (NAPA PVA drawn on the diagram, south side as drawn with north down) and collided with westbound unit 2. The NAPA driveway is the begin limit; at the begin limit; report MP 0.024; TEAAS MP 0.024, 5 ft short of the 0.025 limit; the crash is the NAPA driveway left turn. Third left-turn crash at this driveway (with 108438531 and 108347203). PE to confirm; proposed ADD.; confidence medium",
+  "implied_mp": 0.024,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": null
+ },
+ {
+  "crash_id": 108569891,
+  "flag": "IS",
+  "triggers": [
+   "In study"
+  ],
+  "priority": 0,
+  "reason": "in initial study; report: NC 179 BUS, 368 ft S of NC 179 toward SR 1810; lat/long 33.898099, -78.55168; left turn from southbound NC 179B into the PVA of Los Nuevos Charros Mexican Restaurant; inside the section; report MP 0.070; confidence high",
+  "implied_mp": 0.07,
+  "dmv_mp": 0.07592848511180998,
+  "dmv_offset_ft": 18.883140755650604,
+  "latlon": [
+   33.898099,
+   -78.55168
+  ]
+ },
+ {
+  "crash_id": 108457510,
+  "flag": "IS",
+  "triggers": [
+   "In study"
+  ],
+  "priority": 0,
+  "reason": "in initial study; report: NC 179 BUS, 437 ft E of NC 179 toward SR 1810; lat/long 33.898100, -78.55169 (the same coordinates as the fatal); eastbound (southeast-bound) unit 1 turning left into a public drive on the north side; inside the section; report MP 0.083; Coordinates identical to the fatal crash's; the PVA is in all likelihood the same restaurant driveway (437 ft vs 368 ft written by different troopers).; confidence high",
+  "implied_mp": 0.083,
+  "dmv_mp": 0.07553751091904307,
+  "dmv_offset_ft": 16.640788384603677,
+  "latlon": [
+   33.8981,
+   -78.55169
+  ]
+ },
+ {
+  "crash_id": 107392672,
+  "flag": "IS",
+  "triggers": [
+   "In study"
+  ],
+  "priority": 0,
+  "reason": "in initial study; report: NC 179 BUS, 0.10 mi S of NC 179 toward SR 1246; no lat/long; southbound unit 1 turning left into the PVA of Central Mamma's Mexican Restaurant (east side) - the same restaurant site as the fatal crash (Los Nuevos Charros), so the true distance is about 370 ft (MP 0.07) rather than the rounded 0.10 mi; inside the section; report MP 0.100; confidence high",
+  "implied_mp": 0.1,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": null
+ },
+ {
+  "crash_id": 108192988,
+  "flag": "IS",
+  "triggers": [
+   "In study",
+   "IS-verify"
+  ],
+  "priority": 0,
+  "reason": "in initial study; report: NC 179 BUS, written as 0.20 mi E of NC 179 toward SR 1810, 0.90 mi outside Calabash; lat/long 33.897720, -78.55146 (projects to MP 0.105); unit 1 northbound on the PVA of Dollar General turning right onto NC 179B - the Dollar General sits on the west side just past Little Ln (about MP 0.10), which matches the coordinates, not the 0.20 mi written; inside the section; report MP 0.105; TEAAS MP 0.200 comes from the officer's 0.20 mi; the Dollar General PVA and the coordinates put it near MP 0.10. In the section either way.; confidence high",
+  "implied_mp": 0.2,
+  "dmv_mp": 0.10452807902849988,
+  "dmv_offset_ft": 8.272395229127381,
+  "latlon": [
+   33.89772,
+   -78.55146
+  ]
+ },
+ {
+  "crash_id": 108196690,
+  "flag": "ADD",
+  "triggers": [
+   "DMV"
+  ],
+  "priority": 1,
+  "reason": "report: NC 179 BUS, written as 0.50 mi S of NC 179 toward SR 1810, 1.00 mi E of Calabash outside the town; lat/long 33.896610, -78.55053, which is on NC 179 BUS 40 ft before Hidden Valley Pl (MP 0.198). The coordinates and the written half mile disagree; the coordinates are the trooper's device reading at the scene and are taken as the location; inside the section; report MP 0.198; TEAAS MP 0.500 follows the written 0.50 mi; the coordinates put the crash inside the section near the end limit.; confidence medium",
+  "implied_mp": 0.5,
+  "dmv_mp": 0.19786310355206624,
+  "dmv_offset_ft": 18.143578235793537,
+  "latlon": [
+   33.89661,
+   -78.55053
+  ]
+ },
+ {
+  "crash_id": 108347203,
+  "flag": "ADD",
+  "triggers": [
+   "Between",
+   "DMV",
+   "Combo"
+  ],
+  "priority": 1,
+  "reason": "report: NC 179 BUS, written as 68 ft E of NC 179 toward SR 1288 (wrong road name), in Calabash; lat/long 33.898700, -78.55222 (about 125 ft from the intersection, the same device position as the other NAPA driveway crashes). Eastbound unit 1 turned left into a PVA on the north side (the NAPA side) and was struck by westbound unit 2. The written 68 ft would put it 64 ft short of the limit; the coordinates and the north-side PVA put it at the NAPA driveway; at the begin limit; report MP 0.024; MP 999.999 from the SR 1288 name; the screening implied MP 0.013 from the 68 ft. Same NAPA-driveway conflict as 108438531; proposed ADD with the limit question flagged for the PE.; confidence medium-low",
+  "implied_mp": 0.013,
+  "dmv_mp": 0.024169307404699317,
+  "dmv_offset_ft": 14.360760404712643,
+  "latlon": [
+   33.8987,
+   -78.55222
+  ]
+ },
+ {
+  "crash_id": 108512267,
+  "flag": "ADD",
+  "triggers": [
+   "DMV",
+   "Combo"
+  ],
+  "priority": 1,
+  "reason": "report: NC 179 BUS, written as 0.20 mi E of SR 1163 toward SR 1810 (SR 1163 is a wrong name), 0.20 mi E of Calabash; lat/long 33.896540, -78.55039 is the Hidden Valley Pl junction (MP 0.206). Unit 1 came north out of Hidden Valley Pl (written as a PVA) turning left onto NC 179 BUS; the diagram is labeled PVA Hidden Valley Pl. The junction is the end limit of the section; at the end limit; report MP 0.205; MP 999.999 because of the SR 1163 / SR 1810 names; the coordinates and narrative put it at Hidden Valley Pl, the end limit. A junction crash at the limit: proposed ADD (TEAAS would include a crash mileposted 0.205).; confidence medium-high",
+  "implied_mp": null,
+  "dmv_mp": 0.2064868516286594,
+  "dmv_offset_ft": 1.162973297045677,
+  "latlon": [
+   33.89654,
+   -78.55039
+  ]
+ },
+ {
+  "crash_id": 107102711,
+  "flag": "ADD",
+  "triggers": [
+   "Between"
+  ],
+  "priority": 1,
+  "reason": "report: Written as SR 1164, 0.20 mi S of NC 179 toward SR 1810, 1.50 mi E of Calabash; unit 2's road is written NC 179 BUS and the diagram is a 24-ft two-lane road with 8-ft shoulders labeled SR1164. SR 1164 (Clariday Rd) runs north from NC 179, so a point 0.2 mi south of NC 179 toward SR 1810 is on NC 179 BUS, about MP 0.20 near Small Way / Hidden Valley Pl, where the road is two lanes; inside the section; report MP 0.200; TEAAS mileposted it on SR 1164 at 0.510 (the NC 179 junction) from the on-road name; the description places it on NC 179 BUS inside the section. Location by description only, no coordinates.; confidence medium",
+  "implied_mp": 0.2,
+  "dmv_mp": null,
+  "dmv_offset_ft": null,
+  "latlon": null
+ }
+]

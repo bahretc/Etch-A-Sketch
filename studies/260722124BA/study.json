@@ -1,0 +1,504 @@
+{
+  "study_id": "260722124BA",
+  "study_type": "section",
+  "title": "Fatal Crash Analysis 260722124BA - NC 179BUS (Beach Dr SW), Calabash, Brunswick County",
+  "county": "BRUNSWICK",
+  "county_code": "10",
+  "division": 3,
+  "region": "Cape Fear Region",
+  "requested_by": "Regional Traffic Safety Engineer, Division 3 (section analysis requested by email 7/27/2026)",
+  "route": {
+    "name": "NC 179BUS",
+    "code": "39000179",
+    "local_name": "Beach Dr SW",
+    "fiche_aliases": [
+      "NC 179BUS",
+      "BEACH"
+    ],
+    "mp_increases": "south and east from NC 179"
+  },
+  "limits": {
+    "begin_mp": 0.025,
+    "end_mp": 0.205,
+    "begin_desc": "Calabash NAPA Auto Care Center driveway",
+    "end_desc": "Hidden Valley Pl SW",
+    "length_mi": 0.18
+  },
+  "period": {
+    "begin": "9/1/2021",
+    "end": "8/31/2026",
+    "years": 5
+  },
+  "adt": 9000,
+  "fatal": {
+    "crash_id": 108569891,
+    "date": "2026-07-22",
+    "time": "17:31",
+    "lat": 33.898099,
+    "lon": -78.55168,
+    "mp": 0.07,
+    "description": "Southbound SUV turning left into the Los Nuevos Charros Mexican Restaurant PVA failed to yield to a northbound motorcycle; the motorcycle driver was killed.",
+    "location_text": "NC 179BUS, 0.07 mi (368 ft) S of NC 179 toward SR 1810, in Calabash"
+  },
+  "intersection": {
+    "name": "NC 179 / SR 1164 (Clariday Rd SW) / Old Georgetown Rd SW",
+    "mp": 0.0,
+    "lat": 33.898961,
+    "lon": -78.552505
+  },
+  "features": [
+    {
+      "name": "NC 179 / SR 1164 (Clariday Rd SW) / Old Georgetown Rd SW",
+      "short": "NC 179",
+      "mp": 0.0,
+      "lat": 33.898961,
+      "lon": -78.552505,
+      "fiche_names": [
+        "NC 179",
+        "SR 1164",
+        "OLD GEORGETOWN",
+        "CLARIDAY"
+      ],
+      "label_side": "N"
+    },
+    {
+      "name": "Calabash NAPA Auto Care Center driveway",
+      "short": "NAPA dwy",
+      "mp": 0.025,
+      "fiche_names": [
+        "NAPA"
+      ],
+      "limit": "begin",
+      "label_side": "E"
+    },
+    {
+      "name": "Los Nuevos Charros PVA (fatal crash)",
+      "short": "Los Nuevos Charros PVA",
+      "mp": 0.07,
+      "lat": 33.898099,
+      "lon": -78.55168,
+      "fiche_names": [
+        "CHARROS"
+      ],
+      "label_side": "E"
+    },
+    {
+      "name": "Little Ln SW",
+      "short": "Little Ln",
+      "mp": 0.08,
+      "inventory_mp": 0.09,
+      "lat": 33.897969,
+      "lon": -78.551644,
+      "fiche_names": [
+        "LITTLE"
+      ],
+      "label_side": "W"
+    },
+    {
+      "name": "Crocker Dr SW",
+      "short": "Crocker Dr",
+      "mp": 0.09,
+      "inventory_mp": 0.099,
+      "lat": 33.897849,
+      "lon": -78.551539,
+      "fiche_names": [
+        "CROCKER"
+      ],
+      "label_side": "E"
+    },
+    {
+      "name": "Small Way SW",
+      "short": "Small Way",
+      "mp": 0.165,
+      "inventory_mp": 0.219,
+      "lat": 33.89703,
+      "lon": -78.550823,
+      "fiche_names": [
+        "SMALL"
+      ],
+      "note": "inventory MP 0.219 places it beyond the end limit; the junction measures 0.165 mi from NC 179",
+      "label_side": "W"
+    },
+    {
+      "name": "Hidden Valley Pl SW",
+      "short": "Hidden Valley Pl",
+      "mp": 0.205,
+      "inventory_mp": 0.249,
+      "lat": 33.896538,
+      "lon": -78.550393,
+      "fiche_names": [
+        "HIDDEN VALLEY"
+      ],
+      "limit": "end",
+      "label_side": "W"
+    }
+  ],
+  "revised_mps": {
+    "LITTLE": 0.08,
+    "CROCKER": 0.09,
+    "SMALL": 0.165,
+    "HIDDEN VALLEY": 0.205
+  },
+  "centerline": [
+    [
+      33.898961,
+      -78.552505
+    ],
+    [
+      33.8988729,
+      -78.5524285
+    ],
+    [
+      33.8987022,
+      -78.5522804
+    ],
+    [
+      33.8983183,
+      -78.5519472
+    ],
+    [
+      33.8980582,
+      -78.5517215
+    ],
+    [
+      33.897969,
+      -78.551644
+    ],
+    [
+      33.8978665,
+      -78.5515558
+    ],
+    [
+      33.897849,
+      -78.551539
+    ],
+    [
+      33.89703,
+      -78.550823
+    ],
+    [
+      33.896538,
+      -78.550393
+    ],
+    [
+      33.8960226,
+      -78.5499286
+    ],
+    [
+      33.8957366,
+      -78.5497208
+    ],
+    [
+      33.8955406,
+      -78.5496001
+    ],
+    [
+      33.8952401,
+      -78.5494445
+    ],
+    [
+      33.8950275,
+      -78.5493667
+    ],
+    [
+      33.8947202,
+      -78.5493023
+    ],
+    [
+      33.8945755,
+      -78.5492769
+    ],
+    [
+      33.8944675,
+      -78.5492688
+    ],
+    [
+      33.8942282,
+      -78.5492567
+    ],
+    [
+      33.893499,
+      -78.5492795
+    ],
+    [
+      33.892579,
+      -78.549318
+    ],
+    [
+      33.892244,
+      -78.549331
+    ],
+    [
+      33.8912937,
+      -78.549369
+    ]
+  ],
+  "centerline_source": "OpenStreetMap ways 1392191895, 1544958570, 389897018 (Beach Dr SW), via Nominatim, 10/8/2026",
+  "screen": {
+    "window_mi": 0.1,
+    "dmv_offset_ft": 250,
+    "dmv_mp_pad": 0.02,
+    "local_muni_codes": [
+      "74",
+      "0",
+      ""
+    ],
+    "section_keywords": [
+      "LITTLE",
+      "CROCKER",
+      "SMALL",
+      "HIDDEN VALLEY",
+      "NAPA",
+      "CHARROS"
+    ],
+    "intersection_names": [
+      "NC 179",
+      "SR 1164",
+      "OLD GEORGETOWN",
+      "CLARIDAY"
+    ],
+    "other_on_roads_to_test": [
+      "NC 179",
+      "SR 1164",
+      "CLARIDAY"
+    ],
+    "weak_route_names": [
+      "SR 1810",
+      "SR 1246",
+      "SHADY FOREST",
+      "SOMERSET"
+    ],
+    "limit_tol_mi": 0.005
+  },
+  "map": {
+    "section_bbox": [
+      -78.5545,
+      33.895,
+      -78.5485,
+      33.9005
+    ],
+    "location_bbox": [
+      -78.59,
+      33.872,
+      -78.515,
+      33.925
+    ]
+  },
+  "inputs": {
+    "fiche": "inputs/260722124BA_Fiche.csv",
+    "detailed_fiche": "inputs/DetailedFiche.csv",
+    "detailed_fiche_parameters": "inputs/DetailedFiche_parameters.csv",
+    "strip": "inputs/InitialStudy.csv",
+    "initial_ids": "inputs/InitialID.txt",
+    "features_pdf": "inputs/FeaturesReport_NC179BUS.pdf",
+    "boundaries": "inputs/boundaries.json",
+    "aadt": "inputs/aadt.json"
+  },
+  "figures": {
+    "slip_no": "260722124BA",
+    "description_lines": [
+      "NC 179 Bus (Beach Dr SW) from the Calabash NAPA",
+      "Auto Care Center Driveway [MP 0.025] to",
+      "Hidden Valley Pl SW [MP 0.205]"
+    ],
+    "crash_callout": [
+      "NC 179 Bus (Beach Dr SW); 0.07 mile",
+      "South of NC 179 toward SR 1810",
+      "(Los Nuevos Charros PVA)"
+    ],
+    "date_label": "October 2026",
+    "prepared_for": "Traffic Safety Unit\nDivision 3",
+    "area_bbox": [
+      -78.6,
+      33.868,
+      -78.51,
+      33.928
+    ],
+    "road_labels": [
+      {
+        "text": "NC 179",
+        "shield": "179",
+        "lat": 33.8984,
+        "lon": -78.5539,
+        "note": "Beach Dr, west leg"
+      },
+      {
+        "text": "NC 179",
+        "shield": "179",
+        "lat": 33.89955,
+        "lon": -78.55165,
+        "note": "Old Georgetown Rd SW, northeast leg"
+      },
+      {
+        "text": "NC 179 BUS",
+        "shield": "179",
+        "bus": true,
+        "lat": 33.89525,
+        "lon": -78.54985,
+        "note": "Beach Dr SW, southeast"
+      },
+      {
+        "text": "Clariday Rd SW (SR 1164)",
+        "lat": 33.89955,
+        "lon": -78.55335,
+        "rot": 58
+      },
+      {
+        "text": "Old Georgetown Rd SW",
+        "lat": 33.8997,
+        "lon": -78.5516,
+        "rot": 33
+      },
+      {
+        "text": "Beach Dr SW",
+        "lat": 33.89585,
+        "lon": -78.54963,
+        "rot": -58
+      }
+    ],
+    "municipality_labels": {
+      "Calabash": {
+        "lat": 33.8925,
+        "lon": -78.5405
+      },
+      "Sunset Beach": {
+        "lat": 33.882,
+        "lon": -78.523
+      },
+      "Carolina Shores": {
+        "lat": 33.9035,
+        "lon": -78.58
+      }
+    },
+    "aadt_bbox": [
+      -78.581,
+      33.8755,
+      -78.531,
+      33.913
+    ],
+    "aadt_labels": {
+      "0100000300": {
+        "dx": 9,
+        "dy": 7,
+        "ha": "left"
+      },
+      "0100000301": {
+        "dx": -9,
+        "dy": -7,
+        "ha": "right"
+      },
+      "0100000042": {
+        "dx": 10,
+        "dy": -6,
+        "ha": "left"
+      },
+      "0100000327": {
+        "dx": 11,
+        "dy": 7,
+        "ha": "left"
+      },
+      "0100000016": {
+        "dx": 10,
+        "dy": -4,
+        "ha": "left"
+      },
+      "0100000326": {
+        "dx": 9,
+        "dy": -6,
+        "ha": "left"
+      },
+      "0100000238": {
+        "dx": -9,
+        "dy": 4,
+        "ha": "right"
+      },
+      "0100000030": {
+        "dx": 9,
+        "dy": 7,
+        "ha": "left"
+      },
+      "0100000239": {
+        "dx": -9,
+        "dy": 0,
+        "ha": "right"
+      },
+      "0100000039": {
+        "dx": -9,
+        "dy": 3,
+        "ha": "right"
+      },
+      "0100000242": {
+        "dx": 9,
+        "dy": 0,
+        "ha": "left"
+      },
+      "0100000019": {
+        "dx": 9,
+        "dy": -5,
+        "ha": "left"
+      }
+    },
+    "area_callout_frac": [
+      0.42,
+      0.8
+    ],
+    "area_legend_loc": "lower left",
+    "aadt_road_labels": [
+      {
+        "text": "NC 179",
+        "shield": "179",
+        "lat": 33.895087,
+        "lon": -78.559842,
+        "note": "Beach Dr, west of SR 1167"
+      },
+      {
+        "text": "NC 179",
+        "shield": "179",
+        "lat": 33.9026,
+        "lon": -78.539621,
+        "note": "Old Georgetown Rd SW, northeast of SR 1164"
+      },
+      {
+        "text": "NC 179 BUS",
+        "shield": "179",
+        "bus": true,
+        "lat": 33.893493,
+        "lon": -78.54928,
+        "note": "Beach Dr SW, south of the section"
+      },
+      {
+        "text": "Clariday Rd SW (SR 1164)",
+        "lat": 33.903,
+        "lon": -78.556,
+        "rot": -54
+      },
+      {
+        "text": "Thomasboro Rd SW (SR 1165)",
+        "lat": 33.900614,
+        "lon": -78.558316,
+        "rot": 56
+      },
+      {
+        "text": "Persimmon Rd SW (SR 1167)",
+        "lat": 33.900421,
+        "lon": -78.571301,
+        "rot": -60
+      },
+      {
+        "text": "Country Club Rd SW (SR 1168)",
+        "lat": 33.895458,
+        "lon": -78.582014,
+        "rot": -58
+      }
+    ],
+    "aadt_years": [
+      2019,
+      2021,
+      2023,
+      2024,
+      2025
+    ],
+    "aadt_note": "TEAAS strip analysis ADT used for the section: 9,000. Station 0100000327 (NC 179 BUS south of NC 179) is at the study crash location; the 2025 NCDOT traffic segment covering the section carries 7,400.",
+    "aadt_legend_loc": "upper left"
+  }
+}

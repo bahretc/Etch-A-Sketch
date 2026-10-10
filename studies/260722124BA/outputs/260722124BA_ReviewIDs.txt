@@ -1,0 +1,92 @@
+Crash IDs to review - study 260722124BA
+NC 179BUS (Beach Dr SW) MP 0.025 (Calabash NAPA Auto Care Center driveway) to MP 0.205 (Hidden Valley Pl SW), BRUNSWICK County, 9/1/2021 to 8/31/2026
+Fiche crashes screened: 635; in initial study: 4; to review: 25
+
+IN INITIAL STUDY - confirm location in the report (4)
+  108569891  2026-07-22  T=23 S=K  MP 0.070  NC 179BUS 0.07 mi S from NC 179 toward SR 1810
+      In initial study - at study MP
+  108457510  2026-04-02  T=23 S=O  MP 0.083  NC 179BUS 0.083 mi E from NC 179 toward SR 1810
+      In initial study - at study MP
+  107392672  2023-07-05  T=23 S=O  MP 0.100  NC 179BUS 0.1 mi S from NC 179 toward SR 1246
+      In initial study - at study MP
+  108192988  2025-08-04  T=26 S=O  MP 0.200  NC 179BUS 0.2 mi E from NC 179 toward SR 1810
+      In initial study - at study MP; DMV349CLEANED coordinates project to MP 0.105 (504 ft from coded MP 0.200); confirm location in report, in the section either way
+
+LIKELY ADD - locates inside the section (6)
+  108196690  2025-08-09  T=17 S=O  MP 0.500  NC 179BUS 0.5 mi S from NC 179 toward SR 1810
+      Likely ADD - locates inside the section; DMV349CLEANED coordinates (33.896610, -78.550530) project onto NC 179BUS at MP 0.198 (18 ft off the centerline), inside the section
+  108481478  2026-04-29  T=21 S=O  MP 999.999  BEACH 0.019 mi S from CROCKER toward OLD GEORGETOWN
+      Likely ADD - locates inside the section; description (BEACH 0.019 mi S from CROCKER toward OLD GEORGETOWN) implies MP 0.071, inside the section; MP 999.999; MP 999.999 crash coded with a section road (CROCKER)
+  107422740  2023-08-11  T=19 S=O  MP 0.000  NC 179BUS 0.057 mi W from NC 179 toward SR 1810
+      Likely ADD - locates inside the section; description (NC 179BUS 0.057 mi W from NC 179 toward SR 1810) implies MP 0.057, inside the section; coded MP 0.000
+  108175124  2025-07-17  T=23 S=O  MP 999.999  NC 179 0.1 mi E from NC 179 toward NC 904
+      Likely ADD - locates inside the section; DMV349CLEANED coordinates (33.898308, -78.551960) project onto NC 179BUS at MP 0.055 (5 ft off the centerline), inside the section - crash is coded on NC 179
+  108175794  2025-07-17  T=21 S=O  MP 999.999  NC 179 0.006 mi W from NC 179 toward SR 1167
+      Likely ADD - locates inside the section; DMV349CLEANED coordinates (33.898450, -78.552270) project onto NC 179BUS at MP 0.037 (51 ft off the centerline), inside the section - crash is coded on NC 179
+  108109880  2025-05-14  T=19 S=C  MP 5.939  NC 179 0.023 mi E from SR 1163 toward SR 1186
+      Likely ADD - locates inside the section; DMV349CLEANED coordinates (33.898680, -78.552140) project onto NC 179BUS at MP 0.028 (30 ft off the centerline), inside the section - crash is coded on NC 179
+
+POSSIBLE ADD - at a limit or by description only (6)
+  108512267  2026-05-27  T=24 S=C  MP 999.999  NC 179BUS 0.2 mi E from SR 1163 toward SR 1810
+      Possible ADD - at a limit or by description only; review the report; DMV349 coordinates (33.896540, -78.550390) project onto NC 179BUS at MP 0.206 (1 ft off the centerline), at the end limit (MP 0.205, Hidden Valley Pl SW); MP 999.999 crash on NC 179BUS coded from SR 1163 toward SR 1810 (study route roads)
+  107102711  2022-10-04  T=28 S=O  MP 0.510  SR 1164 0.2 mi S from NC 179 toward SR 1810
+      Possible ADD - at a limit or by description only; review the report; description (SR 1164 0.2 mi S from NC 179 toward SR 1810) implies MP 0.200, inside the section; coded MP 0.510 - crash is coded on SR 1164; SR 1810 meets both SR 1164 and NC 179BUS, so the description fits either route
+  108581555  2026-07-24  T=24 S=C  MP 999.999  NC 179 0.031 mi E from SR 1164 toward SR 1810
+      Possible ADD - at a limit or by description only; review the report; description (NC 179 0.031 mi E from SR 1164 toward SR 1810) implies MP 0.031, inside the section; MP 999.999 - crash is coded on NC 179; SR 1810 meets both NC 179 and NC 179BUS, so the description fits either route; DMV349 coordinates (33.898720, -78.552240) project onto NC 179BUS at MP 0.022 (14 ft off the centerline), at the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - crash is coded on NC 179
+  108438531  2026-03-20  T=23 S=C  MP 0.023  NC 179BUS 0.023 mi E from NC 179 toward SR 1810
+      Possible ADD - at a limit or by description only; review the report; DMV349CLEANED coordinates (33.898720, -78.552230) project onto NC 179BUS at MP 0.023 (16 ft off the centerline), at the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway); NC 179BUS MP 0.023 is at the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - within 0.1 mi
+  108347203  2025-12-19  T=23 S=O  MP 999.999  NC 179BUS 0.013 mi E from NC 179 toward SR 1288
+      Possible ADD - at a limit or by description only; review the report; description (NC 179BUS 0.013 mi E from NC 179 toward SR 1288) implies MP 0.013, 63 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway); MP 999.999; DMV349CLEANED coordinates (33.898700, -78.552220) project onto NC 179BUS at MP 0.024 (14 ft off the centerline), at the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway); MP 999.999 crash on NC 179BUS coded from NC 179 toward SR 1288 (study route roads)
+  107449205  2023-09-01  T=26 S=O  MP 999.999  NC 179BUS 0 mi from NC 179 toward *LCL LITTLE LN SW
+      Possible ADD - at a limit or by description only; review the report; description (NC 179BUS 0 mi from NC 179 toward *LCL LITTLE LN SW) implies MP 0.000, 132 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway); MP 999.999; MP 999.999 crash coded with a section road (*LCL LITTLE LN SW)
+
+WINDOW - just outside the limits (6)
+  106894323  2022-03-18  T=26 S=C  MP 0.024  NC 179BUS 0.024 mi S from NC 179 toward SR 1246
+      Window - just outside the limits; NC 179BUS MP 0.024 is at the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - within 0.1 mi
+  106921434  2022-04-12  T=23 S=O  MP 0.024  NC 179BUS 0.024 mi E from NC 179 toward SR 1810
+      Window - just outside the limits; NC 179BUS MP 0.024 is at the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - within 0.1 mi
+  106989320  2022-06-15  T=23 S=O  MP 0.019  NC 179BUS 0.019 mi S from NC 179 toward SR 1246
+      Window - just outside the limits; NC 179BUS MP 0.019 is 32 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - within 0.1 mi
+  107361667  2023-06-09  T=23 S=O  MP 0.019  NC 179BUS 0.019 mi S from SR 1164 toward SR 1246
+      Window - just outside the limits; NC 179BUS MP 0.019 is 32 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - within 0.1 mi
+  108595754  2026-08-15  T=26 S=O  MP 999.999  NC 179 0 mi from SR 1164 toward NC 904
+      Window - just outside the limits; DMV349 coordinates (33.898720, -78.552470) project onto NC 179BUS at MP 0.015 (43 ft off the centerline), 55 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - crash is coded on NC 179
+  107407446  2023-07-24  T=24 S=O  MP 0.014  NC 179BUS 0.014 mi S from NC 179 toward SR 1810
+      Window - just outside the limits; NC 179BUS MP 0.014 is 58 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - within 0.1 mi
+
+AT THE INTERSECTION - likely NIS (2)
+  107421425  2023-08-09  T=25 S=O  MP 999.999  NC 179 0.004 mi N from SR 1164 toward SR 1810
+      At the NC 179 intersection - likely NIS; description (NC 179 0.004 mi N from SR 1164 toward SR 1810) implies MP 0.004, 111 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway); MP 999.999 - crash is coded on NC 179; SR 1810 meets both NC 179 and NC 179BUS, so the description fits either route
+  108186124  2025-07-27  T=23 S=B  MP 0.000  NC 179BUS 0 mi from SR 1164 toward SR 1165
+      At the NC 179 intersection - likely NIS; NC 179BUS MP 0.000 is the NC 179 / SR 1164 (Clariday Rd SW) / Old Georgetown Rd SW intersection, 132 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - an intersection crash unless the report puts it past the driveway
+
+CHECK - description and coordinates disagree (1)
+  108280240  2025-10-20  T=23 S=C  MP 999.999  NC 179 1 mi N from SR 1810 toward SR 1164
+      Check - description and coordinates disagree; description (NC 179 1 mi N from SR 1810 toward SR 1164) implies MP 0.134, inside the section; MP 999.999 - crash is coded on NC 179; SR 1810 meets both NC 179 and NC 179BUS, so the description fits either route; DMV349CLEANED coordinates (33.885400, -78.548510) are 4,107 ft from the section
+
+ALL IDS (one per line, in review order)
+108569891
+108457510
+107392672
+108192988
+108196690
+108481478
+107422740
+108175124
+108175794
+108109880
+108512267
+107102711
+108581555
+108438531
+108347203
+107449205
+106894323
+106921434
+106989320
+107361667
+108595754
+107407446
+107421425
+108186124
+108280240

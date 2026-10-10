@@ -360,16 +360,16 @@
     ],
     "municipality_labels": {
       "Calabash": {
-        "lat": 33.8925,
-        "lon": -78.5405
+        "lat": 33.8905,
+        "lon": -78.57
       },
       "Sunset Beach": {
-        "lat": 33.885,
-        "lon": -78.53
+        "lat": 33.878,
+        "lon": -78.512
       },
       "Carolina Shores": {
-        "lat": 33.9035,
-        "lon": -78.58
+        "lat": 33.9085,
+        "lon": -78.579
       }
     },
     "aadt_bbox": [
@@ -379,37 +379,37 @@
       33.908
     ],
     "aadt_labels": {
-      "0100000327": {
-        "dx": 58,
-        "dy": 34
-      },
-      "0100000301": {
-        "dx": -62,
-        "dy": 30
-      },
-      "0100000042": {
-        "dx": 40,
-        "dy": -62
-      },
-      "0100000039": {
-        "dx": -66,
-        "dy": -30
+      "0100000326": {
+        "bx": 0.12,
+        "by": 0.78
       },
       "0100000238": {
-        "dx": 62,
-        "dy": 8
+        "bx": 0.52,
+        "by": 0.82
       },
-      "0100000326": {
-        "dx": -62,
-        "dy": -18
+      "0100000039": {
+        "bx": 0.76,
+        "by": 0.84
+      },
+      "0100000042": {
+        "bx": 0.885,
+        "by": 0.57
+      },
+      "0100000327": {
+        "bx": 0.885,
+        "by": 0.27
+      },
+      "0100000301": {
+        "bx": 0.6,
+        "by": 0.22
       },
       "0100000239": {
-        "dx": 0,
-        "dy": -42
+        "bx": 0.34,
+        "by": 0.2
       },
       "0100000019": {
-        "dx": 55,
-        "dy": 26
+        "bx": 0.12,
+        "by": 0.4
       }
     },
     "area_callout_frac": [
@@ -422,8 +422,8 @@
     ],
     "location_width_ft": 1500,
     "location_callout_frac": [
-      0.27,
-      0.62
+      0.17,
+      0.58
     ],
     "location_shields": [
       {
@@ -473,8 +473,8 @@
       },
       {
         "text": "THOMASBORO RD SW\n(SR 1165)",
-        "lat": 33.9002,
-        "lon": -78.5612
+        "lat": 33.9014,
+        "lon": -78.559
       },
       {
         "text": "PERSIMMON RD SW\n(SR 1167)",
@@ -484,30 +484,21 @@
     ],
     "aadt_callouts": [
       {
-        "text": "Location of Strip Study\nNC 179 BUS (Beach Dr SW) from the Calabash NAPA\nAuto Care Center driveway [MP 0.025] to\nHidden Valley Pl SW [MP 0.205]\n\nTEAAS Strip ADT = 9,000",
+        "text": "Location of Strip Study\nNC 179 BUS (Beach Dr SW) from the Calabash NAPA\nAuto Care Center driveway [MP 0.025] to\nHidden Valley Pl SW [MP 0.205]\n\nTEAAS Strip ADT = 9,000\n(station 0100000327 at the crash:\n2024 AADT 9,800, 2025 AADT 8,700)",
         "box_frac": [
-          0.8,
-          0.86
+          0.33,
+          0.54
         ],
         "lat": 33.898099,
         "lon": -78.55168
-      },
-      {
-        "text": "Station 0100000327 (NC 179 BUS south of NC 179)\nis at the crash location: 2024 AADT = 9,800,\n2025 AADT = 8,700. The 2025 NCDOT traffic\nsegment covering the section carries 7,400.",
-        "box_frac": [
-          0.7,
-          0.22
-        ],
-        "lat": 33.898129,
-        "lon": -78.551765
       }
     ],
     "area_shields": [
       {
         "text": "US 17",
         "shield": "17",
-        "lat": 33.9075,
-        "lon": -78.585
+        "lat": 33.914,
+        "lon": -78.5895
       },
       {
         "text": "NC 179",
@@ -518,8 +509,8 @@
       {
         "text": "NC 179",
         "shield": "179",
-        "lat": 33.8925,
-        "lon": -78.569
+        "lat": 33.8915,
+        "lon": -78.5765
       },
       {
         "text": "NC 179 BUS",
@@ -528,6 +519,23 @@
         "lat": 33.8795,
         "lon": -78.5432
       }
-    ]
+    ],
+    "layout": "vhb",
+    "info_lines": [
+      [
+        "Slip Number",
+        "260722124BA"
+      ],
+      [
+        "NCDOT Division",
+        "3"
+      ]
+    ],
+    "study_area_lines": [
+      "NC 179 BUS (Beach Dr SW) from the Calabash NAPA Auto Care Center driveway to Hidden Valley Pl SW",
+      "in Brunswick County"
+    ],
+    "vhb_callout": "Crash Location: NC 179 BUS (Beach Dr SW)\n0.07 mile south of NC 179 (Old Georgetown Rd SW)",
+    "location_pad_ft": 300
   }
 }

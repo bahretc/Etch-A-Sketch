@@ -30,8 +30,8 @@ studies/<study_id>/
                       to the report review
   outputs/            <id>_Fiche.xlsx (screened) or <id>_Fiche_reviewed.xlsx (with the report decisions),
                       <id>_ReviewIDs.txt, <id>_screening.json, <id>_review_determinations.jsonl, <id>_ReportReview.md,
-                      "<id>_Area Map", "<id>_Location Map", "<id>_Crash Map" and "<id>_AADT Map" (.png and .pdf,
-                      named like the study folders; the AADT map only when inputs/aadt.json exists),
+                      <id>_AreaMap, <id>_LocationMap, <id>_CrashMap and <id>_AADTMap (.png and .pdf, named like
+                      the study folders; the AADT map only when inputs/aadt.json exists),
                       <id>_CrashMap.html (self-contained Leaflet map with embedded imagery)
 ```
 
@@ -69,17 +69,18 @@ their report locations, colored by decision. The crash reports themselves stay o
 
 ## Figures
 
-Figures 1 to 3 follow the 2026 slip-number study figures (landscape letter; title strip with the NCDOT seal,
-the preparing unit, the county on a North Carolina county map, the slip number and section, latitude and
-longitude, milepost and division, figure number and date; boxed north arrow; boxed scale bar; legend).
-Figure 1 (Area Map) is a white line map drawn from the NCDOT road centerlines in `inputs/basemap.json`
-(SR numbers, route shields, municipal boundaries with their census population, the county line and major
-water) with the study limits band and the crash callout. Figure 2 (Location Map) is an aerial close-up of
-the crash with the route shields and the callout. Figure 3 (Crash Map) numbers the reviewed crashes on the
-aerial. The AADT Map follows the Traffic Engineering "AADT Map" layout: NCDOT road lines, the study route
-dashed yellow, each AADT station with its latest counts (the latest framed red) and callouts for the study
-location and the ADT used. Label positions, shield positions, callouts and extents are set per study under
-`figures` in `study.json`; the NCDOT seal and county outlines live in `fca/data`.
+The Area Map, Location Map and Crash Map use the VHB study-figure page: the map over an information block
+(slip or work-order number, NCDOT division, Study Area, latitude and longitude, VHB logo, data source line),
+a North Carolina county inset with the study county in red, and a boxed scale bar with the north icon.
+The Area Map is a gray road map drawn from the NCDOT road centerlines in `inputs/basemap.json` (primary
+routes heavy black, state roads dark, local roads white, major water, town names, route shields) with the
+crash as a heavy red ring. The Location Map is an aerial of the whole study section with the limits band,
+the route shields, the red ring and the crash-location callout. The Crash Map numbers the reviewed crashes.
+The AADT Map is the stand-alone Traffic Engineering "AADT Map" page: NCDOT road lines, the study route
+dashed yellow, every AADT station in view with its full station record (LocationID, county, route class,
+route, location and every AADT year) and a callout for the study location and the ADT used. Positions of
+labels, shields, callouts and station boxes, and the map extents, are set per study under `figures` in
+`study.json`; the NC county outlines, the NCDOT seal and the VHB logo live in `fca/data`.
 
 ## Workbook sheets
 

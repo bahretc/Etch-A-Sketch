@@ -84,13 +84,18 @@ class Figure:
     """A map figure in the report frame: map panel with border, legend, scale bar, north arrow, title strip."""
 
     def __init__(self, cache: TileCache, source: str | None, bbox, z: int, dpi: int = 200,
-                 west_bias: float = 0.5, south_bias: float = 0.5, strip: bool = True, title_gap: float = 0.0):
+                 west_bias: float = 0.5, south_bias: float = 0.5, strip: bool = True, title_gap: float = 0.0, layout: str = "vhb"):
         self.cache, self.source, self.z = cache, source, z
+        self.layout = layout
         self.fig = plt.figure(figsize=(11, 8.5), dpi=dpi)
         self.fig.patch.set_facecolor("white")
-        # frame in figure fractions (measured from the 2026 examples)
-        self.L, self.R, self.T, self.B = 0.022, 0.978, 0.972 - title_gap, 0.028
-        self.strip_h = 0.100 if strip else 0.0
+        if layout == "vhb":
+            # map panel over a white information block (WO / PH / Division, Study Area, Lat / Long, logo)
+            self.L, self.R, self.T, self.B = 0.018, 0.982, 0.985 - title_gap, 0.018
+            self.strip_h = 0.160 if strip else 0.0
+        else:
+            self.L, self.R, self.T, self.B = 0.022, 0.978, 0.972 - title_gap, 0.028
+            self.strip_h = 0.100 if strip else 0.0
         self.ax = self.fig.add_axes([self.L, self.B + self.strip_h, self.R - self.L, self.T - self.B - self.strip_h])
         aspect = ((self.R - self.L) * 11.0) / ((self.T - self.B - self.strip_h) * 8.5)
         bbox = _fit_bbox(bbox, z, aspect, west_bias, south_bias)
@@ -231,6 +236,116 @@ class Figure:
         lg.get_frame().set_linewidth(1.0)
         lg.set_zorder(60)
         return lg
+
+    # ----------------------------------------------------------- VHB layout pieces
+    def crash_ring(self, lat, lon, radius_pt=13, lw=4.2, color="#e8141c"):
+        x, y = self.px(lat, lon)
+        r = self.pts_to_px(radius_pt)
+        self._circle_pt = radius_pt
+        self.ax.add_patch(Circle((x, y), r, fill=False, ec=color, lw=lw, zorder=36))
+        return x, y, r
+
+    def vhb_callout(self, lat, lon, text, box_frac, size=9.5):
+        """White box, black border, black arrow to the ring edge."""
+        x, y = self.px(lat, lon)
+        bx, by = self.frac(*box_frac)
+        t = self.ax.text(bx, by, text, fontsize=size, family=FONT, ha="center", va="center", zorder=46, linespacing=1.3,
+                         bbox=dict(boxstyle="square,pad=0.5", fc="white", ec="black", lw=1.0))
+        self.fig.canvas.draw()
+        e = t.get_window_extent().transformed(self.ax.transData.inverted())
+        ex = min(max(x, e.x0), e.x1); ey = min(max(y, e.y0), e.y1)
+        r = self.pts_to_px(self._circle_pt + 2)
+        d = math.hypot(x - ex, y - ey) or 1.0
+        self.ax.annotate("", xy=(x - (x - ex) / d * r, y - (y - ey) / d * r), xytext=(ex, ey),
+                         arrowprops=dict(arrowstyle="-|>", color="black", lw=1.2, mutation_scale=11), zorder=45)
+
+    def inset_county(self, county, w_frac=0.205, h_frac=0.105):
+        """North Carolina county map in a white box at the top-left of the map panel; the study county in red."""
+        p = os.path.join(DATA_DIR, "nc_counties.json")
+        if not os.path.exists(p):
+            return
+        with open(p) as fh:
+            counties = json.load(fh)["features"]
+        pos = self.ax.get_position()
+        iw, ih = (pos.x1 - pos.x0) * w_frac, (pos.y1 - pos.y0) * h_frac
+        iax = self.fig.add_axes([pos.x0 + 0.004, pos.y1 - ih - 0.004, iw, ih])
+        iax.set_xticks([]); iax.set_yticks([])
+        for sp in iax.spines.values():
+            sp.set_linewidth(0.9)
+        iax.set_facecolor("white")
+        target = county.strip().upper()
+        for ft in counties:
+            is_t = (ft["properties"].get("CountyName") or "").strip().upper() == target
+            for r in _rings(ft["geometry"]):
+                xs = [q[0] * math.cos(math.radians(35.5)) for q in r]; ys = [q[1] for q in r]
+                iax.add_patch(Polygon(list(zip(xs, ys)), closed=True, fc="#e02020" if is_t else "white", ec="#555555", lw=0.35, zorder=3 if is_t else 2))
+        allpts = [q for ft in counties for r in _rings(ft["geometry"]) for q in r]
+        xs = [q[0] * math.cos(math.radians(35.5)) for q in allpts]; ys = [q[1] for q in allpts]
+        padx = (max(xs) - min(xs)) * 0.03; pady = (max(ys) - min(ys)) * 0.06
+        iax.set_xlim(min(xs) - padx, max(xs) + padx); iax.set_ylim(min(ys) - pady, max(ys) + pady)
+        iax.set_aspect("auto")
+        iax.set_zorder(80)
+
+    def scale_bar_vhb(self, total_ft, unit, ticks, labels, fx=0.012, fy=0.012):
+        """Bottom-left white box: round north icon, then an alternating bar with labels above the ticks."""
+        w = total_ft / self.ft_per_px
+        x0b, yb = self.frac(fx, fy)
+        pad = self.pts_to_px(8)
+        icon = self.pts_to_px(26)
+        bh = self.pts_to_px(34)
+        Ww = icon + pad * 3 + w + self.pts_to_px(34)
+        self.ax.add_patch(Rectangle((x0b, yb - bh), Ww, bh, fc="white", ec="black", lw=0.8, zorder=48))
+        cx, cy = x0b + pad + icon / 2, yb - bh / 2
+        rr = icon / 2
+        self.ax.add_patch(Circle((cx, cy), rr, fc="black", ec="black", zorder=49))
+        a = rr * 0.72
+        self.ax.add_patch(Polygon([(cx, cy - a), (cx - a * 0.55, cy + a * 0.55), (cx, cy + a * 0.2), (cx + a * 0.55, cy + a * 0.55)], closed=True, fc="white", ec="white", zorder=50))
+        self.ax.text(cx, cy + a * 0.32, "N", ha="center", va="center", fontsize=5.5, fontweight="bold", family=FONT, color="black", zorder=51)
+        x0 = x0b + pad * 2 + icon
+        y = yb - self.pts_to_px(9)
+        h = self.pts_to_px(5)
+        for i in range(len(ticks) - 1):
+            self.ax.add_patch(Rectangle((x0 + w * ticks[i], y - h), w * (ticks[i + 1] - ticks[i]), h,
+                                        fc="black" if i % 2 == 0 else "white", ec="black", lw=0.7, zorder=49))
+        for t, lab in zip(ticks, labels):
+            self.ax.text(x0 + w * t, y - h - self.pts_to_px(2.5), lab, ha="center", va="bottom", fontsize=7.5, family=FONT, zorder=50)
+        self.ax.text(x0 + w + self.pts_to_px(8), y - h / 2, unit, ha="left", va="center", fontsize=7.5, family=FONT, zorder=50)
+
+    def vhb_block(self, cfg, extra_source=""):
+        """Information block under the map: WO / PH / Division, Study Area, Lat / Long, VHB logo, data source."""
+        f = cfg["figures"]
+        fig = self.fig
+        L, R, B = self.L, self.R, self.B
+        top = B + self.strip_h
+        y1, y2, y3 = top - 0.030, top - 0.068, top - 0.106
+        # left column
+        lines = f.get("info_lines", [["Slip Number", f.get("slip_no", "")], ["NCDOT Division", str(cfg.get("division", ""))]])
+        ys = [y1, y2, y3]
+        for (lab, val), yy in zip(lines, ys):
+            t = fig.text(L + 0.012, yy, lab + " ", fontsize=11.5, fontweight="bold", family=FONT, va="center", ha="left")
+            fig.canvas.draw()
+            e = t.get_window_extent().transformed(fig.transFigure.inverted())
+            fig.text(e.x1, yy, val, fontsize=11.5, family=FONT, va="center", ha="left")
+        # center
+        cx = (L + R) / 2 + 0.03
+        fig.text(cx, y1, "Study Area", fontsize=11.5, fontweight="bold", family=FONT, va="center", ha="center")
+        sa = f.get("study_area_lines", f.get("description_lines", []))
+        for i, ln in enumerate(sa[:2]):
+            fig.text(cx, [y2, y3][i], ln, fontsize=11, family=FONT, va="center", ha="center")
+        # right column
+        fat = cfg["fatal"]
+        rx = R - 0.105
+        for lab, val, yy in (("Lat", f"{fat['lat']}", y1), ("Long", f"{fat['lon']}", y2)):
+            fig.text(rx, yy, lab, fontsize=11.5, fontweight="bold", family=FONT, va="center", ha="right")
+            fig.text(rx + 0.012, yy, val, fontsize=11.5, family=FONT, va="center", ha="left")
+        logo = os.path.join(DATA_DIR, "vhb_logo.png")
+        if os.path.exists(logo):
+            img = plt.imread(logo)
+            lw_in, lh_in = 1.05, 1.05 * img.shape[0] / img.shape[1]
+            lax = fig.add_axes([R - lw_in / 11.0, B, lw_in / 11.0, lh_in / 8.5]); lax.axis("off")
+            lax.imshow(img, interpolation="lanczos")
+        src = "Data Source: NCDOT, NC OneMap" + (", " + extra_source if extra_source else "") + ", VHB"
+        fig.text(L + 0.012, B + 0.006, src, fontsize=7, style="italic", family=FONT, color="#555555", va="bottom", ha="left")
 
     # ----------------------------------------------------------- title strip
     def title_strip(self, cfg, fig_no, fig_title, mp_text, extra_note=""):
@@ -486,6 +601,33 @@ def _county_line(F: Figure, bm):
 
 # ---------------------------------------------------------------------- figures
 
+def _vhb_roads(F: Figure, bm, water=True):
+    """Gray canvas road map: local roads light, state roads dark, primary routes heavy black."""
+    F.ax.set_facecolor("#e4e4e4")
+    F.ax.add_patch(Rectangle((F.xlim[0], F.ylim[0]), F.xlim[1] - F.xlim[0], F.ylim[1] - F.ylim[0], fc="#e4e4e4", ec="none", zorder=0))
+    if water:
+        for ft in bm.get("waterbodies", {}).get("features", []):
+            F.fill_geojson(ft["geometry"], fc="#cdd9e5", ec="#b5c6d6", lw=0.5, zorder=2)
+    style = {"primary": dict(color="#1a1a1a", lw=2.8), "secondary": dict(color="#3f3f3f", lw=1.4),
+             "other_system": dict(color="#8a8a8a", lw=0.9), "non_system": dict(color="#ffffff", lw=0.9)}
+    for ft in bm["roads"]["features"]:
+        st = style.get(ft["properties"].get("layer", "non_system"), style["non_system"])
+        F.lines_from_geojson(ft["geometry"], color=st["color"], lw=st["lw"], zorder=8 if ft["properties"].get("layer") == "non_system" else 9,
+                             solid_capstyle="round")
+
+
+def _city_labels(F: Figure, bm, cfg):
+    labels = cfg["figures"].get("municipality_labels", {})
+    for ft in bm.get("municipalities", {}).get("features", []):
+        name = ft["properties"].get("MunicipalBoundaryName", "")
+        lab = labels.get(name)
+        if lab is None or lab.get("hide"):
+            continue
+        F.ax.text(*F.px(lab["lat"], lab["lon"]), name, fontsize=lab.get("size", 9.5), family=FONT, color="#2b2b2b",
+                  ha=lab.get("ha", "center"), va=lab.get("va", "center"), zorder=41, clip_on=True,
+                  path_effects=[pe.withStroke(linewidth=2.2, foreground="#e4e4e4")])
+
+
 def figure_area_map(study: Study, cache: TileCache, out_png, out_pdf):
     cfg = study.cfg
     bbox = tuple(cfg["figures"]["area_bbox"])
@@ -493,47 +635,41 @@ def figure_area_map(study: Study, cache: TileCache, out_png, out_pdf):
     F = Figure(cache, None if bm else "streets", bbox, 14)
     fat = cfg["fatal"]
     if bm:
-        _municipalities(F, bm, cfg)
-        _draw_vector_basemap(F, bm)
-        _county_line(F, bm)
-        _sr_number_labels(F, bm, cfg)
+        _vhb_roads(F, bm)
+        _city_labels(F, bm, cfg)
         _primary_shields(F, bm, cfg)
-    _limits_band(F, study, lw_pt=9)
-    F.crash_circle(fat["lat"], fat["lon"], radius_pt=11)
-    F.callout(fat["lat"], fat["lon"], cfg["figures"]["crash_callout"], box_frac=tuple(cfg["figures"].get("area_callout_frac", (0.70, 0.56))))
-    F.north_arrow()
-    handles = [
-        (Line2D([0], [0], marker="o", color="w", mfc="none", mec=RED, mew=2.4, ms=14), "Study Crash Location"),
-        (Line2D([0], [0], color=PURPLE, lw=9, solid_capstyle="round"), "Crash Analysis Study Limits"),
-        (Patch(fc="#e9e9e9", ec="#666666", lw=1.0, ls=(0, (4, 1.6, 1, 1.6))), "Municipal Boundary"),
-        (Patch(fc="white", ec="#f7ea00", lw=2.4, ls=(0, (5, 4))), "County Boundary"),
-    ]
-    F.legend(handles, fx=0.985, fy=0.085)
-    F.scale_bar(FT_PER_MILE * 2.0, "Miles", fx=0.985, fy=0.012, divisions=4)
-    F.title_strip(cfg, 1, "Area Map", f"{fat['mp']:.3f}")
+    F.crash_ring(fat["lat"], fat["lon"], radius_pt=14, lw=4.5)
+    F.inset_county(cfg["county"])
+    F.scale_bar_vhb(FT_PER_MILE * 2.0, "Miles", [0, 0.25, 0.5, 1.0], ["0", "0.5", "1", "2"])
+    F.vhb_block(cfg)
     F.save(out_png, out_pdf)
 
 
 def figure_location_map(study: Study, cache: TileCache, out_png, out_pdf, z=19):
+    """Aerial of the whole study section with the crash ring and callout."""
     cfg = study.cfg
     fat = cfg["fatal"]
-    width_ft = cfg["figures"].get("location_width_ft", 1500)
-    bbox = _bbox_from_center(fat["lat"], fat["lon"], width_ft, width_ft * 0.6)
+    from .maps import _section_bbox
+    bbox = _section_bbox(study, pad_ft=cfg["figures"].get("location_pad_ft", 300), mp_pad=0.03)
     F = Figure(cache, "imagery", bbox, z)
+    pl = study.centerline
     if cfg["figures"].get("location_limits", True):
-        _limits_band(F, study, lw_pt=9, alpha=0.9)
+        _limits_band(F, study, lw_pt=10, alpha=0.55)
+        for mp, which in ((study.begin_mp, "Begin"), (study.end_mp, "End")):
+            p = pl.point_at_mi(mp)
+            brg = math.radians(pl.bearing_at(mp * FT_PER_MILE))
+            nx, ny = math.cos(brg), math.sin(brg)
+            x, y = F.px(*p)
+            F.ax.text(x - nx * F.pts_to_px(12), y - ny * F.pts_to_px(12), f"{which} study section\nMP {mp:.3f}", fontsize=8, family=FONT, ha="right", va="center",
+                      color="white", zorder=41, linespacing=1.25, path_effects=[pe.withStroke(linewidth=2.6, foreground="black")])
     for rl in cfg["figures"].get("location_shields", cfg["figures"].get("road_labels", [])):
         if rl.get("shield") and F.inside(rl["lat"], rl["lon"], 0.03):
             _shield_from_cfg(F, rl)
-    F.crash_circle(fat["lat"], fat["lon"], radius_pt=11)
-    F.callout(fat["lat"], fat["lon"], cfg["figures"]["crash_callout"], box_frac=tuple(cfg["figures"].get("location_callout_frac", (0.30, 0.56))))
-    F.north_arrow()
-    handles = [(Line2D([0], [0], marker="o", color="w", mfc="none", mec=RED, mew=2.4, ms=14), "Study Crash Location")]
-    if cfg["figures"].get("location_limits", True):
-        handles.append((Line2D([0], [0], color=PURPLE, lw=9, solid_capstyle="round"), "Crash Analysis Study Limits"))
-    F.legend(handles, fx=0.985, fy=0.085)
-    F.scale_bar(200, "Feet", fx=0.985, fy=0.012, divisions=4)
-    F.title_strip(cfg, 2, "Location Map", f"{fat['mp']:.3f}")
+    F.crash_ring(fat["lat"], fat["lon"], radius_pt=13, lw=4.2)
+    F.vhb_callout(fat["lat"], fat["lon"], cfg["figures"].get("vhb_callout", "Crash Location"), tuple(cfg["figures"].get("location_callout_frac", (0.25, 0.70))))
+    F.inset_county(cfg["county"])
+    F.scale_bar_vhb(500, "Feet", [0, 0.25, 0.5, 1.0], ["0", "", "250", "500"])
+    F.vhb_block(cfg, extra_source="Esri World Imagery")
     F.save(out_png, out_pdf)
 
 
@@ -563,8 +699,8 @@ def figure_crash_map(study: Study, screened: list[Screened], cache: TileCache, o
         side = f.get("label_side", "E")
         dx = F.pts_to_px(5) * (1 if side == "E" else -1)
         F.label(f["lat"], f["lon"], f["short"], dx=dx, ha="left" if side == "E" else "right", size=6.3, color="#dddddd", halo="black")
-    for rl in cfg["figures"].get("road_labels", []):
-        if rl.get("shield") and not rl.get("bus") and F.inside(rl["lat"], rl["lon"], 0.03):
+    for rl in cfg["figures"].get("location_shields", cfg["figures"].get("road_labels", [])):
+        if rl.get("shield") and F.inside(rl["lat"], rl["lon"], 0.03):
             _shield_from_cfg(F, rl)
     pts = crash_points(study, screened, decisions)
     styles = DECISION_STYLE if decisions else dict(PRIORITY_STYLE)
@@ -643,15 +779,15 @@ def figure_crash_map(study: Study, screened: list[Screened], cache: TileCache, o
             else:
                 F.ax.text(cx0 + F.pts_to_px(10), yy, text, fontsize=5.4, family="DejaVu Sans Mono", va="center", zorder=59)
             yy += lh
-    F.north_arrow()
     handles = [(Line2D([0], [0], marker="*", color="w", mfc="#ffd400", mec="black", ms=13), f"Fatal crash (slip {cfg['figures']['slip_no']})"),
                (Line2D([0], [0], color=PURPLE, lw=9, alpha=0.9, solid_capstyle="round"), "Crash Analysis Study Limits")]
     for k in order:
         if any(p["priority"] == k for p in pts):
             handles.append((Line2D([0], [0], marker="o", color="w", mfc=styles[k]["color"], mec="black", ms=10), styles[k]["label"]))
     F.legend(handles, fx=0.985, fy=0.085)
-    F.scale_bar(400, "Feet", fx=0.985, fy=0.012, divisions=4)
-    F.title_strip(cfg, 3, "Crash Map", f"{cfg['fatal']['mp']:.3f}")
+    F.inset_county(cfg["county"])
+    F.scale_bar_vhb(500, "Feet", [0, 0.25, 0.5, 1.0], ["0", "", "250", "500"], fx=0.012, fy=0.60)
+    F.vhb_block(cfg, extra_source="Esri World Imagery")
     F.save(out_png, out_pdf)
 
 
@@ -681,28 +817,34 @@ def _compass_rose(F: Figure, fx=0.985, fy=0.012, size_pt=46):
         F.ax.text(cx + dx * s * 0.40, cy + dy * s * 0.40, lab, ha="center", va="center", fontsize=6.2, family="Liberation Sans", zorder=52)
 
 
-def _aadt_station_box(F: Figure, stn, lab, years=3):
-    """Blue station dot with a yellow box listing the latest counts, the latest in a red frame, and a blue leader."""
+def _aadt_station_box(F: Figure, stn, lab, county=""):
+    """Blue station dot and a full-data box (the AADT viewer fields: LocationID, COUNTY, RTE_CLS, ROUTE, LOCATION, AADT_<year> ...)."""
     x, y = F.px(stn["lat"], stn["lon"])
-    F.ax.plot(x, y, marker="o", ms=5.5, mfc=AADT_BLUE, mec="white", mew=0.8, zorder=44)
-    ys = sorted(stn["aadt"], key=int)[-years:][::-1]
-    lines = [f"{yv} AADT = {stn['aadt'][yv]:,}" for yv in ys]
-    lh = F.pts_to_px(10.5)
-    bx, by = x + F.pts_to_px(lab["dx"]), y + F.pts_to_px(lab["dy"])     # box center
-    n = len(lines)
-    top = by - lh * n / 2
-    texts = []
-    for i, ln in enumerate(lines):
-        t = F.ax.text(bx, top + lh * (i + 0.5), ln, fontsize=6.6, family="Liberation Sans", ha="center", va="center", zorder=47,
-                      color="black", bbox=dict(boxstyle="square,pad=0.25", fc="white", ec="#c00000", lw=1.0) if i == 0 else None)
-        texts.append(t)
-    F.fig.canvas.draw()
-    exts = [t.get_window_extent().transformed(F.ax.transData.inverted()) for t in texts]
-    X0 = min(e.x0 for e in exts) - F.pts_to_px(5); X1 = max(e.x1 for e in exts) + F.pts_to_px(5)
-    Y0 = min(e.y0 for e in exts) - F.pts_to_px(3); Y1 = max(e.y1 for e in exts) + F.pts_to_px(3)
-    F.ax.add_patch(Rectangle((X0, Y0), X1 - X0, Y1 - Y0, fc=AADT_YELLOW, ec="#555555", lw=0.8, zorder=45))
-    ex = min(max(x, X0), X1); ey = min(max(y, Y0), Y1)
-    F.ax.annotate("", xy=(x, y), xytext=(ex, ey), arrowprops=dict(arrowstyle="-|>", color=AADT_BLUE, lw=1.0, mutation_scale=8), zorder=46)
+    F.ax.plot(x, y, marker="o", ms=6, mfc=AADT_BLUE, mec="white", mew=0.8, zorder=44)
+    route = stn.get("route", "")
+    cls = "Secondary Routes" if route.startswith("SR") or route.startswith("4000") else "Primary Routes"
+    loc = (stn.get("location") or "").upper()
+    rows = [("LocationID", stn["id"]), ("COUNTY", county.upper()), ("RTE_CLS", cls), ("ROUTE", route), ("LOCATION", loc if len(loc) <= 34 else loc[:32] + "…")]
+    years = sorted(stn["aadt"], key=int)
+    rows += [(f"AADT_{yv}", f"{stn['aadt'][yv]:,}") for yv in years]
+    lh = F.pts_to_px(6.2)
+    kw = F.pts_to_px(46)
+    bw = F.pts_to_px(lab.get("w", 150))
+    bh = lh * (len(rows) + 0.8)
+    bx, by = F.frac(lab["bx"], lab["by"])          # box center in axes fractions
+    X0, Y0 = bx - bw / 2, by - bh / 2
+    F.ax.add_patch(Rectangle((X0, Y0), bw, bh, fc="#f4f4f4", ec="#444444", lw=0.8, zorder=45, alpha=0.97))
+    for i, (k, v) in enumerate(rows):
+        yy = Y0 + lh * (i + 0.9)
+        F.ax.text(X0 + F.pts_to_px(4), yy, k, fontsize=5.0, family="Liberation Sans", color="#555555", va="center", zorder=47)
+        F.ax.text(X0 + F.pts_to_px(4) + kw, yy, v, fontsize=5.0, family="Liberation Sans", color="#111111", va="center", zorder=47,
+                  fontweight="bold" if k.startswith("AADT_") and yv_latest(years) == k[5:] else "normal")
+    ex = min(max(x, X0), X0 + bw); ey = min(max(y, Y0), Y0 + bh)
+    F.ax.annotate("", xy=(x, y), xytext=(ex, ey), arrowprops=dict(arrowstyle="-|>", color=AADT_BLUE, lw=1.3, mutation_scale=10), zorder=46)
+
+
+def yv_latest(years):
+    return years[-1] if years else ""
 
 
 def _aadt_callout(F: Figure, text, box_frac, anchor=None, size=7.6):
@@ -749,13 +891,13 @@ def figure_aadt_map(study: Study, cache: TileCache, out_png, out_pdf, z: int = 1
         if not F.inside(stn["lat"], stn["lon"], 0.02):
             continue
         shown.append(stn)
-        _aadt_station_box(F, stn, labels.get(stn["id"], {"dx": 40, "dy": -30}))
+        _aadt_station_box(F, stn, labels.get(stn["id"], {"bx": 0.5, "by": 0.5}), county=cfg.get("county", ""))
     for co in cfg["figures"].get("aadt_callouts", []):
         _aadt_callout(F, co["text"], tuple(co["box_frac"]), anchor=(co["lat"], co["lon"]) if "lat" in co else None)
     _compass_rose(F)
     F.scale_bar(cfg["figures"].get("aadt_scale_ft", 2000), "Feet", fx=0.015, fy=0.012, divisions=4, anchor="left")
     title = f"Slip No. {cfg['figures']['slip_no']} AADT Map ({fat['lat']}, {fat['lon']})"
-    F.fig.text(F.L, F.T + 0.012, title, fontsize=12.5, fontweight="bold", family="Liberation Sans", va="bottom")
+    F.fig.text(F.L, F.T + 0.010, title, fontsize=12.5, fontweight="bold", family="Liberation Sans", va="bottom")
     src = "AADT: " + aadt.get("source", "") + ". Roads: NCDOT RoadNC centerlines. TEAAS strip analysis ADT used for the study: " + f"{cfg.get('adt', 0):,}."
     for i, ln in enumerate(textwrap.wrap(src, 200)[:2]):
         F.fig.text(F.L, F.B - 0.010 - 0.010 * i, ln, fontsize=5.4, color="#555555", va="center", family="Liberation Sans")
@@ -766,12 +908,12 @@ def build_figures(study: Study, screened: list[Screened], out_dir: str, tile_cac
     cache = TileCache(tile_cache_dir)
     sid = study.study_id
     paths = []
-    # file names follow the study folders: <slip>_Area Map, <slip>_Location Map, <slip>_Crash Map, <slip>_AADT Map
-    figs = [("Area Map", lambda a, b: figure_area_map(study, cache, a, b)),
-            ("Location Map", lambda a, b: figure_location_map(study, cache, a, b)),
-            ("Crash Map", lambda a, b: figure_crash_map(study, screened, cache, a, b, decisions=decisions))]
+    # file names follow the study folders: <id>_AreaMap, <id>_LocationMap, <id>_CrashMap, <id>_AADTMap
+    figs = [("AreaMap", lambda a, b: figure_area_map(study, cache, a, b)),
+            ("LocationMap", lambda a, b: figure_location_map(study, cache, a, b)),
+            ("CrashMap", lambda a, b: figure_crash_map(study, screened, cache, a, b, decisions=decisions))]
     if "aadt" in study.cfg.get("inputs", {}):
-        figs.append(("AADT Map", lambda a, b: figure_aadt_map(study, cache, a, b)))
+        figs.append(("AADTMap", lambda a, b: figure_aadt_map(study, cache, a, b)))
     for name, fn in figs:
         png = os.path.join(out_dir, f"{sid}_{name}.png"); pdf = os.path.join(out_dir, f"{sid}_{name}.pdf")
         fn(png, pdf); paths += [png, pdf]

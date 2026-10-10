@@ -22,17 +22,17 @@ examples/<study_id>/   (or any folder laid out like it)
   study.json          limits, features (with revised mileposts), centerline, fatal crash, screening thresholds, figure settings
   inputs/             TEAAS exports: <id>_Fiche.csv, DetailedFiche.csv (+ _parameters), InitialStudy.csv
                       (strip or intersection analysis), InitialID.txt (ID export), FeaturesReport_<route>.pdf,
-                      boundaries.json (county / municipal outlines for the area map),
-                      aadt.json (NCDOT AADT stations and 2025 traffic segments for the AADT map; optional)
+                      basemap.json (NCDOT road centerlines, municipal and county boundaries and NC OneMap
+                      hydrography for the area and AADT maps), aadt.json (NCDOT AADT stations and 2025 traffic
+                      segments for the AADT map; optional)
   review/             determinations.jsonl - one line per DMV-349 report read (decision IS/ADD/DEL/NIS, report
                       location and milepost, facts, confidence, verification notes); when present the build writes
                       the reviewed workbook. pe_questions.md (optional) - the calls left to the engineer, appended
                       to the report review
   outputs/            <id>_Fiche.xlsx (screened) or <id>_Fiche_reviewed.xlsx (with the report decisions),
                       <id>_ReviewIDs.txt, <id>_screening.json, <id>_review_determinations.jsonl, <id>_ReportReview.md,
-                      <id>_AreaMap.png/.pdf, <id>_LocationMap.png/.pdf, <id>_CrashMap.png/.pdf,
-                      <id>_AADTMap.png/.pdf (Figures 1 to 4 in the TSU fatal-crash layout; the AADT map
-                      only when inputs/aadt.json exists),
+                      "<id>_Area Map", "<id>_Location Map", "<id>_Crash Map" and "<id>_AADT Map" (.png and .pdf,
+                      named like the study folders; the AADT map only when inputs/aadt.json exists),
                       <id>_CrashMap.html (self-contained Leaflet map with embedded imagery)
 ```
 
@@ -70,13 +70,17 @@ their report locations, colored by decision. The crash reports themselves stay o
 
 ## Figures
 
-Figures 1 to 4 follow the Traffic Safety Unit fatal-crash figure layout (landscape letter, title strip with
-the slip number, county thumbnail, crash coordinates, milepost and division). Figure 1 (Area Map) draws the
-county and municipal boundaries from `inputs/boundaries.json` over the Esri street map; Figure 2 (Location
-Map) and Figure 3 (Crash Map) use Esri imagery with the study limits, side streets and (Figure 3) the
-numbered reviewed crashes; Figure 4 (AADT Map) colors the NCDOT 2025 traffic segments by AADT and numbers
-the AADT stations, with their count history in a table. Label positions, shield positions, the crash callout
-and the map extents are set per study under `figures` in `study.json`.
+Figures 1 to 3 follow the 2026 slip-number study figures (landscape letter; title strip with the NCDOT seal,
+the preparing unit, the county on a North Carolina county map, the slip number and section, latitude and
+longitude, milepost and division, figure number and date; boxed north arrow; boxed scale bar; legend).
+Figure 1 (Area Map) is a white line map drawn from the NCDOT road centerlines in `inputs/basemap.json`
+(SR numbers, route shields, municipal boundaries with their census population, the county line and major
+water) with the study limits band and the crash callout. Figure 2 (Location Map) is an aerial close-up of
+the crash with the route shields and the callout. Figure 3 (Crash Map) numbers the reviewed crashes on the
+aerial. The AADT Map follows the Traffic Engineering "AADT Map" layout: NCDOT road lines, the study route
+dashed yellow, each AADT station with its latest counts (the latest framed red) and callouts for the study
+location and the ADT used. Label positions, shield positions, callouts and extents are set per study under
+`figures` in `study.json`; the NCDOT seal and county outlines live in `fca/data`.
 
 ## Workbook sheets
 

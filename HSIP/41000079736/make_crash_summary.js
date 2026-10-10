@@ -72,7 +72,7 @@ const front = [
          ["Entering AADT", "", "12,100", "(11,000 + 10,500 + 1,400 + 1,200) / 2 = 12,050, rounded to the nearest hundred"]],
         [3000, 1500, 1500, 3360], { boldCol: 0 }),
   caption("Table 1. Middle-year (2021) AADT by leg (NCDOT Traffic Survey Group stations; 41000079736_AADT.xlsx and the ADT map)."),
-  image(path.join(HERE, "maps", "41000079736_AreaMap.png"), 6.5, 5.2),
+  image(path.join(HERE, "maps", "41000079736_LocationMap.png"), 6.5, 5.2),
   caption("Figure 1. The study intersection (Esri World Imagery); Y-line 150 ft."),
 
   h1("2. Crash history and TEAAS statistics"),

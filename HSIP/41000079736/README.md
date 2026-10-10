@@ -105,9 +105,11 @@ packages (41000077748, 41000077751): letter landscape, NC county inset with Clev
 scale box, red ring at the study intersection, footer with WO Number, PH Number, NCDOT Division, Study Area, Lat/Long
 the data-source line and the VHB logo (taken from the package maps, `data/vhb_logo.png`).
 
-1. `41000079736_LocationMap.pdf` / `.png` - county-scale street map in grey (OpenStreetMap)
-2. `41000079736_AreaMap.pdf` / `.png` - aerial (Esri World Imagery) with the crash-location callout, NC 180/NC 226
-   shields and street names
+1. `41000079736_LocationMap.pdf` / `.png` - aerial close-up (Esri World Imagery, about 5,100 ft across) with the
+   "Crash Location" callout, NC 180/NC 226 shields and street names on the road centrelines (NCDOT AADT segment lines)
+2. `41000079736_AreaMap.pdf` / `.png` - county-scale route map drawn from vector data (NCDOT state-maintained roads with
+   Interstate/US/NC shields, municipalities and town names, Esri water bodies, the NC-SC state line), about 21 miles
+   across; no basemap tiles, so no stray labels
 3. `41000079736_ADTMap.pdf` / `.png` - ADT map in the format of the package `_ADTMap.pdf` files: the NCDOT AADT Mapping
    Application view (Esri topographic basemap, every station in view as a dot coloured by route class with the
    application's legend), a popup for each of the four study stations listing LocationID, COUNTY, RTE_CLS, ROUTE,
@@ -118,7 +120,7 @@ the data-source line and the VHB logo (taken from the package maps, `data/vhb_lo
 
 The footer of every package map shows "Lat, Long" with the coordinates on one line (one-step copy).
 
-Working maps (`make_maps.py`): `1_location_map.png`, `2_area_map.png` (150 ft Y-line and the AADT stations),
+Working maps (`make_maps.py`, earlier drafts): `1_location_map.png`, `2_area_map.png` (150 ft Y-line and the AADT stations),
 `6_aadt_map.png` (stations with the 2021 AADT and the entering-AADT calculation) and `41000079736_maps.pdf`.
 `3_collision_diagram.png` and `4_crash_location_map.png` are earlier drafts kept for reference.
 

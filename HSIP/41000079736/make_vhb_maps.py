@@ -3,12 +3,14 @@
 (see the 4100007xxxx_LocationMap.pdf / _AreaMap.pdf / _ADTMap.pdf examples): letter landscape, map frame with a thin
 black border, NC county inset top-left with the study county in red, north arrow + scale box bottom-left, footer with
 WO Number, PH Number, NCDOT Division, Study Area, Lat/Long and a data-source line.
-  Location map: drawn from vector data (no basemap tiles, so no stray basemap labels): light grey land, municipal areas
+  Naming follows the package examples: the Location Map is the aerial close-up with the crash-location callout and the
+  Area Map is the county-scale route map.
+  Location map: Esri World Imagery, about 5,100 ft across; shields and street names sit on the road centrelines taken from
+      the NCDOT 2025 AADT traffic-segment lines.
+  Area map: drawn from vector data (no basemap tiles, so no stray basemap labels): light grey land, municipal areas
       (NCDOT MunicipalData) a shade darker, water bodies (Esri USA Detailed Water Bodies) grey, secondary roads thin grey and
       the Interstate / US / NC routes bold black (both from the NCDOT State Maintained Roads feature service), route shields,
       municipality names and the NC-SC state line (NCDOT 2016 NC-SC State Boundary); about 21 miles across like the examples.
-  Area map: Esri World Imagery, about 5,100 ft across; shields and street names sit on the road centrelines taken from the
-      NCDOT 2025 AADT traffic-segment lines.
   ADT map: NCDOT AADT Mapping Application view (station popups), Esri World Topographic Map.
 Feature-service responses are cached as GeoJSON in maps/.tiles/ next to the basemap tiles.
 Outputs: maps/41000079736_LocationMap.pdf/.png, _AreaMap.pdf/.png, _ADTMap.pdf/.png
@@ -255,11 +257,11 @@ def red_ring(ax, x, y, r):
 # ---------------------------------------------------------------- Location Map
 ROUTE_STYLE = {"1": dict(lw=3.4, color="#1a1a1a", z=7), "2": dict(lw=2.2, color="#222", z=6), "3": dict(lw=1.9, color="#222", z=5)}   # RouteClass: 1 = I, 2 = US, 3 = NC
 QUALIFIER = {"0": "", "1": "ALT", "2": "BYP", "3": "BUS", "9": "BUS"}   # NCDOT RouteQualifier -> shield banner (9 = Business, as on US 74 through Shelby / Kings Mountain)
-TOWN_SKIP = set()
+TOWN_NUDGE = {"Patterson Springs": -0.12, "Shelby": 0.14}   # name offsets (page inches, + = up): off the study ring / off the US 74 BUS line
 DEBUG = False
 
 
-def location_map():
+def area_map():
     fig, ax, fw, fh = page()
     half_w = 17000.0; half_h = half_w * fh / fw
     W, H, to_px, mpp = mercator_frame(half_w, half_h)
@@ -329,12 +331,10 @@ def location_map():
             w = x0 * y1 - x1 * y0; A += w; Cx += (x0 + x1) * w; Cy += (y0 + y1) * w
         clon, clat = (Cx / (3 * A), Cy / (3 * A)) if A else (sum(c[0] for c in ring) / len(ring), sum(c[1] for c in ring) / len(ring))
         name, pop = f["properties"]["Municipali"], f["properties"]["Population"] or 0
-        if name in TOWN_SKIP: continue
-        tx, ty = to_px(clat, clon)
+        tx, ty = to_px(clat, clon); ty -= TOWN_NUDGE.get(name, 0.0) * ppi
         if not inside(tx, ty, 0.45): continue
         fs = 10.5 if pop > 15000 else 9.5 if pop > 8000 else 8.5 if pop > 3000 else 7.5
         label = name.replace("Kings Mountain", "Kings\nMountain")
-        if name == "Patterson Springs": ty += 0.12 * ppi                      # sits just south of the study ring: keep clear of it
         w_in = 0.085 * fs / 10 * max(len(s) for s in label.split("\n")); h_in = 0.16 * fs / 10 * len(label.split("\n"))
         ax.text(tx, ty, label, ha="center", va="center", fontsize=fs, color="#111", zorder=11, linespacing=1.0,
                 path_effects=[pe.withStroke(linewidth=2.5, foreground="white")])
@@ -363,11 +363,11 @@ def location_map():
             cands = [q for q in cands if clear(q[0], q[1], sep)]
     frame_border(fig); inset(fig); north_scale(fig, ax, mpp, "miles")
     footer(fig, "NCDOT, Esri (water bodies), VHB")
-    fig.savefig(OUT / "41000079736_LocationMap.pdf"); fig.savefig(OUT / "41000079736_LocationMap.png", dpi=150); plt.close(fig)
+    fig.savefig(OUT / "41000079736_AreaMap.pdf"); fig.savefig(OUT / "41000079736_AreaMap.png", dpi=150); plt.close(fig)  # county-scale = Area Map
 
 
 # ---------------------------------------------------------------- Area Map
-def area_map():
+def location_map():
     fig, ax, fw, fh = page()
     half_w = 775.0; half_h = half_w * fh / fw
     im, to_px, mpp = M.basemap(M.ESRI_IMG, 18, half_w, half_h)
@@ -392,7 +392,7 @@ def area_map():
         nx, ny, brg = on_leg(key, d); halo_text(ax, nx, ny, name, rot=text_rotation(brg), size=7.5, color="white", halo="#222")
     frame_border(fig); inset(fig); north_scale(fig, ax, mpp, "feet")
     footer(fig, "NCDOT, Esri World Imagery, VHB")
-    fig.savefig(OUT / "41000079736_AreaMap.pdf"); fig.savefig(OUT / "41000079736_AreaMap.png", dpi=150); plt.close(fig)
+    fig.savefig(OUT / "41000079736_LocationMap.pdf"); fig.savefig(OUT / "41000079736_LocationMap.png", dpi=150); plt.close(fig)  # aerial = Location Map
 
 
 # ---------------------------------------------------------------- ADT Map (package format: NCDOT AADT Mapping Application view)

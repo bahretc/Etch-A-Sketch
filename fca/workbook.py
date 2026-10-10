@@ -36,9 +36,10 @@ FICHE_WIDTHS = {"A": 6.5, "B": 24, "C": 6.5, "D": 5.5, "E": 22, "F": 22, "G": 13
                 "K": 11, "L": 10.2, "M": 3.5, "N": 3, "O": 3, "P": 3, "Q": 3, "R": 10.5, "S": 11.5, "T": 60,
                 "U": 11.5, "V": 12.5, "W": 2, "X": 6, "Y": 6, "Z": 14}
 REVIEW_HEADER = ["Crash ID", "Flag", "Trigger", "In Initial Study?", "On Road", "Miles", "Dir", "From Road",
-                 "Toward Road", "Milepost Road", "MP", "Date", "T", "S", "Reason", "Decision (ADD / DEL / IS / NIS)"]
+                 "Toward Road", "Milepost Road", "MP", "Date", "T", "S", "Reason", "Decision (ADD / DEL / IS / NIS)",
+                 "Report MP", "Report location", "Report facts", "Confidence", "Report pages"]
 REVIEW_WIDTHS = {"A": 11, "B": 5, "C": 20, "D": 9, "E": 26, "F": 7, "G": 5, "H": 22, "I": 22, "J": 12, "K": 8,
-                 "L": 10, "M": 4, "N": 4, "O": 110, "P": 16}
+                 "L": 10, "M": 4, "N": 4, "O": 90, "P": 16, "Q": 9, "R": 90, "S": 90, "T": 11, "U": 10}
 
 
 def _fill(rgb: str) -> PatternFill:
@@ -101,6 +102,20 @@ def _write_fiche_row(ws, r: int, s: Screened):
         ws.cell(r, 9).fill = _fill(FILL["flag_is?"])
     elif s.flag == "?":
         ws.cell(r, 9).fill = _fill(FILL["flag_?"])
+    elif s.flag == "ADD":
+        ws.cell(r, 9).fill = _fill(FILL["legend_in"])
+    elif s.flag == "DEL":
+        ws.cell(r, 9).fill = _fill(FILL["flag_is?"])
+
+
+def _screen_reason(s: Screened, d) -> str:
+    """The screening reason as it was before the review (kept so the Review IDs sheet shows both)."""
+    pre = getattr(s, "screen_reason", None)
+    if pre:
+        return pre
+    if s.in_initial:
+        return "In initial study - at study MP" if s.row.mp is not None and not s.row.unmileposted else "In initial study"
+    return "screened for review"
 
 
 def _section_header(ws, r: int, text: str, rgb: str, ncols: int = 26):
@@ -109,7 +124,7 @@ def _section_header(ws, r: int, text: str, rgb: str, ncols: int = 26):
         ws.cell(r, c).fill = _fill(rgb)
 
 
-def build_workbook(study: Study, screened: list[Screened], out_path: str) -> dict:
+def build_workbook(study: Study, screened: list[Screened], out_path: str, reviewed: dict | None = None) -> dict:
     wb = Workbook()
     sid = study.study_id
     sheet_name = f"{sid}_Fiche"[:31]
@@ -126,15 +141,26 @@ def build_workbook(study: Study, screened: list[Screened], out_path: str) -> dic
         ws.column_dimensions[col].width = w
     ws.freeze_panes = "A2"
 
-    in_study = sorted([s for s in screened if s.flag in ("IS", "IS?")],
-                      key=lambda s: (s.row.mp if s.row.mp is not None else 999, s.row.date))
-    review = [s for s in screened if s.flag == "?"]
+    reviewed_ids = set(reviewed or [])
+    def mpkey(s):
+        return (s.row.mp if s.row.mp is not None and not s.row.unmileposted else 999, s.row.date)
+    in_study = sorted([s for s in screened if s.flag in ("IS", "IS?")], key=mpkey)
+    added = sorted([s for s in screened if s.flag == "ADD"], key=mpkey)
+    deleted = sorted([s for s in screened if s.flag == "DEL"], key=mpkey)
+    review = [s for s in screened if s.flag == "?" or (s.flag == "NIS" and s.row.crash_id in reviewed_ids)]
     review.sort(key=lambda s: (s.priority, s.row.order))
-    nis = [s for s in screened if s.flag == "NIS"]
+    nis = [s for s in screened if s.flag == "NIS" and s.row.crash_id not in reviewed_ids]
     r = 2
     _section_header(ws, r, "IN STUDY", FILL["in_study"]); r += 1
     for s in in_study:
         _write_fiche_row(ws, r, s); r += 1
+    if reviewed_ids:
+        _section_header(ws, r, "ADDED TO STUDY", FILL["legend_in"]); r += 1
+        for s in added:
+            _write_fiche_row(ws, r, s); r += 1
+        _section_header(ws, r, "DELETED FROM STUDY", FILL["flag_is?"]); r += 1
+        for s in deleted:
+            _write_fiche_row(ws, r, s); r += 1
     _section_header(ws, r, "NOT IN STUDY - REPORT REVIEWED", FILL["review"]); r += 1
     for s in review:
         _write_fiche_row(ws, r, s); r += 1
@@ -153,34 +179,53 @@ def build_workbook(study: Study, screened: list[Screened], out_path: str) -> dic
     for col, w in REVIEW_WIDTHS.items():
         wr.column_dimensions[col].width = w
     wr.freeze_panes = "A2"
-    rl = review_list(screened)
+    if reviewed_ids:
+        order = {cid: d.n for cid, d in reviewed.items()}
+        rl = sorted([s for s in screened if s.row.crash_id in reviewed_ids], key=lambda s: order.get(s.row.crash_id, 999))
+    else:
+        rl = review_list(screened)
     rr = 2
     for s in rl:
         row = s.row
-        vals = [row.crash_id, s.flag, s.trigger, "YES" if s.in_initial else "NO", row.on_road, row.miles,
+        d = (reviewed or {}).get(row.crash_id)
+        screen_flag = s.flag if not d else ("IS" if s.in_initial and d.decision == "IS" else ("IS?" if s.in_initial else "?"))
+        vals = [row.crash_id, screen_flag, s.trigger, "YES" if s.in_initial else "NO", row.on_road, row.miles,
                 row.dir or None, row.from_road or None, row.toward_road or None, row.mp_road or None, row.mp,
-                _date(row.date), row.T, row.S or None, s.reason, None]
+                _date(row.date), row.T, row.S or None, s.reason if not d else _screen_reason(s, d), None]
+        if d:
+            vals[15] = d.decision
+            vals += [d.report_mp, d.report_location, d.facts, d.confidence, ", ".join(map(str, d.pages))]
         for c, v in enumerate(vals, 1):
             wr.cell(rr, c, v)
+        if d:
+            wr.cell(rr, 17).number_format = "0.000"
+            for c in (18, 19):
+                wr.cell(rr, c).alignment = Alignment(wrap_text=True, vertical="top")
         wr.cell(rr, 6).number_format = "0.000"
         wr.cell(rr, 11).number_format = "0.000"
         wr.cell(rr, 12).number_format = "mm-dd-yy"
         wr.cell(rr, 15).alignment = Alignment(wrap_text=True, vertical="top")
         wr.cell(rr, 16).fill = _fill(FILL["decision"])
-        if s.flag == "IS?":
+        if screen_flag == "IS?":
             wr.cell(rr, 2).fill = _fill(FILL["flag_is?"])
-        elif s.flag == "?":
+        elif screen_flag == "?":
             wr.cell(rr, 2).fill = _fill(FILL["flag_?"])
         rr += 1
     # legend / counts block
     rr += 1
     cfg = study.cfg
     lim = cfg["limits"]
-    counts = [("IS", f'=COUNTIF(\'{sheet_name}\'!I2:I{last_fiche_row},"IS")', "In initial study - confirmed on its coding"),
-              ("IS?", f'=COUNTIF(\'{sheet_name}\'!I2:I{last_fiche_row},"IS~?")', "In initial study - verify the location in the report"),
-              ("?", f'=COUNTIF(\'{sheet_name}\'!I2:I{last_fiche_row},"~?")', "Not in initial study but may be in the section - review the report, possible ADD"),
-              ("NIS", f'=COUNTIF(\'{sheet_name}\'!I2:I{last_fiche_row},"NIS")', "Not in initial study, nothing points at the section")]
-    fills = {"IS": FILL["legend_in"], "IS?": FILL["flag_is?"], "?": FILL["flag_?"], "NIS": FILL["header"]}
+    if reviewed_ids:
+        counts = [("IS", f'=COUNTIF(\'{sheet_name}\'!I2:I{last_fiche_row},"IS")', "In initial study, confirmed in the section by its DMV-349 report"),
+                  ("ADD", f'=COUNTIF(\'{sheet_name}\'!I2:I{last_fiche_row},"ADD")', "Not in initial study; the report puts it in the section - added"),
+                  ("DEL", f'=COUNTIF(\'{sheet_name}\'!I2:I{last_fiche_row},"DEL")', "In initial study; the report puts it outside the section - deleted"),
+                  ("NIS", f'=COUNTIF(\'{sheet_name}\'!I2:I{last_fiche_row},"NIS")', f"Not in study ({len(reviewed_ids) - sum(1 for d in reviewed.values() if d.decision != 'NIS')} of them reviewed and confirmed outside the section)")]
+    else:
+        counts = [("IS", f'=COUNTIF(\'{sheet_name}\'!I2:I{last_fiche_row},"IS")', "In initial study - confirmed on its coding"),
+                  ("IS?", f'=COUNTIF(\'{sheet_name}\'!I2:I{last_fiche_row},"IS~?")', "In initial study - verify the location in the report"),
+                  ("?", f'=COUNTIF(\'{sheet_name}\'!I2:I{last_fiche_row},"~?")', "Not in initial study but may be in the section - review the report, possible ADD"),
+                  ("NIS", f'=COUNTIF(\'{sheet_name}\'!I2:I{last_fiche_row},"NIS")', "Not in initial study, nothing points at the section")]
+    fills = {"IS": FILL["legend_in"], "IS?": FILL["flag_is?"], "?": FILL["flag_?"], "NIS": FILL["header"], "ADD": FILL["legend_in"], "DEL": FILL["flag_is?"]}
     for flag, formula, text in counts:
         wr.cell(rr, 1, flag).fill = _fill(fills[flag])
         wr.cell(rr, 2, formula)

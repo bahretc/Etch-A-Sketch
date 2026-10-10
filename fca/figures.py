@@ -19,7 +19,7 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Circle, Polygon, Rectangle, FancyBboxPatch, RegularPolygon
 
 from .geo import FT_PER_MILE, TILE_SOURCES, TileCache, lonlat_to_pixel, meters_per_pixel, stitch
-from .maps import PRIORITY_STYLE, crash_points
+from .maps import DECISION_STYLE, PRIORITY_STYLE, crash_points
 from .screen import Screened, Study
 
 TILE_SOURCES["lightgray"] = {
@@ -414,21 +414,12 @@ def figure_crash_map(study: Study, screened: list[Screened], cache: TileCache, o
         dx = F.pts_to_px(5) * (1 if side == "E" else -1)
         F.label(f["lat"], f["lon"], f["short"], dx=dx, ha="left" if side == "E" else "right", size=6.3, color="#dddddd", halo="black")
     _road_labels(F, cfg, names=False, bus=False)
-    pts = crash_points(study, screened)
-    styles = dict(PRIORITY_STYLE)
-    if decisions:
-        # restyle by decision
-        styles = {"IS": {"label": "In study (IS)", "color": "#1f77b4"}, "ADD": {"label": "Added to study (ADD)", "color": "#d62728"},
-                  "DEL": {"label": "Deleted from study (DEL)", "color": "#ff7f0e"}, "NIS": {"label": "Not in study (NIS)", "color": "#bdbdbd"}}
-        for p in pts:
-            d = decisions.get(str(p["crash_id"])) or decisions.get(p["crash_id"])
-            if d:
-                p["priority"] = d["decision"]
-                if d.get("lat") and d.get("lon"):
-                    p["lat"], p["lon"] = d["lat"], d["lon"]; p["basis"] = "report location"
-                elif d.get("mp") is not None and d["mp"] >= 0:
-                    p["lat"], p["lon"] = pl.point_at_mi(d["mp"]); p["basis"] = f"report MP {d['mp']:.3f}"
-                p["mp_along"] = pl.project((p["lat"], p["lon"])).along_mi
+    pts = crash_points(study, screened, decisions)
+    styles = DECISION_STYLE if decisions else dict(PRIORITY_STYLE)
+    lon0, lat0, lon1, lat1 = F.bbox
+    for p in pts:
+        p["offmap"] = p["lat"] is None or not (lon0 <= p["lon"] <= lon1 and lat0 <= p["lat"] <= lat1)
+    pts_on = [p for p in pts if not p["offmap"]]
     sep = F.pts_to_px(15)
     x0, x1 = F.xlim; y0, y1 = F.ylim
     margin = sep
@@ -437,7 +428,7 @@ def figure_crash_map(study: Study, screened: list[Screened], cache: TileCache, o
         if not (x0 + margin < ax_ < x1 - margin and y0 + margin < ay_ < y1 - margin):
             return False
         return all(math.hypot(ax_ - qx, ay_ - qy) >= sep for qx, qy in placed)
-    for p in sorted(pts, key=lambda q: (q["priority"] != 0 and q["priority"] != "IS", q["mp_along"])):
+    for p in sorted(pts_on, key=lambda q: (q["priority"] != 0 and q["priority"] != "IS", q["mp_along"])):
         x, y = F.px(p["lat"], p["lon"])
         brg = math.radians(pl.bearing_at(p["mp_along"] * FT_PER_MILE))
         perp = math.atan2(math.sin(brg), math.cos(brg))
@@ -474,8 +465,12 @@ def figure_crash_map(study: Study, screened: list[Screened], cache: TileCache, o
             continue
         lines.append(("hdr", styles[k]["color"], styles[k]["label"]))
         for p in grp:
-            mp = f"  MP {p['mp']:.3f}" if p.get("mp") is not None else ""
-            lines.append(("row", None, f"{p['n']:>2}  {p['crash_id']}  {p['date']}  {p['type']:<5} {p['severity']}{mp}"))
+            if p.get("report_mp") is not None:
+                mp = f"  MP {p['report_mp']:.3f}"
+            else:
+                mp = f"  MP {p['mp']:.3f}" if p.get("mp") is not None else ""
+            tail = "  off map" if p.get("offmap") else ""
+            lines.append(("row", None, f"{p['n']:>2}  {p['crash_id']}  {p['date']}  {p['type']:<5} {p['severity']}{mp}{tail}"))
     # two columns
     ncol = 2
     per = math.ceil(len(lines) / ncol)
@@ -486,7 +481,7 @@ def figure_crash_map(study: Study, screened: list[Screened], cache: TileCache, o
     colw = F.pts_to_px(195)
     Ww = colw * ncol + F.pts_to_px(10)
     F.ax.add_patch(Rectangle((px_, py_ - Hh), Ww, Hh, fc="white", ec="black", lw=0.8, alpha=0.95, zorder=58))
-    F.ax.text(px_ + F.pts_to_px(5), py_ - Hh + lh * 0.9, "Crashes shown (numbers follow the Review IDs sheet; K fatal, B/C injury, O no injury)",
+    F.ax.text(px_ + F.pts_to_px(5), py_ - Hh + lh * 0.9, ("Crashes shown (numbers follow the Review IDs sheet; K fatal, B/C injury, O no injury" + ("; MP from the DMV-349 report)" if decisions else ")")),
               fontsize=6.3, fontweight="bold", family=FONT, va="center", zorder=59)
     for ci, col in enumerate(cols_):
         yy = py_ - Hh + lh * 2.0

@@ -17,6 +17,12 @@ from .geo import (FT_PER_MILE, Polyline, TILE_SOURCES, TileCache, dist_ft, ft_pe
 from .screen import Screened, Study, review_list
 from .teaas import TYPE_NAMES, TYPE_LONG, SEVERITY_LONG
 
+DECISION_STYLE = {
+    "IS": {"label": "In study (IS)", "color": "#1f77b4"},
+    "ADD": {"label": "Added to study (ADD)", "color": "#d62728"},
+    "DEL": {"label": "Deleted from study (DEL)", "color": "#ff7f0e"},
+    "NIS": {"label": "Not in study (NIS), report reviewed", "color": "#bdbdbd"},
+}
 PRIORITY_STYLE = {
     0: {"label": "In initial study", "color": "#1f77b4", "marker": "o"},
     1: {"label": "Likely ADD (locates inside the section)", "color": "#d62728", "marker": "o"},
@@ -30,15 +36,32 @@ SECTION_COLOR = "#ff2a2a"
 
 # ------------------------------------------------------------------ crash placement
 
-def crash_points(study: Study, screened: list[Screened]) -> list[dict]:
-    """One dict per review-list crash with a plotted (lat, lon), how it was placed, and display fields."""
+def crash_points(study: Study, screened: list[Screened], decisions: dict | None = None) -> list[dict]:
+    """One dict per review-list crash with a plotted (lat, lon), how it was placed, and display fields.
+
+    With decisions ({crash_id: {decision, mp, lat, lon, n, ...}} from a report review) the reviewed crashes are
+    placed at the report location; a reviewed crash with no location on the route gets lat/lon None (off map).
+    """
     pl = study.centerline
     out = []
-    for n, s in enumerate(review_list(screened), 1):
+    if decisions:
+        items = [s for s in screened if s.row.crash_id in decisions]
+        items.sort(key=lambda s: decisions[s.row.crash_id].get("n", 999))
+        seq = [(decisions[s.row.crash_id].get("n", i), s) for i, s in enumerate(items, 1)]
+    else:
+        seq = list(enumerate(review_list(screened), 1))
+    for n, s in seq:
         r = s.row
         d = study.detailed.get(r.crash_id)
         placed, basis = None, ""
-        if s.dmv_mp is not None and s.latlon:
+        dec = decisions.get(r.crash_id) if decisions else None
+        if dec and dec.get("lat") and dec.get("lon"):
+            placed, basis = (dec["lat"], dec["lon"]), "report location (coordinates agree)"
+        elif dec and dec.get("mp") is not None:
+            placed, basis = pl.point_at_mi(dec["mp"]), f"report MP {dec['mp']:.3f} on the centerline"
+        elif dec:
+            placed, basis = None, "not on the study route per the report"
+        elif s.dmv_mp is not None and s.latlon:
             placed, basis = s.latlon, f"{d.source} coordinates"
         elif s.in_initial and r.mp is not None and not r.unmileposted:
             placed, basis = pl.point_at_mi(r.mp), f"coded MP {r.mp:.3f} on the centerline"
@@ -48,17 +71,20 @@ def crash_points(study: Study, screened: list[Screened]) -> list[dict]:
             placed, basis = pl.point_at_mi(r.mp), f"coded MP {r.mp:.3f} on the centerline"
         elif s.implied_mp is not None:
             placed, basis = pl.point_at_mi(max(0.0, s.implied_mp)), f"MP {s.implied_mp:.3f} implied by the description"
-        if placed is None:
+        if placed is None and not dec:
             continue
-        prio = 0 if s.in_initial else s.priority
+        prio = dec["decision"] if dec else (0 if s.in_initial else s.priority)
         out.append({
-            "n": n, "crash_id": r.crash_id, "date": r.date, "lat": placed[0], "lon": placed[1], "basis": basis,
+            "n": n, "crash_id": r.crash_id, "date": r.date, "lat": placed[0] if placed else None,
+            "lon": placed[1] if placed else None, "basis": basis,
             "priority": prio, "flag": s.flag, "trigger": s.trigger, "reason": s.reason,
+            "decision": dec["decision"] if dec else None, "report_location": (dec or {}).get("location", ""),
+            "report_mp": (dec or {}).get("mp"),
             "type": TYPE_NAMES.get(r.T, str(r.T)), "type_long": TYPE_LONG.get(r.T, str(r.T)),
             "severity": r.S or "O", "mp": None if r.unmileposted else r.mp, "on_road": r.on_road,
             "desc": f"{r.on_road} {r.miles if r.miles is not None else 0:g} mi {r.dir} from {r.from_road or '-'} toward {r.toward_road or '-'}".replace("  ", " "),
             "fatal": r.crash_id == study.cfg["fatal"]["crash_id"],
-            "mp_along": pl.project(placed).along_mi,
+            "mp_along": pl.project(placed).along_mi if placed else None,
         })
     return out
 
@@ -356,14 +382,14 @@ def _embed_tiles(cache: TileCache, source: str, bbox, zooms) -> dict[str, str]:
     return tiles
 
 
-def map_html(study: Study, screened: list[Screened], cache: TileCache, out_path: str):
+def map_html(study: Study, screened: list[Screened], cache: TileCache, out_path: str, decisions: dict | None = None):
     cfg = study.cfg
     here = os.path.dirname(__file__)
     with open(os.path.join(here, "vendor", "leaflet.js")) as f:
         leaflet_js = f.read()
     with open(os.path.join(here, "vendor", "leaflet.css")) as f:
         leaflet_css = f.read()
-    pts = crash_points(study, screened)
+    pts = [p for p in crash_points(study, screened, decisions) if p["lat"] is not None]
     pl = study.centerline
     b, e = study.begin_mp, study.end_mp
     bbox = _section_bbox(study, pad_ft=900)
@@ -375,7 +401,7 @@ def map_html(study: Study, screened: list[Screened], cache: TileCache, out_path:
         "begin": pl.point_at_mi(b), "end": pl.point_at_mi(e),
         "features": [f for f in cfg.get("features", []) if "lat" in f],
         "crashes": pts,
-        "styles": PRIORITY_STYLE,
+        "styles": DECISION_STYLE if decisions else PRIORITY_STYLE,
         "center": [cfg["fatal"]["lat"], cfg["fatal"]["lon"]],
         "attribution": TILE_SOURCES["imagery"]["attribution"],
         "streets_url": TILE_SOURCES["streets"]["url"].replace("{z}", "{z}").replace("{y}", "{y}").replace("{x}", "{x}"),
@@ -426,7 +452,7 @@ function popup(c) {{
 const groups = {{}};
 DATA.crashes.forEach(c => {{
   const st = DATA.styles[c.priority];
-  const icon = L.divIcon({{className: '', html: '<div class="num" style="background:' + (c.fatal ? '#ffd400' : st.color) + ';color:' + ([3,5,0].includes(c.priority) || c.fatal ? '#000' : '#fff') + '">' + c.n + '</div>', iconSize: [18, 18], iconAnchor: [9, 9]}});
+  const icon = L.divIcon({{className: '', html: '<div class="num" style="background:' + (c.fatal ? '#ffd400' : st.color) + ';color:' + ([3,5,0,'IS','NIS'].includes(c.priority) || c.fatal ? '#000' : '#fff') + '">' + c.n + '</div>', iconSize: [18, 18], iconAnchor: [9, 9]}});
   const mk = L.marker([c.lat, c.lon], {{icon}}).bindPopup(popup(c), {{maxWidth: 420}});
   (groups[c.priority] = groups[c.priority] || []).push(mk);
 }});

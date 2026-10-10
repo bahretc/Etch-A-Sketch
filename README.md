@@ -5,7 +5,7 @@ study, screens the fiche against the study limits, writes the Fiche workbook in 
 format, lists the crash IDs whose DMV-349 reports need to be read, and draws the study maps.
 
 ```
-python -m fca build studies/260722124BA          # workbook, review list, maps
+python -m fca build studies/260722124BA          # workbook, review list, figures (and the reviewed workbook when determinations exist)
 python -m fca build studies/260722124BA --no-maps
 python -m fca screen studies/260722124BA         # print the screening only
 ```
@@ -18,10 +18,14 @@ Imagery / World Street Map and are cached in `~/.cache/fca-tiles` (override with
 
 ```
 studies/<study_id>/
-  study.json          limits, features (with revised mileposts), centerline, fatal crash, screening thresholds
+  study.json          limits, features (with revised mileposts), centerline, fatal crash, screening thresholds, figure settings
   inputs/             TEAAS exports: <id>_Fiche.csv, DetailedFiche.csv (+ _parameters), InitialStudy.csv
-                      (strip or intersection analysis), InitialID.txt (ID export), FeaturesReport_<route>.pdf
-  outputs/            <id>_Fiche.xlsx, <id>_ReviewIDs.txt, <id>_screening.json,
+                      (strip or intersection analysis), InitialID.txt (ID export), FeaturesReport_<route>.pdf,
+                      boundaries.json (county / municipal outlines for the area map)
+  review/             determinations.jsonl - one line per DMV-349 report read (decision IS/ADD/DEL/NIS, report
+                      location and milepost, facts, confidence); when present the build writes the reviewed workbook
+  outputs/            <id>_Fiche.xlsx (screened) or <id>_Fiche_reviewed.xlsx (with the report decisions),
+                      <id>_ReviewIDs.txt, <id>_screening.json, <id>_review_determinations.jsonl, <id>_ReportReview.md,
                       <id>_Figure1_AreaMap.png/.pdf, <id>_Figure2_LocationMap.png/.pdf,
                       <id>_Figure3_CrashMap.png/.pdf (report figures in the TSU fatal-crash layout),
                       <id>_CrashMap.html (self-contained Leaflet map with embedded imagery)
@@ -49,6 +53,16 @@ carries a screening call in its Reason: Likely ADD, Possible ADD, Window, At the
 or Check (description and coordinates disagree). The Decision column (yellow) is for the
 engineer's call after reading the report: ADD / DEL / IS / NIS.
 
+## Report review
+
+After the DMV-349 reports are read, each reviewed crash gets a line in `review/determinations.jsonl`.
+The build then writes `<id>_Fiche_reviewed.xlsx`: the fiche in five sections (IN STUDY, ADDED TO STUDY,
+DELETED FROM STUDY, NOT IN STUDY - REPORT REVIEWED, NOT IN STUDY - REPORT NOT REVIEWED), the Review IDs
+sheet with the Decision column filled and the report location, milepost, facts and confidence beside the
+screening reason, plus `<id>_ReportReview.md` (summary table and facts for the memo). Figure 3 is redrawn
+with the crashes at their report locations, colored by decision. The crash reports themselves stay out of
+the repository.
+
 ## Workbook sheets
 
 `<id>_Fiche` (IN STUDY / NOT IN STUDY - REPORT REVIEWED / NOT IN STUDY - REPORT NOT REVIEWED,
@@ -62,6 +76,7 @@ with the Type, Dir, Latitude, Longitude, Unit 1 Dir, Unit 2 Dir and Movement for
 - `fca/geo.py` distances, centerline projection, Web Mercator tiles
 - `fca/screen.py` screening rules
 - `fca/workbook.py` the Fiche workbook and the review list
+- `fca/review.py` applies report determinations to the screened fiche
 - `fca/figures.py` report figures: Area Map, Location Map, Crash Map (matplotlib over stitched tiles, PNG + PDF)
 - `fca/maps.py` the Leaflet HTML map and the crash placement shared with the figures
 - `fca/cli.py` command line

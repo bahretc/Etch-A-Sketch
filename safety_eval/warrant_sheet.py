@@ -23,10 +23,11 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
 from .fiche_workbook import DATE_FORMAT, autofit_columns
-from .warrants import (DARK_CODES, FACILITY_MINIMUMS, INTERSECTION_TYPES,
+from .warrants import (DARK_CODES, DEFAULT_EDITION, EDITION_NAMES,
+                       FACILITY_MINIMUMS, INTERSECTION_TYPES,
                        MULTILANE_ROR_TYPES, ROR_TYPES, SECTION_WARRANTS,
-                       WET_CODES, Crash, format_finding, screen_section,
-                       subsection_findings)
+                       WET_CODES, Crash, check_edition, format_finding,
+                       screen_section, subsection_findings)
 
 SHEET_WARRANT = "Warrant"
 
@@ -103,7 +104,7 @@ def _highlight(ws, last_row: int, multilane: bool = False, skip=()) -> None:
 
 def add_warrant_sheet(wb, rows, length_mi: float, facility: str = "freeway",
                       multilane: bool = False, lo=None, hi=None,
-                      strict: bool = True):
+                      strict: bool = True, edition: str = DEFAULT_EDITION):
     """Build the Warrant sheet from the in-study crash rows.
 
     ``rows`` are dicts carrying at least ``mp``, ``crash_id``, ``t``, ``c``,
@@ -111,10 +112,13 @@ def add_warrant_sheet(wb, rows, length_mi: float, facility: str = "freeway",
     may carry ``fills``, a mapping of column name to hex colour, for values the
     engineer overrode by hand: the analysis uses the corrected value and the
     solid fill marks it as an engineering call rather than TEAAS data. The
-    original stays on the fiche sheet.
+    original stays on the fiche sheet. ``edition`` is the warrant text the
+    summary names; the section thresholds and so the formulas are the same
+    in the 2024 and 2026 editions.
     Returns ``(worksheet, SectionScreen, findings)`` with one
     :class:`~safety_eval.warrants.Finding` per warrant.
     """
+    edition = check_edition(edition)
     if SHEET_WARRANT in wb.sheetnames:
         del wb[SHEET_WARRANT]
     ws = wb.create_sheet(SHEET_WARRANT)
@@ -154,12 +158,12 @@ def add_warrant_sheet(wb, rows, length_mi: float, facility: str = "freeway",
                      light_condition=r.get("l") if isinstance(r.get("l"), int) else None)
                for r in ordered]
     screen = screen_section(crashes, length_mi, facility, multilane=multilane,
-                            strict=strict)
+                            strict=strict, edition=edition)
     placed = [(r.get("mp"), c) for r, c in zip(ordered, crashes)]
     findings = subsection_findings(placed, screen, multilane=multilane,
                                    strict=strict)
     _write_summary(ws, screen, facility, multilane, lo, hi, last,
-                   findings, strict=strict)
+                   findings, strict=strict, edition=edition)
     # Widths come from the crash table alone: the summary sits below it, and
     # its long labels must spill across empty cells, not set column widths.
     autofit_columns(ws, last_row=last)
@@ -187,7 +191,7 @@ _SHARE_KEY = {"1": "p_wetror", "2": "p_ror", "3": "p_wet"}
 
 
 def _write_summary(ws, s, facility, multilane, lo, hi, last_row: int,
-                   findings, strict=True) -> None:
+                   findings, strict=True, edition=DEFAULT_EDITION) -> None:
     """The calculation block, BELOW the crash table, in live Excel formulas.
 
     Below rather than beside: comment text spills rightward and a side block
@@ -222,6 +226,9 @@ def _write_summary(ws, s, facility, multilane, lo, hi, last_row: int,
         ops.append(("put", label, value, fmt, key))
 
     title("Warrant Summary")
+    # The text the thresholds come from, named so a reader of the sheet
+    # knows which edition it was screened under.
+    put("Edition", EDITION_NAMES[edition])
     put("Facility", fac_label, key="fac")
     if lo is not None:
         put("MP Begin", lo, "0.000", key="lo")

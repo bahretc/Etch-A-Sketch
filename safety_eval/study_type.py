@@ -14,11 +14,11 @@ What actually differs between the study types:
   project (docs/12). An evaluation measures a treatment that is already built;
   a fatal analysis investigates one crash.
 * **Animal crashes.** On an HSIP section or intersection analysis they are
-  **deleted**, not merely set aside: status DEL, out of the study. The 2024
-  Overview removes them from the section warrant maths, and the working
-  practice removes them from the study entirely, which is stronger and simpler
-  to defend. Verified on study 41000079305: 12 of 17 DEL rows are animal
-  crashes and no animal survives into IS/RE/ADD.
+  **deleted**, not merely set aside: status DEL, out of the study. The HSIP
+  warrant text (2026 as in 2024) removes them from the section warrant maths,
+  and the working practice removes them from the study entirely, which is
+  stronger and simpler to defend. Verified on study 41000079305: 12 of 17 DEL
+  rows are animal crashes and no animal survives into IS/RE/ADD.
   An evaluation keeps them, because a before/after comparison of a treatment
   that never targeted deer still has to account for every crash in the section.
 

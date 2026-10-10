@@ -119,14 +119,22 @@ def test_the_warrants_page_offers_section_and_intersection():
     radios = {r.label: r for r in at.radio}
     assert "Analysis" in radios
     assert radios["Analysis"].options == ["Section (strip)", "Intersection"]
-    # The section form is the default: facility + limits present.
-    assert any(s.label == "Facility" for s in at.selectbox)
-    # Switching to intersection swaps in the context radio.
+    # The section form is the default: facility + limits present, the
+    # edition picker on 2026, the two extra 2026 tests unchecked.
+    boxes = {s.label: s for s in at.selectbox}
+    assert "Facility" in boxes
+    assert boxes["Edition"].options == ["2026", "2024"]
+    assert boxes["Edition"].value == "2026"
+    checks = {c.label: c for c in at.checkbox}
+    assert checks["Also test B-1 (bridge, 2-lane roadway)"].value is False
+    assert checks["Also test MB-1 (non-motorist midblock)"].value is False
+    # Switching to intersection swaps in the context radio, edition beside.
     radios["Analysis"].set_value("Intersection")
     at.run(timeout=30)
     assert not at.exception
     labels = {r.label for r in at.radio}
     assert "Context" in labels
+    assert next(s for s in at.selectbox if s.label == "Edition").value == "2026"
 
 
 def test_the_fiche_page_asks_for_the_four_exports_and_the_screen_inputs():

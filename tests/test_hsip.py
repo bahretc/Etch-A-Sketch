@@ -244,3 +244,42 @@ def test_the_report_says_when_minimums_fail(tmp_path):
     run = hsip.run_hsip(str(path), "freeway", 13.0, 13.5)
     text = hsip.format_report(run)
     assert "not met, so no warrant can be met over the section." in text
+
+
+def test_crashes_from_warrant_rows_sets_the_intersection_flag_from_f_codes():
+    """MB-1 reads Crash.at_intersection; the caller names the F codes the
+    review treats as intersection related. Nothing is assumed without them."""
+    rows = [_row(101, "IS", 13.1, type="pedestrian", f=8,
+                 date=datetime.datetime(2024, 1, 10)),
+            _row(102, "IS", 13.2, type="pedestrian", f=1)]
+    arows = hsip.read_analysis_rows(_workbook(rows).active)
+    crashes = hsip.crashes_from_warrant_rows(hsip.warrant_rows(arows),
+                                             intersection_f={8})
+    assert [c.at_intersection for c in crashes] == [True, False]
+    assert crashes[0].date == datetime.date(2024, 1, 10)
+    assert crashes[0].is_nonmotorist
+    assert not any(c.at_intersection for c in
+                   hsip.crashes_from_warrant_rows(hsip.warrant_rows(arows)))
+    assert hsip.parse_f_codes(" 8, 9;13 ") == {8, 9, 13}
+    assert hsip.parse_f_codes("") == set()
+    with pytest.raises(ValueError, match="whole numbers"):
+        hsip.parse_f_codes("eight")
+
+
+def test_run_hsip_records_the_edition_and_the_sheet_names_it(tmp_path):
+    path = tmp_path / "study.xlsx"
+    _workbook(_analysis_rows()).save(path)
+    run = hsip.run_hsip(str(path), "freeway", 13.0, 13.5, edition="2024")
+    assert run.screen.edition == "2024"
+    ws = openpyxl.load_workbook(path)["Warrant"]
+    labels = {ws.cell(row=r, column=1).value: ws.cell(row=r, column=4).value
+              for r in range(1, ws.max_row + 1)}
+    assert labels["Edition"] == "2024 HSIP Overview (May 2024)"
+    run = hsip.run_hsip(str(path), "freeway", 13.0, 13.5)
+    assert run.screen.edition == "2026"
+    ws = openpyxl.load_workbook(path)["Warrant"]
+    labels = {ws.cell(row=r, column=1).value: ws.cell(row=r, column=4).value
+              for r in range(1, ws.max_row + 1)}
+    assert labels["Edition"] == "2026 HSIP Warrants (March 2026)"
+    with pytest.raises(ValueError, match="edition"):
+        hsip.run_hsip(str(path), "freeway", 13.0, 13.5, edition="2025")

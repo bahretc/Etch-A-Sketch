@@ -644,11 +644,31 @@ def _cmd_warrants(args) -> int:
         overrides=hsip.parse_overrides(args.override),
         study_type=args.study_type, import_out=args.import_out,
         strip_zeros=not args.padded, save=not args.no_save,
-        inclusive_minimums=args.inclusive_minimums)
+        inclusive_minimums=args.inclusive_minimums, edition=args.edition)
     print(format_screen(run.screen))
     print()
     for line in run.finding_lines:
         print(f"  {line}")
+    if args.bridge or args.midblock:
+        from .warrants import (format_bridge, format_nonmotorist, pull_note,
+                               screen_bridge, screen_nonmotorist_midblock)
+        f_codes = hsip.parse_f_codes(args.intersection_f)
+        crashes = hsip.crashes_from_warrant_rows(
+            hsip.warrant_rows(run.rows, run.overrides), intersection_f=f_codes)
+        note = pull_note(crashes)
+        if note:
+            print()
+            print(note)
+        if args.bridge:
+            print()
+            print(format_bridge(screen_bridge(crashes, two_lane=True)))
+        if args.midblock:
+            print()
+            if not f_codes:
+                print("No F codes named as intersection related "
+                      "(--intersection-f): every non-motorist crash reads as "
+                      "midblock and the MB-1 count is an upper bound.")
+            print(format_nonmotorist(screen_nonmotorist_midblock(crashes)))
     if run.import_lines:
         print(f"\n{run.import_lines} ADD/RE crashes -> {args.import_out}")
     for f in run.daylight_flags or ():
@@ -1567,6 +1587,23 @@ def build_parser() -> argparse.ArgumentParser:
     wa.add_argument("--hi", type=float, required=True, help="Study MP end.")
     wa.add_argument("--multilane", action="store_true",
                     help="SSSD counts as ROR (docs/12; off by default).")
+    wa.add_argument("--edition", default="2026", choices=["2026", "2024"],
+                    help="The NCDOT warrant text: the 2026 HSIP Warrants "
+                         "(March 2026, default) or the 2024 HSIP Overview to "
+                         "reproduce an earlier study. The section thresholds "
+                         "are the same in both; the edition is named on the "
+                         "screen and the sheet.")
+    wa.add_argument("--bridge", action="store_true",
+                    help="Also test B-1, the 2026 bridge warrant, on the same "
+                         "reviewed rows. 2-lane roadways only.")
+    wa.add_argument("--midblock", action="store_true",
+                    help="Also test MB-1, the 2026 non-motorist midblock "
+                         "warrant, on the same reviewed rows.")
+    wa.add_argument("--intersection-f", dest="intersection_f", metavar="CODES",
+                    help="Fiche F (Roadway Feature) codes the review treats "
+                         "as intersection related, comma separated; MB-1 "
+                         "leaves those crashes out. Without it every "
+                         "non-motorist crash reads as midblock.")
     wa.add_argument("--override", action="append", default=[],
                     metavar="CRASH_ID:FIELD=VALUE",
                     help="Engineer correction, e.g. 107591377:l=5. The "
@@ -1588,10 +1625,11 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Print the screen without touching the workbook.")
     wa.add_argument("--inclusive-minimums", dest="inclusive_minimums",
                     action="store_true",
-                    help="Overview reading of the facility minimums: a count "
-                         "equal to the minimum clears it (>=). Default "
-                         "follows the warrant workbook, which tests strictly "
-                         "greater than.")
+                    help="The published prose reading (2026 HSIP Warrants "
+                         "and 2024 Overview alike) of the facility minimums: "
+                         "a count equal to the minimum clears it (>=). "
+                         "Default follows the warrant workbook, which tests "
+                         "strictly greater than.")
     wa.add_argument("--report-out", dest="report_out",
                     help="Also write the analysis as report text (docs/05 "
                          "style): totals, warrants met and not, sub-section "

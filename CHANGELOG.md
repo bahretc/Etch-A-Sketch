@@ -14,6 +14,16 @@
   currency date the way the study folders do: ending on the last day of the
   most recent complete month, beginning the first of the month N years
   earlier.
+- The HSIP warrants run NCDOT's 2026 HSIP Warrants (Traffic Safety Systems
+  Section, March 2026): I-1u frontal share 60%, I-2u 40% in the last year,
+  I-3u severity index 6.5, I-4u 45% night; the rural and section thresholds
+  did not change. The 2024 HSIP Overview stays reachable as edition 2024
+  (`warrants --edition`, the Edition picker on the HSIP Warrants page) and
+  the screen and the Warrant sheet name the edition they ran. The 2026
+  text's new warrants are in: BP-1 (non-motorist intersection, run for a
+  Bike/Ped analysis), MB-1 (non-motorist midblock) and B-1 (bridge, 2-lane
+  roadways), the last two as opt-in extra tests on a section run
+  (`--midblock`, `--bridge`).
 - The Traffic Safety Unit fatal crash tooling `fca` (docs/14) is part of the
   distribution: `fca` console script, `fatal` extra, vendor files shipped,
   worked study `examples/260722124BA`, tests.

@@ -215,8 +215,8 @@ def screen_sheet(ws, features: dict, lo: float, hi: float, initial_ids,
 
     ``study`` is the study type (``study_type``). On an HSIP package the animal
     crashes come out as DEL before anything else is decided, which is the
-    working practice and is stronger than the 2024 Overview's rule of merely
-    dropping them from the warrant arithmetic.
+    working practice and is stronger than the warrant text's rule (2026 as in
+    2024) of merely dropping them from the warrant arithmetic.
     """
     kind = _st.get(study)
     col = col or {"on": 2, "from": 5, "toward": 6, "mproad": 7, "mp": 8,

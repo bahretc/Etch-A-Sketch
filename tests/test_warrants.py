@@ -1,4 +1,4 @@
-"""NCDOT HSIP section warrants (2024 HSIP Overview, May 2024)."""
+"""NCDOT HSIP warrants (2026 HSIP Warrants, March 2026; 2024 reproducible)."""
 import pytest
 
 from safety_eval.warrants import (Crash, FACILITY_MINIMUMS, ROR_TYPES,
@@ -13,7 +13,7 @@ def f(name, s):
     return next(w for w in s.warrants if w.warrant == name)
 
 
-def test_the_ror_set_is_all_eight_types_the_overview_lists():
+def test_the_ror_set_is_all_eight_types_the_text_lists():
     """Run Off Road right/left/STRAIGHT, Fixed Object, Overturn/Rollover,
     Sideswipe Opposite Direction, Parked Motor Vehicle, Head On.
 
@@ -41,8 +41,8 @@ def test_both_minimums_must_be_met_not_either():
 def test_the_minimums_are_strictly_greater_than():
     """The workbook tests U6>min, not >=. Exactly 30 does not clear 30.
 
-    The Overview's prose ("a minimum number ... are met") reads as >=, so
-    strict=False is offered, but strict is what NCDOT actually runs.
+    The prose of both editions ("a minimum number ... are met") reads as >=,
+    so strict=False is offered, but strict is what NCDOT actually runs.
     """
     assert not screen_section(crashes(30), 1.0, "freeway").meets_minimums
     assert screen_section(crashes(30), 1.0, "freeway", strict=False).meets_minimums
@@ -627,3 +627,250 @@ def test_the_note_is_advisory_and_never_blocks_a_thin_dataset():
     assert period_note([], "urban", END) is None
     assert period_note(_span_crashes(10)[:1], "urban", END) is None
     assert period_note(_span_crashes(10), "elsewhere", END) is None
+
+
+def test_a_five_year_pull_under_the_ten_year_warrants_is_flagged():
+    """B-1 and MB-1 are 10-year warrants; a section run is a 5-year pull."""
+    from safety_eval.warrants import pull_note
+    note = pull_note(_span_crashes(5))
+    assert note and "5.0 years" in note and "10-year" in note
+    assert pull_note(_span_crashes(10)) is None
+    assert pull_note(_span_crashes(9.5)) is None
+    assert pull_note(_span_crashes(10)[:1]) is None
+
+
+# --------------------------------------------------------------------------- #
+# editions: the 2026 text is what runs, the 2024 Overview stays reproducible
+# --------------------------------------------------------------------------- #
+from safety_eval.warrants import (DEFAULT_EDITION, EDITION_NAMES,  # noqa: E402
+                                  EDITIONS, INTERSECTION_THRESHOLDS,
+                                  format_intersection, format_screen)
+
+
+def test_the_app_runs_the_2026_text_and_can_reproduce_2024():
+    assert EDITIONS == ("2024", "2026") and DEFAULT_EDITION == "2026"
+    assert EDITION_NAMES["2026"] == "2026 HSIP Warrants (March 2026)"
+    assert screen_intersection(icrashes(30), "urban", END).edition == "2026"
+    assert screen_section(crashes(31), 1.0, "freeway").edition == "2026"
+    assert screen_intersection(icrashes(30), "urban", END,
+                               edition="2024").edition == "2024"
+
+
+def test_the_four_urban_changes_from_2024_to_2026():
+    """I-1u (a) 55% to 60%, I-2u 38% to 40%, I-3u severity 6.0 to 6.5,
+    I-4u 40% to 45%. Nothing else moved, rural included."""
+    u24 = INTERSECTION_THRESHOLDS["2024"]["urban"]
+    u26 = INTERSECTION_THRESHOLDS["2026"]["urban"]
+    assert (u24["i1a"], u26["i1a"]) == ((12, 0.55), (12, 0.60))
+    assert (u24["i2"], u26["i2"]) == ((25, 0.38), (25, 0.40))
+    assert (u24["i3"], u26["i3"]) == ((25, 6.0, 0.40), (25, 6.5, 0.40))
+    assert (u24["i4"], u26["i4"]) == ((12, 0.40), (12, 0.45))
+    for key in ("recent", "i1b", "ka_fi"):
+        assert u24[key] == u26[key]
+    assert u26["i1b"] == (35, 0.35, 6.0) and u26["recent"] == 0.25
+    assert (INTERSECTION_THRESHOLDS["2024"]["rural"]
+            == INTERSECTION_THRESHOLDS["2026"]["rural"])
+
+
+def test_I1u_path_a_needs_60_percent_frontal_in_2026_and_55_in_2024():
+    """17 of 30 frontal is 56.7%: enough for 2024, not for 2026. Path (b)
+    is out of reach at 30 crashes, so only path (a) decides."""
+    rows = icrashes(17) + icrashes(13, t="ROR-L")
+    s = screen_intersection(rows, "urban", END)
+    assert s.fi_share == 0.57 and w("I-1u", s).threshold == 0.60
+    assert not w("I-1u", s).met
+    assert w("I-1u", screen_intersection(rows, "urban", END,
+                                         edition="2024")).met
+
+
+def test_I2u_needs_40_percent_in_the_last_year_in_2026_and_38_in_2024():
+    rows = icrashes(39, days_ago=30) + icrashes(61, days_ago=600)
+    s = screen_intersection(rows, "urban", END)
+    assert s.recent_1yr_share == 0.39 and w("I-2u", s).threshold == 0.40
+    assert not w("I-2u", s).met
+    assert w("I-2u", screen_intersection(rows, "urban", END,
+                                         edition="2024")).met
+
+
+def test_I3u_needs_severity_index_6_5_in_2026_and_6_in_2024():
+    """17 B and 8 PDO: EPDO mean (17 x 8.4 + 8) / 25 = 6.03."""
+    rows = icrashes(17, sev="B") + icrashes(8)
+    s = screen_intersection(rows, "urban", END)
+    assert s.total_severity == pytest.approx(6.03)
+    assert not w("I-3u", s).met
+    assert w("I-3u", screen_intersection(rows, "urban", END,
+                                         edition="2024")).met
+
+
+def test_I4u_needs_45_percent_night_in_2026_and_40_in_2024():
+    rows = icrashes(13, l=5) + icrashes(17)           # 13/30 = 43%
+    s = screen_intersection(rows, "urban", END)
+    assert s.night == 13 and s.night_share == 0.43
+    assert w("I-4u", s).threshold == 0.45 and not w("I-4u", s).met
+    assert w("I-4u", screen_intersection(rows, "urban", END,
+                                         edition="2024")).met
+
+
+def test_the_rural_warrants_and_I3_read_the_same_in_both_editions():
+    rows = icrashes(20) + icrashes(10, t="ROR-L") + icrashes(3, sev="K")
+    for name in ("I-1r", "I-2r", "I-3r", "I-4r", "I-3"):
+        a = w(name, screen_intersection(rows, "rural", END))
+        b = w(name, screen_intersection(rows, "rural", END, edition="2024"))
+        assert (a.met, a.threshold, a.count) == (b.met, b.threshold, b.count)
+
+
+def test_an_unknown_edition_is_refused():
+    with pytest.raises(ValueError, match="edition"):
+        screen_intersection(icrashes(30), "urban", END, edition="2025")
+    with pytest.raises(ValueError, match="edition"):
+        screen_section(crashes(31), 1.0, "freeway", edition="2022")
+
+
+def test_the_formatted_screens_name_the_edition():
+    assert "2026 HSIP Warrants (March 2026)" in format_intersection(
+        screen_intersection(icrashes(30), "urban", END))
+    assert "2024 HSIP Overview (May 2024)" in format_intersection(
+        screen_intersection(icrashes(30), "urban", END, edition="2024"))
+    assert "2026 HSIP Warrants (March 2026)" in format_screen(
+        screen_section(crashes(31), 1.0, "freeway"))
+    assert "2024 HSIP Overview (May 2024)" in format_screen(
+        screen_section(crashes(31), 1.0, "freeway", edition="2024"))
+
+
+# --------------------------------------------------------------------------- #
+# the 2026 text's non-motorist and bridge warrants (BP-1, MB-1, B-1)
+# --------------------------------------------------------------------------- #
+from safety_eval.warrants import (NONMOTORIST_TYPES, format_bridge,  # noqa: E402
+                                  format_nonmotorist, screen_bridge,
+                                  screen_nonmotorist_intersection,
+                                  screen_nonmotorist_midblock)
+
+
+def nm(n, t="pedestrian", years_ago=0.5, at_intersection=False):
+    return [Crash(str(i), t, 1, 1, at_intersection=at_intersection,
+                  date=END - _dt.timedelta(days=int(years_ago * 365.25)))
+            for i in range(n)]
+
+
+def test_non_motorist_types_are_the_decoded_T_14_and_T_15():
+    from safety_eval.fiche_workbook import T_CODES
+    assert NONMOTORIST_TYPES == {T_CODES[14], T_CODES[15]}
+    assert NONMOTORIST_TYPES == {"pedestrian", "cyclist"}
+
+
+def test_BP1_path_a_is_four_in_ten_years_with_half_in_the_last_five():
+    rows = nm(2, years_ago=1) + nm(2, "cyclist", years_ago=7)
+    s = screen_nonmotorist_intersection(rows, END)
+    assert (s.last_10yr, s.last_5yr, s.last_5yr_share) == (4, 2, 0.5)
+    assert w("BP-1", s).met and w("BP-1", s).note == "met by path (a)"
+    # 1 of 4 in the last 5 years is 25%: (a) fails, and (b) needs 3
+    rows = nm(1, years_ago=1) + nm(3, years_ago=7)
+    s = screen_nonmotorist_intersection(rows, END)
+    assert s.last_5yr_share == 0.25 and not w("BP-1", s).met
+    # 3 in the window but only 3 in ten years: (a) needs 4; (b) carries it
+    s = screen_nonmotorist_intersection(nm(3, years_ago=1), END)
+    assert w("BP-1", s).note == "met by path (b)"
+
+
+def test_BP1_path_b_is_three_in_the_last_five_years():
+    s = screen_nonmotorist_intersection(nm(3, years_ago=2), END)
+    assert w("BP-1", s).met and w("BP-1", s).note == "met by path (b)"
+    assert not w("BP-1", screen_nonmotorist_intersection(
+        nm(2, years_ago=2), END)).met
+    s = screen_nonmotorist_intersection(nm(4, years_ago=2), END)
+    assert w("BP-1", s).note == "met by path (a) and (b)"
+
+
+def test_BP1_counts_only_the_non_motorist_crashes():
+    rows = nm(2, years_ago=1) + icrashes(40)          # 40 vehicle crashes
+    s = screen_nonmotorist_intersection(rows, END)
+    assert s.total == 42 and s.nonmotorist == 2
+    assert not w("BP-1", s).met
+
+
+def test_BP1_windows_count_back_from_the_end_date_like_the_screen():
+    rows = nm(4, years_ago=6)
+    s = screen_nonmotorist_intersection(rows, END)
+    assert (s.last_10yr, s.last_5yr) == (4, 0)
+    # the same crashes against an end date two years earlier
+    s2 = screen_nonmotorist_intersection(rows, END - _dt.timedelta(days=731))
+    assert (s2.last_10yr, s2.last_5yr) == (4, 4)
+    # no end date: the most recent crash
+    assert screen_nonmotorist_intersection(rows).last_5yr == 4
+
+
+def test_MB1_is_four_midblock_non_motorist_crashes_in_ten_years():
+    s = screen_nonmotorist_midblock(nm(4, years_ago=3), END)
+    assert s.last_10yr == 4 and w("MB-1", s).met
+    assert not w("MB-1", screen_nonmotorist_midblock(
+        nm(3, years_ago=3), END)).met
+    assert not w("MB-1", screen_nonmotorist_midblock(
+        nm(4, years_ago=11), END)).met              # outside the window
+
+
+def test_the_windows_count_back_from_a_february_29_end():
+    """Ten years before 2024-02-29 has no February 29; the cut falls on the
+    28th instead of raising."""
+    s = screen_nonmotorist_midblock(nm(4, years_ago=3),
+                                    _dt.datetime(2024, 2, 29))
+    assert s.last_10yr == 4 and w("MB-1", s).met
+
+
+def test_MB1_reads_the_at_intersection_flag_and_says_what_it_left_out():
+    rows = nm(3, years_ago=3) + nm(2, years_ago=3, at_intersection=True)
+    s = screen_nonmotorist_midblock(rows, END)
+    assert (s.nonmotorist, s.at_intersection, s.last_10yr) == (3, 2, 3)
+    assert not w("MB-1", s).met
+    assert "left out as intersection related: 2" in format_nonmotorist(s)
+
+
+def test_B1_refuses_a_roadway_that_is_not_two_lane():
+    with pytest.raises(ValueError, match="2-lane"):
+        screen_bridge(icrashes(10, t="ROR-L"), two_lane=False, end_date=END)
+
+
+def test_B1_is_five_ror_in_ten_years_and_half_of_all_crashes():
+    rows = icrashes(5, t="ROR-L") + icrashes(5, t="RE")
+    s = screen_bridge(rows, two_lane=True, end_date=END)
+    assert (s.ror, s.ror_10yr, s.ror_share) == (5, 5, 0.5)
+    assert w("B-1", s).met
+    # four ROR: the count fails at 80%
+    assert not w("B-1", screen_bridge(
+        icrashes(4, t="ROR-L") + icrashes(1, t="RE"), True, END)).met
+    # five of eleven is 45%: the share fails
+    assert not w("B-1", screen_bridge(
+        icrashes(5, t="ROR-L") + icrashes(6, t="RE"), True, END)).met
+
+
+def test_B1_excludes_animal_crashes_from_the_whole_test():
+    rows = (icrashes(5, t="ROR-L") + icrashes(5, t="RE")
+            + icrashes(20, t="animal"))
+    s = screen_bridge(rows, two_lane=True, end_date=END)
+    assert (s.total, s.animal_excluded, s.ror_share) == (10, 20, 0.5)
+    assert w("B-1", s).met
+
+
+def test_B1_share_is_rounded_to_a_whole_percent_before_the_test():
+    """50 of 101 is 49.5%, which rounds to 50% and meets, the way every
+    share here is tested (docs/12)."""
+    rows = icrashes(50, t="ROR-L") + icrashes(51, t="RE")
+    s = screen_bridge(rows, two_lane=True, end_date=END)
+    assert w("B-1", s).exact_share < 0.5 and s.ror_share == 0.5
+    assert w("B-1", s).met
+
+
+def test_B1_counts_run_off_road_in_the_last_ten_years_only():
+    old = [Crash(str(i), "ROR-L", 1, 1,
+                 date=END - _dt.timedelta(days=11 * 365)) for i in range(5)]
+    s = screen_bridge(old + icrashes(2, t="ROR-L"), two_lane=True,
+                      end_date=END)
+    assert (s.ror, s.ror_10yr) == (7, 2) and not w("B-1", s).met
+
+
+def test_the_new_warrant_formats_name_the_2026_edition():
+    name = "2026 HSIP Warrants (March 2026)"
+    assert name in format_bridge(screen_bridge(icrashes(10, t="ROR-L"),
+                                               True, END))
+    assert name in format_nonmotorist(screen_nonmotorist_intersection(nm(3),
+                                                                      END))
+    assert name in format_nonmotorist(screen_nonmotorist_midblock(nm(3), END))

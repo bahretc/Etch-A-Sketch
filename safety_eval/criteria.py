@@ -32,8 +32,11 @@ import datetime as dt
 from dataclasses import asdict, dataclass
 
 from . import study_type as st
-from .warrants import (DARK_CODES, EPDO, FACILITY_MINIMUMS, INTERSECTION_WARRANTS,
-                       SECTION_WARRANTS, WET_CODES)
+from .warrants import (B1_THRESHOLDS, BP1_THRESHOLDS, DARK_CODES,
+                       DEFAULT_EDITION, EPDO, FACILITY_MINIMUMS,
+                       INTERSECTION_THRESHOLDS, INTERSECTION_WARRANTS,
+                       MB1_THRESHOLDS, RECENCY_YEARS, SECTION_WARRANTS,
+                       WET_CODES)
 from .workspace import ROLES
 
 URBAN = "urban"
@@ -188,6 +191,34 @@ def _epdo_text() -> str:
     return (f"KABCO from the S code; EPDO weights K and A {EPDO['K']}, "
             f"B and C {EPDO['B']}, PDO {EPDO['O']}; Severity Index = EPDO "
             "divided by crashes.")
+
+
+def _pct(share: float) -> str:
+    return f"{int(round(share * 100))} %"
+
+
+def _intersection_thresholds_text(context: str,
+                                  edition: str = DEFAULT_EDITION) -> str:
+    """One context's published thresholds as a sentence, read off the table
+    the screen runs so this sheet cannot drift from it."""
+    t = INTERSECTION_THRESHOLDS[edition][context]
+    yrs = RECENCY_YEARS[context]
+    sfx = context[0]
+    fi_min, fi_share = t["i1a"]
+    i1 = f"{fi_min} or more frontal impacts at {_pct(fi_share)} or more"
+    if t["i1b"] is not None:
+        n, share, sev = t["i1b"]
+        i1 = (f"({i1}, or {n} or more crashes at {_pct(share)} frontal with "
+              f"frontal severity {sev} or more)")
+    n2, p2 = t["i2"]
+    n3, s3, p3 = t["i3"]
+    n4, p4 = t["i4"]
+    return (f"I-1{sfx} {_pct(t['recent'])} of crashes in the last {yrs} years "
+            f"and {i1}; I-2{sfx} {n2} or more crashes and {_pct(p2)} in the "
+            f"last year; I-3{sfx} {n3} or more crashes, severity {s3} or more "
+            f"and {_pct(p3)} in the last {yrs} years; I-4{sfx} "
+            f"{_pct(t['recent'])} in the last {yrs} years, {n4} or more night "
+            f"crashes at {_pct(p4)}")
 
 
 def _common(shape: st.AnalysisKind) -> list:
@@ -420,9 +451,9 @@ def _hsip(shape: st.AnalysisKind, context: str | None, years: int | None
     out.append(Criterion(
         "Crash scope",
         "Animal crashes are deleted (status DEL) and leave the total, the "
-        "rate and every warrant share; the 2024 Overview removes them "
-        "because a countermeasure does not address deer (41000079305: 12 of "
-        "17 DEL rows are animal crashes)."
+        "rate and every warrant share; the HSIP warrant text (2026 as in "
+        "2024) removes them because a countermeasure does not address deer "
+        "(41000079305: 12 of 17 DEL rows are animal crashes)."
         + (" Bicycle and pedestrian crashes only." if shape.key == st.BIKEPED
            else ""),
         "docs/12; study_type (deletes_animals=True)",
@@ -442,35 +473,52 @@ def _hsip(shape: st.AnalysisKind, context: str | None, years: int | None
             "direction counts only when the engineer opts in for a "
             "multilane section. Shares are rounded to whole percents before "
             "the test. N-4's base is the non-intersection crashes (total "
-            "less angle, LTDR, LTSR, RTDR, RTSR and U-turn).",
-            "docs/12 (2024 HSIP Overview, the warrants workbook)",
+            "less angle, LTDR, LTSR, RTDR, RTSR and U-turn). B-1 (bridge, "
+            f"2-lane roadways only: {B1_THRESHOLDS['min_ror_10yr']} or more "
+            "run off road crashes in the last 10 years and "
+            f"{_pct(B1_THRESHOLDS['ror_share'])} of all crashes run off road, "
+            f"animal crashes out) and MB-1 ({MB1_THRESHOLDS['min_10yr']} or "
+            "more non-intersection related crashes involving non-motorists "
+            "in the last 10 years) are available as extra tests on the same "
+            "reviewed rows (a 10-year pull settles them).",
+            "docs/12 (2026 HSIP Warrants, March 2026; the warrants workbook)",
             "warrants; HSIP Warrants page; warrants.screen_section"))
-    else:
+    elif shape.key == st.INTERSECTION:
         names = ", ".join(f"{k} ({d})" for k, (c, d) in
                           INTERSECTION_WARRANTS.items()
                           if context in (None, c) or c == "both")
+        ka = INTERSECTION_THRESHOLDS[DEFAULT_EDITION][URBAN]["ka_fi"]
         out.append(Criterion(
             "Intersection warrants",
-            f"{names}. Frontal impact is angle, LTDR, LTSR, RTDR, RTSR, "
-            "U-turn and head on; severity is the EPDO Severity Index. "
-            "Urban: I-1u 25 % of crashes in the last 2 years and (12 or "
-            "more frontal impacts at 55 % or more, or 35 or more crashes "
-            "at 35 % frontal with frontal severity 6 or more); I-2u 25 or "
-            "more crashes and 38 % in the last year; I-3u 25 or more "
-            "crashes, severity 6 or more and 40 % in the last 2 years; "
-            "I-4u 25 % in the last 2 years, 12 or more night crashes at "
-            "40 %. Rural: I-1r 20 % in the last 3 years, 9 or more frontal "
-            "impacts at 60 %; I-2r 20 or more crashes and 32 % in the last "
-            "year; I-3r 20 or more crashes, severity 9 or more and 30 % in "
-            "the last 3 years; I-4r 20 % in the last 3 years, 10 or more "
-            "night crashes at 46 %. I-3 (both): 3 or more K or A frontal "
-            "impact crashes in the last 5 years. These are the 2024 "
-            "thresholds; the 41000079736 study notes cite 2026 urban values "
-            "(I-1u 60 % frontal, I-2u 40 %, I-3u severity 6.5 and 40 %, "
-            "I-4u 45 %) that are not yet confirmed against the 2026 "
-            "Overview, so the screen runs the 2024 values until they are.",
-            "docs/12 (2024 HSIP Overview); examples/41000079736/README.md",
-            "warrants; HSIP Warrants page; warrants.screen_intersection"))
+            f"{names}. Frontal impact is angle, left turn (LTDR, LTSR), "
+            "right turn (RTDR, RTSR) and head on, with the workbook's "
+            "U-turn and Y-line types kept as match keys; severity is the "
+            f"EPDO Severity Index. Urban: {_intersection_thresholds_text(URBAN)}. "
+            f"Rural: {_intersection_thresholds_text(RURAL)}. I-3 (both): "
+            f"{ka} or more K or A frontal impact crashes in the last 5 "
+            "years. These are the 2026 thresholds, the edition the app "
+            "runs; the 2024 Overview differs only in I-1u (55 % frontal), "
+            "I-2u (38 %), I-3u (severity 6.0) and I-4u (40 %) and stays "
+            "reachable as edition 2024.",
+            "docs/12 (2026 HSIP Warrants, March 2026)",
+            "warrants --edition; HSIP Warrants page (Edition); "
+            "warrants.screen_intersection"))
+    else:
+        t = BP1_THRESHOLDS
+        out.append(Criterion(
+            "Non-motorist warrant",
+            f"BP-1 Chronic Location: (a) {t['a_min_10yr']} or more crashes "
+            "involving non-motorists in the last 10 years with "
+            f"{_pct(t['a_share_5yr'])} or more of them in the last 5 years, "
+            f"or (b) {t['b_min_5yr']} or more in the last 5 years. "
+            "Non-motorist crashes are the pedestrian and cyclist types (T "
+            "14 and 15); the windows count back from the analysis end date "
+            "and the share is rounded to a whole percent before the test. "
+            "The vehicle intersection warrants are not the question on a "
+            "bike/ped pull.",
+            "docs/12 (2026 HSIP Warrants, March 2026)",
+            "HSIP Warrants page (Bike/Ped); "
+            "warrants.screen_nonmotorist_intersection"))
     if shape.is_intersection:
         out.append(Criterion(
             "AADT",
@@ -792,6 +840,8 @@ def for_study(study_type, analysis=None, context=None) -> StudyCriteria:
     if kind.runs_warrants:
         if a_key == st.SECTION:
             warrants = tuple(SECTION_WARRANTS)
+        elif a_key == st.BIKEPED:
+            warrants = ("BP-1",)
         else:
             warrants = tuple(k for k, (c, _) in INTERSECTION_WARRANTS.items()
                              if ctx is None or c in (ctx, "both"))

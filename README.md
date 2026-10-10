@@ -70,7 +70,7 @@ in `CHANGELOG.md`.
 | Study type | Analysis | Period | Limits | Warrants | Criteria sheet |
 |---|---|---|---|---|---|
 | Fatal Crash Analysis | section or intersection | 5 years to the last complete month of TEAAS data | mileposts, or a 150 ft y-line | none | `safety-eval criteria --type fatal` |
-| HSIP Package Analysis | section, intersection, bike/ped intersection | 5 years; intersections 5 urban / 10 rural; bike/ped 10 | mileposts, 150 ft, or 300 ft (bike/ped) | section F/N or intersection I-1 to I-4 | `safety-eval criteria --type hsip --analysis intersection --context rural` |
+| HSIP Package Analysis | section, intersection, bike/ped intersection | 5 years; intersections 5 urban / 10 rural; bike/ped 10 | mileposts, 150 ft, or 300 ft (bike/ped) | section F/N or intersection I-1 to I-4 (2026 edition; 2024 reproducible), bike/ped BP-1 | `safety-eval criteria --type hsip --analysis intersection --context rural` |
 | Evaluation | intersection or section | before and after from the assignment (Date Range Calculator) | 150 ft y-line or mileposts | none | `safety-eval criteria --type evaluation` |
 
 `safety-eval criteria --study <number>` reads an existing study folder and

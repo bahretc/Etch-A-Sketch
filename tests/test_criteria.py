@@ -79,6 +79,8 @@ def test_only_hsip_packages_carry_warrants_and_the_context_picks_the_set():
     assert urban.years == 5 and rural.years == 10
     # the sheet without a context still names every intersection warrant
     assert len(cr.for_study("hsip", "intersection").warrants) == 9
+    # a bike/ped intersection is asked the 2026 non-motorist warrant
+    assert cr.for_study("hsip", "bikeped").warrants == ("BP-1",)
 
 
 def test_a_context_belongs_to_an_hsip_intersection_only():
@@ -105,7 +107,18 @@ def test_the_rules_that_differ_between_the_study_types_are_stated():
     assert fatal["Warrants"].rule.startswith("None")
     assert ev["Warrants"].rule.startswith("None")
     assert "10 years" in hsip["Analysis period"].rule
-    assert "2024" in hsip["Intersection warrants"].rule
+    assert "2026" in hsip["Intersection warrants"].rule
+    assert "2026 HSIP Warrants" in hsip["Intersection warrants"].source
+    urban = topics(cr.for_study("hsip", "intersection", "urban"))
+    rule = urban["Intersection warrants"].rule
+    assert "12 or more frontal impacts at 60 % or more" in rule
+    assert "I-2u 25 or more crashes and 40 % in the last year" in rule
+    assert "severity 6.5 or more" in rule and "night crashes at 45 %" in rule
+    assert "not yet confirmed" not in rule
+    bikeped = topics(cr.for_study("hsip", "bikeped"))
+    assert bikeped["Non-motorist warrant"].rule.startswith("BP-1")
+    assert "Intersection warrants" not in bikeped
+    assert "B-1" in topics(cr.for_study("hsip", "section"))["Section warrants"].rule
     assert "never 2020" in ev["AADT"].rule
     assert "Save As PDF" in ev["One pager"].rule
     for sheet in cr.all_criteria():

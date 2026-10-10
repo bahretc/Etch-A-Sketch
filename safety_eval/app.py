@@ -1450,6 +1450,18 @@ def _hsip_tab(st) -> None:
              + (" Defaults to the study's ID export when attached."
                 if ws else ""))
 
+    def edition_box(col, key):
+        return col.selectbox(
+            "Edition", ["2026", "2024"], key=key,
+            help="The NCDOT warrant text the thresholds come from: 2026 "
+                 "HSIP Warrants (Traffic Safety Systems Section, March "
+                 "2026), the edition the app runs, or the 2024 HSIP "
+                 "Overview (May 2024) to reproduce an earlier study. Four "
+                 "urban intersection thresholds differ; the section "
+                 "warrants do not (docs/12).")
+
+    bridge = midblock = False
+    f_text = ""
     if is_section:
         c1, c2, c3, c4 = st.columns(4)
         facility = c1.selectbox("Facility", list(FACILITY_LABELS),
@@ -1463,9 +1475,28 @@ def _hsip_tab(st) -> None:
         multilane = c4.checkbox(
             "Multi-lane", value=False,
             help="Counts SSSD as run-off-road (docs/12; off by default).")
+        e1, e2, e3 = st.columns(3)
+        edition = edition_box(e1, "edition_section")
+        bridge = e2.checkbox(
+            "Also test B-1 (bridge, 2-lane roadway)", value=False,
+            help="The 2026 bridge warrant: 5 or more run off road crashes "
+                 "in the last 10 years and 50% of all crashes run off road, "
+                 "animal crashes out. 2-lane roadways only (docs/12).")
+        midblock = e3.checkbox(
+            "Also test MB-1 (non-motorist midblock)", value=False,
+            help="The 2026 non-motorist midblock warrant: 4 or more "
+                 "non-intersection related pedestrian or cyclist crashes "
+                 "in the last 10 years (docs/12).")
+        if midblock:
+            f_text = e3.text_input(
+                "Intersection related F codes", placeholder="8, 9, 13",
+                help="Fiche F (Roadway Feature) codes the review treats as "
+                     "intersection related, comma separated; MB-1 leaves "
+                     "those crashes out. Blank counts every non-motorist "
+                     "crash as midblock.")
         ready = hi > lo
     else:
-        c1, c2 = st.columns(2)
+        c1, c2, c3 = st.columns(3)
         context = c1.radio("Context", ["urban", "rural"], horizontal=True,
                            help="Urban and rural differ in every threshold "
                                 "and in the recency window (2 vs 3 years). "
@@ -1473,7 +1504,8 @@ def _hsip_tab(st) -> None:
                                 "(a municipality name vs RURAL), and the "
                                 "crash pull is 5 years urban / 10 rural "
                                 "(docs/12).")
-        end_date = c2.date_input(
+        edition = edition_box(c2, "edition_intersection")
+        end_date = c3.date_input(
             "Analysis end date", value=None,
             help="The recency tests count back from here; without it, from "
                  "the most recent crash.")
@@ -1522,20 +1554,26 @@ def _hsip_tab(st) -> None:
 
             if is_section:
                 try:
+                    f_codes = hsip.parse_f_codes(f_text)
                     run = hsip.run_hsip(
                         path, facility, lo, hi, multilane=multilane,
                         overrides=overrides,
-                        import_out=os.path.join(tmp, "import.txt"))
+                        import_out=os.path.join(tmp, "import.txt"),
+                        edition=edition)
                 except ValueError as exc:
                     st.error(str(exc))
                     st.stop()
                 _section_results(st, run)
+                if bridge or midblock:
+                    _extra_section_warrants(st, run, overrides, bridge,
+                                            midblock, f_codes)
                 import_lines, import_path = (run.import_lines,
                                              os.path.join(tmp, "import.txt"))
             else:
                 try:
-                    s, pairs, flags, period_warn = _screen_intersection_wb(
-                        path, context, end_date, overrides)
+                    s, pairs, flags, period_warn, crashes = \
+                        _screen_intersection_wb(path, context, end_date,
+                                                overrides, edition)
                 except ValueError as exc:
                     st.error(str(exc))
                     st.stop()
@@ -1546,6 +1584,16 @@ def _hsip_tab(st) -> None:
                 import_lines = write_import_list(import_path, pairs,
                                                  strip_zeros=True)
                 _intersection_results(st, s, flags)
+                if shape.key == BIKEPED:
+                    from safety_eval.warrants import (
+                        format_nonmotorist, screen_nonmotorist_intersection)
+                    st.subheader("BP-1 non-motorist intersection warrant")
+                    st.caption("The 2026 text's warrant for a bike/ped "
+                               "intersection analysis, on the same reviewed "
+                               "rows as the screen above (docs/12).")
+                    st.text(format_nonmotorist(
+                        screen_nonmotorist_intersection(crashes,
+                                                        end_date or None)))
 
             base = os.path.splitext(wb_name)[0]
             stem = base.replace("_Fiche", "")
@@ -1847,12 +1895,14 @@ def _hsip_tab(st) -> None:
 
 
 def _section_results(st, run) -> None:
+    from safety_eval.warrants import EDITION_NAMES
     s = run.screen
     m1, m2, m3 = st.columns(3)
     m1.metric("Crashes in analysis", s.total)
     m2.metric("Crashes per mile", f"{s.rate:.1f}")
     m3.metric(f"Minimums ({s.min_total} / {s.min_rate} per mi)",
               "Met" if s.meets_minimums else "Not met")
+    st.caption(f"Edition: {EDITION_NAMES[s.edition]}.")
     st.table([{"Warrant": w.warrant, "Description": w.description,
                "Crashes": f"{w.count}/{w.total}",
                "Share": f"{w.share:.0%}", "Needs": f"{w.threshold:.0%}",
@@ -1865,13 +1915,40 @@ def _section_results(st, run) -> None:
                "facility dropdown to see the other warrant set live.")
 
 
+def _extra_section_warrants(st, run, overrides, bridge, midblock,
+                            f_codes) -> None:
+    """B-1 and MB-1 (2026 text) on the same reviewed rows the section
+    screen read; shown under the section result when asked for."""
+    import safety_eval.hsip as hsip
+    from safety_eval.warrants import (format_bridge, format_nonmotorist,
+                                      pull_note, screen_bridge,
+                                      screen_nonmotorist_midblock)
+    crashes = hsip.crashes_from_warrant_rows(
+        hsip.warrant_rows(run.rows, overrides), intersection_f=f_codes)
+    note = pull_note(crashes)
+    if note:
+        st.caption(note)
+    if bridge:
+        st.subheader("B-1 bridge warrant")
+        st.text(format_bridge(screen_bridge(crashes, two_lane=True)))
+    if midblock:
+        st.subheader("MB-1 non-motorist midblock warrant")
+        if not f_codes:
+            st.caption("No F codes were named as intersection related, so "
+                       "every non-motorist crash reads as midblock and the "
+                       "count is an upper bound.")
+        st.text(format_nonmotorist(screen_nonmotorist_midblock(crashes)))
+
+
 def _intersection_results(st, s, flags) -> None:
+    from safety_eval.warrants import EDITION_NAMES
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Crashes in analysis", s.total)
     m2.metric("Frontal impact", f"{s.fi} ({s.fi_share:.0%})")
     m3.metric("Night", f"{s.night} ({s.night_share:.0%})")
     m4.metric("K/A frontal, 5 yr", s.ka_fi_5yr)
-    st.caption(f"EPDO severity: frontal impact {s.fi_severity:.1f} of "
+    st.caption(f"Edition: {EDITION_NAMES[s.edition]}. "
+               f"EPDO severity: frontal impact {s.fi_severity:.1f} of "
                f"{s.total_severity:.1f} total. Last year {s.recent_1yr} "
                f"({s.recent_1yr_share:.0%}); last {s.recency_years} years "
                f"{s.recent_n} ({s.recent_n_share:.0%}).")
@@ -1892,13 +1969,19 @@ def _daylight_warnings(st, flags) -> None:
             "fiche comment.")
 
 
-def _screen_intersection_wb(path, context, end_date, overrides):
-    """Screen the intersection warrants off a reviewed fiche workbook."""
+def _screen_intersection_wb(path, context, end_date, overrides,
+                            edition=None):
+    """Screen the intersection warrants off a reviewed fiche workbook.
+
+    Returns the screen, the ADD/RE import pairs, the daylight flags, the
+    period note and the Crash objects, so BP-1 can run on the same rows.
+    """
     import openpyxl
 
     import safety_eval.hsip as hsip
     from safety_eval.qc import daylight_check
-    from safety_eval.warrants import Crash, screen_intersection
+    from safety_eval.warrants import (DEFAULT_EDITION, period_note,
+                                      screen_intersection)
 
     wb = openpyxl.load_workbook(path)
     ws = wb[hsip.fiche_sheet_name(wb)]
@@ -1906,26 +1989,15 @@ def _screen_intersection_wb(path, context, end_date, overrides):
     if not rows:
         raise ValueError("no IS/RE/ADD rows on the working sheet; review "
                          "the fiche first")
-    wrows = hsip.warrant_rows(rows, overrides)
-    crashes = []
-    for d in wrows:
-        when = d.get("date")
-        crashes.append(Crash(
-            crash_id=str(d.get("crash_id", "")),
-            crash_type=str(d.get("type") or ""),
-            road_condition=d.get("c") if isinstance(d.get("c"), int) else None,
-            light_condition=d.get("l") if isinstance(d.get("l"), int)
-            else None,
-            severity=str(d.get("s") or ""),
-            date=when.date() if hasattr(when, "date") else when))
-    screen = screen_intersection(crashes, context, end_date or None)
+    crashes = hsip.crashes_from_warrant_rows(hsip.warrant_rows(rows, overrides))
+    screen = screen_intersection(crashes, context, end_date or None,
+                                 edition=edition or DEFAULT_EDITION)
     times = hsip.crash_times(wb)
     flags = daylight_check(
         [(a.crash_id, times.get(a.crash_id, a.date), a.l)
          for a in rows if a.l is not None])
-    from safety_eval.warrants import period_note
     note = period_note(crashes, context, end_date or None)
-    return screen, hsip.import_pairs(rows), flags, note
+    return screen, hsip.import_pairs(rows), flags, note, crashes
 
 
 @functools.lru_cache(maxsize=16)

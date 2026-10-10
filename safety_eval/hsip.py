@@ -20,7 +20,7 @@ from .qc import daylight_check
 from .study_type import get as get_study_type
 from .teaas import IMPORT_STATUSES, write_import_list
 from .warrant_sheet import OVERRIDE_COLOUR, add_warrant_sheet
-from .warrants import format_finding
+from .warrants import DEFAULT_EDITION, EDITION_NAMES, Crash, format_finding
 
 #: Working-sheet columns this module reads (fiche_workbook.FICHE_COLUMNS,
 #: 1-based).
@@ -175,6 +175,47 @@ def _ident(cid: str):
     return int(cid) if cid.isdigit() and not cid.startswith("0") else cid
 
 
+def crashes_from_warrant_rows(wrows, intersection_f=None) -> list:
+    """:class:`~safety_eval.warrants.Crash` objects from :func:`warrant_rows`
+    dicts, the engineer's overrides already applied.
+
+    ``intersection_f`` is the set of fiche F codes (Roadway Feature) the
+    review treats as intersection related; a crash whose F is in it gets
+    ``at_intersection=True``, which the MB-1 midblock warrant reads. No F
+    code table is in the pack, so nothing is assumed: with the set left
+    empty every crash reads as midblock and MB-1's count is an upper bound,
+    which its output says.
+    """
+    codes = {int(f) for f in (intersection_f or ())}
+    out = []
+    for d in wrows:
+        when = d.get("date")
+        f = d.get("f")
+        out.append(Crash(
+            crash_id=str(d.get("crash_id", "")),
+            crash_type=str(d.get("type") or ""),
+            road_condition=d.get("c") if isinstance(d.get("c"), int) else None,
+            light_condition=d.get("l") if isinstance(d.get("l"), int)
+            else None,
+            at_intersection=isinstance(f, int) and f in codes,
+            severity=str(d.get("s") or ""),
+            date=when.date() if hasattr(when, "date") else when))
+    return out
+
+
+def parse_f_codes(text) -> set:
+    """``"8, 9,13"`` to ``{8, 9, 13}``; blank to an empty set."""
+    out = set()
+    for part in str(text or "").replace(";", ",").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if not part.isdigit():
+            raise ValueError(f"F codes are whole numbers; got {part!r}")
+        out.add(int(part))
+    return out
+
+
 def import_pairs(rows) -> list:
     """``(crash_id, final milepost)`` for the TEAAS import: ADD and RE only.
 
@@ -251,13 +292,16 @@ def run_hsip(workbook_path: str, facility: str, lo: float, hi: float,
              sheet: str | None = None, multilane: bool = False,
              overrides: dict | None = None, study_type: str = "hsip",
              import_out: str | None = None, strip_zeros: bool = True,
-             save: bool = True, inclusive_minimums: bool = False) -> HsipRun:
+             save: bool = True, inclusive_minimums: bool = False,
+             edition: str = DEFAULT_EDITION) -> HsipRun:
     """The reviewed fiche workbook, taken the rest of the way.
 
     Reads the engineer's IS/RE/ADD rows off the working sheet, rebuilds the
     Warrant sheet (live formulas, facility dropdown, per-warrant findings),
     saves the workbook in place, and writes the ADD+RE import list when
     ``import_out`` is given. ``overrides`` is :func:`parse_overrides` output.
+    ``edition`` names the warrant text (warrants.EDITIONS) and is recorded
+    on the screen and the sheet.
 
     Warrants are an HSIP question: an Evaluation or Fatal study refuses here
     rather than producing a sheet nobody should rely on (docs/12).
@@ -284,7 +328,7 @@ def run_hsip(workbook_path: str, facility: str, lo: float, hi: float,
     _, screen, findings = add_warrant_sheet(
         wb, warrant_rows(rows, overrides), hi - lo, facility,
         multilane=multilane, lo=lo, hi=hi,
-        strict=not inclusive_minimums)
+        strict=not inclusive_minimums, edition=edition)
     if save:
         wb.save(workbook_path)
 
@@ -333,7 +377,8 @@ def format_report(run: HsipRun, study: str = "", route: str = "",
     parts = [f"{counts[k]} {_STATUS_WORDS[k]}" for k in ("IS", "RE", "ADD")
              if counts.get(k)]
     body = [
-        f"{s.total} crashes are in the analysis"
+        f"Screened under the {EDITION_NAMES[s.edition]}. {s.total} crashes "
+        "are in the analysis"
         + (f" ({', '.join(parts)})" if parts else "")
         + f", {s.rate:.1f} crashes per mile. The {s.facility} minimums of "
         f"{s.min_total} crashes and {s.min_rate} crashes per mile are "

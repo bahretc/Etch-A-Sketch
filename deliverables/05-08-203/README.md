@@ -79,3 +79,14 @@ data month; the Typical Target Crash Types sheet for the target wording.
   for Wake. Every other formula LibreOffice cannot compute (XLOOKUP and
   REGEXEXTRACT dependents on the staff email sheet) has no cached value
   until Excel recalculates on open, which it does for every formula.
+
+## reviewed-setup/ (later version, 2026-10-07)
+
+`reviewed-setup/` holds the set-up workbook as it stood after the Excel review of
+7 October 2026 (Est flags cleared, notes trimmed, wording edits), with its
+`Evaluation-Setup-and-Assumptions_05-08-203_W-5601HP.md` write-up, the station map and
+the scripts that patched the workbook XML. It differs from the workbook above on the
+construction period: the review carries construction through 10/31/2022 (18 months, to
+the certain bound of the 2022 signal turn-on) with equal 3 yr 10 mo before and after
+periods, where the workbook above uses the instructions' three-month default. The
+write-up records the evidence for each choice; the engineer picks the period.

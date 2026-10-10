@@ -26,6 +26,8 @@ ui = ["streamlit>=1.30", "Pillow>=10"]
 docx = ["python-docx>=1.1"]
 # results page print, PDF binding, map block, QA checks
 deliverables = ["pikepdf>=8", "Pillow>=10", "matplotlib>=3.7", "python-docx>=1.1"]
+# fatal crash analysis figures and workbook (fca, docs/14)
+fatal = ["matplotlib>=3.8", "Pillow>=10"]
 # assistant chat (docs/07 phase 5), official Anthropic SDK
 llm = ["anthropic>=1.0"]
 # the app in a native desktop window (python -m safety_eval.desktop);
@@ -41,12 +43,14 @@ dev = ["pytest>=7", "python-docx>=1.1"]
 
 [project.scripts]
 safety-eval = "safety_eval.cli:main"
+fca = "fca.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["safety_eval*"]
+include = ["safety_eval*", "fca*"]
 
 [tool.setuptools.package-data]
 safety_eval = ["config/*.yaml", "vendor/*"]
+fca = ["vendor/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

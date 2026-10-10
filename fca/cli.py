@@ -1,4 +1,4 @@
-"""Command line: python -m fca build studies/<study_id> [--no-maps]"""
+"""Command line: python -m fca build <study folder> [--no-maps]   (or: fca build <study folder>)"""
 from __future__ import annotations
 
 import argparse

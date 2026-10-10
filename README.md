@@ -22,7 +22,8 @@ studies/<study_id>/
   inputs/             TEAAS exports: <id>_Fiche.csv, DetailedFiche.csv (+ _parameters), InitialStudy.csv
                       (strip or intersection analysis), InitialID.txt (ID export), FeaturesReport_<route>.pdf
   outputs/            <id>_Fiche.xlsx, <id>_ReviewIDs.txt, <id>_screening.json,
-                      <id>_Map1_Location.png, <id>_Map2_StudySection.png, <id>_Map3_CrashMap.png,
+                      <id>_Figure1_AreaMap.png/.pdf, <id>_Figure2_LocationMap.png/.pdf,
+                      <id>_Figure3_CrashMap.png/.pdf (report figures in the TSU fatal-crash layout),
                       <id>_CrashMap.html (self-contained Leaflet map with embedded imagery)
 ```
 
@@ -61,5 +62,6 @@ with the Type, Dir, Latitude, Longitude, Unit 1 Dir, Unit 2 Dir and Movement for
 - `fca/geo.py` distances, centerline projection, Web Mercator tiles
 - `fca/screen.py` screening rules
 - `fca/workbook.py` the Fiche workbook and the review list
-- `fca/maps.py` PNG maps (matplotlib over stitched tiles) and the Leaflet HTML map
+- `fca/figures.py` report figures: Area Map, Location Map, Crash Map (matplotlib over stitched tiles, PNG + PDF)
+- `fca/maps.py` the Leaflet HTML map and the crash placement shared with the figures
 - `fca/cli.py` command line

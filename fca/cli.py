@@ -38,9 +38,13 @@ def main(argv=None):
     print(f"workbook: {info['path']}  rows={info['fiche_rows']} counts={info['counts']} review={info['review_rows']}")
     print(f"review ids ({len(ids)}): {', '.join(map(str, ids))}")
     if not args.no_maps:
-        from .maps import build_maps
-        paths = build_maps(study, screened, out, args.tile_cache)
-        for p in paths:
+        from .figures import build_figures
+        from .maps import map_html
+        from .geo import TileCache
+        paths = build_figures(study, screened, out, args.tile_cache)
+        html = os.path.join(out, f"{sid}_CrashMap.html")
+        map_html(study, screened, TileCache(args.tile_cache), html)
+        for p in paths + [html]:
             print(f"map: {p}")
     with open(os.path.join(out, f"{sid}_screening.json"), "w") as fh:
         json.dump([{"crash_id": s.row.crash_id, "flag": s.flag, "triggers": s.triggers, "priority": s.priority,

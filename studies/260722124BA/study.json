@@ -41,14 +41,14 @@
     "location_text": "NC 179BUS, 0.07 mi (368 ft) S of NC 179 toward SR 1810, in Calabash"
   },
   "intersection": {
-    "name": "NC 179 / SR 1164 (Old Georgetown Rd) / Clariday Rd",
+    "name": "NC 179 / SR 1164 (Clariday Rd SW) / Old Georgetown Rd SW",
     "mp": 0.0,
     "lat": 33.898961,
     "lon": -78.552505
   },
   "features": [
     {
-      "name": "NC 179 / SR 1164 / Old Georgetown Rd / Clariday Rd",
+      "name": "NC 179 / SR 1164 (Clariday Rd SW) / Old Georgetown Rd SW",
       "short": "NC 179",
       "mp": 0.0,
       "lat": 33.898961,
@@ -290,6 +290,70 @@
     "detailed_fiche_parameters": "inputs/DetailedFiche_parameters.csv",
     "strip": "inputs/InitialStudy.csv",
     "initial_ids": "inputs/InitialID.txt",
-    "features_pdf": "inputs/FeaturesReport_NC179BUS.pdf"
+    "features_pdf": "inputs/FeaturesReport_NC179BUS.pdf",
+    "boundaries": "inputs/boundaries.json"
+  },
+  "figures": {
+    "slip_no": "260722124BA",
+    "description_lines": [
+      "NC 179 Bus (Beach Dr SW) from the Calabash NAPA",
+      "Auto Care Center Driveway [MP 0.025] to",
+      "Hidden Valley Pl SW [MP 0.205]"
+    ],
+    "crash_callout": [
+      "NC 179 Bus (Beach Dr SW); 0.07 mile",
+      "South of NC 179 toward SR 1810",
+      "(Los Nuevos Charros PVA)"
+    ],
+    "date_label": "October 2026",
+    "prepared_for": "NCDOT Traffic Safety Unit\nDivision 3",
+    "area_bbox": [
+      -78.6,
+      33.868,
+      -78.51,
+      33.928
+    ],
+    "road_labels": [
+      {
+        "text": "NC 179",
+        "shield": "179",
+        "lat": 33.8984,
+        "lon": -78.5539,
+        "note": "Beach Dr, west leg"
+      },
+      {
+        "text": "NC 179",
+        "shield": "179",
+        "lat": 33.89955,
+        "lon": -78.55165,
+        "note": "Old Georgetown Rd SW, northeast leg"
+      },
+      {
+        "text": "NC 179 BUS",
+        "shield": "179",
+        "bus": true,
+        "lat": 33.89525,
+        "lon": -78.54985,
+        "note": "Beach Dr SW, southeast"
+      },
+      {
+        "text": "Clariday Rd SW (SR 1164)",
+        "lat": 33.8998,
+        "lon": -78.5535,
+        "rot": 58
+      },
+      {
+        "text": "Old Georgetown Rd SW",
+        "lat": 33.90005,
+        "lon": -78.5509,
+        "rot": 33
+      },
+      {
+        "text": "Beach Dr SW",
+        "lat": 33.8968,
+        "lon": -78.5506,
+        "rot": -52
+      }
+    ]
   }
 }

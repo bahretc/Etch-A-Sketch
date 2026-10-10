@@ -58,7 +58,7 @@ AT THE INTERSECTION - likely NIS (2)
   107421425  2023-08-09  T=25 S=O  MP 999.999  NC 179 0.004 mi N from SR 1164 toward SR 1810
       At the NC 179 intersection - likely NIS; description (NC 179 0.004 mi N from SR 1164 toward SR 1810) implies MP 0.004, 111 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway); MP 999.999 - crash is coded on NC 179; SR 1810 meets both NC 179 and NC 179BUS, so the description fits either route
   108186124  2025-07-27  T=23 S=B  MP 0.000  NC 179BUS 0 mi from SR 1164 toward SR 1165
-      At the NC 179 intersection - likely NIS; NC 179BUS MP 0.000 is the NC 179 / SR 1164 (Old Georgetown Rd) / Clariday Rd intersection, 132 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - an intersection crash unless the report puts it past the driveway
+      At the NC 179 intersection - likely NIS; NC 179BUS MP 0.000 is the NC 179 / SR 1164 (Clariday Rd SW) / Old Georgetown Rd SW intersection, 132 ft before the begin limit (MP 0.025, Calabash NAPA Auto Care Center driveway) - an intersection crash unless the report puts it past the driveway
 
 CHECK - description and coordinates disagree (1)
   108280240  2025-10-20  T=23 S=C  MP 999.999  NC 179 1 mi N from SR 1810 toward SR 1164

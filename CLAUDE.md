@@ -27,6 +27,8 @@ Target stack: Python 3.11+, working directly with the real NCDOT Excel templates
 - docs/11-review-assist.md - the LLM review assist: decide vs prepare, redaction dependency, measured behaviour
 - docs/12-hsip-warrants.md - the three study types and the 2024 HSIP warrant thresholds
 - docs/13-beta-walkthrough.md - install, the fatal slip start to finish on CLI and app, known limits
+- docs/14-fatal-crash-analysis-fca.md - the Traffic Safety Unit fatal crash tooling (fca): study.json, screening triggers, the four figures, the reviewed fiche
+- docs/15-study-criteria.md - the criteria sheet for every study type and analysis; GENERATED from safety_eval/criteria.py, never edited by hand
 
 ## Hard rules (do not violate)
 
@@ -42,14 +44,20 @@ Target stack: Python 3.11+, working directly with the real NCDOT Excel templates
 10. **Start every evaluation from NCDOT's provided template workbook and follow its Step-by-Step Instructions tab to the letter** (VHB QC, Assignment 37, 2026-09). Do not rebuild or restructure template sheets (Trends, One Pager, lists, links) unless a fundamental error forces it; report prototype defects to the engineer instead. Paste the TEAAS fiche parameters export into the Parameters tab. Assumptions go to NCDOT inside the workbook (Assumptions sheet, Evaluation Set-up, map block with alt text), not as a separate email.
 11. **One pager reports are public documents.** Never mention TEAAS, the workbook, the fiche or other internal tools in report text. Leave out exact crash times, and dates unless they matter, unless there is a time-of-day pattern. Spell out every crash-type acronym in the target crash text. Describe the countermeasure's specific components (pedestrian upgrades, signs, signal heads). Every image carries alt text. Export the PDF with Save As PDF (tagged, accessible), never Print to PDF. See docs/05.
 
+12. **The three study types' criteria live in `safety_eval/criteria.py`.** When a rule changes (a period length, a y-line, a warrant threshold, an input, a deliverable), change it there with its source, regenerate `docs/15` with `safety-eval criteria --all --out docs/15-study-criteria.md`, and let the test confirm the two agree. Pages and commands read the sheet; none restates it.
+
 ## Repo layout
 
 ```
 /
   CLAUDE.md
-  docs/                  domain knowledge (this pack)
-  templates/             real NCDOT template workbooks (add these; they are ground truth)
-  examples/              completed sanitized deliverables for reference and tests
-  src/                   application code
+  docs/                  domain knowledge (this pack); docs/15 is generated
+  templates/             real NCDOT template workbooks (ground truth)
+  examples/              worked studies and sanitized deliverables for reference and tests
+                         (260722124BA fatal, 41000079736 HSIP, 260307016EA, SS-6002AD, ...)
+  deliverables/          evaluation workbooks in progress, by order id
+  safety_eval/           the application: engine, CLI (safety-eval), Streamlit app, ui_pages/
+  fca/                   the Traffic Safety Unit fatal crash tooling (fca), docs/14
   tests/                 pytest suite, including the known-value tests in docs/04
+  streamlit_app.py       the app launcher; install-*.{bat,command}, run-app-* for coworkers
 ```

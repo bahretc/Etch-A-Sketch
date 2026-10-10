@@ -8,5 +8,5 @@ from .config import Config
 from .models import Assignment, Crash, EvaluationResult
 from .pipeline import run, run_from_files
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"
 __all__ = ["Config", "Assignment", "Crash", "EvaluationResult", "run", "run_from_files"]

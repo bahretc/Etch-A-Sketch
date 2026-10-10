@@ -57,7 +57,10 @@ The Overview page is where you start: type the study number, click
 **Create**, then drop the TEAAS exports and crash reports on **Drop your
 files here**. The page recognises each file from its content and files it in
 the study; the numbered steps below it walk the workflow, and the next step
-is marked.
+is marked. **Study criteria**, just above the steps, opens the
+sheet for the study type (how long the crash pull is, where the limits
+are, which warrants apply, what goes in and what comes out) and says what
+the study still owes.
 
 ## Turning on the AI features
 

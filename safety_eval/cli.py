@@ -2083,6 +2083,32 @@ def build_parser() -> argparse.ArgumentParser:
     caa.add_argument("--out", required=True)
     caa.set_defaults(func=_cmd_calc_aadt)
 
+    cr = sub.add_parser(
+        "criteria",
+        help="The study criteria for a study type and analysis (period, "
+             "limits, scope, warrants, AADT, inputs, deliverables), or of an "
+             "open study with what it still owes; --all writes docs/15.")
+    cr.add_argument("--type", dest="study_type", default=None,
+                    help="fatal, hsip or evaluation (default: hsip, or the "
+                         "study's type with --study)")
+    cr.add_argument("--analysis", default=None,
+                    help="intersection, section or bikeped (default: the "
+                         "study type's first analysis)")
+    cr.add_argument("--context", default=None, choices=["urban", "rural"],
+                    help="HSIP intersection only: urban (5-year pull) or "
+                         "rural (10-year pull)")
+    cr.add_argument("--study", default=None,
+                    help="An existing study folder: its type, analysis and "
+                         "context come off the manifest and its params are "
+                         "checked against the criteria (exit 1 when "
+                         "something is owed).")
+    cr.add_argument("--all", action="store_true",
+                    help="Every sheet, as the docs/15 catalogue.")
+    cr.add_argument("--json", action="store_true",
+                    help="JSON instead of Markdown (one sheet, or a list "
+                         "with --all).")
+    cr.add_argument("--out", default=None, help="Write to this file.")
+    cr.set_defaults(func=_cmd_criteria)
     d = sub.add_parser("doctor", help="Report available optional backends.")
     d.add_argument("--network", action="store_true",
                    help="Also probe the public services the maps, the "
@@ -2296,6 +2322,50 @@ def _cmd_calc_aadt(args) -> int:
     print(f"weighted AADT {w:,.1f} over {sum(s.length_mi for s in secs):.3f} "
           f"mi; study ADT {spec.study_adt:,} -> {args.out}")
     return 0
+
+
+def _cmd_criteria(args) -> int:
+    """Print the study criteria sheet(s); check an open study's params."""
+    import json as _json
+
+    from . import criteria as cr
+
+    notes = []
+    if args.all:
+        sheets = cr.all_criteria()
+        text = (_json.dumps([cr.to_dict(c) for c in sheets], indent=1)
+                if args.json else cr.markdown_catalogue())
+    else:
+        if args.study:
+            from . import workspace as wsm
+            ws = wsm.Workspace.open(args.study)
+            crit = cr.for_workspace(ws)
+            if args.context and crit.study_type == "hsip" \
+                    and crit.analysis == "intersection":
+                crit = cr.for_study(crit.study_type, crit.analysis, args.context)
+            notes = cr.check_params(crit, ws.manifest.get("params", {}))
+        else:
+            crit = cr.for_study(args.study_type or "hsip", args.analysis,
+                                args.context)
+        if args.json:
+            d = cr.to_dict(crit)
+            if args.study:
+                d["owed"] = notes
+            text = _json.dumps(d, indent=1)
+        else:
+            text = cr.to_markdown(crit)
+            if args.study:
+                text += ("\n## Still owed\n\n" + "\n".join(f"- {n}" for n in notes)
+                         + "\n" if notes else
+                         "\n## Still owed\n\nNothing: the recorded params meet "
+                         "the criteria.\n")
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        print(f"wrote {args.out}")
+    else:
+        print(text, end="" if text.endswith("\n") else "\n")
+    return 1 if notes else 0
 
 
 def main(argv=None) -> int:

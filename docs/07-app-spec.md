@@ -352,3 +352,7 @@ output the engineer supplies.
 reports the most recent month of loaded crash data ("TEAAS crash data
 is now available through {Month Year}"). Run it before starting any new
 analysis so the study periods do not run past the loaded data.
+
+## Study criteria (0.3.0)
+
+- `criteria`: the criteria sheet per study type, analysis and (HSIP intersection) context: period, limits, scope, review vocabulary, warrants, AADT, inputs, deliverables, each rule with its source and the tool that applies it; `analysis_period` anchors an N-year pull on the TEAAS data currency date; `check_params` says in words what an open study still owes (CLI `criteria`, the Overview page's Study criteria expander, docs/15).

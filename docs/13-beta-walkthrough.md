@@ -62,6 +62,11 @@ first page, a workbook's sheet names), and the page says what it took each
 one for before you click **Add to study**. A file it cannot place is skipped
 unless you pick a role for it. The chips under the zone say what the study
 has; the pages below fill in from those files.
+Under the chips, **Study criteria** opens the study type's sheet (the
+analysis period and its anchor, the limits, the review vocabulary, the
+warrants, the inputs and deliverables, with a source on every rule) and says
+what the study still owes it; `safety-eval criteria --type fatal` is the same
+sheet on the CLI, and every sheet is docs/15.
 
 ## 2. Fiche workbook and screen
 

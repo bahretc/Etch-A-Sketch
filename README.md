@@ -48,33 +48,35 @@ Or all of them at once, which is what the double click installer runs:
 pip install -e '.[pdf,ocr,ui,deliverables,maps,llm]'
 ```
 
-**Beta (0.2.0b8).** The fatal slip and HSIP fiche workflows run start to
-finish on the CLI and in the app; `docs/13-beta-walkthrough.md` is the
-two-page tour and lists the known limits. New in this version: the Start
-page has one drop zone. Every file dropped there is recognised from its
-content (the TEAAS banner, the header row, the PDF's first page, the
-workbook's sheet names; `safety_eval/intake.py`) and filed under its study
-role, the study can be created right on the page, a checklist says in words
-what the study has, and the Fiche Workbook and Redact pages fill in from
-those files so nothing is uploaded twice. Added in 0.2.0b7: the intersection fiche roads and road combination generator (`intersection-roads` on the CLI, and on the Maps and Checks page for intersection sites). Added in 0.2.0b6: the Fiche
-Workbook, Review Queue, Evaluation Workbook and AADT pages are laid out as
-required then optional steps in plain words, disabled buttons say what they
-are missing, and the AADT page prefills from the open study. Added in
-0.2.0b5: the app runs
-in its own desktop window with no terminal and no browser chrome
-(`python -m safety_eval.desktop`), the sidebar puts the study first and the
-navigation follows the workflow with nothing folded away, the Overview shows
-what the open study already has, fatal and HSIP studies get a Maps and
-Checks page, and the Field Investigation builder is parked behind
-`SAFETY_EVAL_FIELD_INVESTIGATION=1`. Added in 0.2.0b4: the double click
-installer for Windows and Mac (`INSTALL.md`), one current model across the
-assist calls. Added in 0.2.0b2: the route
-centerline and its curves and crests (`route-features`), the location check
-of coded mileposts against report coordinates and geocoded addresses
-(`locate-check`), the Location / Area / AADT package maps from a study YAML
-(`package-maps`), the strip CalculatedAADT workbook (`calc-aadt`), and two
-review rules from live work (off-fiche initial study crashes get a fiche
-row; off-LRS rows can be screened NIS).
+**0.3.0 (October 2026).** One app for the three NCDOT study types, each
+with its criteria sheet: a **Fatal Crash Analysis**, an **HSIP Package
+Analysis** and an **Evaluation**. `safety-eval criteria --type hsip
+--analysis intersection --context rural` prints what the study requires
+(the analysis period and what anchors it, the study limits, the crash scope,
+the warrants, the AADT rule, the inputs, the deliverables, each with its
+source); the Overview page shows the open study its sheet and says what it
+still owes; `docs/15-study-criteria.md` is the catalogue, generated from
+`safety_eval/criteria.py` and kept in step by a test. The Traffic Safety
+Unit fatal crash tooling (`fca`, `docs/14`: the four-figure TSU layout, the
+five-section reviewed fiche, the report review) ships in the same install
+with its worked study `examples/260722124BA`; the 41000079736 HSIP package
+(10-year rural intersection: fiche review, TSU collision diagram, package
+maps, CalculatedAADT, warrant check) is `examples/41000079736`; the 05-08-203
+reviewed set-up sits under `deliverables/05-08-203`. Earlier beta notes are
+in `CHANGELOG.md`.
+
+### The three study types
+
+| Study type | Analysis | Period | Limits | Warrants | Criteria sheet |
+|---|---|---|---|---|---|
+| Fatal Crash Analysis | section or intersection | 5 years to the last complete month of TEAAS data | mileposts, or a 150 ft y-line | none | `safety-eval criteria --type fatal` |
+| HSIP Package Analysis | section, intersection, bike/ped intersection | 5 years; intersections 5 urban / 10 rural; bike/ped 10 | mileposts, 150 ft, or 300 ft (bike/ped) | section F/N or intersection I-1 to I-4 | `safety-eval criteria --type hsip --analysis intersection --context rural` |
+| Evaluation | intersection or section | before and after from the assignment (Date Range Calculator) | 150 ft y-line or mileposts | none | `safety-eval criteria --type evaluation` |
+
+`safety-eval criteria --study <number>` reads an existing study folder and
+lists what its recorded facts still owe the sheet (a missing urban/rural
+context, mileposts, a period of the wrong length or off its month-end
+anchor); exit code 1 when something is owed.
 
 ## Use
 

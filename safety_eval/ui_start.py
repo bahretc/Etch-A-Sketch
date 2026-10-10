@@ -10,7 +10,10 @@ next. The page therefore does three things, top to bottom:
 2. **Drop zone** - every file is recognised from its content
    (:mod:`safety_eval.intake`) and filed under its study role; anything
    the sniff cannot place is offered back with its choices.
-3. **Steps** - the workflow as numbered cards with what is done, and the
+3. **Criteria** - the study type's criteria sheet (period, limits,
+   warrants, inputs, deliverables; :mod:`safety_eval.criteria`) and what
+   the open study still owes them.
+4. **Steps** - the workflow as numbered cards with what is done, and the
    next step made obvious.
 
 State is never carried by colour alone; every status is a word.
@@ -191,6 +194,83 @@ def checklist(st, ws) -> None:
         st.caption("Still useful to drop: " + "; ".join(missing) + ".")
 
 
+def criteria_card(st, ws, kind, analysis=None) -> None:
+    """The study's criteria, in words, and what it still owes them.
+
+    One expander: the period, the limits, the review vocabulary and the
+    warrants on top; the type-specific inputs the generic checklist does
+    not show, with their state; the deliverables; and, for an HSIP
+    intersection, the urban or rural context picker, because it decides
+    the pull length and the warrant set (docs/12).
+    """
+    from safety_eval import criteria as cr
+    from safety_eval.intake import CHECKLIST
+    from safety_eval.study_type import HSIP, INTERSECTION
+
+    a_key = (ws.analysis if ws else
+             analysis.key if analysis else kind.default_analysis)
+    ctx = ws.param("context") if ws else None
+    is_hsip_junction = kind.key == HSIP and a_key == INTERSECTION
+    if not is_hsip_junction:
+        ctx = None
+    try:
+        crit = cr.for_study(kind.key, a_key, ctx)
+    except ValueError:
+        crit = cr.for_study(kind.key, a_key)
+    title = f"Study criteria: {crit.title}"
+    with st.expander(title, expanded=False):
+        if is_hsip_junction:
+            options = ["(not set)", "urban", "rural"]
+            current = ctx if ctx in ("urban", "rural") else "(not set)"
+            pick = st.radio(
+                "Context", options, index=options.index(current),
+                horizontal=True, key="criteria_context",
+                help="From the HSIP GIS City field: a municipality name is "
+                     "urban (5-year pull), RURAL is rural (10-year pull). "
+                     "It also picks the warrant set.")
+            if ws and pick != current and pick != "(not set)":
+                ws.set_params(context=pick)
+                st.rerun()
+        st.markdown(
+            f"- **Analysis period:** {crit.period_text}.\n"
+            f"- **Study limits:** {crit.limits_text}.\n"
+            f"- **Review statuses:** {', '.join(crit.review_statuses)}.\n"
+            f"- **Warrants:** {', '.join(crit.warrants) if crit.warrants else 'none'}.")
+        if ws:
+            notes = cr.check_params(crit, ws.manifest.get("params", {}))
+            if notes:
+                st.warning("Still owed: " + " ".join(notes))
+            else:
+                st.caption("The recorded study facts meet the criteria.")
+        generic = {role for role, _, _ in CHECKLIST}
+        extra = [i for i in crit.inputs if i.role not in generic]
+        if extra:
+            chips = []
+            for i in extra:
+                have = bool(ws and ws.paths(i.role))
+                mark = "✓" if have else ("○" if i.required else "·")
+                cls = "done" if have else "todo"
+                opt = "" if i.required else " (optional)"
+                chips.append(f'<span class="se-chip {cls}">{mark} '
+                             f'{i.label}{opt}</span>')
+            st.markdown("**Also for this study type** " + "".join(chips),
+                        unsafe_allow_html=True)
+        st.markdown("**Deliverables**")
+        st.markdown("\n".join(
+            f"- {d.name}{' (public document)' if d.public else ''}: {d.how}"
+            for d in crit.deliverables))
+        st.markdown("**Rules**")
+        rows = ["| Topic | Rule | Source |", "|---|---|---|"]
+        for c in crit.criteria:
+            rows.append(f"| {c.topic} | {c.rule.replace('|', '/')} | "
+                        f"{c.source} |")
+        st.markdown("\n".join(rows))
+        st.caption("The full sheet: `safety-eval criteria --type "
+                   f"{crit.study_type} --analysis {crit.analysis}"
+                   + (f" --context {crit.context}" if crit.context else "")
+                   + "`; every sheet is docs/15.")
+
+
 def steps(st, ws, kind, PAGE, analysis=None) -> None:
     """The workflow, numbered, with the next step made obvious."""
     from safety_eval.study_type import (ANALYSIS_KINDS, BIKEPED, EVALUATION,
@@ -292,6 +372,7 @@ def start_page(st, kind, ws, PAGE, ROLES, kinds, keys, wsm, env_check,
     study_panel(st, ws, kinds, keys, wsm)
     drop_zone(st, ws, ROLES)
     checklist(st, ws)
+    criteria_card(st, ws, kind, analysis=analysis)
     steps(st, ws, kind, PAGE, analysis=analysis)
     with st.expander("Environment check"):
         env_check(st)

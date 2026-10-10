@@ -1,0 +1,30 @@
+No,At-fault from,At-fault maneuver,Other vehicle from,Other maneuver,Collision (legend),Night,Injury marker,As drawn,Differs from TEAAS,Note
+1,Pleasant Dr (NW leg),left turn,NC 180 southbound,straight,turning,night,none,Pleasant Dr (NW leg) left turn vs NC 180 southbound straight,Y,TEAAS codes an angle crash; drawn as a left turn (E left turn is coded on the unit)
+2,Pleasant Dr (NW leg),rear end,Pleasant Dr (NW leg),stopped,rear end,day,none,Rear end on Pleasant Dr approach: struck a vehicle stopped ahead,,
+3,Pleasant Dr (NW leg),left turn,NC 180 southbound,straight,turning,day,none,Pleasant Dr (NW leg) left turn vs NC 180 southbound straight,Y,"TEAAS: unit 1 N left turn, unit 2 S straight; drawn: Pleasant Dr left turn vs southbound"
+4,Pleasant Dr (NW leg),right turn,NC 180 southbound,straight,turning,night,nonsevere,Pleasant Dr (NW leg) right turn vs NC 180 southbound straight,,
+5,Pleasant Hill Church Rd (SE leg),straight,NC 180 southbound,straight,angle,day,nonsevere,Pleasant Hill Church Rd (SE leg) straight vs NC 180 southbound straight,,
+6,Pleasant Dr (NW leg),left turn,NC 180 southbound,straight,turning,night,none,Pleasant Dr (NW leg) left turn vs NC 180 southbound straight,,
+7,Pleasant Dr (NW leg),right turn,NC 180 southbound,straight,turning,day,none,Pleasant Dr (NW leg) right turn vs NC 180 southbound straight,,
+8,Pleasant Hill Church Rd (SE leg),rear end,Pleasant Hill Church Rd (SE leg),stopped,rear end,day,none,Rear end on Pleasant Hill Church Rd approach: struck a vehicle stopped ahead,,
+9,Pleasant Dr (NW leg),left turn,NC 180 northbound,straight,turning,day,none,Pleasant Dr (NW leg) left turn vs NC 180 northbound straight,,
+10,Pleasant Dr (NW leg),left turn,NC 180 southbound,straight,turning,day,none,Pleasant Dr (NW leg) left turn vs NC 180 southbound straight,,
+11,NC 180 northbound,ran off road east,none,none,ran off road,night,none,NC 180 northbound vehicle ran off road east,,
+12,NC 180 southbound,ran off road west,none,none,ran off road,night,none,NC 180 southbound vehicle ran off road west,,
+13,Pleasant Dr (NW leg),left turn,NC 180 southbound,straight,turning,day,nonsevere,Pleasant Dr (NW leg) left turn vs NC 180 southbound straight,Y,"TEAAS: unit 1 N left turn, unit 2 S straight; drawn: Pleasant Dr left turn vs southbound"
+14,Pleasant Dr (NW leg),left turn,NC 180 southbound,straight,turning,night,none,Pleasant Dr (NW leg) left turn vs NC 180 southbound straight,Y,"TEAAS: unit 1 S left turn, unit 2 N straight; drawn: Pleasant Dr left turn vs southbound"
+15,NC 180 northbound,rear end,NC 180 northbound,slowing/turning right,rear end,day,none,Rear end on NC 180 northbound: struck a vehicle slowing/turning right ahead,,
+16,Pleasant Dr (NW leg),left turn,NC 180 southbound,straight,turning,day,none,Pleasant Dr (NW leg) left turn vs NC 180 southbound straight,Y,"TEAAS: unit 1 W left turn, unit 2 N straight; drawn: Pleasant Dr left turn vs southbound"
+17,Pleasant Hill Church Rd (SE leg),right turn,NC 180 northbound,straight,turning,day,none,Pleasant Hill Church Rd (SE leg) right turn vs NC 180 northbound straight,,
+18,Pleasant Dr (NW leg),rear end,Pleasant Dr (NW leg),stopped,rear end,day,none,Rear end on Pleasant Dr approach: struck a vehicle stopped ahead,,
+19,Pleasant Hill Church Rd (SE leg),left turn,NC 180 southbound,straight,turning,day,nonsevere,Pleasant Hill Church Rd (SE leg) left turn vs NC 180 southbound straight,Y,"TEAAS: unit 1 S left turn, units 2 S and 3 N straight; drawn: Pleasant Hill Church Rd left turn vs southbound"
+20,Pleasant Hill Church Rd (SE leg),rear end,Pleasant Hill Church Rd (SE leg),stopped,rear end,day,none,Rear end on Pleasant Hill Church Rd approach: struck a vehicle stopped ahead,,
+21,Pleasant Dr (NW leg),left turn,NC 180 southbound,straight,turning,night,none,Pleasant Dr (NW leg) left turn vs NC 180 southbound straight,,
+22,Pleasant Dr (NW leg),straight,NC 180 southbound,straight,angle,day,nonsevere,Pleasant Dr (NW leg) straight vs NC 180 southbound straight,,
+23,Pleasant Dr (NW leg),straight,NC 180 northbound,straight,angle,day,severe,Pleasant Dr (NW leg) straight vs NC 180 northbound straight,,
+24,Pleasant Dr (NW leg),left turn,NC 180 southbound,left turn,turning,night,severe,Pleasant Dr left turn vs NC 180 southbound vehicle turning left,Y,"TEAAS: unit 1 N left turn, unit 2 S left turn; drawn: Pleasant Dr left turn vs southbound left turn"
+25,Pleasant Dr (NW leg),straight,NC 180 southbound,straight,angle,day,nonsevere,Pleasant Dr (NW leg) straight vs NC 180 southbound straight,,
+26,Pleasant Hill Church Rd (SE leg),straight,NC 180 southbound,straight,angle,night,none,Pleasant Hill Church Rd (SE leg) straight vs NC 180 southbound straight,,
+27,Pleasant Dr (NW leg),left turn,Pleasant Hill Church Rd (SE leg),right turn,turning,day,none,Pleasant Dr left turn onto northbound NC 180 vs Pleasant Hill Church Rd right turn onto northbound NC 180,,
+28,NC 180 southbound,straight,Pleasant Hill Church Rd (SE leg),straight,angle,day,none,NC 180 southbound straight (at fault) vs Pleasant Hill Church Rd straight across (also at fault),Y,"TEAAS: unit 2 E straight (from Pleasant Dr); drawn: Pleasant Hill Church Rd straight vs southbound, both at fault"
+29,Pleasant Dr (NW leg),straight,NC 180 northbound,straight,angle,day,nonsevere,Pleasant Dr (NW leg) straight vs NC 180 northbound straight,,

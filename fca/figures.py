@@ -1023,6 +1023,33 @@ def _ncdot_street_labels(F: Figure, cache_dir: str, bg=ADT_BG, color=(110, 110, 
     return True
 
 
+def _app_station_panel(F: Figure, rec, box, title="NCDOT 2025 AADT Stations"):
+    """The mapping application's station popup: two-column table with alternating row shading."""
+    a = rec["attributes"]
+    rows = [("Location ID", a.get("LocationID", "")), ("County", a.get("County", "")), ("Category", a.get("Category", "")),
+            ("Direction", a.get("Direction", "")), ("RouteID", a.get("RouteID", "")), ("Located On", a.get("Located_On", "")),
+            ("Approach", a.get("Approach", "")), ("Crossroad", a.get("Crossroad", "")), ("Route Class", a.get("RTE_CLS_TX", "")),
+            ("Functional Class", a.get("FNC_CLS_TX", ""))]
+    years = sorted(int(k[5:]) for k in a if k.startswith("AADT_"))
+    rows += [(f"AADT_{y}", (f"{a[f'AADT_{y}']:,}" if a.get(f"AADT_{y}") is not None else "")) for y in years]
+    lh = F.pts_to_px(box.get("lh", 6.9))
+    bw = F.pts_to_px(box.get("w", 160))
+    bh = lh * (len(rows) + 3.2)
+    bx, by = F.frac(box["bx"], box["by"])
+    X0, Y0 = bx - bw / 2, by - bh / 2
+    F.ax.add_patch(Rectangle((X0, Y0), bw, bh, fc="white", ec="#bdbdbd", lw=0.8, zorder=55))
+    F.ax.text(X0 + F.pts_to_px(7), Y0 + lh * 1.2, title, fontsize=7.4, fontweight="bold", family=FONT, color="#323232", va="center", zorder=57)
+    F.ax.plot([X0, X0 + bw], [Y0 + lh * 2.1, Y0 + lh * 2.1], color="#dddddd", lw=0.6, zorder=57)
+    col = F.pts_to_px(72)
+    for i, (k, v) in enumerate(rows):
+        yy = Y0 + lh * (i + 2.6)
+        if i % 2 == 0:
+            F.ax.add_patch(Rectangle((X0 + F.pts_to_px(4), yy - lh / 2), bw - F.pts_to_px(8), lh, fc="#ebebeb", ec="none", zorder=56))
+        F.ax.text(X0 + F.pts_to_px(8), yy, k, fontsize=5.9, family=FONT, color="#4a4a4a", va="center", zorder=57)
+        F.ax.text(X0 + F.pts_to_px(8) + col, yy, str(v), fontsize=5.9, family=FONT, color="#4a4a4a", va="center", zorder=57)
+    return X0, Y0, bw, bh
+
+
 def figure_adt_map(study: Study, cache: TileCache, out_png, out_pdf, z: int = 17):
     """ADT Map: the NCDOT AADT Mapping Application look (beige canvas, white roads, gray street names, the study route in
     salmon, station dots by route class) with the Estimated AADT and Crash Location callouts, on the VHB page."""
@@ -1066,6 +1093,11 @@ def figure_adt_map(study: Study, cache: TileCache, out_png, out_pdf, z: int = 17
     adt_txt = f.get("adt_callout", f"Estimated AADT: {cfg.get('adt', 0):,} vpd")
     F.vhb_callout(mid[0], mid[1], adt_txt, tuple(f.get("adt_aadt_callout_frac", (0.30, 0.78))), size=9.5)
     F.vhb_callout(fat["lat"], fat["lon"], f.get("adt_crash_callout", f.get("vhb_callout", "Crash Location")), tuple(f.get("adt_crash_callout_frac", (0.72, 0.62))), size=9.5)
+    # the station record used in the analysis, as the application's popup
+    for sid, box in f.get("adt_station_panels", {}).items():
+        rec = aadt.get("station_records", {}).get(sid)
+        if rec:
+            _app_station_panel(F, rec, box, title=rec.get("layer", "NCDOT AADT Stations"))
     # route-class legend (the mapping application's station legend)
     from matplotlib.font_manager import FontProperties
     handles = [Line2D([0], [0], marker="o", color="w", mfc=c, mec=c, ms=8) for _, c in ROUTE_CLASS_COLORS]

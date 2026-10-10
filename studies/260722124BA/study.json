@@ -531,13 +531,19 @@
     },
     "adt_width_ft": 8400,
     "adt_aadt_callout_frac": [
-      0.28,
-      0.8
+      0.36,
+      0.82
     ],
     "adt_crash_callout_frac": [
       0.74,
       0.64
     ],
-    "adt_crash_callout": "Crash Location: NC 179BUS (Beach Dr SW), 0.07\nmiles south of NC 179 (Old Georgetown Rd SW)\n[MP 0.07]"
+    "adt_crash_callout": "Crash Location: NC 179BUS (Beach Dr SW), 0.07\nmiles south of NC 179 (Old Georgetown Rd SW)\n[MP 0.07]",
+    "adt_station_panels": {
+      "0100000327": {
+        "bx": 0.115,
+        "by": 0.47
+      }
+    }
   }
 }

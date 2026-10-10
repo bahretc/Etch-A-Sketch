@@ -11474,5 +11474,51 @@
     ]
    ]
   }
- ]
+ ],
+ "station_records": {
+  "0100000327": {
+   "layer": "NCDOT 2025 AADT Stations",
+   "attributes": {
+    "OBJECTID": 3369,
+    "LocationID": "0100000327",
+    "Category": "VOLUME",
+    "Direction": "2-WAY",
+    "RouteID": "39000179010",
+    "Located_On": "NC 179 BUS",
+    "Approach": "SOUTH OF",
+    "Crossroad": "NC 179",
+    "Latitude": 33.8981289958579,
+    "Longitude": -78.5517651724377,
+    "FUNC_CLS": "5",
+    "FNC_CLS_TX": "Major Collector",
+    "County": "Brunswick",
+    "RTE_CLS": 3,
+    "RTE_CLS_TX": "NC",
+    "AADT_2002": null,
+    "AADT_2003": 5800,
+    "AADT_2004": null,
+    "AADT_2005": 6200,
+    "AADT_2006": null,
+    "AADT_2007": 7400,
+    "AADT_2008": null,
+    "AADT_2009": 7000,
+    "AADT_2010": 6500,
+    "AADT_2011": 6200,
+    "AADT_2012": 6700,
+    "AADT_2013": 6700,
+    "AADT_2014": null,
+    "AADT_2015": 7600,
+    "AADT_2016": 6900,
+    "AADT_2017": 8200,
+    "AADT_2018": 7100,
+    "AADT_2019": 8000,
+    "AADT_2020": null,
+    "AADT_2021": 8500,
+    "AADT_2022": null,
+    "AADT_2023": 9200,
+    "AADT_2024": null,
+    "AADT_2025": 8700
+   }
+  }
+ }
 }

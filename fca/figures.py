@@ -532,11 +532,12 @@ def build_figures(study: Study, screened: list[Screened], out_dir: str, tile_cac
     cache = TileCache(tile_cache_dir)
     sid = study.study_id
     paths = []
-    figs = [("Figure1_AreaMap", lambda a, b: figure_area_map(study, cache, a, b)),
-            ("Figure2_LocationMap", lambda a, b: figure_location_map(study, cache, a, b)),
-            ("Figure3_CrashMap", lambda a, b: figure_crash_map(study, screened, cache, a, b, decisions=decisions))]
+    # file names follow the TSU study folders: <slip>_AreaMap, <slip>_LocationMap, <slip>_CrashMap, <slip>_AADTMap
+    figs = [("AreaMap", lambda a, b: figure_area_map(study, cache, a, b)),
+            ("LocationMap", lambda a, b: figure_location_map(study, cache, a, b)),
+            ("CrashMap", lambda a, b: figure_crash_map(study, screened, cache, a, b, decisions=decisions))]
     if "aadt" in study.cfg.get("inputs", {}):
-        figs.append(("Figure4_AADTMap", lambda a, b: figure_aadt_map(study, cache, a, b)))
+        figs.append(("AADTMap", lambda a, b: figure_aadt_map(study, cache, a, b)))
     for name, fn in figs:
         png = os.path.join(out_dir, f"{sid}_{name}.png"); pdf = os.path.join(out_dir, f"{sid}_{name}.pdf")
         fn(png, pdf); paths += [png, pdf]

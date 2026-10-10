@@ -29,9 +29,9 @@ studies/<study_id>/
                       to the report review
   outputs/            <id>_Fiche.xlsx (screened) or <id>_Fiche_reviewed.xlsx (with the report decisions),
                       <id>_ReviewIDs.txt, <id>_screening.json, <id>_review_determinations.jsonl, <id>_ReportReview.md,
-                      <id>_Figure1_AreaMap.png/.pdf, <id>_Figure2_LocationMap.png/.pdf,
-                      <id>_Figure3_CrashMap.png/.pdf, <id>_Figure4_AADTMap.png/.pdf (report figures in the
-                      TSU fatal-crash layout; Figure 4 only when inputs/aadt.json exists),
+                      <id>_AreaMap.png/.pdf, <id>_LocationMap.png/.pdf, <id>_CrashMap.png/.pdf,
+                      <id>_AADTMap.png/.pdf (Figures 1 to 4 in the TSU fatal-crash layout; the AADT map
+                      only when inputs/aadt.json exists),
                       <id>_CrashMap.html (self-contained Leaflet map with embedded imagery)
 ```
 

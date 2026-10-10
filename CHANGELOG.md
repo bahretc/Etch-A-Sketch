@@ -33,6 +33,49 @@
 - Verified on Python 3.13 with LibreOffice, Tesseract, Playwright Chromium
   and the desktop window present: the whole suite passes.
 
+### Interface pass (desktop guidelines)
+
+Audited page by page against six groups of desktop guidelines (layout,
+type, colour, controls, feedback, desktop conventions); every change was
+checked in light and dark screenshots of all pages.
+
+- **Light and dark.** The app follows the operating system's light or dark
+  setting (`.streamlit/config.toml` defines both); every custom style is
+  derived from the text colour, so cards, chips, borders and placeholders
+  hold in both. The logo is adapted for the dark sidebar.
+- **One scale.** Spacing on 4, 8, 16, 24 and 32 px; one heading scale
+  (page title, section, form label) set in the theme, so the Overview's
+  title matches every other page's; one typeface; prose capped near 80
+  characters; captions and placeholders at 4.5:1 or better.
+- **One primary action per screen.** Build package maps is the primary
+  button of an action row; drop zones are grey at rest and blue only on
+  hover and focus; guidance notes are captions, not blue boxes.
+- **Disabled actions say why.** Every main action is always shown; while it
+  cannot run, a sentence under it names what it needs, in the words of the
+  fields to fill (Redact, Run warrants, the maps, the drafts, Print, Bind,
+  QA, Load package, Save reviewed workbook, Score).
+- **Feedback.** The Running and Stop control is back, so every click shows
+  a response at once and a long run can be cancelled; spinners (with
+  elapsed time where runs are long) on every slow step; the map build, the
+  QA sweep and Finish Package run in status boxes that keep their log.
+  Error messages say what happened and what to do next; a failed workbook
+  build shows the end of its log instead of an exit code; a missing OCR
+  tool reads as one sentence, not a traceback.
+- **Keyboard.** Enter creates a study from the sidebar's New study form;
+  Ctrl+Enter records a determination in the Review Queue.
+- **Remembered state.** The app reopens the last study; the window reopens
+  at its last size and place, fitted to the screen and never below
+  1024 x 700, maximized on a first run on a small laptop; the page's own
+  settings survive a restart.
+- **Desktop conventions.** Text can be selected and copied, Ctrl and the
+  mouse wheel zoom, and closing the window asks first because it stops a
+  run in progress; the splash follows the system theme.
+- **State in words.** The environment check says Found or Missing; package
+  checks say passed or failed with an icon; the AADT table names each
+  value's source after its colour; the warrant table keeps numbers as
+  numbers so they right-align; the HSIP Warrants page takes the urban or
+  rural context from the study and says so.
+
 ## 0.2.0b8 and earlier
 
 The fatal slip and HSIP fiche workflows run start to

@@ -62,6 +62,10 @@ sheet for the study type (how long the crash pull is, where the limits
 are, which warrants apply, what goes in and what comes out) and says what
 the study still owes.
 
+The window follows your computer's light or dark setting, reopens at the
+size and place you left it, and reopens the last study you worked on.
+Closing it asks first, because closing stops anything still running.
+
 ## Turning on the AI features
 
 Four parts of the app ask a Claude model for help: the crash review assist,

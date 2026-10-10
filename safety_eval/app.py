@@ -55,47 +55,141 @@ def _save_upload(uploaded, workdir: str) -> str | None:
     return path
 
 
+def _needs_caption(st, lead: str, missing: list) -> None:
+    """One sentence under a disabled action naming what it still needs,
+    in the words of the fields the engineer has to fill."""
+    items = [m for m in missing if m]
+    if not items:
+        return
+    text = items[0] if len(items) == 1 else (
+        ", ".join(items[:-1]) + " and " + items[-1])
+    st.caption(f"{lead} {text}.")
+
+
+def _mtime(path: str) -> str:
+    from datetime import datetime
+    return datetime.fromtimestamp(os.path.getmtime(path)).strftime(
+        "%Y-%m-%d %H:%M")
+
+
+def _last_study_file() -> str:
+    from safety_eval import workspace as wsm
+    return os.path.join(wsm.base_dir(), ".last_study")
+
+
+def _last_study() -> str | None:
+    """The study the engineer last opened, remembered across sessions in a
+    small file beside the study folders (never inside one)."""
+    try:
+        with open(_last_study_file(), encoding="utf-8") as fh:
+            return fh.read().strip() or None
+    except OSError:
+        return None
+
+
+def _remember_study(study: str | None) -> None:
+    path = _last_study_file()
+    if not os.path.isdir(os.path.dirname(path) or "."):
+        return                       # no studies folder yet: nothing to keep
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(study or "")
+    except OSError:
+        pass                         # a convenience only; never block a page
+
+
+def _on_study_pick() -> None:
+    import streamlit as st
+    pick = st.session_state.get("study_pick")
+    _remember_study(None if pick in (None, "(no study)") else pick)
+
+
 def _style(st) -> None:
-    """A light hand: spacing, soft cards, no chrome. The theme itself lives
-    in .streamlit/config.toml so Streamlit renders natively."""
+    """A light hand: one spacing scale, soft cards, no chrome.
+
+    The theme itself (colours for light and dark, the heading sizes) lives
+    in .streamlit/config.toml so Streamlit renders natively. Every colour
+    here is derived from the text colour (``currentColor``) or is the
+    primary blue at low alpha, so the same rules hold in the light and the
+    dark theme. Spacing comes from one scale: 4, 8, 16, 24, 32 px.
+    """
     st.markdown("""
         <style>
+        :root {--se-1: 4px; --se-2: 8px; --se-3: 16px; --se-4: 24px;
+               --se-5: 32px;}
+        /* No developer chrome, but keep the Running / Stop status widget:
+           it answers every click at once and is the one way to cancel a
+           long run. */
         #MainMenu, footer {visibility: hidden;}
-        [data-testid="stToolbar"], [data-testid="stAppDeployButton"],
-        [data-testid="stDecoration"], [data-testid="stStatusWidget"] {display: none;}
-        html, body, [class*="css"] {
-            font-family: -apple-system, "Segoe UI", Inter, Roboto, "Helvetica Neue",
-                         Arial, sans-serif;}
-        .block-container {padding-top: 1.6rem; padding-bottom: 3rem;
-                          max-width: 1180px;}
+        [data-testid="stToolbarActions"], [data-testid="stMainMenu"],
+        [data-testid="stAppDeployButton"] {display: none;}
+        .block-container {padding-top: var(--se-4);
+                          padding-bottom: var(--se-5); max-width: 1480px;}
+        /* Readable measure: prose wraps near 80 characters while tables,
+           editors and images keep the full width. */
+        [data-testid="stMarkdownContainer"] p,
+        [data-testid="stCaptionContainer"] p, .se-drop-sub {max-width: 80ch;}
+        /* Captions, hints and placeholders at 4.5:1 or better on every
+           background the app uses (Streamlit fades them to 60%). */
+        [data-testid="stCaptionContainer"] {opacity: 0.72 !important;}
+        [data-testid="stFileUploaderDropzoneInstructions"] span,
+        input::placeholder, textarea::placeholder {
+            color: color-mix(in srgb, currentColor 72%, transparent)
+                   !important;
+            opacity: 1;}
         h1, h2, h3 {letter-spacing: -0.015em;}
-        h2 {font-size: 1.55rem; margin-bottom: 0.2rem;}
         [data-testid="stMetric"] {
-            background: var(--secondary-background-color);
-            border: 1px solid rgba(23, 27, 38, 0.08);
-            border-radius: 14px; padding: 14px 18px;}
-        [data-testid="stMetric"] label {opacity: 0.75;}
+            background: color-mix(in srgb, currentColor 4%, transparent);
+            border: 1px solid color-mix(in srgb, currentColor 10%,
+                                        transparent);
+            border-radius: 14px; padding: var(--se-3);}
         div[data-testid="stExpander"] {
-            border: 1px solid rgba(23, 27, 38, 0.08); border-radius: 14px;}
+            border: 1px solid color-mix(in srgb, currentColor 12%,
+                                        transparent);
+            border-radius: 14px;}
         [data-testid="stVerticalBlockBorderWrapper"] > div {
             border-radius: 14px;}
         [data-testid="stSidebar"] {
-            border-right: 1px solid rgba(23, 27, 38, 0.06);}
+            border-right: 1px solid color-mix(in srgb, currentColor 8%,
+                                              transparent);}
         [data-testid="stSidebarNav"] a {border-radius: 10px;}
+        /* Drop zones are grey at rest; the primary blue marks only hover,
+           focus and the primary action. */
         [data-testid="stFileUploader"] section,
         [data-testid="stFileUploaderDropzone"] {
-            border: 2px dashed rgba(0, 114, 178, 0.45) !important;
-            border-radius: 14px; background: rgba(0, 114, 178, 0.035);
-            padding: 1.1rem 1.2rem; min-height: 118px; align-items: center;
-            justify-content: center; transition: background 0.15s;}
+            border: 2px dashed color-mix(in srgb, currentColor 28%,
+                                         transparent) !important;
+            border-radius: 14px; padding: var(--se-3) var(--se-4);
+            min-height: 88px; align-items: center; justify-content: center;
+            transition: background 0.15s, border-color 0.15s;}
         [data-testid="stFileUploader"] section:hover,
-        [data-testid="stFileUploaderDropzone"]:hover {
+        [data-testid="stFileUploaderDropzone"]:hover,
+        [data-testid="stFileUploader"] section:focus-within,
+        [data-testid="stFileUploaderDropzone"]:focus-within {
+            border-color: rgba(0, 114, 178, 0.6) !important;
             background: rgba(0, 114, 178, 0.08);}
         button[kind="primary"], [data-testid="stBaseButton-primary"] {
-            border-radius: 999px; padding: 0.45rem 1.2rem; font-weight: 600;}
+            border-radius: 999px; padding: var(--se-2) var(--se-4);
+            font-weight: 600;}
         [data-testid="stBaseButton-secondary"] {border-radius: 999px;}
         div[data-testid="stTable"] {border-radius: 12px; overflow: hidden;}
         [data-testid="stPageLink"] a {border-radius: 999px;}
+        /* Overview (ui_start): the drop zone heading and the status chips.
+           Chips are status, not controls: a tint, no border, no pill. */
+        .se-drop-title {font-weight: 600; font-size: 1rem; margin: 0;}
+        .se-drop-sub {opacity: 0.72; font-size: 0.875rem;
+                      margin: 0 0 var(--se-2) 0;}
+        .se-chip {display: inline-block; padding: 2px var(--se-2);
+                  margin: 2px var(--se-2) 2px 0; border-radius: 6px;
+                  font-size: 0.875rem;
+                  background: color-mix(in srgb, currentColor 6%,
+                                        transparent);}
+        .se-chip.done {background: rgba(0, 158, 115, 0.16);}
+        /* The logo is drawn for a light background; in the dark theme its
+           lightness is inverted and its hues kept. */
+        @media (prefers-color-scheme: dark) {
+            [data-testid="stSidebarLogo"] {
+                filter: invert(1) hue-rotate(180deg);}}
         </style>""", unsafe_allow_html=True)
 
 
@@ -202,8 +296,8 @@ def _llm_settings(st, prefix: str, label: str, blurb: str):
             "Model", value=ra.assist_model(), key=f"{prefix}_assist_model",
             help="Default from SAFETY_EVAL_ASSIST_MODEL when set; the "
                  "measured default otherwise.")
-        st.caption((f"✅ {label} " if ready else f"▫️ {label} not ready: ")
-                   + detail)
+        st.caption((f":material/check_circle: {label} " if ready
+                    else f":material/cancel: {label} not ready: ") + detail)
     return ready, detail, model
 
 
@@ -245,32 +339,27 @@ def main() -> None:
     keys = [k for k, _ in choices()]
     with st.sidebar:
         from safety_eval import workspace as wsm
+        studies = wsm.list_studies()
         pending = st.session_state.pop("pending_study", None)
         if pending:
             st.session_state["study_pick"] = pending
+            _remember_study(pending)
+        elif "study_pick" not in st.session_state:
+            # A new session reopens the study the engineer last worked on.
+            last = _last_study()
+            if last in studies:
+                st.session_state["study_pick"] = last
         st.selectbox(
-            "Study", ["(no study)"] + wsm.list_studies(), key="study_pick",
+            "Study", ["(no study)"] + studies, key="study_pick",
+            on_change=_on_study_pick,
             help="A study folder keeps the attached TEAAS exports, the "
                  "study facts and the built workbooks together, and every "
                  "page starts from them. Optional: each page still runs "
-                 "from uploads alone.")
-        with st.expander("New study"):
-            new_study = st.text_input("Study number", key="new_study",
-                                      placeholder="41000079305")
-            if st.button("Create study", disabled=not new_study.strip()):
-                new_type = st.session_state.get("study_type", keys[0])
-                new_analysis = st.session_state.get("analysis")
-                if new_analysis not in STUDY_TYPES[new_type].analyses:
-                    new_analysis = None          # the type's default
-                try:
-                    wsm.Workspace.create(new_study.strip(),
-                                         study_type=new_type,
-                                         analysis=new_analysis)
-                except (ValueError, OSError) as exc:
-                    st.error(str(exc))
-                else:
-                    st.session_state["pending_study"] = new_study.strip()
-                    st.rerun()
+                 "from uploads alone. The app reopens the last study.")
+        if not studies:
+            st.caption("No studies yet: create one under New study below or "
+                       "on the Overview. They are saved in "
+                       f"{os.path.abspath(wsm.base_dir())}.")
         ws = _active_ws()
         locked = bool(ws and ws.study_type in STUDY_TYPES)
         if locked:
@@ -316,9 +405,40 @@ def main() -> None:
         if ws and not a_locked:
             st.caption("This study was set up before the analysis was "
                        "recorded; the pick above is saved to it.")
+        elif locked:
+            st.caption(f"Type and analysis are locked to study {ws.study}. "
+                       "To start a study of another type, pick (no study) "
+                       "above first.")
         record_error = st.session_state.pop("analysis_error", None)
         if record_error:
             st.warning(record_error)
+        # Creating comes after the three facts it uses (type and analysis
+        # above). A form, so Enter in the number field creates the study.
+        with st.expander("New study"):
+            with st.form("new_study_form", border=False,
+                         enter_to_submit=True):
+                new_study = st.text_input("Study number", key="new_study",
+                                          placeholder="41000079305")
+                create = st.form_submit_button("Create study")
+            if create:
+                new_type = st.session_state.get("study_type", keys[0])
+                new_analysis = st.session_state.get("analysis")
+                if new_analysis not in STUDY_TYPES[new_type].analyses:
+                    new_analysis = None          # the type's default
+                if not new_study.strip():
+                    st.warning("Type the study number first, then press "
+                               "Enter or Create study.")
+                else:
+                    try:
+                        wsm.Workspace.create(new_study.strip(),
+                                             study_type=new_type,
+                                             analysis=new_analysis)
+                    except (ValueError, OSError) as exc:
+                        st.error(f"{exc}. Correct the number and create "
+                                 "it again.")
+                    else:
+                        st.session_state["pending_study"] = new_study.strip()
+                        st.rerun()
 
     # Pages a study type cannot use are not shown: an Evaluation never sees a
     # warrant screen it must not rely on, and only an Evaluation populates
@@ -527,7 +647,8 @@ def _environment_check(st) -> None:
     ready, detail = assist_available()
     rows.append((ready, "AI assist", detail))
     for ok, name, note in rows:
-        st.write(("✅" if ok else "▫️") + f" **{name}** — {note}")
+        st.write((":material/check_circle: Found" if ok
+                  else ":material/cancel: Missing") + f": **{name}**, {note}")
     if not soffice:
         st.caption("Without LibreOffice the populated workbooks still build; "
                    "Excel recalculates the formulas on first open.")
@@ -545,11 +666,6 @@ def _report_text_tab(st) -> None:
                "Drafts only: nothing is written to the workbook. The "
                "engineer reviews, edits and pastes.")
     ws = _active_ws()
-    ready, detail, model = _llm_settings(
-        st, "draft", "AI drafting",
-        "Text is drafted from the workbook's tallies and archive "
-        "exemplars only; every crash count is checked against a computed "
-        "tally.")
     wb_path = st.text_input(
         "Evaluation workbook (.xlsx path)",
         value=((ws.path("evaluation_workbook") or "") if ws else ""),
@@ -575,11 +691,20 @@ def _report_text_tab(st) -> None:
         help="Name it when the workbook carries both the 1 Target and "
              "2 Targets variants.")
 
-    if st.button("Draft the text", type="primary",
-                 disabled=not (wb_path.strip() and train_path.strip())):
+    ready, detail, model = _llm_settings(
+        st, "draft", "AI drafting",
+        "Text is drafted from the workbook's tallies and archive "
+        "exemplars only; every crash count is checked against a computed "
+        "tally.")
+    missing = [m for m, ok in (("the workbook path", wb_path.strip()),
+                               ("the train dataset path", train_path.strip()))
+               if not ok]
+    _needs_caption(st, "Drafting needs", missing)
+    if st.button("Draft the text", type="primary", disabled=bool(missing)):
         for p, what in ((wb_path, "Workbook"), (train_path, "Train dataset")):
             if not os.path.exists(p):
-                st.error(f"{what} not found: {p}")
+                st.error(f"{what} not found: {p}. Check the path above and "
+                         "draft again.")
                 st.stop()
         if not ready:
             st.warning("AI drafting not ready: " + detail)
@@ -919,7 +1044,28 @@ def _fatal_package_section(st, ws, site_default: str = "strip",
                       cross_road_label=cross_label or None,
                       cross_route_id=cross_id or None,
                       center_lat=center_lat or None, center_lon=center_lon or None)
-    b1, b2, b3 = st.columns(3)
+    missing = [m for m, ok in (("the WO number", wo),
+                               ("the NCDOT Division", division),
+                               ("the County", county), ("the Route", route))
+               if not ok]
+    if site == "strip":
+        missing += [m for m, ok in (
+            ("the AADT RouteID", route_id),
+            ("MP end above MP begin, both above 0", hi > lo > 0)) if not ok]
+    elif not (center_lat.strip() and center_lon.strip()):
+        missing.append("the Intersection latitude and longitude")
+    _needs_caption(st, "The maps need", missing)
+    detailed = ws.path("detailed_fiche_csv") if ws else None
+    ids_txt = ws.path("initial_ids_txt") if ws else None
+    if site != "strip":
+        st.caption("Route features and the location check run for strip "
+                   "sites only.")
+    elif not detailed:
+        st.caption("The location check needs the study's Detailed Fiche CSV "
+                   "attached (it carries the report coordinates).")
+    # One action row: the page's main action first and primary, its two
+    # helpers beside it; what each one renders appears below the row.
+    row = st.container(horizontal=True)
     if ws:
         out_dir = os.path.join(ws.outputs_dir, "package")
     else:
@@ -936,7 +1082,7 @@ def _fatal_package_section(st, ws, site_default: str = "strip",
         except ValueError:
             st.error(f"{label}: enter one decimal number, not {text.strip()!r}")
             st.stop()
-    if b1.button("Build package maps", disabled=not ready):
+    if row.button("Build package maps", type="primary", disabled=not ready):
         from safety_eval import package_maps as pm
         spec = pm.MapSpec(
             wo=wo, ph=ph, division=division, county=county, route=route,
@@ -955,13 +1101,24 @@ def _fatal_package_section(st, ws, site_default: str = "strip",
         except ValueError as exc:
             st.error(str(exc))
             st.stop()
-        log = st.empty()
-        try:
-            pages = pm.build_maps(spec, out_dir, log=lambda m: log.caption(m))
-            pairs = [(p, os.path.splitext(p)[0] + ".pdf") for p in pages.values()]
-            pdfs = pm.print_pdfs(pairs, screenshots=True)
-        except Exception as exc:       # noqa: BLE001 - show, don't die
-            st.error(f"Maps: {exc}")
+        failed = None
+        with st.status("Building the three maps", expanded=True) as status:
+            try:
+                pages = pm.build_maps(spec, out_dir,
+                                      log=lambda m: status.caption(m))
+                status.caption("Printing the maps to PDF")
+                pairs = [(p, os.path.splitext(p)[0] + ".pdf")
+                         for p in pages.values()]
+                pdfs = pm.print_pdfs(pairs, screenshots=True)
+            except Exception as exc:   # noqa: BLE001 - show, don't die
+                failed = exc
+                status.update(label="The maps were not built", state="error")
+            else:
+                status.update(label="Three maps written", state="complete",
+                              expanded=False)
+        if failed is not None:
+            st.error(f"Maps: {failed}. Check the inputs above and the "
+                     "network connection, then build again.")
             st.stop()
         for pdf in pdfs:
             png = os.path.splitext(pdf)[0] + ".png"
@@ -973,18 +1130,22 @@ def _fatal_package_section(st, ws, site_default: str = "strip",
                                    key="dl_" + os.path.basename(pdf))
         st.success(f"Three maps written to {out_dir}")
     strip_ready = ready and site == "strip"
-    if b2.button("Route features (curves, crests)", disabled=not strip_ready,
-                 help="Strip sites only: curves and crests along the route."):
+    if row.button("Route features (curves, crests)", disabled=not strip_ready,
+                  help="Strip sites only: curves and crests along the route."):
         from safety_eval import route_geometry as rg
         from safety_eval.teaas import write_feature_list
         try:
-            cl = rg.load_centerline(route_id, cache_path=os.path.join(
-                out_dir, "mapdata", f"route_{route_id}_segments.json"))
-            curves = rg.horizontal_curves(cl, lo, hi)
-            prof = rg.elevation_profile(cl, lo, hi)
-            verts = rg.vertical_features(prof)
+            with st.spinner("Loading the route centerline and the USGS "
+                            "elevation profile (one point every 0.01 mi)",
+                            show_time=True):
+                cl = rg.load_centerline(route_id, cache_path=os.path.join(
+                    out_dir, "mapdata", f"route_{route_id}_segments.json"))
+                curves = rg.horizontal_curves(cl, lo, hi)
+                prof = rg.elevation_profile(cl, lo, hi)
+                verts = rg.vertical_features(prof)
         except Exception as exc:       # noqa: BLE001
-            st.error(f"Route features: {exc}")
+            st.error(f"Route features: {exc}. Check the AADT RouteID and "
+                     "the network connection, then run it again.")
             st.stop()
         st.markdown(rg.features_markdown(curves, verts))
         if crash_lat.strip() and crash_lon.strip():
@@ -1001,23 +1162,26 @@ def _fatal_package_section(st, ws, site_default: str = "strip",
         with open(fl, "rb") as fh:
             st.download_button(f"Download {os.path.basename(fl)} ({n} lines)",
                                fh.read(), file_name=os.path.basename(fl))
-    detailed = ws.path("detailed_fiche_csv") if ws else None
-    ids_txt = ws.path("initial_ids_txt") if ws else None
-    if b3.button("Location check", disabled=not (strip_ready and detailed),
-                 help="Strip sites only: coded milepost vs report coordinates."):
+    if row.button("Location check", disabled=not (strip_ready and detailed),
+                  help="Strip sites only: coded milepost vs report "
+                       "coordinates."):
         from safety_eval import location_check as lc
         from safety_eval import route_geometry as rg
         from safety_eval.fiche_workbook import parse_initial_ids
         try:
-            cl = rg.load_centerline(route_id, cache_path=os.path.join(
-                out_dir, "mapdata", f"route_{route_id}_segments.json"))
-            ids = []
-            if ids_txt:
-                _, raw = parse_initial_ids(ids_txt)
-                ids = [str(r[0]) for r in raw]
-            rows = lc.check_crashes(lc.read_detailed_fiche(detailed), ids, cl)
+            with st.spinner("Checking the coded mileposts against the report "
+                            "coordinates", show_time=True):
+                cl = rg.load_centerline(route_id, cache_path=os.path.join(
+                    out_dir, "mapdata", f"route_{route_id}_segments.json"))
+                ids = []
+                if ids_txt:
+                    _, raw = parse_initial_ids(ids_txt)
+                    ids = [str(r[0]) for r in raw]
+                rows = lc.check_crashes(lc.read_detailed_fiche(detailed), ids,
+                                        cl)
         except Exception as exc:       # noqa: BLE001
-            st.error(f"Location check: {exc}")
+            st.error(f"Location check: {exc}. Check the Detailed Fiche CSV "
+                     "and the network connection, then run it again.")
             st.stop()
         st.markdown(lc.report_markdown(rows))
         flagged = sum(1 for r in rows if r.differs)
@@ -1025,9 +1189,6 @@ def _fatal_package_section(st, ws, site_default: str = "strip",
                    "coded milepost by more than 0.05 mi. The engineer decides "
                    "RE / ADD / NIS from the report (docs/03); addresses on the "
                    "reports can be geocoded with the locate-check CLI.")
-    if not detailed:
-        st.caption("Location check needs the study's Detailed Fiche CSV "
-                   "attached (it carries the report coordinates).")
 
 
 def _assumptions_tab(st) -> None:
@@ -1051,6 +1212,13 @@ def _assumptions_tab(st) -> None:
         ready = yaml_up is not None
         master_up, order_id = None, ""
 
+    if from_master:
+        missing = [m for m, ok in (
+            ("the Master Evaluation Spreadsheet", master_up is not None),
+            ("the Evaluation Order Number", order_id.strip())) if not ok]
+    else:
+        missing = [] if yaml_up is not None else ["the assumptions YAML"]
+    _needs_caption(st, "The draft needs", missing)
     if st.button("Generate .docx", type="primary", disabled=not ready):
         from safety_eval.assumptions_email import (default_filename,
                                                    generate_assumptions_email,
@@ -1111,8 +1279,8 @@ def _evaluation_tab(st) -> None:
     before_up = c1.file_uploader("Before Crash ID list (5-col .txt)")
     after_up = c2.file_uploader("After Crash ID list (5-col .txt)")
 
-    st.markdown("##### Optional inputs"
-                "&nbsp;&nbsp;:gray[each fills a sheet or a block]")
+    st.markdown("##### Optional inputs")
+    st.caption("Each fills a sheet or a block.")
     c1, c2, c3 = st.columns(3)
     with c1:
         before_mp_up = st.file_uploader("Before milepost import (.txt)",
@@ -1136,11 +1304,10 @@ def _evaluation_tab(st) -> None:
 
     ready_to_build = bool(template and before_up and after_up)
     if not ready_to_build:
-        missing = [m for m, ok in (
+        _needs_caption(st, "The build needs", [m for m, ok in (
             ("a template in templates/", template),
             ("the Before Crash ID list", before_up),
-            ("the After Crash ID list", after_up)) if not ok]
-        st.caption("The build needs " + " and ".join(missing) + ".")
+            ("the After Crash ID list", after_up)) if not ok])
     if st.button("Build workbook", type="primary",
                  disabled=not ready_to_build):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1167,15 +1334,31 @@ def _evaluation_tab(st) -> None:
                 argv += ["--filtered"]
             if recalc_pass:
                 argv += ["--recalc"]
+            import contextlib
+            import io
+
             from safety_eval.cli import main as cli_main
+            buf = io.StringIO()
             try:
-                cli_main(argv)
+                with st.spinner("Populating the template (the LibreOffice "
+                                "recalc can take a minute)", show_time=True), \
+                        contextlib.redirect_stdout(buf), \
+                        contextlib.redirect_stderr(buf):
+                    rc = cli_main(argv)
             except SystemExit as exc:
-                if exc.code not in (0, None):
-                    st.error(f"Build failed: {exc}")
-                    st.stop()
+                rc = exc.code
             except (ValueError, RuntimeError) as exc:
-                st.error(str(exc))
+                st.error(f"Build failed: {exc}. Correct the input it names "
+                         "and build again.")
+                st.stop()
+            if rc not in (0, None):
+                why = rc if isinstance(rc, str) else f"exit code {rc}"
+                st.error(f"Build failed: {why}. Correct the input it names "
+                         "and build again; the end of the build log is "
+                         "below.")
+                tail = buf.getvalue().strip().splitlines()[-12:]
+                if tail:
+                    st.code("\n".join(tail), language=None)
                 st.stop()
             if ws:
                 from safety_eval import workspace as wsm
@@ -1222,15 +1405,29 @@ def _redact_tab(st) -> None:
     verify = st.checkbox("Verify the output (OCR the redacted pages and "
                          "search them for the original's personal tokens)",
                          True)
-    if (report_up or study_pick) and st.button("Redact", type="primary"):
-        from safety_eval.redact import redact_file
+    have = bool(report_up or study_pick)
+    if not have:
+        st.caption("Redaction needs a crash report: " + (
+            "pick one above or upload it." if in_study
+            else "upload one above."))
+    if st.button("Redact", type="primary", disabled=not have) and have:
+        from safety_eval.redact import RedactionToolsMissing, redact_file
         with tempfile.TemporaryDirectory() as tmp:
             src = _save_upload(report_up, tmp) if report_up else next(
                 p for p in in_study if os.path.basename(p) == study_pick)
             out = os.path.join(tmp, "redacted.pdf")
-            rep = redact_file(src, out, keep_zip=keep_zip)
+            try:
+                with st.spinner("Redacting (OCR of every page, several "
+                                "passes)", show_time=True):
+                    rep = redact_file(src, out, keep_zip=keep_zip)
+            except RedactionToolsMissing as exc:
+                st.error(str(exc))
+                st.stop()
+            reasons = ", ".join(f"{k} {v}" for k, v in
+                                dict(rep.by_reason).items())
             st.write(f"Redacted {rep.boxes} region(s) across "
-                     f"{rep.pages} page(s): {rep.by_reason}")
+                     f"{rep.pages} page(s)"
+                     + (f": {reasons}." if reasons else "."))
             for w in rep.warnings:
                 st.warning(w)
             if verify:
@@ -1276,14 +1473,14 @@ def _fiche_tab(st, kind) -> None:
                       "page or upload them here; the build saves into its "
                       "folder."))
     st.markdown("##### Required")
-    c1, c2 = st.columns([1, 2], vertical_alignment="bottom")
+    c1, c2 = st.columns([1, 2])
     study = c1.text_input("Study number", value=(ws.study if ws else ""),
                           placeholder="41000079305")
     fiche_up = c2.file_uploader(_tag("Fiche Report (.csv)", "fiche_csv"),
                                 type=["csv"])
 
-    st.markdown("##### Other TEAAS exports"
-                "&nbsp;&nbsp;:gray[optional; each adds a sheet or a check]")
+    st.markdown("##### Other TEAAS exports")
+    st.caption("Optional; each adds a sheet or a check.")
     c1, c2, c3 = st.columns(3)
     initial_up = c1.file_uploader(
         _tag("Strip/Intersection Analysis Report (.csv)", "initial_study_csv"),
@@ -1295,37 +1492,36 @@ def _fiche_tab(st, kind) -> None:
         _tag("Detailed Fiche (.csv)", "detailed_fiche_csv"),
         help="Carries latitude/longitude for the coordinate formulas.")
 
-    st.markdown("##### Colour screen"
-                "&nbsp;&nbsp;:gray[optional; needs the Features Report and "
-                "the study limits]")
-    c1, c2 = st.columns([1, 1], vertical_alignment="bottom")
+    st.markdown("##### Colour screen")
+    st.caption("Optional; needs the Features Report and the study limits.")
+    # The same three-column grid as the row above, labels on one line.
+    c1, c2, c3 = st.columns(3)
     features_up = c1.file_uploader(
         _tag("Features Report (.pdf/.txt/.csv)", "features_report"),
         help="Enables the colour screen: a From/Toward feature inside "
              "the limits, or a blue/yellow bracket, sends the crash to "
              "review (?).")
-    with c2:
-        r1, r2, r3 = st.columns(3)
-        route = r1.text_input("Study route", placeholder="US 74",
-                              value=(ws.param("route", "") if ws else ""))
-        lo = r2.number_input("MP begin", min_value=0.0, format="%.3f",
-                             step=0.005, key="fiche_lo",
-                             value=(ws.param("mp_lo", 0.0) if ws else 0.0))
-        hi = r3.number_input("MP end", min_value=0.0, format="%.3f",
-                             step=0.005, key="fiche_hi",
-                             value=(ws.param("mp_hi", 0.0) if ws else 0.0))
+    route = c2.text_input("Study route", placeholder="US 74",
+                          value=(ws.param("route", "") if ws else ""))
+    r2, r3 = c3.columns(2)
+    lo = r2.number_input("MP begin", min_value=0.0, format="%.3f",
+                         step=0.005, key="fiche_lo",
+                         value=(ws.param("mp_lo", 0.0) if ws else 0.0))
+    hi = r3.number_input("MP end", min_value=0.0, format="%.3f",
+                         step=0.005, key="fiche_hi",
+                         value=(ws.param("mp_hi", 0.0) if ws else 0.0))
 
     have_features = features_up is not None or bool(_have("features_report"))
     have_fiche = fiche_up is not None or bool(_have("fiche_csv"))
     want_screen = have_features and route.strip() and hi > lo
     if have_features and not want_screen:
-        st.info("Add the study route and MP limits to run the colour screen "
-                "with the build.")
+        st.caption("Add the study route and MP limits to run the colour "
+                   "screen with the build.")
     ready_to_build = bool(study.strip() and have_fiche)
     if not ready_to_build:
-        missing = [m for m, ok in (("the study number", study.strip()),
-                                   ("the Fiche Report", have_fiche)) if not ok]
-        st.caption("The build needs " + " and ".join(missing) + ".")
+        _needs_caption(st, "The build needs", [m for m, ok in (
+            ("the study number", study.strip()),
+            ("the Fiche Report", have_fiche)) if not ok])
     if st.button("Build fiche workbook", type="primary",
                  disabled=not ready_to_build):
         from safety_eval.fiche_workbook import build_fiche_workbook, parse_initial_ids
@@ -1335,35 +1531,38 @@ def _fiche_tab(st, kind) -> None:
             return _save_upload(up, tmp) or _have(role)
 
         with tempfile.TemporaryDirectory() as tmp:
-            out = os.path.join(tmp, f"{study.strip()}_Fiche.xlsx")
-            ids_src = _src(ids_up, "initial_ids_txt", tmp)
-            try:
-                counts = build_fiche_workbook(
-                    out, fiche_csv=_src(fiche_up, "fiche_csv", tmp),
-                    initial_study_csv=_src(initial_up, "initial_study_csv", tmp),
-                    initial_id_txt=ids_src,
-                    detailed_fiche_csv=_src(detailed_up, "detailed_fiche_csv", tmp),
-                    study=study.strip())
-            except (ValueError, KeyError) as exc:
-                st.error(f"Build failed: {exc}")
-                st.stop()
-            tally = None
-            if want_screen:
-                import openpyxl
+            with st.spinner("Building the fiche workbook", show_time=True):
+                out = os.path.join(tmp, f"{study.strip()}_Fiche.xlsx")
+                ids_src = _src(ids_up, "initial_ids_txt", tmp)
+                try:
+                    counts = build_fiche_workbook(
+                        out, fiche_csv=_src(fiche_up, "fiche_csv", tmp),
+                        initial_study_csv=_src(initial_up, "initial_study_csv", tmp),
+                        initial_id_txt=ids_src,
+                        detailed_fiche_csv=_src(detailed_up, "detailed_fiche_csv", tmp),
+                        study=study.strip())
+                except (ValueError, KeyError) as exc:
+                    st.error(f"Build failed: {exc}. Check that each file "
+                             "is the TEAAS export it is uploaded as, then "
+                             "build again.")
+                    st.stop()
+                tally = None
+                if want_screen:
+                    import openpyxl
 
-                from safety_eval.fiche_screen import parse_features_report, screen_sheet
-                ids = []
-                if ids_src:
-                    _, raw = parse_initial_ids(ids_src)
-                    ids = [r[0] for r in raw]
-                wb = openpyxl.load_workbook(out)
-                sheet = wb[f"{study.strip()}_Fiche"]
-                tally = screen_sheet(
-                    sheet, parse_features_report(
-                        _src(features_up, "features_report", tmp)),
-                    lo, hi, ids, route=route.strip(),
-                    study=kind.key)
-                wb.save(out)
+                    from safety_eval.fiche_screen import parse_features_report, screen_sheet
+                    ids = []
+                    if ids_src:
+                        _, raw = parse_initial_ids(ids_src)
+                        ids = [r[0] for r in raw]
+                    wb = openpyxl.load_workbook(out)
+                    sheet = wb[f"{study.strip()}_Fiche"]
+                    tally = screen_sheet(
+                        sheet, parse_features_report(
+                            _src(features_up, "features_report", tmp)),
+                        lo, hi, ids, route=route.strip(),
+                        study=kind.key)
+                    wb.save(out)
             cols = st.columns(4)
             cols[0].metric("Fiche rows",
                            counts.get(f"{study.strip()}_Fiche", 0))
@@ -1430,6 +1629,7 @@ def _hsip_tab(st) -> None:
     study_wb = (ws.path("reviewed_workbook") or ws.path("workbook")) \
         if ws else None
     wb_up = None
+    ids_col = st
     if study_wb:
         src = st.radio(
             "Workbook", [f"From study {ws.study}: "
@@ -1438,12 +1638,15 @@ def _hsip_tab(st) -> None:
         if src == "Upload":
             study_wb = None
     if not study_wb:
-        wb_up = st.file_uploader("Reviewed fiche workbook (.xlsx)",
+        # The required workbook and the optional ID export share one row, so
+        # the run button stays in view.
+        u1, ids_col = st.columns(2)
+        wb_up = u1.file_uploader("Reviewed fiche workbook (.xlsx)",
                                  type=["xlsx"])
     have_wb = bool(study_wb or wb_up)
     wb_name = os.path.basename(study_wb) if study_wb \
         else (wb_up.name if wb_up else "")
-    ids_up = st.file_uploader(
+    ids_up = ids_col.file_uploader(
         "TEAAS ID export (.txt)",
         help="Enables the branch-vocabulary gate (docs/03): the run refuses "
              "while any status contradicts Initial Study membership."
@@ -1463,7 +1666,7 @@ def _hsip_tab(st) -> None:
     bridge = midblock = False
     f_text = ""
     if is_section:
-        c1, c2, c3, c4 = st.columns(4)
+        c1, c2, c3, c4 = st.columns(4, vertical_alignment="bottom")
         facility = c1.selectbox("Facility", list(FACILITY_LABELS),
                                 format_func=FACILITY_LABELS.get)
         lo = c2.number_input("MP begin", min_value=0.0, format="%.3f",
@@ -1497,13 +1700,19 @@ def _hsip_tab(st) -> None:
         ready = hi > lo
     else:
         c1, c2, c3 = st.columns(3)
+        # The study's context (set on the Overview's criteria card) decides
+        # the default: it picks the threshold set and the recency window.
+        ctx = ws.param("context") if ws else None
         context = c1.radio("Context", ["urban", "rural"], horizontal=True,
+                           index=1 if ctx == "rural" else 0,
                            help="Urban and rural differ in every threshold "
                                 "and in the recency window (2 vs 3 years). "
                                 "The HSIP GIS City field makes the call "
                                 "(a municipality name vs RURAL), and the "
                                 "crash pull is 5 years urban / 10 rural "
                                 "(docs/12).")
+        if ctx in ("urban", "rural"):
+            c1.caption(f"From the study: {ctx}.")
         edition = edition_box(c2, "edition_intersection")
         end_date = c3.date_input(
             "Analysis end date", value=None,
@@ -1523,6 +1732,11 @@ def _hsip_tab(st) -> None:
         help="Written as a TEAAS feature-inclusion import (20-character "
              "cap; docs/09).")
 
+    missing = [] if have_wb else [
+        "the reviewed fiche workbook (from the study or uploaded above)"]
+    if is_section and not ready:
+        missing.append("MP end above MP begin")
+    _needs_caption(st, "The run needs", missing)
     if st.button("Run warrants", type="primary",
                  disabled=not have_wb or not ready):
         import safety_eval.hsip as hsip
@@ -1536,7 +1750,9 @@ def _hsip_tab(st) -> None:
             if ids_path:
                 from safety_eval.fiche_workbook import parse_initial_ids
                 _, raw = parse_initial_ids(ids_path)
-                bad = check_branch_vocabulary(path, "", [r[0] for r in raw])
+                with st.spinner("Checking the review statuses"):
+                    bad = check_branch_vocabulary(path, "",
+                                                  [r[0] for r in raw])
                 if bad:
                     st.error(f"{len(bad)} branch violation(s); fix the "
                              "review before the warrants (docs/03).")
@@ -1555,11 +1771,12 @@ def _hsip_tab(st) -> None:
             if is_section:
                 try:
                     f_codes = hsip.parse_f_codes(f_text)
-                    run = hsip.run_hsip(
-                        path, facility, lo, hi, multilane=multilane,
-                        overrides=overrides,
-                        import_out=os.path.join(tmp, "import.txt"),
-                        edition=edition)
+                    with st.spinner("Running the warrants"):
+                        run = hsip.run_hsip(
+                            path, facility, lo, hi, multilane=multilane,
+                            overrides=overrides,
+                            import_out=os.path.join(tmp, "import.txt"),
+                            edition=edition)
                 except ValueError as exc:
                     st.error(str(exc))
                     st.stop()
@@ -1571,9 +1788,10 @@ def _hsip_tab(st) -> None:
                                              os.path.join(tmp, "import.txt"))
             else:
                 try:
-                    s, pairs, flags, period_warn, crashes = \
-                        _screen_intersection_wb(path, context, end_date,
-                                                overrides, edition)
+                    with st.spinner("Running the warrants"):
+                        s, pairs, flags, period_warn, crashes = \
+                            _screen_intersection_wb(path, context, end_date,
+                                                    overrides, edition)
                 except ValueError as exc:
                     st.error(str(exc))
                     st.stop()
@@ -1903,10 +2121,14 @@ def _section_results(st, run) -> None:
     m3.metric(f"Minimums ({s.min_total} / {s.min_rate} per mi)",
               "Met" if s.meets_minimums else "Not met")
     st.caption(f"Edition: {EDITION_NAMES[s.edition]}.")
+    # Numbers stay numbers, so their columns right-align and the digits
+    # line up where the engineer compares a share with its threshold.
     st.table([{"Warrant": w.warrant, "Description": w.description,
-               "Crashes": f"{w.count}/{w.total}",
-               "Share": f"{w.share:.0%}", "Needs": f"{w.threshold:.0%}",
-               "Met": "Yes" if w.met else "No"} for w in s.warrants])
+               "Crashes": w.count, "Of": w.total,
+               "Share %": round(w.share * 100),
+               "Needs %": round(w.threshold * 100),
+               "Met": "Yes" if w.met else "No"} for w in s.warrants],
+             border="horizontal", hide_index=True)
     st.subheader("Sub-section findings")
     for line in run.finding_lines:
         st.write(line)
@@ -1953,7 +2175,8 @@ def _intersection_results(st, s, flags) -> None:
                f"({s.recent_1yr_share:.0%}); last {s.recency_years} years "
                f"{s.recent_n} ({s.recent_n_share:.0%}).")
     st.table([{"Warrant": w.warrant, "Description": w.description,
-               "Met": "Yes" if w.met else "No"} for w in s.warrants])
+               "Met": "Yes" if w.met else "No"} for w in s.warrants],
+             border="horizontal", hide_index=True)
     _daylight_warnings(st, flags)
     st.caption("The SN24-style Warrant sheet is section-specific; "
                "intersection results live here and in the report text.")
@@ -2095,11 +2318,13 @@ def _review_queue_tab(st) -> None:
 
     if not (wb_path and os.path.exists(wb_path)):
         if wb_path:
-            st.error(f"Workbook not found: {wb_path}")
+            st.error(f"Workbook not found: {wb_path}. Check the path, or "
+                     "build the workbook again on the Fiche Workbook page; "
+                     "an open study then fills it in here.")
         else:
-            st.info("The queue starts from a workbook. Build one on the "
-                    "Fiche Workbook page, or open a study in the sidebar "
-                    "and its workbook fills in here.")
+            st.caption("The queue starts from a workbook. Build one on the "
+                       "Fiche Workbook page, or open a study in the sidebar "
+                       "and its workbook fills in here.")
         st.stop()
 
     if not sheet.strip():
@@ -2220,7 +2445,12 @@ def _review_queue_tab(st) -> None:
 
     pending = [i for i in queue if i.pending and i.crash_id not in dets]
     if not pending:
-        st.success("Queue empty. Save the reviewed workbook below.")
+        if dets:
+            st.success("Queue empty. Save the reviewed workbook below.")
+        else:
+            st.success("Queue empty: every crash on the sheet already "
+                       "carries a determination, so there is nothing to "
+                       "save from this session.")
     else:
         pos = min(st.session_state.get("rq_pos", 0), len(pending) - 1)
         item = pending[pos]
@@ -2235,7 +2465,9 @@ def _review_queue_tab(st) -> None:
                            "report (docs/03).")
         else:
             try:
-                report_pages = _queue_pages(index_path, row.crash_id)
+                with st.spinner(f"Redacting the DMV-349 pages for crash "
+                                f"{row.crash_id}", show_time=True):
+                    report_pages = _queue_pages(index_path, row.crash_id)
             except Exception as exc:           # noqa: BLE001 - show, don't die
                 report_note = f"Page retrieval failed: {exc}"
 
@@ -2306,7 +2538,7 @@ def _review_queue_tab(st) -> None:
                 if res.mode == "decide":
                     if res.proposed_status:
                         st.success(f"AI proposes **{res.proposed_status}** "
-                                   f"({res.confidence}) — {res.where_occurred}")
+                                   f"({res.confidence}): {res.where_occurred}")
                     for ev in res.evidence[:4]:
                         st.caption("• " + ev)
                     if res.validation_problems:
@@ -2371,7 +2603,9 @@ def _review_queue_tab(st) -> None:
                      "`at [road]`, `Remileposted from GPS coordinates; "
                      "near [road]`.")
 
-            if st.button("Record determination", type="primary"):
+            st.caption("Ctrl+Enter records the determination.")
+            if st.button("Record determination", type="primary",
+                         shortcut="Ctrl+Enter"):
                 det = rq.Determination(
                     crash_id=row.crash_id,
                     status=base + ("-2" if suffix else ""),
@@ -2401,9 +2635,17 @@ def _review_queue_tab(st) -> None:
                     st.image(img, caption=f"page {i} of {len(report_pages)}",
                              use_container_width=True)
 
-    if dets and st.button(f"Save reviewed workbook ({len(dets)} "
-                          "determination(s))"):
-        out_path = os.path.splitext(wb_path)[0] + ".reviewed.xlsx"
+    out_path = os.path.splitext(wb_path)[0] + ".reviewed.xlsx"
+    if not dets:
+        st.caption("Saving needs one or more determinations recorded in this "
+                   "session.")
+    elif os.path.exists(out_path):
+        st.caption(f"Saving replaces {os.path.basename(out_path)} (saved "
+                   f"{_mtime(out_path)}); the audit trail keeps every "
+                   "determination.")
+    save_label = "Save reviewed workbook" + (
+        f" ({len(dets)} determination(s))" if dets else "")
+    if st.button(save_label, disabled=not dets) and dets:
         if hsip_sheet:
             from safety_eval.fiche_screen import apply_hsip_review
             tally = apply_hsip_review(
@@ -2437,7 +2679,11 @@ def _review_queue_tab(st) -> None:
         prop_up = st.file_uploader("proposals.jsonl (review-assist output)")
         truth_up = st.file_uploader("Your reviewed fiche workbook (.xlsx)",
                                     key="score_truth")
-        if prop_up and truth_up and st.button("Score"):
+        have = bool(prop_up and truth_up)
+        if not have:
+            st.caption("Scoring needs the proposals file and the reviewed "
+                       "workbook.")
+        if st.button("Score", disabled=not have) and have:
             from safety_eval.review_assist import score_proposals
             with tempfile.TemporaryDirectory() as tmp:
                 s = score_proposals(_save_upload(prop_up, tmp),
@@ -2504,28 +2750,45 @@ def _package_loader(st, ws: str) -> str | None:
 
     zip_up = st.file_uploader("Package zip (the WO folder)", type=["zip"],
                               key="pkg_zip")
-    if zip_up and st.button("Load package", key="pkg_load"):
+    old = st.session_state.get("package_dir")
+    if old:
+        st.caption("Loading another zip replaces the loaded package and "
+                   "clears its package check and sweep results.")
+    elif not zip_up:
+        st.caption("Loading needs a package zip.")
+    if st.button("Load package", key="pkg_load",
+                 disabled=not zip_up) and zip_up:
         import shutil
         import zipfile
         dest = os.path.join(ws, "package")
-        shutil.rmtree(dest, ignore_errors=True)
-        with zipfile.ZipFile(_save_upload(zip_up, ws)) as z:
-            z.extractall(dest)
+        try:
+            with st.spinner("Unpacking the package", show_time=True):
+                shutil.rmtree(dest, ignore_errors=True)
+                with zipfile.ZipFile(_save_upload(zip_up, ws)) as z:
+                    z.extractall(dest)
+        except zipfile.BadZipFile:
+            st.error("That file is not a readable zip. Zip the WO folder "
+                     "again and load the new zip.")
+            st.stop()
         tops = [d for d in os.listdir(dest)
                 if os.path.isdir(os.path.join(dest, d))]
         st.session_state["package_dir"] = (
             os.path.join(dest, tops[0]) if len(tops) == 1 else dest)
         for stale in ("pqa_text", "sweep_md", "sweep_summary"):
             st.session_state.pop(stale, None)     # results of the previous package
+        if old:
+            st.caption(f"Replaced {os.path.basename(old)}.")
     pkg_dir = st.session_state.get("package_dir")
     if pkg_dir:
         pkg = discover(pkg_dir)
-        st.write({"package": os.path.basename(pkg_dir),
-                  "workbook": os.path.basename(pkg.workbook or ""),
-                  "crash reports": len(pkg.crash_reports),
-                  "disclaimer": bool(pkg.disclaimer_pdf),
-                  "TEAAS": [os.path.basename(p)
-                            for p in (pkg.before_pdf, pkg.after_pdf) if p]})
+        teaas = [os.path.basename(p)
+                 for p in (pkg.before_pdf, pkg.after_pdf) if p]
+        st.caption(
+            f"Package {os.path.basename(pkg_dir)}: workbook "
+            f"{os.path.basename(pkg.workbook) if pkg.workbook else 'missing'}"
+            f", {len(pkg.crash_reports)} crash report(s), disclaimer "
+            f"{'found' if pkg.disclaimer_pdf else 'missing'}, TEAAS "
+            f"{', '.join(teaas) if teaas else 'none'}.")
     return pkg_dir
 
 
@@ -2561,8 +2824,10 @@ def _aadt_tab(st) -> None:
     if st.button("Find NCDOT stations", key="aadt_find"):
         from safety_eval.aadt_arcgis import AadtServiceError, query_stations
         try:
-            st.session_state["stations"] = query_stations(
-                point=(lon, lat), radius_meters=float(radius))
+            with st.spinner("Querying the NCDOT AADT stations layer",
+                            show_time=True):
+                st.session_state["stations"] = query_stations(
+                    point=(lon, lat), radius_meters=float(radius))
         except AadtServiceError as exc:
             st.error(str(exc))
     stations = st.session_state.get("stations", [])
@@ -2612,6 +2877,9 @@ def _aadt_tab(st) -> None:
                 name, pub, is_minor=i >= 2,
                 assumed_from=None if assumed == "(no)" else assumed)
     if not any(lg.published or lg.assumed_from for lg in legs.values()):
+        st.caption("Assign a station or type published values for at least "
+                   "one leg; the AADT table, the representative years and "
+                   "the workbook write appear here.")
         return
     try:
         table = intersection_table(legs, years)
@@ -2640,8 +2908,11 @@ def _aadt_tab(st) -> None:
                      f"{v['rounded']:,}")
     src = _workbook_input(st, "aadt_wb", ws,
                           "Workbook to write the table into (.xlsx)")
-    if src and st.button("Write AADT table and colours", type="primary",
-                         key="aadt_write"):
+    if not src:
+        st.caption("Writing needs a workbook: upload one above, or open a "
+                   "study that has an Evaluation Workbook.")
+    if st.button("Write AADT table and colours", type="primary",
+                 key="aadt_write", disabled=not src) and src:
         import openpyxl
 
         from safety_eval.setup_sheet import SetupData, build_setup_edits
@@ -2704,8 +2975,10 @@ def _map_block_tab(st) -> None:
         if st.button("Fetch Esri aerial", key="esri_fetch"):
             from safety_eval.map_block import fetch_esri_world_imagery
             try:
-                img = fetch_esri_world_imagery(elat, elon,
-                                               ground_width_m=float(ewid))
+                with st.spinner("Fetching Esri World Imagery",
+                                show_time=True):
+                    img = fetch_esri_world_imagery(elat, elon,
+                                                   ground_width_m=float(ewid))
                 p = os.path.join(ws, "esri_aerial.png")
                 img.save(p)
                 st.session_state["esri_aerial"] = p
@@ -2713,9 +2986,12 @@ def _map_block_tab(st) -> None:
                                     "Earthstar Geographics)",
                          use_container_width=True)
             except Exception as exc:  # noqa: BLE001 - shown to the engineer
-                st.error(f"Fetch failed: {exc}")
+                st.error(f"Fetch failed: {exc}. Check the coordinates and the "
+                         "network connection, then fetch again.")
     st.markdown("**Legs** (direction in image pixels from the junction, "
                 "x right, y down)")
+    st.caption("The rows start as a worked example (SR 1001 at SR 1617); "
+               "replace them with this study's legs before composing.")
     rows = st.data_editor([
         {"route": "SR 1001", "name": "Sikes Mill Road", "speed": 45,
          "aadt": 3200, "year": 2025, "dx": 437, "dy": -481, "side": 1,
@@ -2733,6 +3009,9 @@ def _map_block_tab(st) -> None:
     aerial_path = (_save_upload(aerial_up, ws) if aerial_up
                    else st.session_state.get("esri_aerial"))
     if not aerial_path:
+        st.caption("Upload an aerial (or fetch the Esri one above) to see "
+                   "the composed block and its crop controls, then embed it "
+                   "into the workbook.")
         return
     from PIL import Image
     aerial = Image.open(aerial_path).convert("RGB")
@@ -2771,8 +3050,11 @@ def _map_block_tab(st) -> None:
     src = _workbook_input(st, "map_wb", ws, "Workbook to embed into (.xlsx)")
     anchor = st.text_input("Anchor cell / block range", "H41:K56",
                            key="map_anchor")
-    if src and st.button("Embed on results page", type="primary",
-                         key="map_embed"):
+    if not src:
+        st.caption("Embedding needs a workbook: upload one above, or open a "
+                   "study that has an Evaluation Workbook.")
+    if st.button("Embed on results page", type="primary", key="map_embed",
+                 disabled=not src) and src:
         out = os.path.join(ws, "map_done.xlsx")
         a, b = (anchor.split(":") + [None])[:2]
         sheet = "1 page results - 1 Target"
@@ -2811,6 +3093,9 @@ def _strip_diagram_tab(st) -> None:
          "type": "RE", "severity": "O", "date": "04/14/23", "night": False,
          "wet": False},
     ], num_rows="dynamic", key="cd_rows")
+    st.caption("The title, features and rows start as a worked example "
+               "(order 41000079307); replace them with this study's, or "
+               "upload a CSV below.")
     csv_up = st.file_uploader(
         "Or upload a CSV (crash_id,mp,units,type,severity,date,night,wet)",
         type=["csv"], key="cd_csv")
@@ -2836,7 +3121,9 @@ def _strip_diagram_tab(st) -> None:
         crashes, StripSpec(title, subtitle, float(mp0), float(mp1), features),
         os.path.join(ws, "collision_diagram"))
     st.image(out["png"], use_container_width=True)
-    st.write(out)
+    sev = ", ".join(f"{k} {v}" for k, v in out.get("by_severity", {}).items())
+    st.caption(f"{out.get('crashes', 0)} crash(es) drawn"
+               + (f"; by severity {sev}." if sev else "."))
     _download(st, "Download diagram PDF", out["pdf"])
 
 
@@ -2849,44 +3136,81 @@ def _print_tab(st) -> None:
     st.caption("LibreOffice print of the results page. Carlito (Calibri "
                "metric match) and Liberation Serif keep the column widths "
                "and fit-to-page scale of the Excel print.")
-    st.write({"LibreOffice": bool(soffice_path()), **fonts_report()})
+    fr = fonts_report()
+    have = {"LibreOffice": bool(soffice_path()),
+            "Carlito": fr.get("carlito"),
+            "Liberation Serif": fr.get("liberation_serif")}
+    st.write("; ".join(f"{k}: {'found' if v else 'missing'}"
+                       for k, v in have.items()) + ".")
+    if not have["LibreOffice"]:
+        st.warning("LibreOffice was not found. Install it, or put soffice on "
+                   "PATH, to print the results page here; otherwise print "
+                   "the page from Excel.")
+    if not fr.get("fc-list"):
+        st.caption("fc-list (fontconfig) was not found, so the fonts could "
+                   "not be checked.")
+    else:
+        lacking = [n for k, n in (("carlito", "Carlito"),
+                                  ("liberation_serif", "Liberation Serif"))
+                   if not fr.get(k)]
+        if lacking:
+            st.caption("Install " + " and ".join(lacking) + " so the print "
+                       "matches the Excel column widths and fonts.")
     src = _workbook_input(st, "pr_wb", ws)
     sheet = st.selectbox("Results sheet", ["1 page results - 1 Target",
                                            "1 page results - 2 Targets"],
                          key="pr_sheet")
     lossless = st.checkbox("Lossless aerial (larger file)", False,
                            key="pr_lossless")
-    if src and st.button("Print results page", type="primary", key="pr_print"):
+    if not src:
+        st.caption("Printing needs a workbook: upload one above, or open a "
+                   "study that has an Evaluation Workbook.")
+    if st.button("Print results page", type="primary", key="pr_print",
+                 disabled=not src) and src:
         page1 = os.path.join(ws, "results_page.pdf")
         try:
-            rep = print_sheet(src, page1, sheet=sheet, lossless=lossless)
+            with st.spinner("Printing the results page with LibreOffice",
+                            show_time=True):
+                rep = print_sheet(src, page1, sheet=sheet, lossless=lossless)
         except RuntimeError as exc:
             st.error(str(exc))
             st.stop()
         for w in rep.warnings:
             st.warning(w)
         st.session_state["page1"] = page1
-        png = render_png(page1, os.path.join(ws, "results_page"))
+        with st.spinner("Rendering the preview"):
+            png = render_png(page1, os.path.join(ws, "results_page"))
         st.image(png, caption=f"page {rep.page_index} of {rep.pages_total} "
                               "in the export", use_container_width=True)
-        st.write({k: round(v, 2) for k, v in ink_extents_inches(png).items()})
+        ext = ink_extents_inches(png)
+        if ext:
+            st.table([{"Edge": k, "Inches": round(v, 2)}
+                      for k, v in ext.items()],
+                     border="horizontal", hide_index=True)
         _download(st, "Download results page PDF", page1)
-    st.markdown("**Bind deliverables**")
+    st.markdown("##### Bind deliverables")
     disc_up = st.file_uploader("2020 data disclaimer page (PDF)", type=["pdf"],
                                key="pr_disc")
     app_ups = st.file_uploader("TEAAS reports in order (PDF)", type=["pdf"],
                                accept_multiple_files=True, key="pr_apps")
     title = st.text_input("PDF title", "Safety Project Evaluation",
                           key="pr_title")
-    if st.session_state.get("page1") and st.button(
-            "Assemble Complete Evaluation and Web PDFs", key="pr_bind"):
+    page1_ready = bool(st.session_state.get("page1"))
+    if not page1_ready:
+        st.caption("Binding needs the printed results page: print it above "
+                   "first; it becomes page 1 of the bind.")
+    if st.button("Assemble Complete Evaluation and Web PDFs", key="pr_bind",
+                 disabled=not page1_ready) and page1_ready:
         disc = _save_upload(disc_up, ws)
         apps = [_save_upload(u, ws) for u in (app_ups or [])]
         ce = os.path.join(ws, "Complete Evaluation.pdf")
         web = os.path.join(ws, "Web.pdf")
-        out = assemble_deliverables(st.session_state["page1"], disc, apps,
-                                    ce, web, title=title)
-        st.success(str(out))
+        with st.spinner("Binding the PDFs"):
+            out = assemble_deliverables(st.session_state["page1"], disc, apps,
+                                        ce, web, title=title)
+        st.success(f"Bound Complete Evaluation "
+                   f"({out.get('complete_pages', 0)} pages) and Web "
+                   f"({out.get('web_pages', 0)} pages).")
         _download(st, "Download Complete Evaluation", ce)
         _download(st, "Download Web", web)
 
@@ -2896,7 +3220,7 @@ def _qa_tab(st) -> None:
                                        run_package_checks)
 
     ws = _session_dir(st)
-    st.markdown("**Package checks** (every location in the WO folder)")
+    st.markdown("##### Package checks (every location in the WO folder)")
     st.caption("TEAAS studies (PDF, CSV and CrashID list) against the "
                "workbook Before and After sheets crash by crash; Complete "
                "Evaluation against its parts page by page; the Word one pager "
@@ -2923,8 +3247,13 @@ def _qa_tab(st) -> None:
             n = len(pq.report.findings)
             hm = sum(1 for f in pq.report.findings
                      if f.severity in ("High", "Medium"))
-            (st.success if pq.report.ok else st.error)(
-                f"{n} finding(s), {hm} High/Medium")
+            if pq.report.ok:
+                st.success(f"Package checks passed: {n} finding(s), {hm} "
+                           "High/Medium.", icon=":material/check_circle:")
+            else:
+                st.error(f"Package checks failed: {n} finding(s), {hm} "
+                         "High/Medium. Work through the report below, then "
+                         "run the checks again.", icon=":material/error:")
             if pq.trace:
                 st.dataframe([{"crash": t["crash_id"], "asked": t["action"],
                                "found in": t["where"] or "nowhere"}
@@ -2935,8 +3264,7 @@ def _qa_tab(st) -> None:
                                st.session_state["pqa_text"],
                                file_name="Package QA checks.md")
 
-    st.markdown("---")
-    st.markdown("**Single workbook checks**")
+    st.markdown("##### Single workbook checks")
     st.caption("Deterministic checks: workbook structure and the docs/06 "
                "drawings gate, results text style, fiche Type versus T code, "
                "AADT colour convention, PDF assembly, and the Word one pager "
@@ -2953,7 +3281,11 @@ def _qa_tab(st) -> None:
                              type=["docx"], key="qa_onepager")
     pub = st.text_area("Published AADT years per leg (optional)", "",
                        key="qa_pub", help="One leg per line: leg1: 2017, 2019, 2021")
-    if wb and st.button("Run QA checks", type="primary", key="qa_run"):
+    if not wb:
+        st.caption("The checks need a workbook: upload one above, or open a "
+                   "study that has an Evaluation Workbook.")
+    if st.button("Run QA checks", type="primary", key="qa_run",
+                 disabled=not wb) and wb:
         ref = _save_upload(ref_up, ws)
         published = {}
         for line in pub.splitlines():
@@ -2967,35 +3299,39 @@ def _qa_tab(st) -> None:
         if years:
             years = list(range(min(years) - 1, max(years) + 2))
         web = _save_upload(web_up, ws)
-        rep = run_package_checks(wb, ref, _save_upload(ce_up, ws), web,
-                                 published_years=published or None,
-                                 years=years)
-        onepager = _save_upload(op_up, ws)
-        if onepager:
-            from safety_eval.qa_package import check_onepager_docx
-            check_onepager_docx(onepager, wb, web, report=rep)
+        with st.spinner("Checking the workbook"):
+            rep = run_package_checks(wb, ref, _save_upload(ce_up, ws), web,
+                                     published_years=published or None,
+                                     years=years)
+            onepager = _save_upload(op_up, ws)
+            if onepager:
+                from safety_eval.qa_package import check_onepager_docx
+                check_onepager_docx(onepager, wb, web, report=rep)
+            diffs = diff_cached_values(wb, ref) if ref else {}
         st.code(format_report(rep))
         if ref:
-            diffs = diff_cached_values(wb, ref)
-            st.write({k: len(v) for k, v in diffs.items()}
-                     or "No cached value differs from the reference.")
+            if diffs:
+                st.table([{"Sheet": k, "Changed cells": len(v)}
+                          for k, v in diffs.items()],
+                         border="horizontal", hide_index=True)
+            else:
+                st.write("No cached value differs from the reference.")
             for sheet, d in diffs.items():
                 with st.expander(f"{sheet}: {len(d)} changed cells"):
                     st.dataframe([{"cell": c, "reference": str(a),
                                    "value": str(b)} for c, a, b in d[:400]])
 
-    st.markdown("---")
-    st.markdown("**Multi-agent QA sweep** (up to seven reviewers, three "
-                "refuters; the package checks above run first and are given "
-                "to every reviewer)")
+    st.markdown("##### Multi-agent QA sweep")
+    st.caption("Up to seven reviewers and three refuters; the package checks "
+               "above run first and are given to every reviewer.")
     from safety_eval.chat import Assistant
     from safety_eval.qa_sweep import DIMENSIONS
     if not pkg_dir:
-        st.info("Load a package zip above first; the sweep reads the whole "
-                "folder.")
+        st.caption("Load a package zip above first; the sweep reads the "
+                   "whole folder.")
         return
     if not Assistant.available():
-        st.info("Set ANTHROPIC_API_KEY to run the sweep.")
+        st.caption("Set ANTHROPIC_API_KEY to run the sweep.")
         return
     dims = st.multiselect("Dimensions", list(DIMENSIONS),
                           default=list(DIMENSIONS),
@@ -3014,23 +3350,40 @@ def _qa_tab(st) -> None:
         from safety_eval.qa_sweep import (gather_context, page_images,
                                           read_accepted, run_sweep,
                                           sweep_to_markdown)
-        log = st.empty()
         lines = []
+        failed = None
+        # A status box: it says the sweep is running for the whole run and
+        # keeps every progress line, then folds away when it is done.
+        with st.status("Running the QA sweep", expanded=True) as status:
+            log = status.empty()
 
-        def _progress(m):
-            lines.append(m)
-            log.code("\n".join(lines))
+            def _progress(m):
+                lines.append(m)
+                log.code("\n".join(lines))
 
-        comments = st.session_state.get("pqa_comments") or None
-        with st.spinner("Reading the package"):
-            ctx = gather_context(pkg_dir, comments=(comments or "").strip() or None,
-                                 progress=_progress)
-        _progress(f"context: {len(ctx)} parts, "
-                  f"{sum(len(v) for v in ctx.values())} chars")
-        rep = run_sweep(ctx, dimensions=dims, n_refuters=int(refuters),
-                        effort=effort, progress=_progress,
-                        accepted=read_accepted(accepted),
-                        images=page_images(pkg_dir) if show_pages else None)
+            comments = st.session_state.get("pqa_comments") or None
+            try:
+                ctx = gather_context(
+                    pkg_dir, comments=(comments or "").strip() or None,
+                    progress=_progress)
+                _progress(f"context: {len(ctx)} parts, "
+                          f"{sum(len(v) for v in ctx.values())} chars")
+                rep = run_sweep(ctx, dimensions=dims,
+                                n_refuters=int(refuters), effort=effort,
+                                progress=_progress,
+                                accepted=read_accepted(accepted),
+                                images=(page_images(pkg_dir) if show_pages
+                                        else None))
+            except Exception as exc:   # noqa: BLE001 - show, don't die
+                failed = exc
+                status.update(label="The QA sweep stopped", state="error")
+            else:
+                status.update(label="QA sweep finished", state="complete",
+                              expanded=False)
+        if failed is not None:
+            st.error(f"The sweep stopped: {failed}. Check the API key and "
+                     "the network connection, then run it again.")
+            st.stop()
         md = sweep_to_markdown(rep, title=f"QA sweep, {os.path.basename(pkg_dir)}")
         st.session_state["sweep_md"] = md
         c = len(rep.by_status("CONFIRMED"))
@@ -3059,7 +3412,7 @@ def _finish_tab(st) -> None:
                "log and certificate, zip with clean names.")
     pkg_dir = _package_loader(st, ws)
     if not pkg_dir:
-        st.info("Load a package zip (the WO folder) above to finish it.")
+        st.caption("Load a package zip (the WO folder) above to finish it.")
         return
     c1, c2 = st.columns(2)
     use_map = c1.checkbox("Embed the map block from the Map Block page",
@@ -3075,22 +3428,36 @@ def _finish_tab(st) -> None:
                               "(optional)", type=["xlsx"], key="fin_ref")
     if not st.button("Finish package", type="primary", key="fin_run"):
         return
-    log = st.empty()
     lines = []
-
-    def _progress(m):
-        lines.append(m)
-        log.code("\n".join(lines))
-
     opts = FinishOptions(
         map_block_png=st.session_state.get("map_block") if use_map else None,
         disclaimer_pdf=_save_upload(disc_up, ws), redact_reports=redact,
         strip_tip_prefix=strip, reference_workbook=_save_upload(ref_up, ws),
         lossless_aerial=lossless, zip_out=os.path.join(ws, "package_out.zip"),
         sweep_summary=st.session_state.get("sweep_summary"))
-    rep = finish_package(pkg_dir, opts, progress=_progress)
-    st.table([{"step": s.name, "ok": "yes" if s.ok else "NO",
-               "detail": s.detail[:160]} for s in rep.steps])
+    failed = None
+    with st.status("Finishing the package", expanded=True) as status:
+        log = status.empty()
+
+        def _progress(m):
+            lines.append(m)
+            log.code("\n".join(lines))
+
+        try:
+            rep = finish_package(pkg_dir, opts, progress=_progress)
+        except Exception as exc:       # noqa: BLE001 - show, don't die
+            failed = exc
+            status.update(label="Finishing stopped", state="error")
+        else:
+            status.update(label="Package finished", state="complete",
+                          expanded=False)
+    if failed is not None:
+        st.error(f"Finishing stopped: {failed}. The log above shows the last "
+                 "step that ran; correct it and finish again.")
+        st.stop()
+    st.table([{"Step": s.name, "Result": "Done" if s.ok else "Failed",
+               "Detail": s.detail[:160]} for s in rep.steps],
+             border="horizontal", hide_index=True)
     if rep.qa_text:
         with st.expander("QA checks"):
             st.code(rep.qa_text)

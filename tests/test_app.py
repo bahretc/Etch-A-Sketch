@@ -191,8 +191,9 @@ def test_creating_a_study_in_the_sidebar_opens_it(tmp_path, monkeypatch):
     from safety_eval import workspace as wsm
     monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
     at = _app()
+    # The creator is a form: the number is sent with the submit (Enter or
+    # the button), as in the window, so type and submit in one step.
     at.sidebar.text_input(key="new_study").set_value("41000079305")
-    at.run(timeout=30)          # typing reruns the app, enabling the button
     next(b for b in at.sidebar.button
          if b.label == "Create study").click()
     at.run(timeout=30)
@@ -429,7 +430,6 @@ def test_creating_a_study_in_the_sidebar_records_the_analysis(tmp_path,
     monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
     at = _app("hsip", analysis="bikeped")
     at.sidebar.text_input(key="new_study").set_value("59X00239")
-    at.run(timeout=30)
     next(b for b in at.sidebar.button
          if b.label == "Create study").click()
     at.run(timeout=30)
@@ -590,3 +590,102 @@ def test_a_study_with_an_unknown_type_opens_without_an_exception(tmp_path,
     at.switch_page(PAGE["home"])
     at.run(timeout=30)
     assert not at.exception, at.exception
+
+
+# --------------------------------------------------------------------------- #
+# the desktop guidelines: state remembered, reasons in words, quiet chrome
+# --------------------------------------------------------------------------- #
+def test_a_new_session_reopens_the_last_study(tmp_path, monkeypatch):
+    from safety_eval import workspace as wsm
+    monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
+    wsm.Workspace.create("41000079736", study_type="hsip",
+                         analysis="intersection")
+    at = _app()
+    next(s for s in at.sidebar.selectbox
+         if s.label == "Study").set_value("41000079736")
+    at.run(timeout=30)
+    again = _app()
+    pick = next(s for s in again.sidebar.selectbox if s.label == "Study")
+    assert pick.value == "41000079736"
+    captions = " ".join(c.value for c in again.sidebar.caption)
+    assert "locked to study 41000079736" in captions
+    # a remembered study that has since been removed is simply not reopened
+    import shutil
+    shutil.rmtree(tmp_path / "studies" / "41000079736")
+    fresh = _app()
+    assert next(s for s in fresh.sidebar.selectbox
+                if s.label == "Study").value == "(no study)"
+
+
+def test_an_empty_studies_folder_says_where_studies_go(tmp_path, monkeypatch):
+    from safety_eval import workspace as wsm
+    monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
+    at = _app()
+    captions = " ".join(c.value for c in at.sidebar.caption)
+    assert "No studies yet" in captions and str(tmp_path) in captions
+
+
+def test_a_blank_number_is_refused_in_words_and_the_page_stays(tmp_path,
+                                                              monkeypatch):
+    from safety_eval import workspace as wsm
+    monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
+    at = _app()
+    next(b for b in at.sidebar.button if b.label == "Create study").click()
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    assert any("Type the study number first" in w.value
+               for w in at.sidebar.warning)
+    assert wsm.list_studies() == []
+    home = _app("hsip", page="home")
+    next(b for b in home.button if b.label == "Create").click()
+    home.run(timeout=30)
+    assert any("Type the study number first" in w.value for w in home.warning)
+    # the rest of the Overview is still there under the warning
+    assert any(ln.label.startswith("1.") for ln in home.get("page_link"))
+
+
+def test_the_warrants_page_takes_the_context_from_the_study(tmp_path,
+                                                           monkeypatch):
+    from safety_eval import workspace as wsm
+    monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
+    ws = wsm.Workspace.create("41000079736", study_type="hsip",
+                              analysis="intersection")
+    ws.set_params(context="rural")
+    at = _app()
+    next(s for s in at.sidebar.selectbox
+         if s.label == "Study").set_value("41000079736")
+    at.run(timeout=30)
+    at.switch_page(PAGE["warrants"])
+    at.run(timeout=30)
+    assert not at.exception, at.exception
+    assert next(r for r in at.radio if r.label == "Context").value == "rural"
+    assert any("From the study: rural" in c.value for c in at.caption)
+    assert next(s for s in at.selectbox if s.label == "Edition").value == \
+        "2026"
+
+
+@pytest.mark.parametrize("study_type,page,needs", [
+    ("hsip", "redact", "Redaction needs a crash report"),
+    ("hsip", "warrants", "The run needs the reviewed fiche workbook"),
+    ("fatal", "package", "The maps need the WO number"),
+    ("evaluation", "evaluation", "The build needs"),
+    ("evaluation", "assumptions", "The draft needs the assumptions YAML"),
+    ("evaluation", "report", "Drafting needs the workbook path"),
+    ("evaluation", "print", "Printing needs a workbook"),
+    ("evaluation", "qa", "The checks need a workbook"),
+])
+def test_a_disabled_action_says_what_it_needs(study_type, page, needs,
+                                              tmp_path, monkeypatch):
+    from safety_eval import workspace as wsm
+    monkeypatch.setenv(wsm.ENV_BASE, str(tmp_path / "studies"))
+    at = _app(study_type, page=page)
+    captions = " ".join(c.value for c in at.caption)
+    assert needs in captions, captions[:400]
+
+
+def test_the_environment_check_states_found_or_missing_in_words():
+    at = _app("hsip", page="home")
+    lines = [m.value for m in at.markdown
+             if "Found:" in m.value or "Missing:" in m.value]
+    assert lines, "the environment check lists each backend in words"
+    assert not any("\u2014" in v or "\u2013" in v for v in lines)

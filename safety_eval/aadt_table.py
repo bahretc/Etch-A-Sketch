@@ -169,10 +169,14 @@ def series_from_station(name: str, station_years: dict[int, int], *,
 def describe(table: dict[int, dict[str, LegCell]]) -> str:
     """Plain text summary for logs and the assistant."""
     names = list(next(iter(table.values())).keys()) if table else []
-    lines = ["year  " + "  ".join(f"{n:>14}" for n in names)]
+    # The colour word is the workbook's convention; the source word after
+    # it says what the colour means, so the state never rides on the name
+    # of a colour alone.
+    lines = ["year  " + "  ".join(f"{n:>27}" for n in names)]
     for y in sorted(table):
         cells = table[y]
         lines.append(f"{y}  " + "  ".join(
-            f"{(str(c.value) if c.value is not None else '-'):>8} {c.colour or '':<5}"
+            f"{(str(c.value) if c.value is not None else '-'):>8} "
+            f"{c.colour or '':<5} {c.source:<12}"
             for c in (cells[n] for n in names)))
     return "\n".join(lines)

@@ -66,3 +66,14 @@ def test_unknown_assumed_leg_rejected():
 
     with pytest.raises(ValueError):
         intersection_table({"leg3": LegSeries("leg3", assumed_from="leg9")}, YEARS)
+
+
+def test_the_description_names_the_source_after_the_colour():
+    """The colour word is the workbook's convention; the source word says
+    what it means, so the text never relies on the name of a colour."""
+    from safety_eval.aadt_table import describe
+    legs = {"leg1": LegSeries("leg1", {2017: 4100, 2019: 4500}),
+            "leg2": LegSeries("leg2", {2017: 2200, 2019: 2600})}
+    text = describe(intersection_table(legs, [2017, 2018, 2019]))
+    assert "4100 black published" in text
+    assert "red   interpolated" in text

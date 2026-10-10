@@ -23,26 +23,6 @@ from __future__ import annotations
 import os
 
 
-def _card_css() -> str:
-    return """
-    <style>
-    .se-hero {padding: 0.2rem 0 0.6rem 0;}
-    .se-hero h1 {font-size: 2.0rem; margin: 0 0 0.25rem 0;}
-    .se-hero p {margin: 0; opacity: 0.72; font-size: 1.02rem;}
-    .se-drop-title {font-weight: 600; font-size: 1.05rem; margin-bottom: 0.1rem;}
-    .se-drop-sub {opacity: 0.7; font-size: 0.92rem; margin-bottom: 0.6rem;}
-    .se-chip {display: inline-block; padding: 3px 10px; margin: 2px 6px 2px 0;
-              border-radius: 999px; font-size: 0.86rem;
-              border: 1px solid rgba(23,27,38,0.12);
-              background: var(--secondary-background-color);}
-    .se-chip.done {border-color: rgba(0,158,115,0.45);}
-    .se-chip.todo {opacity: 0.75;}
-    .se-step-n {font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase;
-                opacity: 0.6;}
-    .se-step-t {font-weight: 600; font-size: 1.05rem;}
-    </style>"""
-
-
 def study_panel(st, ws, kinds, keys, wsm) -> None:
     """Open or create the study in the main column."""
     from safety_eval.study_type import ANALYSIS_KINDS
@@ -60,7 +40,7 @@ def study_panel(st, ws, kinds, keys, wsm) -> None:
             c1, c2 = st.columns([3, 2], vertical_alignment="center")
             c1.subheader(f"Study {ws.study}")
             c1.caption(" · ".join(str(f) for f in facts))
-            c2.caption(f"Folder: {os.path.relpath(ws.root)}")
+            c2.caption(f"Folder: {os.path.abspath(ws.root)}")
             return
         st.markdown("**Start a study**")
         st.caption("Type the study number, pick the study type and what it "
@@ -70,12 +50,20 @@ def study_panel(st, ws, kinds, keys, wsm) -> None:
         c1, c2, c3, c4 = st.columns([2, 2, 2, 1], vertical_alignment="bottom")
         number = c1.text_input("Study number", key="start_study_number",
                                placeholder="41000079549")
+        if "start_study_type" not in st.session_state:
+            # Start from the sidebar's choice, so the panel and the sidebar
+            # never disagree on first sight.
+            st.session_state["start_study_type"] = st.session_state.get(
+                "study_type", keys[0])
         kind_key = c2.selectbox("Study type", keys, key="start_study_type",
                                 format_func=lambda k: kinds[k].label)
         a_keys = list(kinds[kind_key].analyses)
         if (st.session_state.get("start_analysis") not in a_keys
                 or st.session_state.get("start_analysis_of") != kind_key):
-            st.session_state["start_analysis"] = a_keys[0]
+            side = st.session_state.get("analysis")
+            same_type = kind_key == st.session_state.get("study_type")
+            st.session_state["start_analysis"] = (
+                side if same_type and side in a_keys else a_keys[0])
         st.session_state["start_analysis_of"] = kind_key
         a_key = c3.selectbox("Analysis", a_keys, key="start_analysis",
                              format_func=lambda k: ANALYSIS_KINDS[k].label,
@@ -84,20 +72,24 @@ def study_panel(st, ws, kinds, keys, wsm) -> None:
         if c4.button("Create", type="primary", key="start_create",
                      use_container_width=True):
             if not number.strip():
-                st.warning("Type the study number first.")
-                st.stop()
-            try:
-                if number.strip() in wsm.list_studies():
-                    wsm.Workspace.open(number.strip())   # open, not error
-                else:
-                    wsm.Workspace.create(number.strip(), study_type=kind_key,
-                                         analysis=a_key)
-            except (ValueError, OSError) as exc:
-                st.error(str(exc))
+                # Say so in place; the rest of the page stays where it is.
+                st.warning("Type the study number first, then create the "
+                           "study.")
             else:
-                # the sidebar reads the type off the manifest next run
-                st.session_state["pending_study"] = number.strip()
-                st.rerun()
+                try:
+                    if number.strip() in wsm.list_studies():
+                        wsm.Workspace.open(number.strip())   # open, not error
+                    else:
+                        wsm.Workspace.create(number.strip(),
+                                             study_type=kind_key,
+                                             analysis=a_key)
+                except (ValueError, OSError) as exc:
+                    st.error(f"{exc}. Correct the number and create it "
+                             "again.")
+                else:
+                    # the sidebar reads the type off the manifest next run
+                    st.session_state["pending_study"] = number.strip()
+                    st.rerun()
         existing = wsm.list_studies()
         if existing:
             st.caption("Or open one: " + ", ".join(existing[:8])
@@ -158,8 +150,12 @@ def drop_zone(st, ws, ROLES) -> None:
         elif st.button(f"Add {n_add} file{'s' if n_add != 1 else ''} to study "
                        f"{ws.study}", type="primary", disabled=n_add == 0,
                        key=f"intake_add_{nonce}"):
-            done, skipped = intake.attach_all(
-                ws, [(up.name, up.getvalue()) for up in files], roles=picks)
+            with st.spinner(f"Filing {n_add} file"
+                            f"{'s' if n_add != 1 else ''} into study "
+                            f"{ws.study}"):
+                done, skipped = intake.attach_all(
+                    ws, [(up.name, up.getvalue()) for up in files],
+                    roles=picks)
             st.session_state["intake_nonce"] = nonce + 1
             st.session_state["intake_last"] = (
                 [(d.name, labels[d.role]) for d in done],
@@ -189,7 +185,8 @@ def checklist(st, ws) -> None:
         else:
             chips.append(f'<span class="se-chip todo">○ {name}</span>')
     st.markdown("**In the study** " + "".join(chips), unsafe_allow_html=True)
-    missing = [what for role, _, what in CHECKLIST if not ws.paths(role)]
+    missing = [f"{name} ({what})" for role, name, what in CHECKLIST
+               if not ws.paths(role)]
     if missing:
         st.caption("Still useful to drop: " + "; ".join(missing) + ".")
 
@@ -358,17 +355,18 @@ def steps(st, ws, kind, PAGE, analysis=None) -> None:
                 if is_done:
                     st.caption("Done: saved in the study.")
                 elif i == next_i:
-                    st.caption("Next step.")
+                    # The page's one primary cue: a badge with the words.
+                    st.badge("Next step", icon=":material/arrow_forward:",
+                             color="blue")
             mid.caption(blurb)
 
 
 def start_page(st, kind, ws, PAGE, ROLES, kinds, keys, wsm, env_check,
                analysis=None) -> None:
-    st.markdown(_card_css(), unsafe_allow_html=True)
-    st.markdown('<div class="se-hero"><h1>NCDOT Safety Studies</h1>'
-                '<p>Drop the files, follow the steps. Every number stays '
-                'traceable to TEAAS and the reports.</p></div>',
-                unsafe_allow_html=True)
+    # The same title and intro treatment as every other page.
+    st.header("NCDOT Safety Studies")
+    st.caption("Drop the files, follow the steps. Every number stays "
+               "traceable to TEAAS and the reports.")
     study_panel(st, ws, kinds, keys, wsm)
     drop_zone(st, ws, ROLES)
     checklist(st, ws)

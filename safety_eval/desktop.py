@@ -12,6 +12,12 @@ in order of how native it feels:
    directory keeps the process attached so closing the window is seen.
 3. **The default browser**, as a last resort.
 
+The native window opens at the size and place it had when it was last
+closed (``window.json`` in the per-user settings folder), fitted to the
+screen, never smaller than 1024 x 700; it follows the system's light or dark
+setting, lets text be selected and copied, zooms with Ctrl and the mouse
+wheel, and asks before closing because closing stops a run in progress.
+
 Whichever way the window was opened, the server is shut down when it
 closes. There is no console: launchers run this module with ``pythonw`` on
 Windows and detached on Mac, so problems go to a log file
@@ -20,6 +26,7 @@ window nobody can see.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import socket
@@ -32,6 +39,11 @@ import urllib.request
 log = logging.getLogger("safety_eval.desktop")
 
 WINDOW_TITLE = "NCDOT Safety Studies"
+
+#: The smallest window the pages are laid out for: below it the three- and
+#: four-column rows stack and the sidebar covers the page.
+MIN_SIZE = (1024, 700)
+DEFAULT_SIZE = (1500, 950)
 
 
 def _free_port() -> int:
@@ -82,21 +94,111 @@ def wait_up(url: str, timeout: float = 90.0, server=None) -> bool:
 # --------------------------------------------------------------------------- #
 # the window, most native first
 # --------------------------------------------------------------------------- #
-_SPLASH = """<!doctype html><html><head><title>{title}</title></head>
-<body style="margin:0;font-family:'Segoe UI',sans-serif;background:#F4F6F9;
-display:flex;align-items:center;justify-content:center;height:100vh">
-<div style="text-align:center;color:#171B26">
-<h1 style="font-weight:600;margin-bottom:.3em">{title}</h1>
-<p style="color:#5B6472">Starting the analysis engine&hellip;</p>
+_SPLASH = """<!doctype html><html><head><title>{title}</title>
+<meta name="color-scheme" content="light dark"><style>
+body {{margin:0;height:100vh;display:flex;align-items:center;
+  justify-content:center;background:#F4F6F9;color:#171B26;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}}
+h1 {{font-size:1.75rem;font-weight:600;margin:0 0 .5em}}
+p {{font-size:1rem;line-height:1.5;margin:0;color:#5B6472}}
+.pulse {{animation:pulse 1.6s ease-in-out infinite}}
+@keyframes pulse {{50% {{opacity:.45}}}}
+@media (prefers-color-scheme: dark) {{
+  body {{background:#14171F;color:#E8EAF0}} p {{color:#AEB4BF}}}}
+@media (prefers-reduced-motion: reduce) {{.pulse {{animation:none}}}}
+</style></head><body><div style="text-align:center">
+<h1>{title}</h1>
+<p class="pulse">Starting the analysis engine&hellip;</p>
+<p>Usually under half a minute.</p>
 </div></body></html>"""
 
-_FAILED = """<!doctype html><html><body style="margin:0;font-family:
-'Segoe UI',sans-serif;display:flex;align-items:center;justify-content:center;
-height:100vh"><div style="text-align:center;color:#171B26">
-<h2>The app did not start</h2>
+_FAILED = """<!doctype html><html><head>
+<meta name="color-scheme" content="light dark"><style>
+body {margin:0;height:100vh;display:flex;align-items:center;
+  justify-content:center;background:#F4F6F9;color:#171B26;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h1 {font-size:1.75rem;font-weight:600;margin:0 0 .5em}
+p {font-size:1rem;line-height:1.5;margin:0 auto;max-width:60ch}
+@media (prefers-color-scheme: dark) {body {background:#14171F;color:#E8EAF0}}
+</style></head><body><div style="text-align:center">
+<h1>The app did not start</h1>
 <p>Close this window, run the installer again, and if it still fails send
 along the log file named safety_eval_desktop.log from the temp folder.</p>
 </div></body></html>"""
+
+
+# --------------------------------------------------------------------------- #
+# what the window remembers between runs
+# --------------------------------------------------------------------------- #
+def state_dir() -> str:
+    """The per-user folder the window remembers itself in."""
+    if os.name == "nt":
+        base = os.environ.get("APPDATA") or os.path.expanduser("~")
+    elif sys.platform == "darwin":
+        base = os.path.expanduser("~/Library/Application Support")
+    else:
+        base = (os.environ.get("XDG_CONFIG_HOME")
+                or os.path.expanduser("~/.config"))
+    return os.path.join(base, "safety_eval")
+
+
+def load_window_state(path: str | None = None) -> dict:
+    """The size, place and maximized flag of the last window, or {} on a
+    first run or when the file cannot be read."""
+    path = path or os.path.join(state_dir(), "window.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def save_window_state(state: dict, path: str | None = None) -> None:
+    """Write the window state; a failure is logged, never raised."""
+    path = path or os.path.join(state_dir(), "window.json")
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(state, fh)
+    except OSError as exc:
+        log.info("window state not saved (%s)", exc)
+
+
+def _int(v):
+    return v if isinstance(v, int) and not isinstance(v, bool) else None
+
+
+def initial_geometry(state: dict, screen: tuple | None) -> dict:
+    """Where the window opens.
+
+    The remembered size and place when they still fit the screen; otherwise
+    the default size fitted to the screen, maximized on a first run when
+    the screen is smaller than the default. Never below MIN_SIZE unless the
+    screen itself is smaller. ``screen`` is ``(width, height)`` in logical
+    pixels, or None when the platform could not say.
+    """
+    width, height = DEFAULT_SIZE
+    x = y = None
+    rw, rh = _int(state.get("width")), _int(state.get("height"))
+    if rw and rh:
+        width, height = max(rw, MIN_SIZE[0]), max(rh, MIN_SIZE[1])
+        x, y = _int(state.get("x")), _int(state.get("y"))
+    maximized = bool(state.get("maximized"))
+    if screen:
+        sw, sh = screen
+        width = max(min(width, sw - 60), min(MIN_SIZE[0], sw))
+        height = max(min(height, sh - 80), min(MIN_SIZE[1], sh))
+        if x is not None and y is not None and not (
+                0 <= x <= sw - 100 and 0 <= y <= sh - 100):
+            x = y = None              # remembered on a screen no longer there
+        if not state and (sw < DEFAULT_SIZE[0] + 60
+                          or sh < DEFAULT_SIZE[1] + 80):
+            maximized = True
+    if x is None or y is None:
+        x = y = None
+    return {"width": width, "height": height, "x": x, "y": y,
+            "maximized": maximized}
 
 
 def _open_pywebview(url: str, server: subprocess.Popen) -> bool:
@@ -112,9 +214,50 @@ def _open_pywebview(url: str, server: subprocess.Popen) -> bool:
         log.info("pywebview not available (%s)", exc)
         return False
     try:
+        state = load_window_state()
+        screen = None
+        try:
+            first = webview.screens[0]     # logical pixels, like width/height
+            screen = (int(first.width), int(first.height))
+        except Exception as exc:              # noqa: BLE001 - keep defaults
+            log.info("screen size unknown (%s); default window", exc)
+        geo = initial_geometry(state, screen)
         window = webview.create_window(
             WINDOW_TITLE, html=_SPLASH.format(title=WINDOW_TITLE),
-            width=1500, height=950)
+            width=geo["width"], height=geo["height"], x=geo["x"],
+            y=geo["y"], min_size=MIN_SIZE, maximized=geo["maximized"],
+            # As in a browser: text can be selected and copied with Ctrl+C,
+            # and Ctrl with the mouse wheel zooms.
+            text_select=True, zoomable=True,
+            # Closing stops a run in progress, so the OS asks first, in its
+            # own dialog with its own button order.
+            confirm_close=True)
+
+        def _resized(width, height):
+            if not state.get("maximized"):
+                state.update(width=int(width), height=int(height))
+
+        def _moved(x, y):
+            if not state.get("maximized"):
+                state.update(x=int(x), y=int(y))
+
+        def _maximized():
+            state["maximized"] = True
+
+        def _restored():
+            state["maximized"] = False
+
+        def _closing():
+            save_window_state(state)
+
+        for name, fn in (("resized", _resized), ("moved", _moved),
+                         ("maximized", _maximized), ("restored", _restored),
+                         ("closing", _closing)):
+            try:
+                event = getattr(window.events, name)
+                event += fn
+            except Exception as exc:          # noqa: BLE001 - a nicety only
+                log.info("window event %s unavailable (%s)", name, exc)
 
         def _load():
             if wait_up(url, server=server):
@@ -123,7 +266,18 @@ def _open_pywebview(url: str, server: subprocess.Popen) -> bool:
                 log.error("server never answered; window shows the notice")
                 window.load_html(_FAILED)
 
-        webview.start(_load)
+        storage = os.path.join(state_dir(), "webview")
+        try:
+            os.makedirs(storage, exist_ok=True)
+        except OSError:
+            storage = None
+        # private_mode=False with a storage folder: the page's own settings
+        # (the theme the engineer picked, the sidebar) survive a restart.
+        webview.start(_load, private_mode=storage is None,
+                      storage_path=storage,
+                      localization={"global.quitConfirmation":
+                                    f"Close {WINDOW_TITLE}? A run in "
+                                    "progress stops."})
         return True
     except Exception as exc:                  # noqa: BLE001 - fall through
         log.warning("pywebview window failed: %s", exc)
@@ -155,7 +309,9 @@ def _open_app_window(url: str, tmp: str) -> bool:
             proc = subprocess.Popen(
                 [exe, f"--app={url}", f"--user-data-dir={profile}",
                  "--no-first-run", "--no-default-browser-check",
-                 "--window-size=1500,950"],
+                 # the profile is temporary, so there is no saved size to
+                 # restore; a maximized window fits any screen
+                 "--start-maximized"],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except OSError as exc:
             log.warning("%s failed to start: %s", exe, exc)

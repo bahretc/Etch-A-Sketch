@@ -2,13 +2,40 @@
 # deuteranopia, protanopia and tritanopia, so state never rides on a hue a
 # reader cannot see. Verdicts are always words ("Met", "Yes") with colour as
 # a secondary channel only.
+#
+# Light and dark are both defined, so the app follows the operating system's
+# light or dark setting. Options set in [theme] apply to both; the two
+# sections below set only what differs.
 [theme]
-base = "light"
 primaryColor = "#0072B2"
+font = "sans serif"
+# One type scale on every page: page titles 1.75rem, section headings
+# 1.25rem, the small form-section labels (##### in the code) at body size,
+# all semi-bold. With 1rem body text and the 0.875rem caption that is four
+# sizes and two weights across the whole app.
+headingFontSizes = ["1.75rem", "1.75rem", "1.25rem", "1rem", "1rem", "1rem"]
+headingFontWeights = [600, 600, 600, 600, 600, 600]
+
+[theme.light]
 backgroundColor = "#FFFFFF"
 secondaryBackgroundColor = "#F4F6F9"
 textColor = "#171B26"
-font = "sans serif"
+# Info boxes and links in the primary blue, so the page carries one accent
+# rather than two blues (blueTextColor and linkColor derive from it).
+blueColor = "#0072B2"
+# Dataframe and data editor headers are drawn on a canvas, so CSS cannot
+# reach them. Streamlit's default faded header text is about 4.45:1 on the
+# header fill; this is 5.8:1 (6.0:1 on white). Body cells keep textColor.
+dataframeHeaderTextColor = "#5B6472"
+
+[theme.dark]
+backgroundColor = "#14171F"
+secondaryBackgroundColor = "#1E222B"
+textColor = "#E8EAF0"
+# Okabe-Ito sky blue for links and info text on the dark background; the
+# primary buttons keep the deeper blue, where white text reads at 5:1.
+blueColor = "#56B4E9"
+dataframeHeaderTextColor = "#AEB4BF"
 
 [browser]
 gatherUsageStats = false

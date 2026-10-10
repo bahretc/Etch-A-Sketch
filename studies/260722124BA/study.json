@@ -373,45 +373,11 @@
       }
     },
     "aadt_bbox": [
-      -78.566,
-      33.888,
-      -78.539,
-      33.908
+      -78.564,
+      33.8905,
+      -78.54,
+      33.9075
     ],
-    "aadt_labels": {
-      "0100000326": {
-        "bx": 0.12,
-        "by": 0.78
-      },
-      "0100000238": {
-        "bx": 0.52,
-        "by": 0.82
-      },
-      "0100000039": {
-        "bx": 0.76,
-        "by": 0.84
-      },
-      "0100000042": {
-        "bx": 0.885,
-        "by": 0.57
-      },
-      "0100000327": {
-        "bx": 0.885,
-        "by": 0.27
-      },
-      "0100000301": {
-        "bx": 0.6,
-        "by": 0.22
-      },
-      "0100000239": {
-        "bx": 0.34,
-        "by": 0.2
-      },
-      "0100000019": {
-        "bx": 0.12,
-        "by": 0.4
-      }
-    },
     "area_callout_frac": [
       0.72,
       0.63
@@ -444,53 +410,6 @@
         "bus": true,
         "lat": 33.89697,
         "lon": -78.55077
-      }
-    ],
-    "aadt_route_names": [
-      "NC-179 BUS"
-    ],
-    "aadt_scale_ft": 2000,
-    "aadt_road_names": [
-      {
-        "text": "BEACH DR SW\n(NC 179 BUS)",
-        "lat": 33.893,
-        "lon": -78.547
-      },
-      {
-        "text": "BEACH DR\n(NC 179)",
-        "lat": 33.8932,
-        "lon": -78.5628
-      },
-      {
-        "text": "OLD GEORGETOWN RD SW\n(NC 179)",
-        "lat": 33.9028,
-        "lon": -78.544
-      },
-      {
-        "text": "CLARIDAY RD SW\n(SR 1164)",
-        "lat": 33.902,
-        "lon": -78.5538
-      },
-      {
-        "text": "THOMASBORO RD SW\n(SR 1165)",
-        "lat": 33.9014,
-        "lon": -78.559
-      },
-      {
-        "text": "PERSIMMON RD SW\n(SR 1167)",
-        "lat": 33.899,
-        "lon": -78.566
-      }
-    ],
-    "aadt_callouts": [
-      {
-        "text": "Location of Strip Study\nNC 179BUS (Beach Dr SW) from the Calabash NAPA Auto Care\nCenter Driveway [MP 0.025] to Hidden Valley Pl [MP 0.205]\n\nTEAAS Strip ADT = 9,000\n(station 0100000327 at the crash:\n2024 AADT 9,800, 2025 AADT 8,700)",
-        "box_frac": [
-          0.33,
-          0.54
-        ],
-        "lat": 33.898099,
-        "lon": -78.55168
       }
     ],
     "area_shields": [
@@ -536,6 +455,79 @@
       "to Hidden Valley Pl [MP 0.205] in Brunswick County"
     ],
     "vhb_callout": "Crash Location: NC 179BUS, 0.07 miles S\nfrom NC 179 toward SR 1810",
-    "location_pad_ft": 300
+    "location_pad_ft": 300,
+    "aadt_section_station": "0100000327",
+    "aadt_year_from": 2002,
+    "aadt_popups": {
+      "0100000326": {
+        "bx": 0.11,
+        "by": 0.62
+      },
+      "0100000238": {
+        "bx": 0.5,
+        "by": 0.77
+      },
+      "0100000042": {
+        "bx": 0.8,
+        "by": 0.72
+      },
+      "0100000327": {
+        "bx": 0.8,
+        "by": 0.24
+      },
+      "0100000301": {
+        "bx": 0.5,
+        "by": 0.23
+      },
+      "0100000039": {
+        "bx": 0.3,
+        "by": 0.23
+      }
+    },
+    "aadt_street_labels": [
+      {
+        "text": "Beach Dr SW",
+        "lat": 33.896,
+        "lon": -78.55,
+        "rot": -52
+      },
+      {
+        "text": "Beach Dr",
+        "lat": 33.8948,
+        "lon": -78.56,
+        "rot": 34
+      },
+      {
+        "text": "Old Georgetown Rd SW",
+        "lat": 33.903,
+        "lon": -78.544,
+        "rot": 30
+      },
+      {
+        "text": "Clariday Rd SW",
+        "lat": 33.9022,
+        "lon": -78.5547,
+        "rot": 60
+      },
+      {
+        "text": "Thomasboro Rd SW",
+        "lat": 33.9015,
+        "lon": -78.5598,
+        "rot": 52
+      },
+      {
+        "text": "Hidden Valley Pl SW",
+        "lat": 33.896,
+        "lon": -78.5515,
+        "rot": -20
+      }
+    ],
+    "aadt_title": "AADT Map - 260722124BA Evaluation",
+    "aadt_segment_popup": {
+      "route_id": "39000179010",
+      "bx": 0.62,
+      "by": 0.52,
+      "w": 130
+    }
   }
 }

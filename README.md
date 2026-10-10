@@ -76,9 +76,11 @@ The Area Map is a gray road map drawn from the NCDOT road centerlines in `inputs
 routes heavy black, state roads dark, local roads white, major water, town names, route shields) with the
 crash as a heavy red ring. The Location Map is an aerial of the whole study section with the limits band,
 the route shields, the red ring and the crash-location callout. The Crash Map numbers the reviewed crashes.
-The AADT Map is the stand-alone Traffic Engineering "AADT Map" page: NCDOT road lines, the study route
-dashed yellow, every AADT station in view with its full station record (LocationID, county, route class,
-route, location and every AADT year) and a callout for the study location and the ADT used. Positions of
+The AADT Map follows the HSIP evaluation AADT maps (AADT viewer capture): light gray canvas with the AADT
+routes (primary green, secondary black), green station dots, a popup for each configured station with its
+full record (LocationID, COUNTY, RTE_CLS, ROUTE, LOCATION and every AADT year, blank where there was no
+count), the AADT segment record at the study location, blue arrows, and the "AADT Map - <slip> Evaluation"
+title. Positions of
 labels, shields, callouts and station boxes, and the map extents, are set per study under `figures` in
 `study.json`; the NC county outlines, the NCDOT seal and the VHB logo live in `fca/data`.
 

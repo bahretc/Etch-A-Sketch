@@ -791,116 +791,190 @@ def figure_crash_map(study: Study, screened: list[Screened], cache: TileCache, o
     F.save(out_png, out_pdf)
 
 
-# ---------------------------------------------------------------------- AADT map (Traffic Engineering "AADT Map" layout)
+# ---------------------------------------------------------------------- AADT map (NCDOT AADT map viewer capture, as in the AADT Map .docx examples)
 
-AADT_BLUE = "#1f4fd6"
-AADT_YELLOW = "#ffffc8"
-AADT_CALLOUT = "#cfe3ff"
-
-
-def _compass_rose(F: Figure, fx=0.985, fy=0.012, size_pt=46):
-    """Boxed compass rose with N/E/S/W, bottom-right."""
-    x1, yb = F.frac(fx, fy)
-    s = F.pts_to_px(size_pt)
-    bx0, by0 = x1 - s, yb - s
-    F.ax.add_patch(FancyBboxPatch((bx0, by0), s, s, boxstyle="round,pad=0,rounding_size=%f" % F.pts_to_px(3), fc="white", ec="#333333", lw=0.8, zorder=50))
-    cx, cy = bx0 + s / 2, by0 + s / 2
-    R = s * 0.30; r = R * 0.38
-    for k in range(8):
-        a0 = math.radians(k * 45); a1 = math.radians(k * 45 + 22.5); a2 = math.radians(k * 45 - 22.5)
-        rr = R if k % 2 == 0 else R * 0.62
-        tri = [(cx + rr * math.sin(a0), cy - rr * math.cos(a0)), (cx + r * math.sin(a1), cy - r * math.cos(a1)), (cx, cy)]
-        F.ax.add_patch(Polygon(tri, closed=True, fc="black" if k % 2 == 0 else "#777777", ec="none", zorder=51))
-        tri2 = [(cx + rr * math.sin(a0), cy - rr * math.cos(a0)), (cx + r * math.sin(a2), cy - r * math.cos(a2)), (cx, cy)]
-        F.ax.add_patch(Polygon(tri2, closed=True, fc="white", ec="#444444", lw=0.3, zorder=51))
-    for lab, (dx, dy) in {"N": (0, -1), "E": (1, 0), "S": (0, 1), "W": (-1, 0)}.items():
-        F.ax.text(cx + dx * s * 0.40, cy + dy * s * 0.40, lab, ha="center", va="center", fontsize=6.2, family="Liberation Sans", zorder=52)
+VIEWER_BG = "#f2f2f2"
+VIEWER_GREEN = "#3ac23a"      # primary-route AADT segments
+VIEWER_BLUE = "#3a5bd9"       # popup arrows
 
 
-def _aadt_station_box(F: Figure, stn, lab, county=""):
-    """Blue station dot and a full-data box (the AADT viewer fields: LocationID, COUNTY, RTE_CLS, ROUTE, LOCATION, AADT_<year> ...)."""
+def _median_year(period):
+    """Median date of the study period as a decimal year."""
+    from datetime import date
+    def parse(sv):
+        m, d, y = [int(v) for v in sv.split("/")]
+        return date(y, m, d)
+    a, b = parse(period["begin"]), parse(period["end"])
+    mid = a + (b - a) / 2
+    return mid.year + (mid.timetuple().tm_yday - 1) / 365.25
+
+
+def aadt_estimate(cfg, aadt):
+    """Counts at the section station flanking the median year of the study period."""
+    sid = cfg["figures"].get("aadt_section_station")
+    stn = next((st for st in aadt["stations"] if st["id"] == sid), None)
+    if not stn:
+        return None
+    my = _median_year(cfg["period"])
+    years = sorted(int(y) for y in stn["aadt"])
+    before = max([y for y in years if y < int(my)], default=None)
+    at = int(my) if int(my) in years else None
+    after = min([y for y in years if y > int(my)], default=None)
+    return {"station": sid, "median_year": my, "before": (before, stn["aadt"][str(before)]) if before else None,
+            "at": (at, stn["aadt"][str(at)]) if at else None, "after": (after, stn["aadt"][str(after)]) if after else None}
+
+
+def aadt_title_lines(cfg, aadt):
+    f = cfg["figures"]
+    loc = f.get("study_area_lines", [""])[0]
+    if len(f.get("study_area_lines", [])) > 1:
+        loc = (loc + " " + f["study_area_lines"][1].replace(" in " + cfg["county"].title() + " County", "")).strip()
+    lines = [f"AADT Map \u2013 {loc}"]
+    est = aadt_estimate(cfg, aadt)
+    parts = [f"{cfg['county'].title()} County"]
+    if est:
+        if est["before"]:
+            parts.append(f"{est['before'][0]} AADT (BEFORE MEDIAN YR) = {est['before'][1]}")
+        if est["at"]:
+            parts.append(f"{est['at'][0]} AADT (MEDIAN YR) = {est['at'][1]}")
+        if est["after"]:
+            parts.append(f"{est['after'][0]} AADT (AFTER MEDIAN YR) = {est['after'][1]}")
+        parts.append(f"station {est['station']}")
+    parts.append(f"TEAAS strip ADT used = {cfg.get('adt', 0)}")
+    lines.append(" \u2013 ".join(parts))
+    lines.append(f"https://www.google.com/maps/place/{cfg['fatal']['lat']}+{cfg['fatal']['lon']}")
+    return lines
+
+
+def _viewer_basemap(F: Figure, bm, cfg):
+    """Light gray canvas: white roads, gray street names, AADT route segments green (primary) / black (secondary)."""
+    F.ax.add_patch(Rectangle((F.xlim[0], F.ylim[0]), F.xlim[1] - F.xlim[0], F.ylim[1] - F.ylim[0], fc=VIEWER_BG, ec="none", zorder=0))
+    for ft in bm.get("waterbodies", {}).get("features", []):
+        F.fill_geojson(ft["geometry"], fc="#d9e4ee", ec="none", zorder=1)
+    for ft in bm["roads"]["features"]:
+        lay = ft["properties"].get("layer", "non_system")
+        F.lines_from_geojson(ft["geometry"], color="white", lw=1.7 if lay == "non_system" else 2.8, zorder=4, solid_capstyle="round")
+    for ft in bm["roads"]["features"]:
+        lay = ft["properties"].get("layer")
+        if lay == "primary":
+            F.lines_from_geojson(ft["geometry"], color=VIEWER_GREEN, lw=2.6, zorder=9, solid_capstyle="round")
+        elif lay == "secondary":
+            F.lines_from_geojson(ft["geometry"], color="black", lw=1.9, zorder=8, solid_capstyle="round")
+    # street names: configured first, then the longest local streets in view
+    placed = []
+    def put(lat, lon, text, rot):
+        x, y = F.px(lat, lon)
+        if any(math.hypot(x - qx, y - qy) < F.pts_to_px(40) for qx, qy in placed):
+            return
+        placed.append((x, y))
+        F.ax.text(x, y, text, fontsize=5.6, family="Liberation Sans", color="#7a7a7a", ha="center", va="center", rotation=rot, zorder=12, clip_on=True,
+                  path_effects=[pe.withStroke(linewidth=1.8, foreground=VIEWER_BG)])
+    for sl in cfg["figures"].get("aadt_street_labels", []):
+        put(sl["lat"], sl["lon"], sl["text"].upper(), sl.get("rot", 0))
+
+
+def _station_symbol(F: Figure, stn):
     x, y = F.px(stn["lat"], stn["lon"])
-    F.ax.plot(x, y, marker="o", ms=6, mfc=AADT_BLUE, mec="white", mew=0.8, zorder=44)
+    F.ax.plot(x, y, marker="o", ms=7, mfc="#2fb34a", mec="#1f7a33", mew=0.8, zorder=30)
+    return x, y
+
+
+def _split_route_location(stn):
+    """'SR 1164 (Clariday Rd SW) south of SR 1165 (Thomasboro Rd SW)' -> ('SR 1164 (CLARIDAY RD SW)', 'SOUTH OF SR 1165 (THOMASBORO RD SW)')."""
+    loc = (stn.get("location") or "").strip()
     route = stn.get("route", "")
-    cls = "Secondary Routes" if route.startswith("SR") or route.startswith("4000") else "Primary Routes"
-    loc = (stn.get("location") or "").upper()
-    rows = [("LocationID", stn["id"]), ("COUNTY", county.upper()), ("RTE_CLS", cls), ("ROUTE", route), ("LOCATION", loc if len(loc) <= 34 else loc[:32] + "…")]
-    years = sorted(stn["aadt"], key=int)
-    rows += [(f"AADT_{yv}", f"{stn['aadt'][yv]:,}") for yv in years]
+    if "(" in loc and ")" in loc:
+        i = loc.index(")") + 1
+        return loc[:i].upper(), loc[i:].strip().upper()
+    for key in (" north of ", " south of ", " east of ", " west of "):
+        if key in loc.lower():
+            j = loc.lower().index(key)
+            return loc[:j].upper(), loc[j + 1:].upper()
+    return route.upper(), loc.upper()
+
+
+def _popup_box(F: Figure, rows, box, title=None):
     lh = F.pts_to_px(6.2)
-    kw = F.pts_to_px(46)
-    bw = F.pts_to_px(lab.get("w", 150))
-    bh = lh * (len(rows) + 0.8)
-    bx, by = F.frac(lab["bx"], lab["by"])          # box center in axes fractions
+    bw = F.pts_to_px(box.get("w", 150))
+    bh = lh * (len(rows) + 1.2 + (1.2 if title else 0))
+    bx, by = F.frac(box["bx"], box["by"])
     X0, Y0 = bx - bw / 2, by - bh / 2
-    F.ax.add_patch(Rectangle((X0, Y0), bw, bh, fc="#f4f4f4", ec="#444444", lw=0.8, zorder=45, alpha=0.97))
+    F.ax.add_patch(Rectangle((X0, Y0), bw, bh, fc="#f7f7f7", ec="#555555", lw=0.8, zorder=45))
+    off = 0.0
+    if title:
+        F.ax.text(X0 + F.pts_to_px(5), Y0 + lh * 0.95, title, fontsize=6.0, family="Liberation Sans", color="#333333", va="center", zorder=47)
+        off = 1.2
     for i, (k, v) in enumerate(rows):
-        yy = Y0 + lh * (i + 0.9)
-        F.ax.text(X0 + F.pts_to_px(4), yy, k, fontsize=5.0, family="Liberation Sans", color="#555555", va="center", zorder=47)
-        F.ax.text(X0 + F.pts_to_px(4) + kw, yy, v, fontsize=5.0, family="Liberation Sans", color="#111111", va="center", zorder=47,
-                  fontweight="bold" if k.startswith("AADT_") and yv_latest(years) == k[5:] else "normal")
-    ex = min(max(x, X0), X0 + bw); ey = min(max(y, Y0), Y0 + bh)
-    F.ax.annotate("", xy=(x, y), xytext=(ex, ey), arrowprops=dict(arrowstyle="-|>", color=AADT_BLUE, lw=1.3, mutation_scale=10), zorder=46)
+        yy = Y0 + lh * (i + 1.0 + off)
+        F.ax.text(X0 + F.pts_to_px(5), yy, k, fontsize=5.6, family="Liberation Sans", color="#777777", va="center", zorder=47)
+        F.ax.text(X0 + F.pts_to_px(52), yy, v, fontsize=5.6, family="Liberation Sans", color="#222222", va="center", zorder=47)
+    return X0, Y0, bw, bh
 
 
-def yv_latest(years):
-    return years[-1] if years else ""
+def _station_popup(F: Figure, stn, box, county, years):
+    """Station record as the AADT viewer popup: LocationID, COUNTY, RTE_CLS, ROUTE, LOCATION, then every AADT year."""
+    route = stn.get("route", "")
+    secondary = route.startswith("SR") or route.startswith("4000")
+    rt, loc = _split_route_location(stn)
+    loc_lines = textwrap.wrap(loc, 30) or [""]
+    rows = [("LocationID", stn["id"]), ("COUNTY", county.upper()), ("RTE_CLS", "Secondary Routes" if secondary else "Primary Routes"),
+            ("ROUTE", rt), ("LOCATION", loc_lines[0])] + [("", ln) for ln in loc_lines[1:]]
+    rows += [(f"AADT_{y}", (f"{stn['aadt'][str(y)]}" if str(y) in stn["aadt"] else "")) for y in years]
+    return _popup_box(F, rows, box)
 
 
-def _aadt_callout(F: Figure, text, box_frac, anchor=None, size=7.6):
-    bx, by = F.frac(*box_frac)
-    t = F.ax.text(bx, by, text, fontsize=size, family="Liberation Sans", fontweight="bold", ha="center", va="center", zorder=49, linespacing=1.35,
-                  bbox=dict(boxstyle="square,pad=0.6", fc=AADT_CALLOUT, ec="#2b4a7a", lw=1.0))
-    if anchor:
-        F.fig.canvas.draw()
-        e = t.get_window_extent().transformed(F.ax.transData.inverted())
-        x, y = F.px(*anchor)
-        ex = min(max(x, e.x0), e.x1); ey = min(max(y, e.y0), e.y1)
-        F.ax.annotate("", xy=(x, y), xytext=(ex, ey), arrowprops=dict(arrowstyle="-|>", color=AADT_BLUE, lw=1.4, mutation_scale=10), zorder=48)
+def _segment_popup(F: Figure, seg, box):
+    rows = [("RouteID", str(seg.get("route_id", ""))), ("BeginMp", f"{seg.get('begin_mp', 0):.6f}"), ("EndMp", f"{seg.get('end_mp', 0):.6f}"),
+            ("SOURCE", f"NCDOT {seg.get('year', '')} AADT segments"), ("AADT", f"{seg.get('aadt', '')}"), ("AADTT", f"{seg.get('aadtt') or ''}"),
+            ("K", f"{seg.get('k') or ''}"), ("D", f"{seg.get('d') or ''}")]
+    return _popup_box(F, rows, box)
 
 
-def figure_aadt_map(study: Study, cache: TileCache, out_png, out_pdf, z: int = 16):
-    """Stand-alone AADT map: NCDOT road lines, the study route dashed yellow, stations with their latest counts."""
+def figure_aadt_map(study: Study, cache: TileCache, out_png, out_pdf, z: int = 17):
+    """AADT map in the NCDOT AADT viewer capture style with the station popups, as in the AADT Map .docx examples."""
     cfg = study.cfg
     fat = cfg["fatal"]
     with open(os.path.join(study.root, cfg["inputs"]["aadt"])) as f:
         aadt = json.load(f)
     bm = _load_basemap(study)
     bbox = tuple(cfg["figures"]["aadt_bbox"])
-    F = Figure(cache, None, bbox, z, strip=False, title_gap=0.04)
+    F = Figure(cache, None, bbox, z, strip=False, title_gap=0.035)
+    for sp in F.ax.spines.values():
+        sp.set_linewidth(0.8); sp.set_edgecolor("#999999")
     if bm:
-        _draw_vector_basemap(F, bm, road_scale=1.4, water=True)
-        # study route in dashed yellow over the gray line
-        route_names = set(cfg["figures"].get("aadt_route_names", [cfg["route"].get("ncdot_name", "")]))
-        for ft in bm["roads"]["features"]:
-            if ft["properties"].get("RouteName") in route_names:
-                F.lines_from_geojson(ft["geometry"], color="#f5d800", lw=2.6, ls=(0, (6, 3)), zorder=11)
-    # road names in the yellow-with-dark-halo style
-    for rl in cfg["figures"].get("aadt_road_names", []):
-        F.ax.text(*F.px(rl["lat"], rl["lon"]), rl["text"], fontsize=6.4, family="Liberation Sans", fontweight="bold", color="#ffe600",
-                  ha="center", va="center", rotation=rl.get("rot", 0), zorder=40, clip_on=True, linespacing=1.1,
-                  path_effects=[pe.withStroke(linewidth=2.2, foreground="#222222")])
-    # study location
-    F.crash_circle(fat["lat"], fat["lon"], radius_pt=10, color=AADT_BLUE, lw=2.6)
-    # stations
-    labels = cfg["figures"].get("aadt_labels", {})
-    shown = []
+        _viewer_basemap(F, bm, cfg)
+    # study section and crash
+    _limits_band(F, study, lw_pt=7, alpha=0.45, zorder=14, color="#b48ad8")
+    F.ax.plot(*F.px(fat["lat"], fat["lon"]), marker="o", ms=9, mfc="none", mec="#e8141c", mew=2.2, zorder=33)
+    # stations in view, popups for the configured ones
+    popups = cfg["figures"].get("aadt_popups", {})
+    years = list(range(cfg["figures"].get("aadt_year_from", 2002), max(int(y) for st in aadt["stations"] for y in st["aadt"]) + 1))
+    pts = {}
     for stn in aadt["stations"]:
-        if stn["id"] in labels and labels[stn["id"]].get("hide"):
+        if not F.inside(stn["lat"], stn["lon"], 0.015):
             continue
-        if not F.inside(stn["lat"], stn["lon"], 0.02):
+        pts[stn["id"]] = (_station_symbol(F, stn), stn)
+    for sid, box in popups.items():
+        if sid not in pts:
             continue
-        shown.append(stn)
-        _aadt_station_box(F, stn, labels.get(stn["id"], {"bx": 0.5, "by": 0.5}), county=cfg.get("county", ""))
-    for co in cfg["figures"].get("aadt_callouts", []):
-        _aadt_callout(F, co["text"], tuple(co["box_frac"]), anchor=(co["lat"], co["lon"]) if "lat" in co else None)
-    _compass_rose(F)
-    F.scale_bar(cfg["figures"].get("aadt_scale_ft", 2000), "Feet", fx=0.015, fy=0.012, divisions=4, anchor="left")
-    title = f"Slip No. {cfg['figures']['slip_no']} AADT Map ({fat['lat']}, {fat['lon']})"
-    F.fig.text(F.L, F.T + 0.010, title, fontsize=12.5, fontweight="bold", family="Liberation Sans", va="bottom")
-    src = "AADT: " + aadt.get("source", "") + ". Roads: NCDOT RoadNC centerlines. TEAAS strip analysis ADT used for the study: " + f"{cfg.get('adt', 0):,}."
-    for i, ln in enumerate(textwrap.wrap(src, 200)[:2]):
-        F.fig.text(F.L, F.B - 0.010 - 0.010 * i, ln, fontsize=5.4, color="#555555", va="center", family="Liberation Sans")
+        (x, y), stn = pts[sid]
+        X0, Y0, bw, bh = _station_popup(F, stn, box, cfg.get("county", ""), years)
+        ex = min(max(x, X0), X0 + bw); ey = min(max(y, Y0), Y0 + bh)
+        F.ax.annotate("", xy=(x, y), xytext=(ex, ey), arrowprops=dict(arrowstyle="-|>", color=VIEWER_BLUE, lw=2.2, mutation_scale=14, shrinkB=6), zorder=46)
+    # the AADT segment record at the study location
+    seg_box = cfg["figures"].get("aadt_segment_popup")
+    if seg_box:
+        rid = str(seg_box.get("route_id", ""))
+        seg = next((sg for sg in aadt.get("segments", []) if str(sg.get("route_id")) == rid and sg.get("begin_mp", 0) <= fat["mp"] <= sg.get("end_mp", 0)), None)
+        if seg:
+            X0, Y0, bw, bh = _segment_popup(F, seg, seg_box)
+            ax_, ay_ = F.px(*study.centerline.point_at_mi((study.begin_mp + study.end_mp) / 2))
+            ex = min(max(ax_, X0), X0 + bw); ey = min(max(ay_, Y0), Y0 + bh)
+            F.ax.annotate("", xy=(ax_, ay_), xytext=(ex, ey), arrowprops=dict(arrowstyle="-|>", color=VIEWER_BLUE, lw=2.2, mutation_scale=14), zorder=46)
+    title = cfg["figures"].get("aadt_title", f"AADT Map - {cfg['figures']['slip_no']} Evaluation")
+    F.fig.text(F.L, F.T + 0.010, title, fontsize=11, fontweight="bold", family="Liberation Sans", va="bottom")
+    src = "AADT: " + aadt.get("source", "") + ". Roads: NCDOT RoadNC centerlines."
+    F.fig.text(F.L, F.B - 0.009, src, fontsize=5.2, color="#555555", va="center", family="Liberation Sans")
     F.save(out_png, out_pdf)
 
 

@@ -484,7 +484,7 @@
     ],
     "aadt_callouts": [
       {
-        "text": "Location of Strip Study\nNC 179 BUS (Beach Dr SW) from the Calabash NAPA\nAuto Care Center driveway [MP 0.025] to\nHidden Valley Pl SW [MP 0.205]\n\nTEAAS Strip ADT = 9,000\n(station 0100000327 at the crash:\n2024 AADT 9,800, 2025 AADT 8,700)",
+        "text": "Location of Strip Study\nNC 179BUS (Beach Dr SW) from the Calabash NAPA Auto Care\nCenter Driveway [MP 0.025] to Hidden Valley Pl [MP 0.205]\n\nTEAAS Strip ADT = 9,000\n(station 0100000327 at the crash:\n2024 AADT 9,800, 2025 AADT 8,700)",
         "box_frac": [
           0.33,
           0.54
@@ -532,10 +532,10 @@
       ]
     ],
     "study_area_lines": [
-      "NC 179 BUS (Beach Dr SW) from the Calabash NAPA Auto Care Center driveway to Hidden Valley Pl SW",
-      "in Brunswick County"
+      "NC 179BUS (Beach Dr SW) from the Calabash NAPA Auto Care Center Driveway [MP 0.025]",
+      "to Hidden Valley Pl [MP 0.205] in Brunswick County"
     ],
-    "vhb_callout": "Crash Location: NC 179 BUS (Beach Dr SW)\n0.07 mile south of NC 179 (Old Georgetown Rd SW)",
+    "vhb_callout": "Crash Location: NC 179BUS, 0.07 miles S\nfrom NC 179 toward SR 1810",
     "location_pad_ft": 300
   }
 }

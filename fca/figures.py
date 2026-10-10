@@ -916,7 +916,7 @@ def _station_popup(F: Figure, stn, box, county, years):
     route = stn.get("route", "")
     secondary = route.startswith("SR") or route.startswith("4000")
     rt, loc = _split_route_location(stn)
-    loc_lines = textwrap.wrap(loc, 30) or [""]
+    loc_lines = textwrap.wrap(loc, 26) or [""]
     rows = [("LocationID", stn["id"]), ("COUNTY", county.upper()), ("RTE_CLS", "Secondary Routes" if secondary else "Primary Routes"),
             ("ROUTE", rt), ("LOCATION", loc_lines[0])] + [("", ln) for ln in loc_lines[1:]]
     rows += [(f"AADT_{y}", (f"{stn['aadt'][str(y)]}" if str(y) in stn["aadt"] else "")) for y in years]

@@ -291,7 +291,8 @@
     "strip": "inputs/InitialStudy.csv",
     "initial_ids": "inputs/InitialID.txt",
     "features_pdf": "inputs/FeaturesReport_NC179BUS.pdf",
-    "boundaries": "inputs/boundaries.json"
+    "boundaries": "inputs/boundaries.json",
+    "aadt": "inputs/aadt.json"
   },
   "figures": {
     "slip_no": "260722124BA",
@@ -306,7 +307,7 @@
       "(Los Nuevos Charros PVA)"
     ],
     "date_label": "October 2026",
-    "prepared_for": "NCDOT Traffic Safety Unit\nDivision 3",
+    "prepared_for": "Traffic Safety Unit\nDivision 3",
     "area_bbox": [
       -78.6,
       33.868,
@@ -338,22 +339,166 @@
       },
       {
         "text": "Clariday Rd SW (SR 1164)",
-        "lat": 33.8998,
-        "lon": -78.5535,
+        "lat": 33.89955,
+        "lon": -78.55335,
         "rot": 58
       },
       {
         "text": "Old Georgetown Rd SW",
-        "lat": 33.90005,
-        "lon": -78.5509,
+        "lat": 33.8997,
+        "lon": -78.5516,
         "rot": 33
       },
       {
         "text": "Beach Dr SW",
-        "lat": 33.8968,
-        "lon": -78.5506,
-        "rot": -52
+        "lat": 33.89585,
+        "lon": -78.54963,
+        "rot": -58
       }
-    ]
+    ],
+    "municipality_labels": {
+      "Calabash": {
+        "lat": 33.8925,
+        "lon": -78.5405
+      },
+      "Sunset Beach": {
+        "lat": 33.882,
+        "lon": -78.523
+      },
+      "Carolina Shores": {
+        "lat": 33.9035,
+        "lon": -78.58
+      }
+    },
+    "aadt_bbox": [
+      -78.581,
+      33.8755,
+      -78.531,
+      33.913
+    ],
+    "aadt_labels": {
+      "0100000300": {
+        "dx": 9,
+        "dy": 7,
+        "ha": "left"
+      },
+      "0100000301": {
+        "dx": -9,
+        "dy": -7,
+        "ha": "right"
+      },
+      "0100000042": {
+        "dx": 10,
+        "dy": -6,
+        "ha": "left"
+      },
+      "0100000327": {
+        "dx": 11,
+        "dy": 7,
+        "ha": "left"
+      },
+      "0100000016": {
+        "dx": 10,
+        "dy": -4,
+        "ha": "left"
+      },
+      "0100000326": {
+        "dx": 9,
+        "dy": -6,
+        "ha": "left"
+      },
+      "0100000238": {
+        "dx": -9,
+        "dy": 4,
+        "ha": "right"
+      },
+      "0100000030": {
+        "dx": 9,
+        "dy": 7,
+        "ha": "left"
+      },
+      "0100000239": {
+        "dx": -9,
+        "dy": 0,
+        "ha": "right"
+      },
+      "0100000039": {
+        "dx": -9,
+        "dy": 3,
+        "ha": "right"
+      },
+      "0100000242": {
+        "dx": 9,
+        "dy": 0,
+        "ha": "left"
+      },
+      "0100000019": {
+        "dx": 9,
+        "dy": -5,
+        "ha": "left"
+      }
+    },
+    "area_callout_frac": [
+      0.42,
+      0.8
+    ],
+    "area_legend_loc": "lower left",
+    "aadt_road_labels": [
+      {
+        "text": "NC 179",
+        "shield": "179",
+        "lat": 33.895087,
+        "lon": -78.559842,
+        "note": "Beach Dr, west of SR 1167"
+      },
+      {
+        "text": "NC 179",
+        "shield": "179",
+        "lat": 33.9026,
+        "lon": -78.539621,
+        "note": "Old Georgetown Rd SW, northeast of SR 1164"
+      },
+      {
+        "text": "NC 179 BUS",
+        "shield": "179",
+        "bus": true,
+        "lat": 33.893493,
+        "lon": -78.54928,
+        "note": "Beach Dr SW, south of the section"
+      },
+      {
+        "text": "Clariday Rd SW (SR 1164)",
+        "lat": 33.903,
+        "lon": -78.556,
+        "rot": -54
+      },
+      {
+        "text": "Thomasboro Rd SW (SR 1165)",
+        "lat": 33.900614,
+        "lon": -78.558316,
+        "rot": 56
+      },
+      {
+        "text": "Persimmon Rd SW (SR 1167)",
+        "lat": 33.900421,
+        "lon": -78.571301,
+        "rot": -60
+      },
+      {
+        "text": "Country Club Rd SW (SR 1168)",
+        "lat": 33.895458,
+        "lon": -78.582014,
+        "rot": -58
+      }
+    ],
+    "aadt_years": [
+      2019,
+      2021,
+      2023,
+      2024,
+      2025
+    ],
+    "aadt_note": "TEAAS strip analysis ADT used for the section: 9,000. Station 0100000327 (NC 179 BUS south of NC 179) is at the study crash location; the 2025 NCDOT traffic segment covering the section carries 7,400.",
+    "aadt_legend_loc": "upper left"
   }
 }

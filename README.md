@@ -21,13 +21,17 @@ studies/<study_id>/
   study.json          limits, features (with revised mileposts), centerline, fatal crash, screening thresholds, figure settings
   inputs/             TEAAS exports: <id>_Fiche.csv, DetailedFiche.csv (+ _parameters), InitialStudy.csv
                       (strip or intersection analysis), InitialID.txt (ID export), FeaturesReport_<route>.pdf,
-                      boundaries.json (county / municipal outlines for the area map)
+                      boundaries.json (county / municipal outlines for the area map),
+                      aadt.json (NCDOT AADT stations and 2025 traffic segments for the AADT map; optional)
   review/             determinations.jsonl - one line per DMV-349 report read (decision IS/ADD/DEL/NIS, report
-                      location and milepost, facts, confidence); when present the build writes the reviewed workbook
+                      location and milepost, facts, confidence, verification notes); when present the build writes
+                      the reviewed workbook. pe_questions.md (optional) - the calls left to the engineer, appended
+                      to the report review
   outputs/            <id>_Fiche.xlsx (screened) or <id>_Fiche_reviewed.xlsx (with the report decisions),
                       <id>_ReviewIDs.txt, <id>_screening.json, <id>_review_determinations.jsonl, <id>_ReportReview.md,
                       <id>_Figure1_AreaMap.png/.pdf, <id>_Figure2_LocationMap.png/.pdf,
-                      <id>_Figure3_CrashMap.png/.pdf (report figures in the TSU fatal-crash layout),
+                      <id>_Figure3_CrashMap.png/.pdf, <id>_Figure4_AADTMap.png/.pdf (report figures in the
+                      TSU fatal-crash layout; Figure 4 only when inputs/aadt.json exists),
                       <id>_CrashMap.html (self-contained Leaflet map with embedded imagery)
 ```
 
@@ -59,9 +63,19 @@ After the DMV-349 reports are read, each reviewed crash gets a line in `review/d
 The build then writes `<id>_Fiche_reviewed.xlsx`: the fiche in five sections (IN STUDY, ADDED TO STUDY,
 DELETED FROM STUDY, NOT IN STUDY - REPORT REVIEWED, NOT IN STUDY - REPORT NOT REVIEWED), the Review IDs
 sheet with the Decision column filled and the report location, milepost, facts and confidence beside the
-screening reason, plus `<id>_ReportReview.md` (summary table and facts for the memo). Figure 3 is redrawn
-with the crashes at their report locations, colored by decision. The crash reports themselves stay out of
-the repository.
+screening reason, plus `<id>_ReportReview.md` (summary table, section crash summary, facts, independent
+verification notes and the engineer's open decisions for the memo). Figure 3 is redrawn with the crashes at
+their report locations, colored by decision. The crash reports themselves stay out of the repository.
+
+## Figures
+
+Figures 1 to 4 follow the Traffic Safety Unit fatal-crash figure layout (landscape letter, title strip with
+the slip number, county thumbnail, crash coordinates, milepost and division). Figure 1 (Area Map) draws the
+county and municipal boundaries from `inputs/boundaries.json` over the Esri street map; Figure 2 (Location
+Map) and Figure 3 (Crash Map) use Esri imagery with the study limits, side streets and (Figure 3) the
+numbered reviewed crashes; Figure 4 (AADT Map) colors the NCDOT 2025 traffic segments by AADT and numbers
+the AADT stations, with their count history in a table. Label positions, shield positions, the crash callout
+and the map extents are set per study under `figures` in `study.json`.
 
 ## Workbook sheets
 

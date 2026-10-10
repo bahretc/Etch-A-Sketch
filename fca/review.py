@@ -86,7 +86,7 @@ def determination_table(screened: list[Screened], dets: dict[int, Determination]
                      "report_mp": d.report_mp, "teaas_mp": (None if r is None or r.unmileposted else r.mp),
                      "teaas_on_road": r.on_road if r else "", "type": r.T if r else None, "severity": r.S if r else "",
                      "report_location": d.report_location, "facts": d.facts, "teaas_issue": d.teaas_issue,
-                     "confidence": d.confidence, "pages": d.pages})
+                     "confidence": d.confidence, "pages": d.pages, "verified": d.verified, "verify_notes": d.verify_notes})
     return rows
 
 
@@ -148,6 +148,16 @@ def write_review_outputs(study: Study, screened: list[Screened], dets: dict[int,
     lines += ["", "## Facts from the reports", ""]
     for r in rows:
         lines.append(f"- **{r['crash_id']}** ({r['decision']}): {r['facts']}" + (f" _TEAAS: {r['teaas_issue']}_" if r["teaas_issue"] else ""))
+    verified = [r for r in rows if r.get("verified")]
+    if verified:
+        lines += ["", f"## Independent verification ({len(verified)} of {len(rows)} reports re-read)", ""]
+        for r in verified:
+            if r.get("verify_notes"):
+                lines.append(f"- **{r['crash_id']}** ({r['decision']}): {r['verify_notes']}")
+    pq = os.path.join(study.root, "review", "pe_questions.md")
+    if os.path.exists(pq):
+        with open(pq) as f:
+            lines += ["", "## Decisions for the engineer", "", f.read().rstrip()]
     with open(p, "w") as f:
         f.write("\n".join(lines) + "\n")
     paths.append(p)

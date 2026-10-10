@@ -37,7 +37,8 @@ TILE_SOURCES["positron"] = {
     "attribution": "CARTO, OpenStreetMap contributors",
     "max_zoom": 19,
 }
-RED = "#d0021b"
+RED = "#a4161a"
+PINK = "#fbe3e6"
 PURPLE = "#b48ad8"
 FONT = "DejaVu Sans"
 
@@ -136,6 +137,12 @@ class Figure:
         xs, ys = zip(*[self.px(a, b) for a, b in latlons])
         return self.ax.plot(xs, ys, **kw)
 
+    def fill_geojson(self, geom, **kw):
+        rings = [geom["coordinates"][0]] if geom["type"] == "Polygon" else [p[0] for p in geom["coordinates"]]
+        for ring in rings:
+            pts = [self.px(lat, lon) for lon, lat in ring]
+            self.ax.add_patch(Polygon(pts, closed=True, ec="none", **kw))
+
     def polygon_from_geojson(self, geom, **kw):
         rings = []
         if geom["type"] == "Polygon":
@@ -148,7 +155,7 @@ class Figure:
 
     def label(self, lat, lon, text, dx=0, dy=0, halo="white", color="black", size=7.5, **kw):
         x, y = self.px(lat, lon)
-        kw.setdefault("ha", "center"); kw.setdefault("va", "center"); kw.setdefault("zorder", 40)
+        kw.setdefault("ha", "center"); kw.setdefault("va", "center"); kw.setdefault("zorder", 40); kw.setdefault("clip_on", True)
         return self.ax.text(x + dx, y + dy, text, fontsize=size, color=color, family=FONT,
                             path_effects=[pe.withStroke(linewidth=2.5, foreground=halo)] if halo else None, **kw)
 
@@ -165,15 +172,18 @@ class Figure:
         bx, by = self.frac(*box_frac)
         txt = title + "\n" + "\n".join(lines)
         t = self.ax.text(bx, by, txt, fontsize=7.5, family=FONT, ha="center", va="center", zorder=46, linespacing=1.35,
-                         bbox=dict(boxstyle="square,pad=0.6", fc="white", ec=RED, lw=1.4))
+                         bbox=dict(boxstyle="square,pad=0.6", fc=PINK, ec=RED, lw=1.4))
         # bold-underlined title: overlay the title line separately
         self.fig.canvas.draw()
         bbox = t.get_window_extent().transformed(self.ax.transData.inverted())
         tx = bx
         ty = bbox.y1 - (bbox.y1 - bbox.y0) * 0.5 / (len(lines) + 1)
         t.set_text("\n" + "\n".join(lines))
-        self.ax.text(tx, ty, title, fontsize=7.5, family=FONT, fontweight="bold", ha="center", va="center", zorder=47)
-        self.ax.plot([tx, tx], [ty + (bbox.y1 - bbox.y0) * 0.08, ty + (bbox.y1 - bbox.y0) * 0.08], lw=0)  # no-op keeps limits
+        tt = self.ax.text(tx, ty, title, fontsize=7.5, family=FONT, fontweight="bold", ha="center", va="center", zorder=47)
+        self.fig.canvas.draw()
+        tb = tt.get_window_extent().transformed(self.ax.transData.inverted())
+        uy = tb.y1 + (tb.y1 - tb.y0) * 0.12          # pixel y grows downward: y1 is the bottom edge
+        self.ax.plot([tb.x0, tb.x1], [uy, uy], color="black", lw=0.8, zorder=47)
         # leader from the nearest box edge to the circle edge
         ex = min(max(x, bbox.x0), bbox.x1); ey = min(max(y, bbox.y0), bbox.y1)
         r = self.pts_to_px(getattr(self, "_circle_pt", 9))
@@ -194,7 +204,7 @@ class Figure:
         x1, y = self.frac(fx, fy)
         x0 = x1 - w
         h = self.pts_to_px(4)
-        self.ax.add_patch(Rectangle((x0 - self.pts_to_px(6), y - self.pts_to_px(14)), w + self.pts_to_px(12), self.pts_to_px(26),
+        self.ax.add_patch(Rectangle((x0 - self.pts_to_px(6), y - self.pts_to_px(14)), w + self.pts_to_px(40), self.pts_to_px(26),
                                     fc="white", ec="none", alpha=0.85, zorder=48))
         for i in range(divisions):
             self.ax.add_patch(Rectangle((x0 + w * i / divisions, y - h), w / divisions, h,
@@ -203,19 +213,19 @@ class Figure:
             v = total_ft * i / divisions
             lab = f"{v / FT_PER_MILE:g}" if unit == "Miles" else f"{v:,.0f}"
             self.ax.text(x0 + w * i / divisions, y - h - self.pts_to_px(2), lab, ha="center", va="bottom", fontsize=6.5, family=FONT, zorder=50)
-        self.ax.text(x1 + self.pts_to_px(10), y - h / 2, unit, ha="left", va="center", fontsize=6.5, family=FONT, zorder=50)
+        self.ax.text(x1 + self.pts_to_px(8), y - h / 2, unit, ha="left", va="center", fontsize=6.5, family=FONT, zorder=50)
 
-    def legend(self, items, fx=0.985, fy=0.085, title="Legend"):
-        """items: list of (handle, label). Anchored bottom-right at the axes fraction."""
+    def legend(self, items, fx=0.985, fy=0.085, title="Legend", loc="lower right"):
+        """items: list of (handle, label). Anchored at the axes fraction (its lower-right corner by default)."""
         from matplotlib.font_manager import FontProperties
-        lg = self.ax.legend(handles=[h for h, _ in items], labels=[l for _, l in items], title=title, loc="lower right",
+        lg = self.ax.legend(handles=[h for h, _ in items], labels=[l for _, l in items], title=title, loc=loc,
                             bbox_to_anchor=(fx, fy), framealpha=1.0, edgecolor="black", fancybox=False, borderpad=0.8,
                             labelspacing=0.8, handlelength=2.2, prop=FontProperties(family=FONT, size=7.2),
                             title_fontproperties=FontProperties(family=FONT, size=8.2, weight="bold"))
         lg.get_frame().set_linewidth(1.0)
         lg.set_zorder(60)
 
-    def title_strip(self, cfg, fig_no, fig_title, mp_text, boundaries=None):
+    def title_strip(self, cfg, fig_no, fig_title, mp_text, boundaries=None, extra_note=""):
         f = cfg["figures"]
         L, R, B = self.L, self.R, self.B
         H = self.strip_h - 0.012
@@ -225,8 +235,9 @@ class Figure:
         cols = [0.0, 0.17, 0.30, 0.64, 0.76, 0.87, 1.0]
         for c in cols[1:-1]:
             ax.plot([c, c], [0, 1], color="black", lw=1.0)
-        # cell 1: prepared for
-        ax.text(cols[0] + 0.085, 0.5, f.get("prepared_for", ""), ha="center", va="center", fontsize=8, family=FONT, linespacing=1.4)
+        # cell 1: agency block
+        ax.text(cols[0] + 0.085, 0.62, "NCDOT", ha="center", va="center", fontsize=13, fontweight="bold", family=FONT, color="#1b3a6b")
+        ax.text(cols[0] + 0.085, 0.30, f.get("prepared_for", "Traffic Safety Unit"), ha="center", va="center", fontsize=7, family=FONT, linespacing=1.3)
         # cell 2: county thumbnail
         if boundaries:
             self._county_thumb(ax, boundaries, (cols[1], cols[2]), cfg["county"].title() + " County")
@@ -247,8 +258,12 @@ class Figure:
         ax.text((cols[5] + cols[6]) / 2, 0.45, fig_title, ha="center", va="center", fontsize=7.5, family=FONT)
         ax.text((cols[5] + cols[6]) / 2, 0.20, f.get("date_label", ""), ha="center", va="center", fontsize=6.8, family=FONT)
         # attribution line under the strip
-        self.fig.text(L, B - 0.012, "Basemap: " + TILE_SOURCES[self.source]["attribution"] + ". Boundaries and centerline: OpenStreetMap. Crash data: NCDOT TEAAS and DMV-349 reports.",
-                      fontsize=5.5, color="#444", va="center", family=FONT)
+        import textwrap
+        note = "Basemap: " + TILE_SOURCES[self.source]["attribution"] + ". Boundaries and centerline: OpenStreetMap. Crash data: NCDOT TEAAS and DMV-349 reports."
+        if extra_note:
+            note += " " + extra_note
+        for i, ln in enumerate(textwrap.wrap(note, 215)[:2]):
+            self.fig.text(L, B - 0.012 - 0.011 * i, ln, fontsize=5.5, color="#444", va="center", family=FONT)
 
     def _county_thumb(self, ax, boundaries, xr, county_name):
         """Small NC outline with the county filled, drawn in the strip cell."""
@@ -298,8 +313,8 @@ def _shield(F: Figure, lat, lon, number, bus=False, size_pt=13):
                   bbox=dict(boxstyle="square,pad=0.15", fc="white", ec="black", lw=0.6))
 
 
-def _road_labels(F: Figure, cfg, shields=True, names=True, bus=True):
-    for rl in cfg["figures"].get("road_labels", []):
+def _road_labels(F: Figure, cfg, shields=True, names=True, bus=True, key="road_labels"):
+    for rl in cfg["figures"].get(key, []):
         if rl.get("shield"):
             if shields and (bus or not rl.get("bus")):
                 _shield(F, rl["lat"], rl["lon"], rl["shield"], bus=rl.get("bus", False))
@@ -324,21 +339,29 @@ def figure_area_map(study: Study, cache: TileCache, out_png, out_pdf):
     bd = _load_boundaries(study)
     if bd:
         F.polygon_from_geojson(bd["brunswick_county"], color="#e6d800", lw=2.2, ls=(0, (4, 2)), zorder=12)
+        pops = cfg["figures"].get("populations", {})
         for name, g in bd["municipalities"].items():
-            F.polygon_from_geojson(g, color="#666666", lw=1.6, ls=(0, (1, 1.5)), zorder=12)
+            F.fill_geojson(g, fc="#b0b0b0", alpha=0.12, zorder=5)
+            F.polygon_from_geojson(g, color="#444444", lw=1.3, ls=(0, (3, 1.2, 1, 1.2)), zorder=12)
+            lab = cfg["figures"].get("municipality_labels", {}).get(name)
+            if lab:
+                txt = name.upper() + (f"\nPop. {pops[name]:,}" if name in pops else "")
+                F.label(lab["lat"], lab["lon"], txt, size=8, color="#222222", halo="white", fontweight="bold", linespacing=1.25,
+                        ha=lab.get("ha", "center"), va=lab.get("va", "center"))
     _limits_band(F, study, lw_pt=10, alpha=0.8)
     fat = cfg["fatal"]
     F.crash_circle(fat["lat"], fat["lon"], radius_pt=10)
-    F.callout(fat["lat"], fat["lon"], cfg["figures"]["crash_callout"], box_frac=(0.30, 0.56))
+    F.callout(fat["lat"], fat["lon"], cfg["figures"]["crash_callout"], box_frac=tuple(cfg["figures"].get("area_callout_frac", (0.30, 0.56))))
     F.north_arrow()
     handles = [
         (Line2D([0], [0], marker="o", color="w", mfc="none", mec=RED, mew=2, ms=11), "Study Crash Location"),
         (Line2D([0], [0], color=PURPLE, lw=7, alpha=0.8), "Crash Analysis Study Limits"),
-        (Line2D([0], [0], color="#666666", lw=1.6, ls=(0, (1, 1.5))), "Municipal Boundary"),
+        (Line2D([0], [0], color="#555555", lw=1.4, ls=(0, (3, 1.2, 1, 1.2))), "Municipal Boundary"),
         (Line2D([0], [0], color="#e6d800", lw=2.2, ls=(0, (4, 2))), "County Boundary"),
     ]
-    F.legend(handles, fx=0.985, fy=0.10)
-    F.scale_bar(FT_PER_MILE * 1.0, "Miles", fx=0.955, fy=0.035, divisions=2)
+    loc = cfg["figures"].get("area_legend_loc", "lower right")
+    F.legend(handles, fx=0.015 if loc == "lower left" else 0.985, fy=0.10, loc=loc)
+    F.scale_bar(FT_PER_MILE * 1.0, "Miles", fx=0.94, fy=0.035, divisions=2)
     F.title_strip(cfg, 1, "Area Map", f"{fat['mp']:.3f}", bd)
     F.save(out_png, out_pdf)
 
@@ -382,7 +405,7 @@ def figure_location_map(study: Study, cache: TileCache, out_png, out_pdf, z=18):
         (Line2D([0], [0], marker="o", color="w", mfc="white", mec="black", ms=5), "Side street / driveway (milepost in the workbook)"),
     ]
     F.legend(handles, fx=0.985, fy=0.10)
-    F.scale_bar(400, "Feet", fx=0.955, fy=0.035, divisions=2)
+    F.scale_bar(400, "Feet", fx=0.94, fy=0.035, divisions=2)
     F.title_strip(cfg, 2, "Location Map", f"{fat['mp']:.3f}", _load_boundaries(study))
     F.save(out_png, out_pdf)
 
@@ -509,9 +532,107 @@ def build_figures(study: Study, screened: list[Screened], out_dir: str, tile_cac
     cache = TileCache(tile_cache_dir)
     sid = study.study_id
     paths = []
-    for name, fn in (("Figure1_AreaMap", lambda a, b: figure_area_map(study, cache, a, b)),
-                     ("Figure2_LocationMap", lambda a, b: figure_location_map(study, cache, a, b)),
-                     ("Figure3_CrashMap", lambda a, b: figure_crash_map(study, screened, cache, a, b, decisions=decisions))):
+    figs = [("Figure1_AreaMap", lambda a, b: figure_area_map(study, cache, a, b)),
+            ("Figure2_LocationMap", lambda a, b: figure_location_map(study, cache, a, b)),
+            ("Figure3_CrashMap", lambda a, b: figure_crash_map(study, screened, cache, a, b, decisions=decisions))]
+    if "aadt" in study.cfg.get("inputs", {}):
+        figs.append(("Figure4_AADTMap", lambda a, b: figure_aadt_map(study, cache, a, b)))
+    for name, fn in figs:
         png = os.path.join(out_dir, f"{sid}_{name}.png"); pdf = os.path.join(out_dir, f"{sid}_{name}.pdf")
         fn(png, pdf); paths += [png, pdf]
     return paths
+
+
+# ---------------------------------------------------------------------- AADT map
+
+AADT_BINS = [(0, 3000, "#c6dbef", "under 3,000"), (3000, 7000, "#6baed6", "3,000 to 7,000"),
+             (7000, 12000, "#2171b5", "7,000 to 12,000"), (12000, 10**9, "#08306b", "over 12,000")]
+
+
+def _aadt_color(v):
+    for lo, hi, c, _ in AADT_BINS:
+        if lo <= v < hi:
+            return c
+    return "#08306b"
+
+
+def figure_aadt_map(study: Study, cache: TileCache, out_png, out_pdf, z: int = 16):
+    """Figure 4: NCDOT AADT stations and 2025 traffic segments around the section."""
+    cfg = study.cfg
+    with open(os.path.join(study.root, cfg["inputs"]["aadt"])) as f:
+        aadt = json.load(f)
+    bbox = tuple(cfg["figures"]["aadt_bbox"])
+    F = Figure(cache, "streets", bbox, z, lighten=0.45)
+    lon0, lat0, lon1, lat1 = F.bbox
+    # segments colored by AADT
+    for sg in aadt["segments"]:
+        for path in sg["paths"]:
+            F.polyline([(lat, lon) for lon, lat in path], color=_aadt_color(sg["aadt"]), lw=4.0, alpha=0.85, zorder=8, solid_capstyle="round")
+    # study limits and crash
+    _limits_band(F, study, lw_pt=9, alpha=0.8, zorder=20)
+    fat = cfg["fatal"]
+    F.crash_circle(fat["lat"], fat["lon"], radius_pt=9)
+    # stations: numbered markers with the latest count beside them; the full history goes in the table
+    labels = cfg["figures"].get("aadt_labels", {})
+    shown = [stn for stn in aadt["stations"] if lon0 <= stn["lon"] <= lon1 and lat0 <= stn["lat"] <= lat1]
+    def latest_year(stn):
+        return max(stn["aadt"], key=int)
+    shown.sort(key=lambda stn: (-stn["aadt"][latest_year(stn)], stn["id"]))
+    for n, stn in enumerate(shown, 1):
+        x, y = F.px(stn["lat"], stn["lon"])
+        ly = latest_year(stn)
+        lab = labels.get(stn["id"], {"dx": 10, "dy": 0, "ha": "left"})
+        F.ax.plot(x, y, marker="o", ms=11, mfc="#ffd400", mec="black", mew=1.0, zorder=30)
+        F.ax.text(x, y, str(n), ha="center", va="center", fontsize=5.8, fontweight="bold", family=FONT, zorder=31)
+        txt = f"{stn['aadt'][ly]:,} ({ly})"
+        lx, ly_ = x + F.pts_to_px(lab["dx"]), y + F.pts_to_px(lab["dy"])
+        F.ax.text(lx, ly_, txt, fontsize=6.3, fontweight="bold", family=FONT, ha=lab.get("ha", "left"), va=lab.get("va", "center"), zorder=42,
+                  color="black", path_effects=[pe.withStroke(linewidth=2.6, foreground="white")])
+    # route shields and road names placed for this extent
+    _road_labels(F, cfg, key="aadt_road_labels" if "aadt_road_labels" in cfg["figures"] else "road_labels", names="aadt_road_labels" in cfg["figures"])
+    # table of the stations shown
+    yrs = cfg["figures"].get("aadt_years", [2019, 2021, 2023, 2024, 2025])
+    px_, py_ = F.frac(0.012, 0.012)
+    lh = F.pts_to_px(8.6)
+    colw = [F.pts_to_px(14), F.pts_to_px(50), F.pts_to_px(262)] + [F.pts_to_px(31)] * len(yrs)
+    Ww = sum(colw) + F.pts_to_px(12)
+    import textwrap
+    note_lines = textwrap.wrap(cfg["figures"].get("aadt_note", ""), 118)
+    Hh = lh * (len(shown) + 2.9 + len(note_lines))
+    F.ax.add_patch(Rectangle((px_, py_ - Hh), Ww, Hh, fc="white", ec="black", lw=0.8, alpha=0.96, zorder=58))
+    yy = py_ - Hh + lh * 0.9
+    F.ax.text(px_ + F.pts_to_px(5), yy, "NCDOT AADT stations shown (vehicles per day; blank = no count that year)",
+              fontsize=6.6, fontweight="bold", family=FONT, va="center", zorder=59)
+    yy += lh * 1.15
+    xx = px_ + F.pts_to_px(5)
+    heads = ["#", "Station", "Route and location"] + [str(y_) for y_ in yrs]
+    for i, h in enumerate(heads):
+        F.ax.text(xx + (colw[i] - F.pts_to_px(4) if i >= 3 else 0), yy, h, fontsize=6.0, fontweight="bold", family=FONT, va="center",
+                  ha="right" if i >= 3 else "left", zorder=59)
+        xx += colw[i]
+    yy += lh
+    for n, stn in enumerate(shown, 1):
+        xx = px_ + F.pts_to_px(5)
+        loc = stn.get("location") or stn["route"]
+        vals = [str(n), stn["id"], loc if len(loc) <= 64 else loc[:62] + "…"] + [f"{stn['aadt'][str(y_)]:,}" if str(y_) in stn["aadt"] else "" for y_ in yrs]
+        for i, v in enumerate(vals):
+            F.ax.text(xx + (colw[i] - F.pts_to_px(4) if i >= 3 else 0), yy, v, fontsize=5.8, family="DejaVu Sans Mono" if i in (1,) else FONT,
+                      va="center", ha="right" if i >= 3 else "left", zorder=59)
+            xx += colw[i]
+        yy += lh
+    yy += lh * 0.2
+    for ln in note_lines:
+        F.ax.text(px_ + F.pts_to_px(5), yy, ln, fontsize=5.8, family=FONT, va="center", color="#333333", zorder=59)
+        yy += lh
+    F.north_arrow()
+    handles = [(Line2D([0], [0], marker="o", color="w", mfc="#ffd400", mec="black", ms=9), "AADT station (number keys the table)")]
+    for lo, hi, c, lab in AADT_BINS:
+        handles.append((Line2D([0], [0], color=c, lw=4), f"2025 segment AADT {lab}"))
+    handles += [(Line2D([0], [0], marker="o", color="w", mfc="none", mec=RED, mew=2, ms=10), "Study Crash Location"),
+                (Line2D([0], [0], color=PURPLE, lw=7, alpha=0.8), "Crash Analysis Study Limits")]
+    loc = cfg["figures"].get("aadt_legend_loc", "lower right")
+    anchors = {"lower right": (0.985, 0.10), "lower left": (0.015, 0.10), "upper left": (0.015, 0.985), "upper right": (0.985, 0.985)}
+    F.legend(handles, *anchors[loc], loc=loc)
+    F.scale_bar(FT_PER_MILE * 0.5, "Miles", fx=0.94, fy=0.035, divisions=2)
+    F.title_strip(cfg, 4, "AADT Map", f"{fat['mp']:.3f}", _load_boundaries(study), extra_note="AADT: " + aadt.get("source", "") + ".")
+    F.save(out_png, out_pdf)

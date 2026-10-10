@@ -13,7 +13,7 @@ No,At-fault from,At-fault maneuver,Other vehicle from,Other maneuver,Collision (
 12,NC 180 southbound,ran off road west,none,none,ran off road,night,none,NC 180 southbound vehicle ran off road west,,
 13,Pleasant Dr (NW leg),left turn,NC 180 southbound,straight,turning,day,nonsevere,Pleasant Dr (NW leg) left turn vs NC 180 southbound straight,Y,"TEAAS: unit 1 N left turn, unit 2 S straight; drawn: Pleasant Dr left turn vs southbound"
 14,Pleasant Dr (NW leg),left turn,NC 180 southbound,straight,turning,night,none,Pleasant Dr (NW leg) left turn vs NC 180 southbound straight,Y,"TEAAS: unit 1 S left turn, unit 2 N straight; drawn: Pleasant Dr left turn vs southbound"
-15,NC 180 northbound,rear end,NC 180 northbound,slowing/turning right,rear end,day,none,Rear end on NC 180 northbound: struck a vehicle slowing/turning right ahead,,
+15,NC 180 northbound,rear end,NC 180 northbound,slowing/turning left,rear end,day,none,Rear end on NC 180 northbound: struck a vehicle ahead slowing to turn left toward Pleasant Dr,,
 16,Pleasant Dr (NW leg),left turn,NC 180 southbound,straight,turning,day,none,Pleasant Dr (NW leg) left turn vs NC 180 southbound straight,Y,"TEAAS: unit 1 W left turn, unit 2 N straight; drawn: Pleasant Dr left turn vs southbound"
 17,Pleasant Hill Church Rd (SE leg),right turn,NC 180 northbound,straight,turning,day,none,Pleasant Hill Church Rd (SE leg) right turn vs NC 180 northbound straight,,
 18,Pleasant Dr (NW leg),rear end,Pleasant Dr (NW leg),stopped,rear end,day,none,Rear end on Pleasant Dr approach: struck a vehicle stopped ahead,,

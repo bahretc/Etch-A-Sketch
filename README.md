@@ -30,8 +30,8 @@ studies/<study_id>/
                       to the report review
   outputs/            <id>_Fiche.xlsx (screened) or <id>_Fiche_reviewed.xlsx (with the report decisions),
                       <id>_ReviewIDs.txt, <id>_screening.json, <id>_review_determinations.jsonl, <id>_ReportReview.md,
-                      <id>_AreaMap, <id>_LocationMap, <id>_CrashMap and <id>_AADTMap (.png and .pdf, named like
-                      the study folders; the AADT map only when inputs/aadt.json exists),
+                      <id>_AreaMap, <id>_LocationMap, <id>_CrashMap and <id>_ADTMap (.png and .pdf, named like
+                      the study folders; the ADT map only when inputs/aadt.json exists),
                       <id>_CrashMap.html (self-contained Leaflet map with embedded imagery)
 ```
 
@@ -76,11 +76,10 @@ The Area Map is a gray road map drawn from the NCDOT road centerlines in `inputs
 routes heavy black, state roads dark, local roads white, major water, town names, route shields) with the
 crash as a heavy red ring. The Location Map is an aerial of the whole study section with the limits band,
 the route shields, the red ring and the crash-location callout. The Crash Map numbers the reviewed crashes.
-The AADT Map follows the HSIP evaluation AADT maps (AADT viewer capture): light gray canvas with the AADT
-routes (primary green, secondary black), green station dots, a popup for each configured station with its
-full record (LocationID, COUNTY, RTE_CLS, ROUTE, LOCATION and every AADT year, blank where there was no
-count), the AADT segment record at the study location, blue arrows, and the "AADT Map - <slip> Evaluation"
-title. Positions of
+The ADT Map copies the fatal-slip ADT maps (NCDOT AADT Mapping Application capture on the VHB page): beige
+canvas, white roads with the NCDOT street names, the study route in salmon, AADT station dots colored by
+route class with the application's legend, the "Estimated AADT" callout (the TEAAS ADT) and the crash
+callout, "Data Source: NCDOT AADT Mapping Application". Positions of
 labels, shields, callouts and station boxes, and the map extents, are set per study under `figures` in
 `study.json`; the NC county outlines, the NCDOT seal and the VHB logo live in `fca/data`.
 

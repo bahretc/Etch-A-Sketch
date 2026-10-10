@@ -311,7 +311,7 @@ class Figure:
             self.ax.text(x0 + w * t, y - h - self.pts_to_px(2.5), lab, ha="center", va="bottom", fontsize=7.5, family=FONT, zorder=50)
         self.ax.text(x0 + w + self.pts_to_px(8), y - h / 2, unit, ha="left", va="center", fontsize=7.5, family=FONT, zorder=50)
 
-    def vhb_block(self, cfg, extra_source=""):
+    def vhb_block(self, cfg, extra_source="", source_text=None):
         """Information block under the map: WO / PH / Division, Study Area, Lat / Long, VHB logo, data source."""
         f = cfg["figures"]
         fig = self.fig
@@ -344,7 +344,7 @@ class Figure:
             lw_in, lh_in = 1.05, 1.05 * img.shape[0] / img.shape[1]
             lax = fig.add_axes([R - lw_in / 11.0, B, lw_in / 11.0, lh_in / 8.5]); lax.axis("off")
             lax.imshow(img, interpolation="lanczos")
-        src = "Data Source: NCDOT, NC OneMap" + (", " + extra_source if extra_source else "") + ", VHB"
+        src = source_text or ("Data Source: NCDOT, NC OneMap" + (", " + extra_source if extra_source else "") + ", VHB")
         fig.text(L + 0.012, B + 0.006, src, fontsize=7, style="italic", family=FONT, color="#555555", va="bottom", ha="left")
 
     # ----------------------------------------------------------- title strip
@@ -978,6 +978,107 @@ def figure_aadt_map(study: Study, cache: TileCache, out_png, out_pdf, z: int = 1
     F.save(out_png, out_pdf)
 
 
+# ---------------------------------------------------------------------- ADT map (NCDOT AADT Mapping Application capture on the VHB page)
+
+ADT_BG = "#efeaca"
+ADT_ROUTE = "#f2b58c"
+ROUTE_CLASS_COLORS = [("Interstates", "#056afe"), ("US Routes", "#fe0200"), ("NC Routes", "#ac02dd"),
+                      ("Secondary Routes", "#32a701"), ("Non-System Routes", "#000000")]
+
+
+def _ncdot_street_labels(F: Figure, cache_dir: str, bg=ADT_BG, color=(110, 110, 110)):
+    """NCDOT RoadNC street-name labels for the map extent (map service export), recolored gray over the beige canvas."""
+    import hashlib, io, urllib.parse, urllib.request
+    import numpy as np
+    from PIL import Image
+    def merc(lon, lat):
+        R = 6378137.0
+        return R * math.radians(lon), R * math.log(math.tan(math.pi / 4 + math.radians(lat) / 2))
+    lon0, lat0, lon1, lat1 = F.bbox
+    x0, y0 = merc(lon0, lat0); x1, y1 = merc(lon1, lat1)
+    ext = F.ax.get_window_extent()
+    W, H = int(round(ext.width)), int(round(ext.height))
+    key = hashlib.md5(f"{x0:.1f},{y0:.1f},{x1:.1f},{y1:.1f},{W},{H}".encode()).hexdigest()[:16]
+    os.makedirs(os.path.join(cache_dir, "ncdot_labels"), exist_ok=True)
+    cp = os.path.join(cache_dir, "ncdot_labels", key + ".png")
+    if os.path.exists(cp):
+        data = open(cp, "rb").read()
+    else:
+        u = ("https://gis11.services.ncdot.gov/arcgis/rest/services/NCDOT_RoadNC/RoadNC_RoadNameLabels/MapServer/export?" +
+             urllib.parse.urlencode({"bbox": f"{x0},{y0},{x1},{y1}", "bboxSR": 3857, "imageSR": 3857, "size": f"{W},{H}", "layers": "show:2",
+                                     "format": "png32", "transparent": "true", "dpi": int(F.fig.dpi), "f": "image"}))
+        try:
+            data = urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "fca/1.0"}), timeout=120).read()
+            open(cp, "wb").write(data)
+        except Exception:
+            return False
+    arr = np.array(Image.open(io.BytesIO(data)).convert("RGBA"))
+    vis = arr[..., 3] > 0
+    dark = vis & (arr[..., :3].astype(int).sum(-1) < 400)
+    light = vis & ~dark
+    bgc = tuple(int(bg[i:i + 2], 16) for i in (1, 3, 5))
+    arr[dark, :3] = color
+    arr[light, :3] = bgc
+    F.ax.imshow(arr, extent=(F.xlim[0], F.xlim[1], F.ylim[1], F.ylim[0]), interpolation="bilinear", zorder=13)
+    return True
+
+
+def figure_adt_map(study: Study, cache: TileCache, out_png, out_pdf, z: int = 17):
+    """ADT Map: the NCDOT AADT Mapping Application look (beige canvas, white roads, gray street names, the study route in
+    salmon, station dots by route class) with the Estimated AADT and Crash Location callouts, on the VHB page."""
+    cfg = study.cfg
+    f = cfg["figures"]
+    fat = cfg["fatal"]
+    with open(os.path.join(study.root, cfg["inputs"]["aadt"])) as fh:
+        aadt = json.load(fh)
+    bm = _load_basemap(study)
+    pl = study.centerline
+    mid = pl.point_at_mi((study.begin_mp + study.end_mp) / 2)
+    center = f.get("adt_center", [mid[0], mid[1]])
+    bbox = _bbox_from_center(center[0], center[1], f.get("adt_width_ft", 8400), f.get("adt_width_ft", 8400) * 0.64)
+    F = Figure(cache, None, bbox, z)
+    F.ax.add_patch(Rectangle((F.xlim[0], F.ylim[0]), F.xlim[1] - F.xlim[0], F.ylim[1] - F.ylim[0], fc=ADT_BG, ec="none", zorder=0))
+    if bm:
+        for ft in bm.get("waterbodies", {}).get("features", []):
+            F.fill_geojson(ft["geometry"], fc="#c9ddf0", ec="#a9c6e3", lw=0.5, zorder=2)
+        for ft in bm["roads"]["features"]:
+            lay = ft["properties"].get("layer", "non_system")
+            lw = 2.0 if lay == "non_system" else 2.8
+            F.lines_from_geojson(ft["geometry"], color="#cfcab0", lw=lw + 1.0, zorder=4, solid_capstyle="round")
+            F.lines_from_geojson(ft["geometry"], color="white", lw=lw, zorder=5, solid_capstyle="round")
+        route_names = set(f.get("adt_route_names", [cfg["route"].get("ncdot_name", "")]))
+        for ft in bm["roads"]["features"]:
+            if ft["properties"].get("RouteName") in route_names:
+                F.lines_from_geojson(ft["geometry"], color="white", lw=4.6, zorder=8, solid_capstyle="round")
+                F.lines_from_geojson(ft["geometry"], color=ADT_ROUTE, lw=2.6, zorder=9, solid_capstyle="round")
+    _ncdot_street_labels(F, cache.cache_dir if hasattr(cache, "cache_dir") else os.path.dirname(out_png))
+    # AADT stations in view, colored by route class
+    cls_color = dict(ROUTE_CLASS_COLORS)
+    for stn in aadt["stations"]:
+        if not F.inside(stn["lat"], stn["lon"], 0.01):
+            continue
+        r = stn.get("route", "")
+        c = cls_color["Secondary Routes"] if (r.startswith("SR") or r.startswith("4000")) else cls_color["US Routes"] if r.startswith("US") else \
+            cls_color["Interstates"] if r.startswith("I") else cls_color["NC Routes"] if r.startswith("NC") else cls_color["Non-System Routes"]
+        F.ax.plot(*F.px(stn["lat"], stn["lon"]), marker="o", ms=7.5, mfc=c, mec="white", mew=1.0, zorder=30)
+    # crash ring and callouts
+    F.crash_ring(fat["lat"], fat["lon"], radius_pt=13, lw=4.2)
+    adt_txt = f.get("adt_callout", f"Estimated AADT: {cfg.get('adt', 0):,} vpd")
+    F.vhb_callout(mid[0], mid[1], adt_txt, tuple(f.get("adt_aadt_callout_frac", (0.30, 0.78))), size=9.5)
+    F.vhb_callout(fat["lat"], fat["lon"], f.get("adt_crash_callout", f.get("vhb_callout", "Crash Location")), tuple(f.get("adt_crash_callout_frac", (0.72, 0.62))), size=9.5)
+    # route-class legend (the mapping application's station legend)
+    from matplotlib.font_manager import FontProperties
+    handles = [Line2D([0], [0], marker="o", color="w", mfc=c, mec=c, ms=8) for _, c in ROUTE_CLASS_COLORS]
+    lg = F.ax.legend(handles=handles, labels=[n for n, _ in ROUTE_CLASS_COLORS], loc="lower right", bbox_to_anchor=(0.985, 0.012),
+                     framealpha=1.0, edgecolor="black", fancybox=False, borderpad=0.7, labelspacing=0.75, handlelength=1.2, handletextpad=0.8,
+                     prop=FontProperties(family=FONT, size=9.5))
+    lg.get_frame().set_linewidth(0.8); lg.set_zorder(60)
+    F.inset_county(cfg["county"])
+    F.scale_bar_vhb(1000, "Feet", [0, 0.25, 0.5, 1.0], ["0", "", "500", "1,000"])
+    F.vhb_block(cfg, source_text=f.get("adt_source_text", "Data Source: NCDOT AADT Mapping Application"))
+    F.save(out_png, out_pdf)
+
+
 def build_figures(study: Study, screened: list[Screened], out_dir: str, tile_cache_dir: str, decisions=None) -> list[str]:
     cache = TileCache(tile_cache_dir)
     sid = study.study_id
@@ -987,7 +1088,7 @@ def build_figures(study: Study, screened: list[Screened], out_dir: str, tile_cac
             ("LocationMap", lambda a, b: figure_location_map(study, cache, a, b)),
             ("CrashMap", lambda a, b: figure_crash_map(study, screened, cache, a, b, decisions=decisions))]
     if "aadt" in study.cfg.get("inputs", {}):
-        figs.append(("AADTMap", lambda a, b: figure_aadt_map(study, cache, a, b)))
+        figs.append(("ADTMap", lambda a, b: figure_adt_map(study, cache, a, b)))
     for name, fn in figs:
         png = os.path.join(out_dir, f"{sid}_{name}.png"); pdf = os.path.join(out_dir, f"{sid}_{name}.pdf")
         fn(png, pdf); paths += [png, pdf]

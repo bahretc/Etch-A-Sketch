@@ -114,6 +114,37 @@ def write_review_outputs(study: Study, screened: list[Screened], dets: dict[int,
         rm = "" if r["report_mp"] is None else f"{r['report_mp']:.3f}"
         lines.append(f"| {r['n']} | {r['crash_id']} | {r['date']} | {r['teaas_on_road']} MP {tm} | {r['report_location']} | {rm} | "
                      f"{r['decision']}{' (' + r['in_section'] + ')' if r['in_section'] not in ('yes', 'no') else ''} | {r['confidence']} |")
+    # section crash summary after the review (IS + ADD), with the at-limit crashes called out
+    from .teaas import TYPE_LONG, SEVERITY_LONG
+    by_id = {s.row.crash_id: s for s in screened}
+    inside = [r for r in rows if r["decision"] in ("IS", "ADD")]
+    at_limit = [r for r in inside if r["in_section"] not in ("yes", "no")]
+    core = [r for r in inside if r["in_section"] == "yes"]
+    def tally(rs, key):
+        c = {}
+        for r in rs:
+            c[key(r)] = c.get(key(r), 0) + 1
+        return sorted(c.items(), key=lambda kv: -kv[1])
+    lines += ["", f"## Section crashes after the review: {len(inside)} ({len(core)} inside the limits, {len(at_limit)} at a limit)", "",
+              "| Crash type | Inside | At a limit | Total |", "| --- | --: | --: | --: |"]
+    types = sorted({r["type"] for r in inside}, key=lambda t: -sum(1 for r in inside if r["type"] == t))
+    for t in types:
+        a = sum(1 for r in core if r["type"] == t); b = sum(1 for r in at_limit if r["type"] == t)
+        lines.append(f"| {TYPE_LONG.get(t, t)} | {a} | {b} | {a + b} |")
+    lines += ["", "| Severity | Inside | At a limit | Total |", "| --- | --: | --: | --: |"]
+    for sev in ("K", "A", "B", "C", "O"):
+        a = sum(1 for r in core if (r["severity"] or "O") == sev); b = sum(1 for r in at_limit if (r["severity"] or "O") == sev)
+        if a + b:
+            lines.append(f"| {SEVERITY_LONG[sev]} | {a} | {b} | {a + b} |")
+    if at_limit:
+        lines += ["", "### Crashes at a limit (the PE's call)", ""]
+        for r in at_limit:
+            lines.append(f"- **{r['crash_id']}** ({r['date']}, {TYPE_LONG.get(r['type'], r['type'])}, {r['severity'] or 'O'}): {r['in_section']}, report MP {r['report_mp']:.3f}. {r['report_location']}")
+    outside_near = [r for r in rows if r["decision"] == "NIS" and r["report_mp"] is not None and r["report_mp"] <= lim["begin_mp"] + 0.005]
+    if outside_near:
+        lines += ["", "### Reviewed and left out, between the NC 179 intersection and the begin limit", ""]
+        for r in outside_near:
+            lines.append(f"- **{r['crash_id']}** ({r['date']}, {TYPE_LONG.get(r['type'], r['type'])}, {r['severity'] or 'O'}): report MP {r['report_mp']:.3f}. {r['report_location']}")
     lines += ["", "## Facts from the reports", ""]
     for r in rows:
         lines.append(f"- **{r['crash_id']}** ({r['decision']}): {r['facts']}" + (f" _TEAAS: {r['teaas_issue']}_" if r["teaas_issue"] else ""))

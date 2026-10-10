@@ -30,6 +30,43 @@ NC 179BUS (Beach Dr SW) MP 0.025 (Calabash NAPA Auto Care Center driveway) to MP
 | 24 | 108186124 | 2025-07-27 | NC 179BUS MP 0.000 | NC 179 BUS at SR 1164 (0 ft, intersection) toward SR 1165, in Calabash; lat/long 33.898900, -78.55268 (the intersection); unit 1 westbound on NC 179B turning left into NC 179 was struck in the intersection by unit 2 eastbound on SR 1164. An intersection crash at the signal | 0.000 | NIS | high |
 | 25 | 108280240 | 2025-10-20 | NC 179 MP 999.999 | Written as NC 179, 1.00 mi N of SR 1810 toward SR 1164, in Calabash; lat/long 33.885400, -78.54851; unit 1 northbound turning left into the PVA of Bonaparte Dr (the diagram names it), unit 2 southbound. Bonaparte Dr meets NC 179 BUS at inventory MP 0.955, about 0.75 mi past the end limit, which matches the coordinates (0.8 mi south-southeast of the section) | 0.955 | NIS | high |
 
+## Section crashes after the review: 17 (10 inside the limits, 7 at a limit)
+
+| Crash type | Inside | At a limit | Total |
+| --- | --: | --: | --: |
+| Left turn, same roadway | 5 | 4 | 9 |
+| Fixed object | 1 | 1 | 2 |
+| Left turn, different roadways | 0 | 2 | 2 |
+| Animal | 1 | 0 | 1 |
+| Rear end, slow or stop | 1 | 0 | 1 |
+| Right turn, different roadways | 1 | 0 | 1 |
+| Sideswipe, same direction | 1 | 0 | 1 |
+
+| Severity | Inside | At a limit | Total |
+| --- | --: | --: | --: |
+| Fatal (K) | 1 | 0 | 1 |
+| Class C injury | 0 | 4 | 4 |
+| Property damage only | 9 | 3 | 12 |
+
+### Crashes at a limit (the PE's call)
+
+- **108109880** (2025-05-14, Fixed object, C): at the begin limit, report MP 0.025. Written as NC 179, 123 ft E of SR 1163 toward SR 1186, in Calabash (the SR numbers are wrong for this spot); lat/long 33.898680, -78.55214, which is on NC 179 BUS about 150 ft southeast of the intersection. Westbound (toward NC 179) unit 1 turned right into a PVA on the north side and dropped into the ditch - at 123 to 150 ft from the intersection on the northeast side that PVA is the Calabash NAPA Auto Care Center driveway, i.e. the begin limit itself
+- **108512267** (2026-05-27, Left turn, different roadways, C): at the end limit, report MP 0.205. NC 179 BUS, written as 0.20 mi E of SR 1163 toward SR 1810 (SR 1163 is a wrong name), 0.20 mi E of Calabash; lat/long 33.896540, -78.55039 is the Hidden Valley Pl junction (MP 0.206). Unit 1 came north out of Hidden Valley Pl (written as a PVA) turning left onto NC 179 BUS; the diagram is labeled PVA Hidden Valley Pl. The junction is the end limit of the section
+- **108581555** (2026-07-24, Left turn, different roadways, C): at the begin limit, report MP 0.025. Written as NC 179, 163 ft E of SR 1164 toward SR 1810, 0.10 mi E of Calabash; lat/long 33.898720, -78.55224 is on NC 179 BUS about 116 ft from the intersection. The diagram shows unit 1 leaving the PVA of Minuteman (the food mart on the southwest side, opposite the NAPA driveway) and turning northwest across eastbound unit 2 on a 3-lane 32-ft road. The Minuteman driveway sits opposite the begin-limit driveway, 116 to 163 ft from the intersection
+- **108438531** (2026-03-20, Left turn, same roadway, C): at the begin limit, report MP 0.023. NC 179 BUS, 120 ft E of NC 179 toward SR 1810, in Calabash; lat/long 33.898720, -78.55223 (about 116 ft from the intersection). Eastbound unit 1, stopped for traffic, turned left into the PVA of NAPA Auto Care Center (drawn on the diagram) and was struck by westbound unit 2 - the begin-limit driveway itself
+- **108347203** (2025-12-19, Left turn, same roadway, O): at the begin limit, report MP 0.024. NC 179 BUS, written as 68 ft E of NC 179 toward SR 1288 (wrong road name), in Calabash; lat/long 33.898700, -78.55222 (about 125 ft from the intersection, the same device position as the other NAPA driveway crashes). Eastbound unit 1 turned left into a PVA on the north side (the NAPA side) and was struck by westbound unit 2. The written 68 ft would put it 64 ft short of the limit; the coordinates and the north-side PVA put it at the NAPA driveway
+- **106921434** (2022-04-12, Left turn, same roadway, O): at the begin limit, report MP 0.024. NC 179 BUS, 126 ft E of NC 179 toward SR 1810, in Calabash; eastbound unit 1 turned left into the NAPA parking lot (NAPA PVA drawn on the diagram, south side as drawn with north down) and collided with westbound unit 2. The NAPA driveway is the begin limit
+- **106989320** (2022-06-15, Left turn, same roadway, O): at the begin limit, report MP 0.019. NC 179 BUS, 100 ft S of NC 179 toward SR 1246, in Calabash; southbound unit 1 turning left into the PVA of 1001 Beach Dr SW (east side as drawn, north arrow to the left), struck by northbound unit 2. 1001 Beach Dr SW is the NAPA Auto Parts parcel (OpenStreetMap geocode 33.89915, -78.55171, the lot in the wedge between NC 179 BUS and Old Georgetown Rd) whose driveway is the begin limit; 100 ft is the trooper's round figure
+
+### Reviewed and left out, between the NC 179 intersection and the begin limit
+
+- **107449205** (2023-09-01, Right turn, different roadways, O): report MP 0.000. NC 179 BUS at NC 179 (0 ft, intersection) toward Little Ln SW, 0.10 mi E of Calabash; the diagram shows the signalized NC 179 / NC 179 B intersection with unit 2 stopped at the light facing north on NC 179 B and eastbound unit 1 turning right onto NC 179 B and striking it in the intersection. An intersection crash, 132 ft before the begin limit
+- **106894323** (2022-03-18, Right turn, different roadways, C): report MP 0.024. NC 179 BUS, 126 ft S of NC 179 toward SR 1246, in Calabash; unit 2 came out of the Sunoco PVA on the southwest side (drawn at the right-turn radius) turning right onto NC 179 B and was struck by a southbound tractor-trailer. The Sunoco station is the corner lot on the southwest side at the NC 179 intersection; its driveway at 126 ft is just before the NAPA driveway (132 ft), opposite side
+- **108595754** (2026-08-15, Right turn, different roadways, O): report MP 0.000. NC 179 at SR 1164 (0 ft, intersection) toward NC 904, in Calabash; lat/long 33.898720, -78.55247 (the intersection); unit 1 northbound on NC 179 turning right onto NC 179B collided in the intersection with unit 2 eastbound on SR 1164; the signal was in flashing red. An intersection crash
+- **107407446** (2023-07-24, Left turn, different roadways, O): report MP 0.014. NC 179 BUS, 75 ft S of NC 179 toward SR 1810, in Calabash; unit 1 stopped on the PVA of the Minuteman Food Mart (southwest corner lot) turned left onto NC 179B into the path of northbound unit 2; the diagram shows the PVA on the west side with a 36-ft road. 75 ft from the intersection is 57 ft before the begin limit
+- **107421425** (2023-08-09, Right turn, same roadway, O): report MP 0.004. NC 179, 20 ft N of SR 1164 toward SR 1810, in Calabash; the diagram shows the four-leg signalized intersection (SR 1164, Old Georgetown Rd, NC 179, NC 179 south leg): unit 1 turned right from NC 179 into the NC 179 BUS leg, went left of center and struck unit 2 stopped for the red light facing north on that leg, within about 20 ft of the intersection. An intersection crash, 112 ft before the begin limit
+- **108186124** (2025-07-27, Left turn, same roadway, B): report MP 0.000. NC 179 BUS at SR 1164 (0 ft, intersection) toward SR 1165, in Calabash; lat/long 33.898900, -78.55268 (the intersection); unit 1 westbound on NC 179B turning left into NC 179 was struck in the intersection by unit 2 eastbound on SR 1164. An intersection crash at the signal
+
 ## Facts from the reports
 
 - **108569891** (IS): 7/22/2026 17:31, daylight, dry. Unit 1 2018 Hyundai SUV southbound 10 mph turning left into the restaurant PVA (maneuver 8); unit 2 2011 Harley-Davidson motorcycle northbound 45 mph (impact 30). Fail to yield. Motorcycle driver (43) killed, passenger B injury, SUV driver B injury. Both motorcycle occupants ejected, wearing DOT helmets. Speed limit 45, 3 lanes (TWLTL), no traffic control (76=0). Charge 175445H misdemeanor death / fail to yield to a motorcycle. Trp H E Todd NCSHP.

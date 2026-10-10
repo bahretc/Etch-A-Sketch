@@ -92,7 +92,11 @@ The earlier mean-of-counts figures (11,600 latest; 12,000 5-yr; 12,300 10-yr) ar
 `41000079736_CalculatedAADT.xls` / `.xlsx` (`make_calculated_aadt.py`) is the package "CalculatedAADT" template
 (4-LEG INTERSECTION ADT sheet, copied from the 41000077748 package) filled with the four 2021 leg ADTs: total ADT
 12,050 (its rounding rows show 12,100) against the 12,300 "Annual ADT" on the TEAAS 10-yr report is a 2.0 % difference, so the template's rule
-("keep ADT used in the study" unless the difference exceeds 5 %) keeps 12,300 as the study ADT.
+("keep ADT used in the study" unless the difference exceeds 5 %) keeps 12,300 as the study ADT. The script fills the
+original `.xls` template inside LibreOffice (headless Python UNO) and stores both files from that one document, so the
+template's drawn intersection lines, two-line page header and superscript footnote markers survive; the legs are
+labelled in the template's short style (NC 180/226 (N) / (S), SR 1103 (NW) / (SE)) with the full names and station
+numbers in note 2. `data/CalculatedAADT_template_41000077748.xlsx` is no longer used.
 
 ## Maps (`maps/`)
 

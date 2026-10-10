@@ -41,6 +41,7 @@ NOTES = [  # (marker, text); printed under the template's note 1 (row 47), one 1
     ("3", "ADT Used in Study = Annual ADT on the TEAAS 10-year Intersection Analysis Report (12,300)."),
 ]
 NOTE_ROW, NOTE_WIDTH = 49, 105                        # first note row (row 48 stays blank as a spacer); chars per printed line
+NOTE_FONT = dict(CharFontName="Arial", CharHeight=10.0, CharPosture=ITALIC, CharColor=0x0000FF)   # as the template note
 
 
 def pv(name, value):
@@ -79,15 +80,18 @@ class Soffice:
         self.profile.cleanup()
 
 
-def set_marked_text(cell, text, marker, *, before=""):
-    """Write `text` with a superscript footnote `marker` (template style: 'ADT Year¹:'). `before` = chars of the
-    cell text that precede the marker; the marker is inserted there, e.g. before the trailing colon."""
-    if not marker:
-        cell.setString(text); return
-    cell.setString(before + marker + text[len(before):])
+def set_marked_text(cell, text, marker, *, before="", **char_props):
+    """Write `text` into `cell` with a superscript footnote `marker` (template style: 'ADT Year¹:'). `before` = the
+    characters that precede the marker, e.g. everything before the trailing colon. `char_props` (CharPosture, CharColor,
+    ...) are applied to the whole text as run formatting; the template sheet is protected, so cell formats are not touched."""
+    cell.setString(before + marker + text[len(before):] if marker else text)
     cur = cell.Text.createTextCursor()
-    cur.gotoStart(False); cur.goRight(len(before), False); cur.goRight(len(marker), True)
-    cur.CharEscapement = 33; cur.CharEscapementHeight = 58                  # superscript
+    if char_props:
+        cur.gotoStart(False); cur.gotoEnd(True)
+        for name, value in char_props.items(): setattr(cur, name, value)
+    if marker:
+        cur.gotoStart(False); cur.goRight(len(before), False); cur.goRight(len(marker), True)
+        cur.CharEscapement = 33; cur.CharEscapementHeight = 58              # superscript
 
 
 def fill(doc):
@@ -102,15 +106,14 @@ def fill(doc):
     for (c_name, c_adt, c_year), name, key, marker in LEGS:
         set_marked_text(cell(c_name), name, marker, before=name)                      # "SR 1103 (NW)²"
         cell(c_adt).setValue(float(mid["legs"][key])); cell(c_year).setValue(float(mid["year"]))
-    # Notes: italic blue Arial 10 like the template's note 1 in A47; long notes are split into rows so nothing
-    # extends past column F (A..F = 201 mm; 105 chars of Arial 10 italic is about 180 mm).
+    # Notes: italic blue Arial 10 like the template's note 1 in A47, one printed line per row so nothing extends past
+    # column F (A..F = 201 mm; 105 chars of Arial 10 italic is about 180 mm). The sheet is protected, so the formatting
+    # is carried by the text runs (set_marked_text): the first line's marker and the continuation lines' 3-space indent
+    # are written as a separate superscript run, which keeps every line stored as rich text with its own formatting.
     row = NOTE_ROW
     for marker, text in NOTES:
-        lines = textwrap.wrap(text, NOTE_WIDTH, subsequent_indent="   ")
-        for i, line in enumerate(lines):
-            c = cell(f"A{row}")
-            set_marked_text(c, (" " if i == 0 else "") + line, marker if i == 0 else "")
-            c.CharFontName = "Arial"; c.CharHeight = 10; c.CharPosture = ITALIC; c.CharColor = 0x0000FF
+        for i, line in enumerate(textwrap.wrap(text, NOTE_WIDTH - 3)):
+            set_marked_text(cell(f"A{row}"), (" " if i == 0 else "") + line, marker if i == 0 else "   ", **NOTE_FONT)
             row += 1
     # Print the 4-LEG sheet on one page (the template's layout plus the notes slightly exceeds one page in LibreOffice)
     ps = doc.StyleFamilies.getByName("PageStyles").getByName(sh.PageStyle)

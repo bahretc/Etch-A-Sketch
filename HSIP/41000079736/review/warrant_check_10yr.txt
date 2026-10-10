@@ -1,0 +1,56 @@
+Deleted crashes (reviewer 'DEL' in the fiche workbooks):
+  105334401  2017-12-27  Animal                 O   night
+  106251888  2020-06-16  Sideswipe, opp dir     O   day
+  106482677  2021-02-06  Fixed object           O   night
+  106653569  2021-08-03  Animal                 O   night
+  107468199  2023-09-23  Animal                 O   night
+  107921860  2024-11-14  Left turn, diff rdwy   O   night
+  108204170  2025-08-06  Fixed object           O   night
+
+=== A. As submitted (29 crashes): 29 crashes, 2 K/A, 7 B/C, 20 PDO, EPDO 232.4, SI 8.01
+  MET      I-1r Frontal Impact Rural (9+ frontal, 60% frontal, 20% in last 3 yr)
+            22 frontal (76%), 13/29 (45%) last 3 yr
+  not met  I-2r Last Year Increase Rural (20+ crashes, 32% in last yr)
+            29 crashes, 6 (21%) in 9/2025-8/2026
+  not met  I-3r Frequency w/ Severity Index Rural (20+ crashes, SI 9.0, 30% in last 3 yr)
+            29 crashes, SI 8.01, 45% last 3 yr
+  not met  I-3 Fatal and Severe Injury (3+ K/A frontal in last 5 yr)
+            2 K/A frontal crashes since 9/2021
+  not met  I-4r Night Location Rural (10+ night, 46% night, 20% in last 3 yr)
+            9 night (31%)
+
+=== B. All deleted crashes added back: 36 crashes, 2 K/A, 7 B/C, 27 PDO, EPDO 239.4, SI 6.65
+  MET      I-1r Frontal Impact Rural (9+ frontal, 60% frontal, 20% in last 3 yr)
+            23 frontal (64%), 16/36 (44%) last 3 yr
+  not met  I-2r Last Year Increase Rural (20+ crashes, 32% in last yr)
+            36 crashes, 6 (17%) in 9/2025-8/2026
+  not met  I-3r Frequency w/ Severity Index Rural (20+ crashes, SI 9.0, 30% in last 3 yr)
+            36 crashes, SI 6.65, 44% last 3 yr
+  not met  I-3 Fatal and Severe Injury (3+ K/A frontal in last 5 yr)
+            2 K/A frontal crashes since 9/2021
+  not met  I-4r Night Location Rural (10+ night, 46% night, 20% in last 3 yr)
+            15 night (42%)
+
+=== C. Only deleted rear-end / fixed-object crashes added back: 31 crashes, 2 K/A, 7 B/C, 22 PDO, EPDO 234.4, SI 7.56
+  MET      I-1r Frontal Impact Rural (9+ frontal, 60% frontal, 20% in last 3 yr)
+            22 frontal (71%), 14/31 (45%) last 3 yr
+  not met  I-2r Last Year Increase Rural (20+ crashes, 32% in last yr)
+            31 crashes, 6 (19%) in 9/2025-8/2026
+  not met  I-3r Frequency w/ Severity Index Rural (20+ crashes, SI 9.0, 30% in last 3 yr)
+            31 crashes, SI 7.56, 45% last 3 yr
+  not met  I-3 Fatal and Severe Injury (3+ K/A frontal in last 5 yr)
+            2 K/A frontal crashes since 9/2021
+  not met  I-4r Night Location Rural (10+ night, 46% night, 20% in last 3 yr)
+            11 night (35%)
+
+=== D. Deleted non-frontal crashes added back (3 animal, 2 fixed object, 1 sideswipe): 35 crashes, 2 K/A, 7 B/C, 26 PDO, EPDO 238.4, SI 6.81
+  MET      I-1r Frontal Impact Rural (9+ frontal, 60% frontal, 20% in last 3 yr)
+            22 frontal (63%), 15/35 (43%) last 3 yr
+  not met  I-2r Last Year Increase Rural (20+ crashes, 32% in last yr)
+            35 crashes, 6 (17%) in 9/2025-8/2026
+  not met  I-3r Frequency w/ Severity Index Rural (20+ crashes, SI 9.0, 30% in last 3 yr)
+            35 crashes, SI 6.81, 43% last 3 yr
+  not met  I-3 Fatal and Severe Injury (3+ K/A frontal in last 5 yr)
+            2 K/A frontal crashes since 9/2021
+  not met  I-4r Night Location Rural (10+ night, 46% night, 20% in last 3 yr)
+            14 night (40%)

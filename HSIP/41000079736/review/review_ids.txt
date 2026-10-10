@@ -1,0 +1,25 @@
+HSIP fiche review - Study 41000079736
+NC 180/NC 226 (Post Rd) at SR 1103 (Pleasant Dr/Pleasant Hill Church Rd)
+Intersection: 35.246324, -81.509409
+Fiche crashes: 1783   In initial study: 23   To review: 14
+
+TIER 1 - within ~350 ft by cleaned geocode or milepost; likely intersection-related
+107960640  2024-12-15  PDO       Left Turn, Different Roadways  geocoded 170 ft from intersection  [low-precision coordinates (3 decimals)]
+108465156  2026-04-07  PDO       Left Turn, Same Roadway        geocoded 262 ft from intersection; NC 180 MP 4.701 is +528 ft from intersection MP 4.601; referenced NC 180 0.1 mi N of SR 1103
+107608647  2024-01-30  PDO       Animal                         geocoded 288 ft from intersection; NC 180 MP 4.653 is +275 ft from intersection MP 4.601; referenced NC 226 0.052 mi N of SR 1103
+108314990  2025-11-19  PDO       Backing Up                     SR 1103 MP 3.578 is -348 ft from intersection MP 3.644  [coordinates (DMV349CLEANED, 3 decimals) disagree with milepost by 3328 ft; milepost/narrative are internally consistent so coordinates are probably rounded or wrong - confirm on the DMV-349]
+107967581  2024-12-09  PDO       Sideswipe, Opposite Direction  NC 180 MP 4.557 is -232 ft from intersection MP 4.601  [coordinates (DMV349, 2 decimals) disagree with milepost by 3631 ft; milepost/narrative are internally consistent so coordinates are probably rounded or wrong - confirm on the DMV-349]
+108561772  2026-07-16  PDO       Fixed Object                   NC 180 MP 4.584 is -90 ft from intersection MP 4.601  [coordinates (DMV349, 2 decimals) disagree with milepost by 27099 ft; milepost/narrative are internally consistent so coordinates are probably rounded or wrong - confirm on the DMV-349]
+
+TIER 2 - referenced ~0.1 mi (about 530 ft) from the intersection; outside the 150 ft Y-line
+107563341  2023-12-13  PDO       Animal                         geocoded 528 ft from intersection
+107786994  2024-07-15  PDO       Sideswipe, Same Direction      NC 180 MP 4.501 is -528 ft from intersection MP 4.601; referenced NC 180 0.1 mi S of SR 1103
+107921837  2024-11-12  PDO       Sideswipe, Opposite Direction  SR 1103 MP 3.744 is +528 ft from intersection MP 3.644; referenced SR 1103 0.1 mi W of NC 180  [low-precision coordinates (3 decimals)]
+106781021  2021-11-25  PDO       Animal                         NC 180 MP 4.501 is -528 ft from intersection MP 4.601; referenced NC 180 0.1 mi S of SR 1103
+106966564  2022-05-23  C injury  Fixed Object                   SR 1103 MP 3.544 is -528 ft from intersection MP 3.644; referenced SR 1103 0.1 mi E of NC 180
+107110946  2022-10-11  PDO       Sideswipe, Opposite Direction  SR 1103 MP 3.744 is +528 ft from intersection MP 3.644; referenced SR 1103 0.1 mi W of NC 180
+107363522  2023-06-07  B injury  Rear End, Slow or Stop         NC 180 MP 4.701 is +528 ft from intersection MP 4.601; referenced NC 180 0.1 mi N of SR 1103
+107101290  2022-10-05  PDO       Animal                         NC 180 MP 4.704 is +544 ft from intersection MP 4.601
+
+All IDs (comma separated):
+107960640, 108465156, 107608647, 108314990, 107967581, 108561772, 107563341, 107786994, 107921837, 106781021, 106966564, 107110946, 107363522, 107101290

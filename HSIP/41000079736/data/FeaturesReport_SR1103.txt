@@ -1,0 +1,34 @@
+                                    North Carolina Department of Transportation
+                                    Traffic Engineering Accident Analysis System
+                                                   Features Report
+
+
+                           Inventoried    Begin           End
+County                       Route ID    Milepost       Milepost
+CLEVELAND                   40001103       0.0           4.625
+
+
+                                                                                                             Beyond
+            Feature                                                         Distance       Direction          Route
+MP No         ID    Feature Name/Type    Special Type                        to Next        to Next     Loop Limits
+0.000    40002238 SR 2238                At grade intersection,    3 legs     1.102    North and West
+1.102    220078     Structure            Bridge                               0.021
+1.123    40002439 SR 2439                At grade intersection,    3 legs     0.149    North and West
+1.272    40002380 SR 2380                At grade intersection,    3 legs     0.566    North and West
+1.838    40002204 SR 2204                At grade intersection,    3 legs     0.136    North and West
+1.974    40002201 SR 2201                At grade intersection,    3 legs     0.402    North and West
+2.376    40002303 SR 2303                At grade intersection,    3 legs     0.299    North and West
+2.675    40002208 SR 2208                At grade intersection,    3 legs     0.244    North and West
+2.919    40002205 SR 2205                At grade intersection,    4 legs     0.000    North and West
+2.919    40002206 SR 2206                At grade intersection,    4 legs     0.725    North and West
+3.644    30000180 NC 180                 At grade intersection,    4 legs     0.000    North and West
+3.644    30000226 NC 226                 At grade intersection,    4 legs     0.334    North and West
+3.978    40002384 SR 2384                At grade intersection,    3 legs     0.456    North and West
+4.434    40002413 SR 2413                At grade intersection,    3 legs     0.191    North and West
+4.625    40001100 SR 1100                At grade intersection,    3 legs     0.000    North and West
+
+
+
+
+10/09/2026                                                                                              Page 1 of 1
+

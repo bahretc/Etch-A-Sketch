@@ -1,0 +1,27 @@
+Intersection entering AADT = (sum of the AADT on every leg) / 2
+AADT per leg = the NCDOT station count for the MIDDLE YEAR of the study period; a leg with no count for that year
+gets a straight-line estimate between its nearest earlier and later counts, rounded per the NCDOT/AASHTO AADT rounding
+chart (10 below 100, 50 for 100-999, 100 for 1,000-9,999, 500 for 10,000-99,999, 1,000 above), and is labelled
+"(estimate)" on the collision diagram. Entering AADT = sum of the legs / 2, rounded to the nearest hundred (TEAAS
+Chapter 8). Workbook: 41000079736_AADT.xlsx.
+
+  NC 180/NC 226 (S Post Rd) north leg                sta 0230000187  2016:12,000  2017:11,000  2018:11,500  2021:11,000  2023:11,500  2024:11,000  2025:10,500
+  NC 180/NC 226 (S Post Rd) south leg                sta 0230000152  2016:12,000  2017:11,000  2018:11,000  2020:10,000  2021:10,500  2023:10,500  2024:10,500  2025:10,000
+  SR 1103 (Pleasant Dr) northwest leg                sta 0230000045  2016:1,600  2018:1,600  2022:1,300  2024:1,500
+  SR 1103 (Pleasant Hill Church Rd) southeast leg    sta 0230000531  2017:1,200  2019:1,100  2020:1,100  2021:1,200  2023:1,200  2025:1,200
+
+  10-yr study 9/1/2016-8/31/2026 -> middle year 2021:
+      NC 180/NC 226 (S Post Rd) north leg               11,000  count
+      NC 180/NC 226 (S Post Rd) south leg               10,500  count
+      SR 1103 (Pleasant Dr) northwest leg                1,400  estimate
+      SR 1103 (Pleasant Hill Church Rd) southeast leg    1,200  count
+      sum 24,100  ->  sum / 2 = 12,050  ->  rounded to the nearest hundred (TEAAS) 12,100 vpd  ->  10-yr exposure 12,100 x 365 x 10 / 1,000,000 = 44.17 MEV
+
+  5-yr check 9/1/2021-8/31/2026 -> middle year 2024:
+      NC 180/NC 226 (S Post Rd) north leg               11,000  count
+      NC 180/NC 226 (S Post Rd) south leg               10,500  count
+      SR 1103 (Pleasant Dr) northwest leg                1,500  count
+      SR 1103 (Pleasant Hill Church Rd) southeast leg    1,200  estimate
+      sum 24,200  ->  sum / 2 = 12,100  ->  rounded to the nearest hundred (TEAAS) 12,100 vpd  ->  5-yr exposure 12,100 x 365 x 5 / 1,000,000 = 22.08 MEV
+
+  Superseded (mean-of-counts method, no longer used): latest 11,600; 5-yr mean 11,988; 10-yr mean 12,284 vpd

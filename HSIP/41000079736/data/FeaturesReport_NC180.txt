@@ -1,0 +1,207 @@
+                                    North Carolina Department of Transportation
+                                    Traffic Engineering Accident Analysis System
+                                                   Features Report
+
+
+                           Inventoried    Begin           End
+County                       Route ID    Milepost       Milepost
+CLEVELAND                   30000180       0.0          11.958
+
+
+                                                                                                             Beyond
+            Feature                                                         Distance       Direction          Route
+MP No         ID    Feature Name/Type    Special Type                        to Next        to Next     Loop Limits
+0.000    30000018 NC 18                  At grade intersection,    4 legs     0.000    North and East    Y
+0.000    40001140 SR 1140                At grade intersection,    4 legs     0.000    North and East
+0.000    50020729 MOUNT SINAI CH         At grade intersection,    4 legs     0.431    North and East
+0.431    40001108 SR 1108                At grade intersection,    3 legs     0.000    South and East
+0.431    50033187 WILSON                 At grade intersection,    3 legs     0.055    South and East
+0.486    40002475 SR 2475                At grade intersection,    3 legs     0.000    South and East
+0.486    50033547 WOODED                 At grade intersection,    3 legs     0.092    South and East
+0.578    40002382 SR 2382                At grade intersection,    3 legs     0.000    South and East
+0.578    50025956 RILEY                  At grade intersection,    3 legs     0.089    South and East
+0.667    40002220 SR 2220                At grade intersection,    4 legs     0.000    South and East
+0.667    40002423 SR 2423                At grade intersection,    4 legs     0.000    South and East
+0.667    50008112 DEEP GREEN             At grade intersection,    4 legs     0.000    South and East
+0.667    50026726 RUNYON                 At grade intersection,    4 legs     0.152    South and East
+0.819    40002425 SR 2425                At grade intersection,    3 legs     0.000    North and East
+0.819    50018834 MAPLE VALLEY           At grade intersection,    3 legs     0.127    North and East
+0.946    40002214 SR 2214                At grade intersection,    3 legs     0.000    North and East
+0.946    50012239 GRAHAM                 At grade intersection,    3 legs     0.096    North and East
+1.042    40002367 SR 2367                At grade intersection,    3 legs     1.124    North and East
+2.166    40001107 SR 1107                At grade intersection,    4 legs     0.000    North and East
+2.166    50007975 DAVIS                  At grade intersection,    4 legs     0.120    North and East    Y
+2.286    40001298 SR 1298                At grade intersection,    3 legs     0.000    North and East
+2.286    50014034 HILLCREST              At grade intersection,    3 legs     0.035    North and East
+2.321    40002474 SR 2474                At grade intersection,    3 legs     0.000    North and East
+2.321    50009132 EAGLE NEST             At grade intersection,    3 legs     0.142    North and East
+2.463    50038366 LEXUS                  At grade intersection,    3 legs     0.148    North and East
+2.611    30000198 NC 198                 At grade intersection,    3 legs     0.096    North and East
+2.707    40001100 SR 1100                At grade intersection,    3 legs     0.000    North and East
+2.707    50029549 SULPHUR SPRINGS        At grade intersection,    3 legs     0.139    North and East
+2.846    40002426 SR 2426                At grade intersection,    3 legs     0.182    North and East
+3.028    50042615 ELLIS CHAPEL           At grade intersection,    3 legs     0.045    North and East
+3.073    40001279 SR 1279                At grade intersection,    3 legs     0.000    North and East
+3.073    50028855 SPRING                 At grade intersection,    3 legs     0.003    North and East
+3.076    BM000413 ML-PATTERSON                                                0.147    North and East    Y
+3.223    40001282 SR 1282                At grade intersection,    3 legs     0.000    North and East
+3.223    50023710 PEELER                 At grade intersection,    3 legs     0.039    North and East
+
+
+
+10/09/2026                                                                                              Page 1 of 4
+                                    North Carolina Department of Transportation
+                                    Traffic Engineering Accident Analysis System
+                                                   Features Report
+
+
+                           Inventoried    Begin           End
+County                       Route ID    Milepost       Milepost
+CLEVELAND                   30000180       0.0          11.958
+
+
+                                                                                                             Beyond
+            Feature                                                         Distance       Direction          Route
+MP No         ID    Feature Name/Type    Special Type                        to Next        to Next     Loop Limits
+3.262    50050721 BRIARWOOD FARM         At grade intersection,    3 legs     0.013    North and East
+3.275    724090C    Railroad Crossing                                         0.283
+3.558    30000226 NC 226                 At grade intersection,    3 legs     0.000    North and East    Y
+3.558    50006297 CLEVELAND              At grade intersection,    3 legs     0.172    North and East
+3.730    40002205 SR 2205                At grade intersection,    3 legs     0.000    North and East
+3.730    50007320 CREEK RIDGE            At grade intersection,    3 legs     0.000    North and East
+3.730    50023556 PATTERSON SCHL         At grade intersection,    3 legs     0.167    North and East
+3.897    40001104 SR 1104                At grade intersection,    3 legs     0.000    North and East
+3.897    50013006 HAMRICK                At grade intersection,    3 legs     0.182    North and East
+4.079    BM000413 ML-PATTERSON                                                0.129    North and East    Y
+4.208    40001236 SR 1236                At grade intersection,    3 legs     0.000    North and East
+4.208    50014855 IDLEWILD               At grade intersection,    3 legs     0.000    North and East
+4.208    50018354 LOWERY                 At grade intersection,    3 legs     0.393    North and East
+4.601    40001103 SR 1103                At grade intersection,    4 legs     0.000    North and East
+4.601    50024407 PLEASANT HILL          At grade intersection,    4 legs     0.303    North and East
+4.904    40002329 SR 2329                At grade intersection,    3 legs     0.000    North and East
+4.904    50030745 TOWER                  At grade intersection,    3 legs     0.226    North and East
+5.130    30000226 NC 226                 At grade intersection,    3 legs     0.000    North and East    Y
+5.130    50009155 EARL                   At grade intersection,    3 legs     0.133    North and East
+5.263    40002202 SR 2202                At grade intersection,    4 legs     0.000    North and East
+5.263    50001981 BEAM                   At grade intersection,    4 legs     0.000    North and East
+5.263    50015559 JOES LAKE              At grade intersection,    4 legs     0.000    North and East
+5.263    50015735 JONES LAKE             At grade intersection,    4 legs     0.290    North and East
+5.553    50014941 INDUSTRY               At grade intersection,    4 legs     0.000    North and East
+5.553    50045670 HALLELUJAH             At grade intersection,    4 legs     0.043    North and East
+5.596    BM000498 ML-SHELBY                                                   0.068    North and East    Y
+5.664    BM000498 ML-SHELBY                                                   0.343    North and East    Y
+6.007    40001232 SR 1232                At grade intersection,    4 legs     0.000    North and East
+6.007    40002200 SR 2200                At grade intersection,    4 legs     0.000    North and East
+6.007    50005034 CARMEL                 At grade intersection,    4 legs     0.000    North and East
+6.007    50027533 SELF                   At grade intersection,    4 legs     0.000    North and East
+6.007    50029428 STREET                 At grade intersection,    4 legs     0.000    North and East
+6.007    50030077 TAYLOR                 At grade intersection,    4 legs     0.290    North and East
+6.297    50034470 MAGEL                  At grade intersection,    3 legs     0.083    North and East
+6.380    BM000498 ML-SHELBY                                                   0.208    North and East    Y
+
+
+
+10/09/2026                                                                                              Page 2 of 4
+                                    North Carolina Department of Transportation
+                                    Traffic Engineering Accident Analysis System
+                                                   Features Report
+
+
+                           Inventoried    Begin           End
+County                       Route ID    Milepost       Milepost
+CLEVELAND                   30000180       0.0          11.958
+
+
+                                                                                                             Beyond
+            Feature                                                         Distance       Direction          Route
+MP No         ID    Feature Name/Type    Special Type                        to Next        to Next     Loop Limits
+6.588    20000074 US 74                  Grade separation, no ramps           0.000    North and East
+6.588    50008516 DIXON                  Grade separation, no ramps           0.010    North and East
+6.598    20600074 US 74 WB COUPLET       At grade intersection,    3 legs     0.210    North and East
+6.808    40002049 SR 2049                At grade intersection,    4 legs     0.000    North and East
+6.808    50016427 KING                   At grade intersection,    4 legs     0.075    North and East
+6.883    40002048 SR 2048                At grade intersection,    4 legs     0.088    North and East
+6.971    50011510 GARRETT                At grade intersection,    3 legs     0.473    North and East
+7.444    29000074 US 74BUS               At grade intersection,    5 legs     0.000    North and East
+7.444    40003063 SR 3063                At grade intersection,    5 legs     0.000    North and East
+7.444    50018919 MARION                 At grade intersection,    5 legs     0.000    North and East
+7.444    50024838 PRISON CAMP            At grade intersection,    5 legs     0.001    North and East
+7.445    BM000498 ML-SHELBY                                                   0.113    North and East    Y
+7.558    50033588 WOODLAWN               Deleted Route                        0.069    North and East
+7.627    40002667 SR 2667                At grade intersection,    3 legs     0.000    North and East
+7.627    50010089 FAIRGROUND             At grade intersection,    3 legs     0.134    North and East
+7.761    50007975 DAVIS                  Deleted Route                        0.000    North and East    Y
+7.761    50043150 TONGA                  At grade intersection,    3 legs     0.090    North and East
+7.851    50009541 ELIZABETH CH           At grade intersection,    3 legs     0.164    North and East
+8.015    40002052 SR 2052                At grade intersection,    4 legs     0.000    North and East
+8.015    50009540 ELIZABETH              At grade intersection,    4 legs     0.000    North and East
+8.015    50029345 STONEY POINT           At grade intersection,    4 legs     0.011    North and East
+8.026    BM000498 ML-SHELBY                                                   0.081    North and East    Y
+8.107    50007567 CRYSTAL                At grade intersection,    3 legs     0.014    North and East
+8.121    BM000498 ML-SHELBY                                                   0.117    North and East    Y
+8.238    50010465 FIELDS                 At grade intersection,    3 legs     0.088    North and East
+8.326    BM000498 ML-SHELBY                                                   0.062    North and East    Y
+8.388    BM000498 ML-SHELBY                                                   0.029    North and East    Y
+8.417    50007012 CORVAIR                At grade intersection,    3 legs     0.089    North and East
+8.506    40002125 SR 2125                At grade intersection,    3 legs     0.000    North and East
+8.506    50017694 LINCOLN                Deleted Route                        0.000    North and East
+8.506    50018360 LOWMAN                 At grade intersection,    3 legs     0.192    North and East
+8.698    50027298 SCHENCK                Deleted Route                        0.004    North and West
+8.702    40002067 SR 2067                At grade intersection,    3 legs     0.000    North and West
+8.702    50010120 FAIRVIEW               At grade intersection,    3 legs     0.808    North and West
+9.510    BM000498 ML-SHELBY                                                   0.144    North and West    Y
+
+
+
+10/09/2026                                                                                              Page 3 of 4
+                                    North Carolina Department of Transportation
+                                    Traffic Engineering Accident Analysis System
+                                                   Features Report
+
+
+                           Inventoried    Begin           End
+County                       Route ID    Milepost       Milepost
+CLEVELAND                   30000180       0.0          11.958
+
+
+                                                                                                             Beyond
+            Feature                                                         Distance       Direction          Route
+MP No         ID    Feature Name/Type    Special Type                        to Next        to Next     Loop Limits
+9.654    30000150 NC 150                 At grade intersection,    4 legs     0.000    North and West
+9.654    50005862 CHERRYVILLE            At grade intersection,    4 legs     0.051    North and West
+9.705    BM000498 ML-SHELBY                                                   0.233    North and West    Y
+9.938    220015     Structure            Bridge                               0.020
+9.958    220476     Structure            Bridge                               0.130
+10.088   50007354 CRESCENT               At grade intersection,    3 legs     0.151    North and West
+10.239   40001926 SR 1926                At grade intersection,    4 legs     0.000    North and East
+10.239   50000279 AIRPORT                At grade intersection,    4 legs     0.315    North and East
+10.554   40001972 SR 1972                At grade intersection,    4 legs     0.000    North and East
+10.554   50024827 PRINCESS               At grade intersection,    4 legs     0.004    North and East
+10.558   50033726 WRIGHT                 Deleted Route                        0.009    North and East
+10.567   40001933 SR 1933                At grade intersection,    3 legs     0.000    North and East
+10.567   50011229 FRIENDSHIP             At grade intersection,    3 legs     0.119    North and East
+10.686   40001937 SR 1937                At grade intersection,    3 legs     0.000    North and West
+10.686   50027289 SCENIC                 At grade intersection,    3 legs     0.043    North and West
+10.729   40001979 SR 1979                At grade intersection,    3 legs     0.000    North and West
+10.729   50005510 CENTERFIELD            At grade intersection,    3 legs     0.182    North and West
+10.911   40001939 SR 1939                At grade intersection,    3 legs     0.000    North and West
+10.911   50011977 GLENNWOOD              At grade intersection,    3 legs     0.226    North and West
+11.137   40001908 SR 1908                At grade intersection,    4 legs     0.000    North and West
+11.137   50024876 PROSPECT CHURCH        At grade intersection,    4 legs     0.000    North and West    Y
+11.137   50034248 NEW PROSPECT CHURCH At grade intersection,       4 legs     0.361    North and West
+11.498   50024876 PROSPECT CHURCH        Deleted Route                        0.010    North and West    Y
+11.508   40001925 SR 1925                At grade intersection,    3 legs     0.000    North and West
+11.508   50014407 HOPEWELL CHURCH        At grade intersection,    3 legs     0.273    North and West
+11.781   40001985 SR 1985                At grade intersection,    3 legs     0.000    North and West
+11.781   50008146 DEERBROOK              At grade intersection,    3 legs     0.088    North and West
+11.869   40001924 SR 1924                At grade intersection,    3 legs     0.000    North and West
+11.869   50000978 ARLEIGH                At grade intersection,    3 legs     0.000    North and West
+11.869   50026269 ROCKOUT SCHOOL         Deleted Route                        0.089    North and West
+11.958   30000018 NC 18                  At grade intersection,    3 legs     0.000    North and West    Y
+11.958   50010186 FALLSTON               At grade intersection,    3 legs     0.000    North and West
+
+
+
+
+10/09/2026                                                                                              Page 4 of 4
+

@@ -1,0 +1,30 @@
+No,Crash ID,Date,Time,Crash type,Sev,Light,Road,Units (dir / maneuver / impact mph / contributing circumstance),Target
+1,104908181,11/08/2016,19:02,Angle,PDO,Dark-lighted,Dry,U1 E left turn 10 mph - inattention; U2 S straight 40 mph,yes
+2,105162557,07/16/2017,13:53,"Rear end, slow or stop",PDO,Daylight,Dry,U1 E straight 5 mph - failure to reduce speed; U2 E stopped 0 mph,
+3,106032499,10/14/2019,07:59,"Left turn, different roadways",PDO,Daylight,Dry,U1 N left turn 10 mph - failed to yield ROW; U2 S straight 35 mph,yes
+4,106234219,05/23/2020,21:31,"Right turn, different roadways",B,Dark-not lighted,Dry,U1 E right turn 10 mph - failed to yield ROW; U2 S straight 35 mph,yes
+5,106423994,12/01/2020,17:41,Angle,B,Dusk,Dry,U1 W straight 20 mph - failed to yield ROW; U2 S straight 45 mph; U3 E stopped 0 mph,yes
+6,106442060,12/19/2020,17:44,"Left turn, different roadways",PDO,Dark-not lighted,Dry,U1 E left turn 15 mph - failed to yield ROW; U2 S straight 35 mph,yes
+7,106691473,08/24/2021,15:45,"Right turn, different roadways",PDO,Daylight,Dry,U1 SE right turn 10 mph - failed to yield ROW; U2 S straight 45 mph,yes
+8,106808749,12/17/2021,15:17,"Rear end, slow or stop",PDO,Daylight,Dry,U1 W straight 10 mph; U2 W stopped 0 mph,
+9,106839126,01/20/2022,07:57,"Left turn, different roadways",PDO,Daylight,Wet,U1 E left turn 15 mph - failed to yield ROW; U2 N straight 45 mph,yes
+10,106893683,03/15/2022,11:33,"Left turn, different roadways",PDO,Daylight,Dry,U1 E left turn 25 mph - failed to yield ROW; U2 S slowing 10 mph,yes
+11,107037107,08/03/2022,22:43,Fixed object,PDO,Dark-not lighted,Dry,U1 N right turn 45 mph - inattention,
+12,107067627,08/28/2022,00:08,Fixed object,PDO,Dark-not lighted,Dry,U1 S straight 45 mph - overcorrected,
+13,107086689,09/13/2022,17:28,"Left turn, different roadways",B,Daylight,Dry,U1 N left turn 10 mph - failed to yield ROW; U2 S straight 35 mph,yes
+14,107127945,10/24/2022,20:40,"Left turn, different roadways",PDO,Dark-not lighted,Dry,U1 S left turn 25 mph - failed to yield ROW; U2 N straight 55 mph,yes
+15,107162484,11/28/2022,16:16,"Rear end, slow or stop",PDO,Daylight,Dry,U1 N straight 40 mph - failure to reduce speed; U2 N stopped 0 mph,
+16,107171393,12/05/2022,15:11,"Left turn, different roadways",PDO,Daylight,Wet,U1 W left turn 10 mph - failed to yield ROW; U2 N straight 45 mph,yes
+17,107473530,09/26/2023,17:58,"Right turn, same roadway",PDO,Daylight,Dry,U1 NW right turn 5 mph - failed to yield ROW; U2 N straight 40 mph,yes
+18,107503115,10/24/2023,17:25,"Rear end, slow or stop",PDO,Daylight,Dry,U1 SE straight 10 mph - failure to reduce speed; U2 SE stopped 0 mph,
+19,107790631,07/16/2024,17:09,"Left turn, different roadways",C,Daylight,Wet,U1 S left turn 15 mph - failed to yield ROW; U2 S straight 45 mph; U3 N straight 35 mph,yes
+20,107915535,11/08/2024,16:26,"Rear end, slow or stop",PDO,Daylight,Dry,U1 W straight 5 mph - failure to reduce speed; U2 W stopped 0 mph,
+21,107960640,12/15/2024,17:52,"Left turn, different roadways",PDO,Dark-not lighted,Wet,U1 E left turn 10 mph - failed to yield ROW; U2 S straight 45 mph,yes
+22,108045557,03/07/2025,14:25,Angle,C,Daylight,Dry,U1 E straight 10 mph - failed to yield ROW; U2 S straight 30 mph,yes
+23,108120512,05/19/2025,18:55,Angle,A,Daylight,Dry,U1 E straight 15 mph - failed to yield ROW; U2 N straight 45 mph,yes
+24,108353439,12/16/2025,21:12,"Left turn, same roadway",A,Dark-not lighted,Dry,U1 N left turn 15 mph - failed to yield ROW; U2 S left turn 25 mph,yes
+25,108387988,01/22/2026,15:02,Angle,C,Daylight,Dry,U1 E straight 10 mph - failed to yield ROW; U2 S straight 35 mph,yes
+26,108431889,03/14/2026,21:30,Angle,PDO,Dark-not lighted,Dry,U1 W straight 25 mph - disregarded stop sign; U2 S straight 35 mph,yes
+27,108453977,03/23/2026,07:38,"Left turn, same roadway",PDO,Daylight,Dry,U1 E left turn 10 mph - failed to yield ROW; U2 W right turn 10 mph,yes
+28,108502945,05/15/2026,15:00,Angle,PDO,Daylight,Dry,U1 S straight 35 mph - erratic/reckless; U2 E straight 10 mph - failed to yield ROW,yes
+29,108564225,07/08/2026,08:58,Angle,B,Daylight,Dry,U1 N straight 45 mph; U2 E straight 15 mph - failed to yield ROW,yes

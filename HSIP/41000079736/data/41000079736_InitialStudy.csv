@@ -1,0 +1,358 @@
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Intersection Analysis Report"
+"Study Criteria Summary"
+"County:","CLEVELAND","City:","All and Rural"
+"Date:","9/1/2021","to","8/31/2026","Study:","41000079736"
+"Location:","NC 180/NC 226 (Post Rd) at SR 1103 (Pleasant Dr/Pleasant Hill Church Rd)"
+"Report Details"
+"Acc
+No","Crash ID","Date","Accident Type","Total
+Damage","Injuries","F","A","B","C","R","Condition","L","W","Road","Ch","Ci","Dv","Trfc Ctl","Op"
+"1","106839126","01/20/2022 07:57","LEFT TURN, DIFFERENT ROADWAYS","$","3500","0","0","0","0","2","1","2","1","0","1","1"
+"Unit","1",":","1","Alchl/Drgs:","0","Speed:","0","MPH","Dir:","E","Veh Mnvr / Ped Actn:","8","Obj Strk:",""
+"Unit","2",":","1","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","N","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"2","106893683","03/15/2022 11:33","LEFT TURN, DIFFERENT ROADWAYS","$","6000","0","0","0","0","1","1","1","1","0","1","1"
+"Unit","1",":","1","Alchl/Drgs:","0","Speed:","35","MPH","Dir:","E","Veh Mnvr / Ped Actn:","8","Obj Strk:",""
+"Unit","2",":","1","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","S","Veh Mnvr / Ped Actn:","11","Obj Strk:",""
+"3","107037107","08/03/2022 22:43","FIXED OBJECT","$","4500","0","0","0","0","1","5","1","1","0","13","1"
+"Unit","1",":","1","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","N","Veh Mnvr / Ped Actn:","7","Obj Strk:","59"
+"4","107067627","08/28/2022 00:08","FIXED OBJECT","$","2000","0","0","0","0","1","5","1","5","0","13","1"
+"Unit","1",":","1","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","S","Veh Mnvr / Ped Actn:","4","Obj Strk:","58"
+"5","107086689","09/13/2022 17:28","LEFT TURN, DIFFERENT ROADWAYS","$","2000","0","0","1","0","1","1","1","1","0","1","1"
+"Unit","1",":","1","Alchl/Drgs:","0","Speed:","10","MPH","Dir:","N","Veh Mnvr / Ped Actn:","8","Obj Strk:",""
+"Unit","2",":","1","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","S","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"6","107127945","10/24/2022 20:40","LEFT TURN, DIFFERENT ROADWAYS","$","2100","0","0","0","0","1","5","1","1","0","1","1"
+"Unit","1",":","32","Alchl/Drgs:","0","Speed:","25","MPH","Dir:","S","Veh Mnvr / Ped Actn:","8","Obj Strk:",""
+"Unit","2",":","1","Alchl/Drgs:","0","Speed:","55","MPH","Dir:","N","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"7","107162484","11/28/2022 16:16","REAR END, SLOW OR STOP","$","9000","0","0","0","0","1","1","1","1","0","13","1"
+"Unit","1",":","2","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","N","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"Unit","2",":","1","Alchl/Drgs:","0","Speed:","0","MPH","Dir:","N","Veh Mnvr / Ped Actn:","1","Obj Strk:",""
+"8","107171393","12/05/2022 15:11","LEFT TURN, DIFFERENT ROADWAYS","$","12500","0","0","0","0","2","1","2","1","0","1","1"
+"Unit","1",":","1","Alchl/Drgs:","0","Speed:","5","MPH","Dir:","W","Veh Mnvr / Ped Actn:","8","Obj Strk:",""
+"Unit","2",":","4","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","N","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+,"10/09/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis
+System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-1-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Intersection Analysis Report"
+"Acc
+No","Crash ID","Date","Accident Type","Total
+Damage","Injuries","F","A","B","C","R","Condition","L","W","Road","Ch","Ci","Dv","Trfc Ctl","Op"
+"9","107468199","09/23/2023 20:50","ANIMAL","$","1000","0","0","0","0","1","5","1","1","0","0",""
+"Unit","1",":","4","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","N","Veh Mnvr / Ped Actn:","4","Obj Strk:","17"
+"10","107473530","09/26/2023 17:58","RIGHT TURN, SAME ROADWAY","$","3000","0","0","0","0","1","1","1","1","0","1","1"
+"Unit","1",":","4","Alchl/Drgs:","0","Speed:","10","MPH","Dir:","NW","Veh Mnvr / Ped Actn:","7","Obj Strk:",""
+"Unit","2",":","1","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","N","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"11","107503115","10/24/2023 17:25","REAR END, SLOW OR STOP","$","500","0","0","0","0","1","1","1","1","0","1","1"
+"Unit","1",":","1","Alchl/Drgs:","7","Speed:","45","MPH","Dir:","SE","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"Unit","2",":","4","Alchl/Drgs:","0","Speed:","0","MPH","Dir:","SE","Veh Mnvr / Ped Actn:","1","Obj Strk:",""
+"12","107790631","07/16/2024 17:09","LEFT TURN, DIFFERENT ROADWAYS","$","18000","0","0","0","3","2","1","2","1","0","1","1"
+"Unit","1",":","1","Alchl/Drgs:","0","Speed:","0","MPH","Dir:","S","Veh Mnvr / Ped Actn:","8","Obj Strk:",""
+"Unit","2",":","2","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","S","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"Unit","3",":","2","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","N","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"13","107915535","11/08/2024 16:26","REAR END, SLOW OR STOP","$","500","0","0","0","0","1","1","1","1","0","1","1"
+"Unit","1",":","1","Alchl/Drgs:","0","Speed:","5","MPH","Dir:","W","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"Unit","2",":","4","Alchl/Drgs:","0","Speed:","0","MPH","Dir:","W","Veh Mnvr / Ped Actn:","1","Obj Strk:",""
+"14","107921860","11/14/2024 05:03","LEFT TURN, DIFFERENT ROADWAYS","$","600","0","0","0","0","2","4","3","1","0","0",""
+"Unit","1",":","4","Alchl/Drgs:","0","Speed:","10","MPH","Dir:","NE","Veh Mnvr / Ped Actn:","12","Obj Strk:",""
+"Unit","2",":","1","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","N","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"15","108045557","03/07/2025 14:25","ANGLE","$","15000","0","0","0","2","1","1","1","1","0","1","1"
+"Unit","1",":","1","Alchl/Drgs:","0","Speed:","15","MPH","Dir:","E","Veh Mnvr / Ped Actn:","4","Obj Strk:","58"
+"Unit","2",":","4","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","S","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"16","108120512","05/19/2025 18:55","ANGLE","$","6000","0","1","2","0","1","1","1","1","0","1","1"
+"Unit","1",":","1","Alchl/Drgs:","0","Speed:","15","MPH","Dir:","E","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"Unit","2",":","4","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","N","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"17","108204170","08/06/2025 01:18","FIXED OBJECT","$","5000","0","0","0","0","1","5","1","5","0","13","1"
+"Unit","1",":","1","Alchl/Drgs:","3","Speed:","45","MPH","Dir:","S","Veh Mnvr / Ped Actn:","4","Obj Strk:","56"
+,"10/09/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis
+System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-2-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Intersection Analysis Report"
+"Acc
+No","Crash ID","Date","Accident Type","Total
+Damage","Injuries","F","A","B","C","R","Condition","L","W","Road","Ch","Ci","Dv","Trfc Ctl","Op"
+"18","108353439","12/16/2025 21:12","LEFT TURN, SAME ROADWAY","$","6800","0","1","0","0","1","5","1","1","0","1","1"
+"Unit","1",":","2","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","N","Veh Mnvr / Ped Actn:","8","Obj Strk:",""
+"Unit","2",":","21","Alchl/Drgs:","0","Speed:","25","MPH","Dir:","S","Veh Mnvr / Ped Actn:","8","Obj Strk:",""
+"19","108387988","01/22/2026 15:02","ANGLE","$","4000","0","0","0","2","1","1","1","1","0","1","1"
+"Unit","1",":","1","Alchl/Drgs:","0","Speed:","10","MPH","Dir:","E","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"Unit","2",":","1","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","S","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"20","108431889","03/14/2026 21:30","ANGLE","$","4000","0","0","0","0","1","5","1","1","0","1","1"
+"Unit","1",":","32","Alchl/Drgs:","7","Speed:","35","MPH","Dir:","W","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"Unit","2",":","1","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","S","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"21","108453977","03/23/2026 07:38","LEFT TURN, SAME ROADWAY","$","3500","0","0","0","0","1","1","1","3","0","1","1"
+"Unit","1",":","2","Alchl/Drgs:","0","Speed:","15","MPH","Dir:","E","Veh Mnvr / Ped Actn:","8","Obj Strk:",""
+"Unit","2",":","2","Alchl/Drgs:","0","Speed:","5","MPH","Dir:","W","Veh Mnvr / Ped Actn:","7","Obj Strk:",""
+"22","108502945","05/15/2026 15:00","ANGLE","$","16000","0","0","0","0","1","1","1","1","0","1","1"
+"Unit","1",":","1","Alchl/Drgs:","0","Speed:","35","MPH","Dir:","S","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"Unit","2",":","2","Alchl/Drgs:","0","Speed:","10","MPH","Dir:","E","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"23","108564225","07/08/2026 08:58","ANGLE","$","10000","0","0","1","0","1","1","1","1","0","1","1"
+"Unit","1",":","11","Alchl/Drgs:","0","Speed:","45","MPH","Dir:","N","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"Unit","2",":","1","Alchl/Drgs:","0","Speed:","15","MPH","Dir:","E","Veh Mnvr / Ped Actn:","4","Obj Strk:",""
+"Legend for Report Details:","Acc No - Accident Number
+Injuries: F - Fatal, A - Class A, B - Class B, C - Class C
+Condition: R - Road Surface, L - Ambient Light, W - Weather
+Rd Ch - Road Character
+Rd Ci - Roadway Contributing Circumstances
+Trfc Ctl - Traffic Control: Dv - Device, Op - Operating
+Alchl/Drgs - Alcohol Drugs Suspected
+Veh Mnvr/Ped Actn - Vehicle Maneuver/Pedestrian Action
+Obj Strk - Object Struck"
+,"10/09/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis
+System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-3-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Intersection Analysis Report"
+"Summary Statistics"
+"High Level Crash Summary"
+"Crash Type","Number of
+Crashes","Percent
+of Total"
+"Total Crashes","23","100.00"
+"Fatal Crashes","0","0.00"
+"Non-Fatal Injury Crashes","7","30.43"
+"Total Injury Crashes","7","30.43"
+"Property Damage Only Crashes","16","69.57"
+"Night Crashes","8","34.78"
+"Wet Crashes","4","17.39"
+"Alcohol/Drugs Involvement Crashes","0","0.00"
+"Crash Severity Summary"
+"Crash Type","Number of
+Crashes","Percent 
+of Total"
+"Total Crashes","23","100.00"
+"Fatal Crashes","0","0.00"
+"Class A Crashes","2","8.70"
+"Class B Crashes","2","8.70"
+"Class C Crashes","3","13.04"
+"Property Damage Only Crashes","16","69.57"
+"Vehicle Exposure Statistics"
+"Annual ADT =","15200"
+"Total Vehicle Exposure =","27.76 (MEV)"
+"Crash Rate","Crashes Per 100 Million
+Vehicles Entered"
+"Total Crash Rate","82.87"
+"Fatal Crash Rate","0.00"
+"Non Fatal Crash Rate","25.22"
+"Night Crash Rate","28.82"
+"Wet Crash Rate","14.41"
+"EPDO Rate","762.38"
+,"10/09/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis
+System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-4-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Intersection Analysis Report"
+"Miscellaneous Statistics"
+"Severity Index =","9.20"
+"EPDO Crash Index =","211.60"
+"Estimated Property Damage Total = $","135500.00"
+"Accident Type Summary"
+"Accident Type","Number of
+Crashes","Percent
+of Total"
+"ANGLE","6","26.09"
+"ANIMAL","1","4.35"
+"FIXED OBJECT","3","13.04"
+"LEFT TURN, DIFFERENT ROADWAYS","7","30.43"
+"LEFT TURN, SAME ROADWAY","2","8.70"
+"REAR END, SLOW OR STOP","3","13.04"
+"RIGHT TURN, SAME ROADWAY","1","4.35"
+"Injury Summary"
+"Injury Type","Number of
+Injuries","Percent
+of Total"
+"Fatal Injuries","0","0.00"
+"Class A Injuries","2","15.38"
+"Class B Injuries","4","30.77"
+"Class C Injuries","7","53.85"
+"Total Non-Fatal Injuries","13","100.00"
+"Total Injuries","13","100.00"
+,"10/09/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis
+System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-5-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Intersection Analysis Report"
+"Monthly Summary"
+"Month","Number of
+Crashes","Percent
+of Total"
+"Jan","2","8.70"
+"Feb","0","0.00"
+"Mar","4","17.39"
+"Apr","0","0.00"
+"May","2","8.70"
+"Jun","0","0.00"
+"Jul","2","8.70"
+"Aug","3","13.04"
+"Sep","3","13.04"
+"Oct","2","8.70"
+"Nov","3","13.04"
+"Dec","2","8.70"
+"Daily Summary"
+"Day","Number of
+Crashes","Percent
+of Total"
+"Mon","5","21.74"
+"Tue","6","26.09"
+"Wed","3","13.04"
+"Thu","3","13.04"
+"Fri","3","13.04"
+"Sat","2","8.70"
+"Sun","1","4.35"
+,"10/09/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis
+System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-6-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Intersection Analysis Report"
+"Hourly Summary"
+"Hour","Number of
+Crashes","Percent
+of Total"
+"0000-0059","1","4.35"
+"0100-0159","1","4.35"
+"0200-0259","0","0.00"
+"0300-0359","0","0.00"
+"0400-0459","0","0.00"
+"0500-0559","1","4.35"
+"0600-0659","0","0.00"
+"0700-0759","2","8.70"
+"0800-0859","1","4.35"
+"0900-0959","0","0.00"
+"1000-1059","0","0.00"
+"1100-1159","1","4.35"
+"1200-1259","0","0.00"
+"1300-1359","0","0.00"
+"1400-1459","1","4.35"
+"1500-1559","3","13.04"
+"1600-1659","2","8.70"
+"1700-1759","4","17.39"
+"1800-1859","1","4.35"
+"1900-1959","0","0.00"
+"2000-2059","2","8.70"
+"2100-2159","2","8.70"
+"2200-2259","1","4.35"
+"2300-2359","0","0.00"
+,"10/09/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis
+System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-7-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Intersection Analysis Report"
+"Light and Road Conditions Summary"
+"Condition","Dry","Wet","Other","Total"
+"Day","12","3","0","15"
+"Dark","7","1","0","8"
+"Other","0","0","0","0"
+"Total","19","4","0","23"
+"Object Struck Summary"
+"Object Type","Times
+Struck","Percent
+of Total"
+"ANIMAL","1","20.00"
+"CATCH BASIN OR CULVERT ON SHOULDER","1","20.00"
+"DITCH","2","40.00"
+"EMBANKMENT","1","20.00"
+"Vehicle Type Summary"
+"Vehicle Type","Number
+Involved","Percent
+of Total"
+"MOPED","1","2.33"
+"PASSENGER CAR","24","55.81"
+"PICKUP","7","16.28"
+"SINGLE UNIT TRUCK (3 OR MORE AXLES)","1","2.33"
+"SPORT UTILITY","8","18.60"
+"UNKNOWN","2","4.65"
+,"10/09/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis
+System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-8-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Intersection Analysis Report"
+"Yearly Totals Summary"
+"Accident Totals"
+"Year","Total
+Accidents","Fatal
+Accidents","Injury
+Accidents","Property Damage
+Only Accidents"
+"2021","0","0","0","0"
+"2022","8","0","1","7"
+"2023","3","0","0","3"
+"2024","3","0","1","2"
+"2025","4","0","3","1"
+"2026","5","0","2","3"
+"Total","23","0","7","16"
+"Injury Totals"
+"Year","Fatal Injuries","Class A, B,
+or C Injuries"
+"2021","0","0"
+"2022","0","1"
+"2023","0","0"
+"2024","0","3"
+"2025","0","6"
+"2026","0","3"
+"Total","0","13"
+"Miscellaneous Totals"
+"Year","Property Damage","EPDO Index"
+"2021","$","0","0.00"
+"2022","$","41600","15.40"
+"2023","$","4500","3.00"
+"2024","$","19100","10.40"
+"2025","$","32800","163.00"
+"2026","$","37500","19.80"
+"Total","$","135500","211.60"
+"Type of Accident Totals"
+"Year","Left Turn","Right Turn","Rear End","Run Off Road &
+Fixed Object","Angle","Side Swipe","Other"
+"2021","0","0","0","0","0","0","0"
+"2022","5","0","1","2","0","0","0"
+,"10/09/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis
+System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-9-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Intersection Analysis Report"
+"Year","Left Turn","Right Turn","Rear End","Run Off Road &
+Fixed Object","Angle","Side Swipe","Other"
+"2023","0","1","1","0","0","0","1"
+"2024","2","0","1","0","0","0","0"
+"2025","1","0","0","1","2","0","0"
+"2026","1","0","0","0","4","0","0"
+"Total","9","1","3","3","6","0","1"
+,"10/09/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis
+System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-10-"
+,"North Carolina Department of Transportation
+Traffic Engineering Accident Analysis System
+Intersection Analysis Report"
+"Study Criteria"
+"Study Name","Log No.","PH No.","TIP No.","K/A Cf.","B/C Cf.","ADT","ADT Route"
+,"41000079736","","","","76.8","8.4","15200",""
+"Request Date","Courier Service","Phone No.","Ext.","Fax No."
+,"","","","",""
+"County","Municipality"
+,"Name","Code","Div.","Name","Code","Y-Line Ft.","Begin Date","End Date","Years"
+,"CLEVELAND","23","12","All and Rural","","150","9/1/2021","8/31/2026","5.00"
+"Location Text","Requestor"
+"NC 180/NC 226 (Post Rd) at SR 1103 (Pleasant Dr/Pleasant Hill Church Rd)",""
+"Fiche Roads"
+"Name","Code"
+"NC 180","30000180"
+"NC 226","30000226"
+"SR 1103","40001103"
+"PLEASANT","50024421"
+"PLEASANT HILL CHURCH","50038004"
+"NC 198","30000198"
+"POST","50024651"
+"Intersection Road Combinations"
+"Name","Code","Code","Name"
+"NC 180","30000180","40001103","SR 1103"
+"NC 180","30000180","50024421","PLEASANT"
+"NC 180","30000180","50038004","PLEASANT HILL CHURCH"
+"NC 226","30000226","40001103","SR 1103"
+"NC 226","30000226","50024421","PLEASANT"
+"NC 226","30000226","50038004","PLEASANT HILL CHURCH"
+"PLEASANT","50024421","50038004","PLEASANT HILL CHURCH"
+"POST","50024651","40001103","SR 1103"
+"POST","50024651","50024421","PLEASANT"
+"POST","50024651","50038004","PLEASANT HILL CHURCH"
+,"10/09/2026","All data presented in this report comes explicitly from the Traffic Engineering Accident Analysis
+System based upon various input criteria provided by the report's creator. The onus is strictly upon the user of this report to exercise due diligence in interpreting and further representing this data.","-11-"

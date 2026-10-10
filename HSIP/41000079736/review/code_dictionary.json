@@ -1,0 +1,396 @@
+{
+ "fields": [
+  {
+   "field": "SVRTY_CD",
+   "meaning": "Crash-level worst injury severity (DMV-349 item 32 Injury Status / HSIS NC 'SEVERITY' = most severe injury in the crash). KABCO scale coded 1-5. Validated against the TEAAS Intersection Analysis Report injury columns (e.g., 106234219 code 3 has B=1,C=1; 107790631 code 4 has C only; 108120512 code 2 has A).",
+   "codes": [
+    {
+     "code": "2",
+     "label": "A type injury (suspected serious injury) - crash worst injury is A",
+     "confidence": "verified"
+    },
+    {
+     "code": "3",
+     "label": "B type injury (suspected minor injury)",
+     "confidence": "verified"
+    },
+    {
+     "code": "4",
+     "label": "C type injury (possible injury)",
+     "confidence": "verified"
+    },
+    {
+     "code": "5",
+     "label": "No injury (property damage only, PDO)",
+     "confidence": "verified"
+    },
+    {
+     "code": "1",
+     "label": "Killed / fatal injury (not present in this file; listed for completeness)",
+     "confidence": "verified"
+    }
+   ]
+  },
+  {
+   "field": "ACC_TYP",
+   "meaning": "Crash type = first harmful event at the crash level (DMV-349 items 10-11 'First Harmful Event', HSIS NC 'ACCTYPE'). TEAAS uses the same numbering (confirmed by the Index sheet 0..32 in 41000079736_FicheFirst5.xlsx and by the TEAAS report's spelled-out Accident Type column for every crash).",
+   "codes": [
+    {
+     "code": "19",
+     "label": "Fixed Object (collision of motor vehicle with fixed object)",
+     "confidence": "verified"
+    },
+    {
+     "code": "21",
+     "label": "Rear End, Slow or Stop",
+     "confidence": "verified"
+    },
+    {
+     "code": "23",
+     "label": "Left Turn, Same Roadway",
+     "confidence": "verified"
+    },
+    {
+     "code": "24",
+     "label": "Left Turn, Different Roadways",
+     "confidence": "verified"
+    },
+    {
+     "code": "25",
+     "label": "Right Turn, Same Roadway",
+     "confidence": "verified"
+    },
+    {
+     "code": "26",
+     "label": "Right Turn, Different Roadways",
+     "confidence": "verified"
+    },
+    {
+     "code": "30",
+     "label": "Angle",
+     "confidence": "verified"
+    }
+   ]
+  },
+  {
+   "field": "RD_CONFIG",
+   "meaning": "Road Configuration / trafficway description at the crash site (DMV-349 item 73, HSIS NC 'RD_CONF'). Crash-level, repeated on every unit row. Full list: 1 One-way not divided; 2 Two-way not divided; 3 Two-way divided unprotected median; 4 Two-way divided positive median barrier; 5 Unknown. Only code 2 appears in this file (all 58 rows).",
+   "codes": [
+    {
+     "code": "2",
+     "label": "Two-way, not divided",
+     "confidence": "verified"
+    }
+   ]
+  },
+  {
+   "field": "RD_COND",
+   "meaning": "Road surface condition at time of crash (DMV-349 item 3 Road Surface Condition, HSIS NC 'RDSURF'); crash-level, shown as the 'R' column in the TEAAS report. Full list: 1 Dry, 2 Wet, 3 Water (standing/moving), 4 Ice, 5 Snow, 6 Slush, 7 Sand/mud/dirt/gravel, 8 Fuel/oil, 9 Other, 10 Unknown. Wet crashes here: 106839126, 107171393, 107790631, 107960640.",
+   "codes": [
+    {
+     "code": "1",
+     "label": "Dry",
+     "confidence": "verified"
+    },
+    {
+     "code": "2",
+     "label": "Wet",
+     "confidence": "verified"
+    }
+   ]
+  },
+  {
+   "field": "LT_COND",
+   "meaning": "Light condition (DMV-349 item 7 Light Condition, HSIS NC 'LIGHT'); crash-level, the 'L' column in the TEAAS report. Full list: 1 Daylight, 2 Dusk, 3 Dawn, 4 Dark - lighted roadway, 5 Dark - roadway not lighted, 6 Dark - unknown lighting, 7 Other, 8 Unknown. Codes 2, 4, 5 are the 'night' crashes for the HSIP night warrant (9 crashes: 104908181, 106234219, 106423994 [dusk], 106442060, 107037107, 107067627, 107127945, 107960640, 108353439, 108431889 - note 106423994 at 17:41 on Dec 1 is coded Dusk).",
+   "codes": [
+    {
+     "code": "1",
+     "label": "Daylight",
+     "confidence": "verified"
+    },
+    {
+     "code": "2",
+     "label": "Dusk",
+     "confidence": "verified"
+    },
+    {
+     "code": "4",
+     "label": "Dark - lighted roadway",
+     "confidence": "verified"
+    },
+    {
+     "code": "5",
+     "label": "Dark - roadway not lighted",
+     "confidence": "verified"
+    }
+   ]
+  },
+  {
+   "field": "TRFC_CTRL",
+   "meaning": "Traffic control device present at the crash location (DMV-349 item 76 Traffic Control Device, HSIS NC 'TRF_CNTL'); crash-level, the 'Dv' column of the TEAAS report (the 'Op' column = Traffic Control Operating, 1 Yes). Full list: 0 No control present, 1 Stop sign, 2 Yield sign, 3 Stop and go signal, 4 Flashing signal with stop sign, 5 Flashing signal without stop sign, 6 RR gate and flasher, 7 RR flasher, 8 RR crossbucks only, 9 Human control, 10 Warning sign, 11 School zone signs, 12 Flashing stop and go signal, 13 Double yellow line no passing zone, 14 Other. Code 13 appears on the two NC 180 fixed-object crashes (107037107, 107067627) and also on two intersection crashes (106423994 angle, 107162484 rear end) where the officer referenced the mainline centerline instead of the side-street stop sign.",
+   "codes": [
+    {
+     "code": "1",
+     "label": "Stop sign",
+     "confidence": "verified"
+    },
+    {
+     "code": "13",
+     "label": "Double yellow line, no passing zone",
+     "confidence": "verified"
+    }
+   ]
+  },
+  {
+   "field": "MANEUVER",
+   "meaning": "Vehicle Maneuver/Action of this unit just before the crash (DMV-349 item 49, HSIS NC 'MANEUVER'); unit-level, the 'Veh Mnvr / Ped Actn' value in the TEAAS report. Full list: 1 Stopped in travel lane, 2 Parked out of travel lanes, 3 Parked in travel lanes, 4 Going straight ahead, 5 Changing lanes or merging, 6 Passing, 7 Making right turn, 8 Making left turn, 9 Making U turn, 10 Backing, 11 Slowing or stopping, 12 Starting in roadway, 13 Parking, 14 Leaving parked position, 15 Avoiding object in road, 16 Other.",
+   "codes": [
+    {
+     "code": "1",
+     "label": "Stopped in travel lane",
+     "confidence": "verified"
+    },
+    {
+     "code": "4",
+     "label": "Going straight ahead",
+     "confidence": "verified"
+    },
+    {
+     "code": "7",
+     "label": "Making right turn",
+     "confidence": "verified"
+    },
+    {
+     "code": "8",
+     "label": "Making left turn",
+     "confidence": "verified"
+    },
+    {
+     "code": "11",
+     "label": "Slowing or stopping",
+     "confidence": "verified"
+    }
+   ]
+  },
+  {
+   "field": "VIOLATION",
+   "meaning": "Driver/vehicle contributing circumstance #1 for this unit (DMV-349 items 14-19 'Contributing Circumstances - Driver', up to three per driver; HSIS NC 'CONTRIB1' Violating/Contributing Factor). Unit-level. 0 = none indicated (typically the not-at-fault unit). Numbering 0-32 is identical in the DMV-349 code sheet and the HSIS NC dictionary; newer form adds 33 Unable to determine, 34 Unknown, 35-38 Driver distracted variants.",
+   "codes": [
+    {
+     "code": "0",
+     "label": "No contributing circumstances indicated",
+     "confidence": "verified"
+    },
+    {
+     "code": "2",
+     "label": "Disregarded stop sign",
+     "confidence": "verified"
+    },
+    {
+     "code": "8",
+     "label": "Failure to reduce speed",
+     "confidence": "verified"
+    },
+    {
+     "code": "14",
+     "label": "Overcorrected/oversteered",
+     "confidence": "verified"
+    },
+    {
+     "code": "19",
+     "label": "Failed to yield right of way",
+     "confidence": "verified"
+    },
+    {
+     "code": "20",
+     "label": "Inattention",
+     "confidence": "verified"
+    },
+    {
+     "code": "26",
+     "label": "Operated vehicle in erratic, reckless, careless, negligent or aggressive manner",
+     "confidence": "verified"
+    }
+   ]
+  },
+  {
+   "field": "DRCTN_FRM_RD_CD",
+   "meaning": "Compass direction from the reference ('from') road FRM_RD_CD to the crash, measured along the on-road RD_ON_CD, paired with DSTNC_MILE_FRM_RD_QTY. This is the TEAAS fiche 'Dir From' column (crash-location referencing: On Road / Miles / Dir From / From Road). Blank when the crash is referenced at the intersection (distance 0). Values that appear: '' (blank, 24 crashes), W (106808749: SR 1103 0.1 mi W of SR 2205), S (107067627: NC 180 0.009 mi S of SR 1103; also 108387988 and 108502945 with distance 0), N (107086689 and 108564225 with distance 0). The N/S entries with distance 0 are officer-entered directions that carry no offset - the crash is at the intersection.",
+   "codes": [
+    {
+     "code": "",
+     "label": "At the from-road (no offset)",
+     "confidence": "verified"
+    },
+    {
+     "code": "N",
+     "label": "North of the from road",
+     "confidence": "verified"
+    },
+    {
+     "code": "S",
+     "label": "South of the from road",
+     "confidence": "verified"
+    },
+    {
+     "code": "W",
+     "label": "West of the from road",
+     "confidence": "verified"
+    }
+   ]
+  },
+  {
+   "field": "DIRECT",
+   "meaning": "Direction of travel of this unit when the crash occurred (DMV-349 'Direction of Travel' per vehicle; HSIS NC 'DIR_TRVL', values N, NE, E, SE, S, SW, W, NW). Unit-level; it is the 'Dir' value in the TEAAS report. At this site N/S = NC 180/NC 226 (Post Rd) mainline, E/W (and SE/NW on the skewed legs) = SR 1103 Pleasant Dr / Pleasant Hill Church Rd.",
+   "codes": [
+    {
+     "code": "N",
+     "label": "Northbound",
+     "confidence": "verified"
+    },
+    {
+     "code": "S",
+     "label": "Southbound",
+     "confidence": "verified"
+    },
+    {
+     "code": "E",
+     "label": "Eastbound",
+     "confidence": "verified"
+    },
+    {
+     "code": "W",
+     "label": "Westbound",
+     "confidence": "verified"
+    },
+    {
+     "code": "SE",
+     "label": "Southeast-bound",
+     "confidence": "verified"
+    },
+    {
+     "code": "NW",
+     "label": "Northwest-bound",
+     "confidence": "verified"
+    }
+   ]
+  },
+  {
+   "field": "SPD_LMT_NBR",
+   "meaning": "Authorized (posted) speed limit in mph for this unit's roadway (DMV-349 item 60 'Authorized Speed Limit'). Unit-level, so the side-street unit can carry a different value than the mainline unit (108353439: unit 1 = 15, unit 2 = 45; 106032499 both units 35; 107915535 both 35; 108431889 unit 1 = 35, unit 2 = 45). Mainline NC 180 is 45 mph. Values present: 15, 35, 45.",
+   "codes": []
+  },
+  {
+   "field": "SPD_EST_NBR",
+   "meaning": "Estimate of original traveling speed in mph before the crash for this unit (DMV-349 item 61 'Estimate of Original Speed'). This is the 'Speed' value printed per unit in the TEAAS Intersection Analysis Report (e.g., 104908181 unit 1 = 10 MPH, unit 2 = 45 MPH). 0 = stopped vehicle. Values present: 0-55.",
+   "codes": []
+  },
+  {
+   "field": "SPD_AT_IMPCT_NBR",
+   "meaning": "Estimate of speed at impact in mph for this unit (DMV-349 item 62 'Estimate of Speed at Impact'; HSIS NC 'IMPACTSP'). Less than or equal to SPD_EST_NBR when the driver braked (e.g., 104908181 unit 2: 45 est, 40 at impact); 0 for stopped vehicles. Several rows have est 0 but impact 15-20 (vehicle started from a stop: 106839126 u1, 107790631 u1, 106423994 u1).",
+   "codes": []
+  },
+  {
+   "field": "MLPST_NBR",
+   "meaning": "TEAAS milepost (miles) of the crash along the on-road RD_ON_CD, computed from the from-road / distance / direction reference. 999.999 is the TEAAS placeholder for a crash that could not be mileposted (107960640 was coded 'SR 1103 at SR 1103'). Values present: 4.601 = NC 180 at SR 1103 (23 crashes); 3.644 = SR 1103 at NC 180 (4 crashes referenced on SR 1103); 3.019 = SR 1103 0.1 mi W of SR 2205 (106808749, MP 2.919 + 0.1); 4.592 = NC 180 0.009 mi S of SR 1103 (107067627); 999.999 = not mileposted (107960640). Mileposts match the Features Reports (NC 180 MP 4.601 / SR 1103 MP 3.644 at the intersection).",
+   "codes": [
+    {
+     "code": "4.601",
+     "label": "NC 180 (30000180) milepost of the SR 1103 intersection",
+     "confidence": "verified"
+    },
+    {
+     "code": "3.644",
+     "label": "SR 1103 (40001103) milepost of the NC 180 intersection",
+     "confidence": "verified"
+    },
+    {
+     "code": "3.019",
+     "label": "SR 1103 0.1 mi W of SR 2205 (SR 2205 at MP 2.919)",
+     "confidence": "verified"
+    },
+    {
+     "code": "4.592",
+     "label": "NC 180 0.009 mi S of SR 1103",
+     "confidence": "verified"
+    },
+    {
+     "code": "999.999",
+     "label": "Not mileposted / unmilepostable (TEAAS placeholder)",
+     "confidence": "verified"
+    }
+   ]
+  },
+  {
+   "field": "FRM_RD_CD",
+   "meaning": "8-digit TEAAS road code of the reference ('from') road - the road the crash location is measured from (HSIS NC 'FRM_RD', 'From Road - used in describing crash location for subsequent mileposting'). Code structure: first digit = route class (1 Interstate, 2 US, 3 NC, 4 Secondary Road, 5 local street name), remaining digits = route/street number, e.g. 30000180 = NC 180, 30000226 = NC 226, 40001103 = SR 1103, 40002205 = SR 2205, 50024421 = PLEASANT (per the TEAAS report's Fiche Roads list). When FRM_RD = 40001103 and RD_ON = 30000180 the crash is referenced 'NC 180 at SR 1103'.",
+   "codes": [
+    {
+     "code": "30000180",
+     "label": "NC 180",
+     "confidence": "verified"
+    },
+    {
+     "code": "30000226",
+     "label": "NC 226",
+     "confidence": "verified"
+    },
+    {
+     "code": "40001103",
+     "label": "SR 1103 (Pleasant Dr / Pleasant Hill Church Rd)",
+     "confidence": "verified"
+    },
+    {
+     "code": "40002205",
+     "label": "SR 2205",
+     "confidence": "verified"
+    }
+   ]
+  },
+  {
+   "field": "RD_ON_CD",
+   "meaning": "8-digit TEAAS road code of the road the crash occurred on (HSIS NC 'ON_RD', 'On Road - used in describing crash location for subsequent mileposting'); MLPST_NBR is measured along this road. Same code scheme as FRM_RD_CD. Values present: 30000180 NC 180 (23 crashes, incl. 107171393 coded on NC 226 = 30000226 which is the co-signed route), 40001103 SR 1103 (5 crashes, incl. 107960640 'SR 1103 at SR 1103').",
+   "codes": [
+    {
+     "code": "30000180",
+     "label": "NC 180",
+     "confidence": "verified"
+    },
+    {
+     "code": "30000226",
+     "label": "NC 226 (co-signed with NC 180 here)",
+     "confidence": "verified"
+    },
+    {
+     "code": "40001103",
+     "label": "SR 1103",
+     "confidence": "verified"
+    }
+   ]
+  },
+  {
+   "field": "DSTNC_MILE_FRM_RD_QTY",
+   "meaning": "Distance in miles from the from-road FRM_RD_CD to the crash along RD_ON_CD, in the direction DRCTN_FRM_RD_CD (HSIS NC 'REFDISMI' = 'Distance from FRM_RD in miles - used in describing crash location for subsequent mileposting'; DMV-349 crash-location block 'feet/miles from'). 0 = at the intersection. Values present: 0 (27 crashes), .1 (106808749), .009 (107067627 = about 48 ft S of SR 1103).",
+   "codes": []
+  },
+  {
+   "field": "UNT_NBR",
+   "meaning": "Unit (vehicle) number on the DMV-349, 1..NBR_UNT_CNT; one CSV row per unit. Unit 1 is the first vehicle listed by the officer (conventionally the striking / at-fault vehicle; here unit 1 carries the VIOLATION code in all but two crashes - 108502945 and 108564225 where unit 2 is the side-street failed-to-yield vehicle). Values present: 1, 2, 3.",
+   "codes": []
+  },
+  {
+   "field": "NBR_UNT_CNT",
+   "meaning": "Number of units (vehicles + non-motorists) involved in the crash (HSIS NC 'NUM_UNIT'); crash-level, repeated on every unit row and equal to the number of rows for that CRSH_ID. Values present: 1 (2 fixed-object crashes), 2 (25 crashes), 3 (106423994, 107790631). File has 58 unit rows = 29 crashes.",
+   "codes": []
+  }
+ ],
+ "sources": [
+  "NCDOT DMV Crash Report Form DMV-349 Code Sheets (current form; items 3 Road Surface Condition, 7 Light Condition, 10-11 First/Most Harmful Event (crash type 0-64), 14-19 Contributing Circumstances - Driver, 32 Injury Status, 49 Vehicle Maneuver/Action, 60 Authorized Speed Limit, 61 Estimate of Original Speed, 62 Estimate of Speed at Impact, 73 Road Configuration, 76 Traffic Control Device, 77 Traffic Control Operating): https://connect.ncdot.gov/business/DMV/DMV%20Documents/DMV-349%20Code%20Sheets.pdf (local copy /tmp/claude-0/-home-user-Etch-A-Sketch/8efb543d-60ae-5eeb-88c4-c3e0f143fa6d/scratchpad/dl/codesheets.pdf, text codesheets.txt)",
+  "FHWA Highway Safety Information System (HSIS) North Carolina data dictionary, UNC Highway Safety Research Center, dated July 25, 2019 (fields ACCTYPE, SEVERITY, RD_CONF, RDSURF, LIGHT, TRF_CNTL, TRF_OPER, MANEUVER, CONTRIB1-3, DIR_TRVL, IMPACTSP, MILEPOST, ON_RD, FRM_RD, REFDISMI/REFDISFT, TO_DIR, NUM_UNIT): https://cchi.web.unc.edu/wp-content/uploads/sites/2506/2019/08/Dictionary_HSIS_Final.pdf (local copy /tmp/claude-0/-home-user-Etch-A-Sketch/8efb543d-60ae-5eeb-88c4-c3e0f143fa6d/scratchpad/dl/hsis/hsis_nc_dict.pdf)",
+  "TEAAS Intersection Analysis Report for study 41000079736, 10-yr (/home/user/Etch-A-Sketch/HSIP/41000079736/data/41000079736_CrashAnalysis10yr.pdf): spelled-out Accident Type, injury counts F/A/B/C, R/L/W/Ch/Ci/Dv/Op columns, per-unit Speed, Dir, Veh Mnvr values and the Fiche Roads code list (NC 180 = 30000180, NC 226 = 30000226, SR 1103 = 40001103, PLEASANT = 50024421 ...) used to cross-check every decoded value against the CSV",
+  "TEAAS code index, sheet 'Index' of /home/user/Etch-A-Sketch/HSIP/41000079736/data/41000079736_FicheFirst5.xlsx (crash types 0-32) and the TEAAS fiche report header (On Road / Miles / Dir From / From Road / Toward Road / Milepost Road / MP) in /home/user/Etch-A-Sketch/HSIP/41000079736/data/41000079736_Fiche.csv",
+  "NCDOT Features Reports (/home/user/Etch-A-Sketch/HSIP/41000079736/data/FeaturesReport_NC180.txt, FeaturesReport_SR1103.txt) and fiche_review.py ADJACENT mileposts (SR 2205 at SR 1103 MP 2.919) for the milepost values",
+  "NHTSA copy of the NC DMV-349 Instruction Manual rev. 6 (2013) https://www.nhtsa.gov/sites/nhtsa.gov/files/documents/nc_par_instruction_manual_dmv-349_rev6_2013.pdf - download returned an HTML redirect page, not used; the connect.ncdot.gov code sheet and HSIS dictionary cover the same code tables"
+ ],
+ "notes": "File: /home/user/Etch-A-Sketch/HSIP/41000079736/data/41000079736_CollisionDiagramData.csv - 58 unit rows, 29 crashes (one row per unit; crash-level fields CNTY_NBR, MLPST_NBR, NBR_UNT_CNT, FRM_RD_CD, RD_ON_CD, DSTNC_MILE_FRM_RD_QTY, DRCTN_FRM_RD_CD, ACDNT_DT_TM, SVRTY_CD, ACC_TYP, RD_CONFIG, RD_COND, LT_COND, TRFC_CTRL are repeated on every unit row; unit-level fields are SPD_LMT_NBR, SPD_EST_NBR, SPD_AT_IMPCT_NBR, MANEUVER, VIOLATION, DIRECT, UNT_NBR). CNTY_NBR 23 = Cleveland County. The CSV field names are TEAAS/NCDOT crash-database column names; every code value was found in the DMV-349 code sheet and/or the HSIS NC dictionary with identical numbering, and all anchors given in the task hold (ACC_TYP 19/21/23/24/25/26/30; SVRTY 2=A,3=B,4=C,5=PDO; TRFC_CTRL 1 Stop sign, 13 Double yellow line; MANEUVER 1/4/7/8/11; VIOLATION 19 Failed to yield right of way, 8 Failure to reduce speed). Observed code sets: SVRTY_CD {2,3,4,5}; ACC_TYP {19,21,23,24,25,26,30}; RD_CONFIG {2}; RD_COND {1,2}; LT_COND {1,2,4,5}; TRFC_CTRL {1,13}; MANEUVER {1,4,7,8,11}; VIOLATION {0,2,8,14,19,20,26}; DRCTN_FRM_RD_CD {blank,N,S,W}; DIRECT {N,S,E,W,SE,NW}; SPD_LMT {15,35,45}; MLPST {4.601,3.644,3.019,4.592,999.999}; RD_ON {30000180,30000226,40001103}; FRM_RD {30000180,30000226,40001103,40002205}; DSTNC {0,.1,.009}; NBR_UNT_CNT {1,2,3}. Data quirks worth noting for the collision diagram: (a) TRFC_CTRL 13 on two intersection crashes (106423994 angle, 107162484 rear end) despite the two-way stop; (b) 106032499 has 35 mph on both units and 107915535 35 mph on both - the posted limit on NC 180 is 45, so these are officer entries, not a speed-limit change; (c) 108353439 unit 1 has SPD_LMT 15 (probably a driveway/side-street entry); (d) 107960640 is unmileposted (999.999, 'SR 1103 at SR 1103') and was added to the study by the fiche review; (e) 106808749 (rear end, SR 1103 0.1 mi W of SR 2205, MP 3.019) is about 0.6 mi from the NC 180 intersection and was included in TEAAS as an 'Included Accident' - its MLPST is not at the study intersection; (f) in two angle crashes (108502945, 108564225) the failed-to-yield side-street vehicle is unit 2, not unit 1, so the diagram should use VIOLATION/MANEUVER/DIRECT per unit rather than assuming unit 1 is at fault; (g) 108502945 unit 1 (southbound, VIOLATION 26 erratic/reckless, 35 mph) is the only mainline unit with a contributing circumstance in an angle crash. The TEAAS report 'Speed' column equals SPD_EST_NBR, not SPD_AT_IMPCT_NBR. The DMV-349 item 50 Non-motorist Action shares the MANEUVER column in the TEAAS report ('Veh Mnvr / Ped Actn') but no pedestrian/bicycle units exist in this file."
+}
